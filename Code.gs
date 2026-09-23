@@ -2,12 +2,12 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.6 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.7 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
  *    • KONTROLNE — 50 spółek „for proof” z listy w Proof.gs,
- *    • TŁO RYNKU — SPY, QQQ, ^VIX (kontekst do Etapu 3, nie handlujemy nimi).
+ *    • TŁO RYNKU — SPY, QQQ (kontekst do Etapu 3, nie handlujemy nimi).
  *
  *  Dane trafiają wyłącznie do Firestore. Arkusz służy tylko do monitoringu
  *  (STATS) i do analiz (STRATEGIE, BACKTEST, KOMBINACJE, BENCHMARK).
@@ -19,7 +19,7 @@
  *    proof/{SYMBOL}/sessions/{data}        – spółki kontrolne, cała sesja
  *                                            w jednym dokumencie (tablice)
  *    context/{ID}/sessions/{data}          – tło rynku, ten sam format;
- *                                            ^VIX zapisywany jako VIX
+ *                                            (tło rynku: SPY, QQQ)
  *
  *  JAK TO DZIAŁA
  *  • Trigger uruchamia runCollector() co 5 minut, całą dobę.
@@ -57,9 +57,26 @@ const CONFIG = {
   SLOT_LABELS_ET: ['09:30–10:30', '10:30–11:30', '11:30–12:30', '12:30–13:30',
                    '13:30–14:30', '14:30–15:30', '15:30–16:00'],
 
-  TRIGGER_EVERY_MIN: 5,      // co ile minut działa automat (dozwolone: 1, 5, 10, 15, 30)
-  BUFFER_MIN: 5,             // ile minut po zamknięciu świecy czekamy, aż dane „dojrzeją”
+  TRIGGER_EVERY_MIN: 1,      // co ile minut działa automat (dozwolone: 1, 5, 10, 15, 30)
+  BUFFER_MIN: 0,             // ile minut po zamknięciu świecy czekamy, zanim pierwszy raz zapytamy
   POLL_AFTER_CLOSE_MIN: 45,  // jak długo po zamknięciu sesji jeszcze dociągamy braki
+
+  // SZYBKIE ŁAPANIE ŚWIECY (zamknięcie świecy ma być sygnałem — Etap 4).
+  // Apps Script nie odpala triggera częściej niż co minutę, więc w oknie tuż
+  // po zamknięciu świecy jedno uruchomienie samo ponawia próbę co FAST_RETRY_SEC
+  // sekund, zamiast czekać na kolejny trigger. Yahoo publikuje świecę z losowym
+  // opóźnieniem kilkunastu–kilkudziesięciu sekund, więc pierwsze pytanie zwykle
+  // wraca puste i dopiero któreś kolejne przynosi dane.
+  FAST_RETRY_SEC: 30,        // odstęp między ponowieniami w jednym uruchomieniu
+  FAST_MAX_TRIES: 8,         // ile prób w jednym uruchomieniu (8 × 30 s ≈ 4 min)
+  FAST_WINDOW_MIN: 5,        // jak długo po zamknięciu świecy trwa tryb szybki
+  VERIFY_AFTER_MIN: 5,       // po tylu minutach sprawdzamy, czy zapisana świeca się nie zmieniła
+
+  // SAMOCZYNNE ŁATANIE LUK — w przebiegach, gdy nie ma nic do zebrania
+  // (weekend, noc, po sesji) system dociąga braki wykryte przez audyt.
+  PATCH_ENABLED: true,
+  PATCH_PER_RUN: 2,          // ile luk łatamy w jednym wolnym przebiegu
+  PATCH_MIN_GAP_MIN: 10,     // minimalny odstęp między przebiegami łatania
   LIVE_RANGE: '5d',          // zakres pobierania w trybie automatycznym
   CATCHUP_RANGE: '1mo',      // zakres przy konfiguracji i „Uzupełnij braki”
   FETCH_PAUSE_MS: 700,       // odstęp między zapytaniami do Yahoo (27 spółek)
@@ -110,7 +127,7 @@ function symbolGroup_(symbol) {
 const GROUP_LABELS = { main: 'główna', proof: 'kontrolna', context: 'tło rynku' };
 const GROUP_COLLECTION = { main: 'stocks', proof: 'proof', context: 'context' };
 function fsCollection_(symbol) { return GROUP_COLLECTION[symbolGroup_(symbol)]; }
-/** Identyfikator w Firestore: bez „^” (np. ^VIX → VIX), żeby nie kodować go w adresach. */
+/** Identyfikator w Firestore: bez „^”, żeby nie kodować znaku w adresach. */
 function fsId_(symbol) { return String(symbol).replace(/^\^/, ''); }
 
 function logTitleRow_() { return STATS.SYM_FIRST + liveSymbols_().length + 1; }
@@ -243,8 +260,15 @@ function execute_(mode, initMessage) {
 
     if (mode === 'auto') {
       const gate = gate_(ctx);
-      if (gate.fetch) summary = collectAll_(CONFIG.LIVE_RANGE, ctx, false);
-      else action = gate.reason;
+      if (gate.fetch) {
+        summary = fastCollect_(ctx);
+      } else {
+        action = gate.reason;
+        // Nic do zebrania — dobry moment, żeby połatać stare luki (bez kolejki
+        // Yahoo w godzinach sesji i bez ryzyka, że opóźnimy bieżącą świecę).
+        const patched = patchGapsIfIdle_(ctx);
+        if (patched) action += ` · ${patched}`;
+      }
     } else {
       summary = collectAll_(CONFIG.CATCHUP_RANGE, ctx, true);
       log_('INFO', 'SYSTEM', `Uzupełnianie (${CONFIG.CATCHUP_RANGE}): ${summary.written} świec na ${summary.symbolsWritten} spółkach.`);
@@ -267,6 +291,141 @@ function execute_(mode, initMessage) {
   }
   return summary;
 }
+
+/**
+ * ZBIERANIE W TRYBIE SZYBKIM
+ *
+ * Zamknięcie świecy ma w Etapie 4 być momentem wejścia w transakcję, więc
+ * liczy się każda sekunda opóźnienia. Yahoo nie publikuje świecy punktualnie —
+ * zwykle pojawia się kilkanaście do kilkudziesięciu sekund po pełnej godzinie,
+ * czasem później. Trigger Apps Script nie chodzi częściej niż co minutę, więc
+ * zamiast czekać na kolejne uruchomienie, ponawiamy próbę wewnątrz tego samego.
+ *
+ * Pętla działa tylko w oknie FAST_WINDOW_MIN po zamknięciu świecy i kończy się
+ * od razu, gdy wszystkie spółki mają komplet — w praktyce po pierwszej lub
+ * drugiej próbie. Poza tym oknem zachowuje się jak zwykłe jedno pobranie.
+ */
+function fastCollect_(ctx) {
+  const session = getSession_();
+  const closeMin = sessionCloseFor_(session, ctx.etDate);
+  const expectedKey = liveExpectedKey_(ctx, closeMin);
+  const sinceClose = minutesSinceLastClose_(ctx, closeMin);
+  const fast = expectedKey && sinceClose !== null && sinceClose < CONFIG.FAST_WINDOW_MIN;
+
+  let summary = collectAll_(CONFIG.LIVE_RANGE, ctx, false);
+  if (!fast) return summary;
+
+  for (let i = 1; i < CONFIG.FAST_MAX_TRIES; i++) {
+    const live = liveLoad_();
+    const waiting = liveSymbols_().filter(s => !live[s] || live[s].k < expectedKey);
+    if (!waiting.length) {
+      log_('INFO', 'SYSTEM',
+        `Świeca złapana po ${i} ${i === 1 ? 'próbie' : 'próbach'} ` +
+        `(~${Math.round(i * CONFIG.FAST_RETRY_SEC)} s od zamknięcia).`);
+      break;
+    }
+    if (i === 1) {
+      log_('INFO', 'SYSTEM', `Yahoo jeszcze nie ma świecy dla ${waiting.length} instrumentów — ponawiam co ${CONFIG.FAST_RETRY_SEC} s.`);
+    }
+    Utilities.sleep(CONFIG.FAST_RETRY_SEC * 1000);
+    const s2 = collectAll_(CONFIG.LIVE_RANGE, ctx, false);
+    summary.fetched += s2.fetched;
+    summary.written += s2.written;
+    summary.symbolsWritten += s2.symbolsWritten;
+    if (s2.fsOk !== null) summary.fsOk = s2.fsOk;
+  }
+  return summary;
+}
+
+/** Ile minut minęło od zamknięcia ostatniej świecy (null, gdy żadna jeszcze nie zamknięta). */
+function minutesSinceLastClose_(ctx, closeMin) {
+  const expected = expectedSlots_(ctx.etMin, closeMin);
+  if (!expected) return null;
+  return ctx.etMin - slotEnd_(expected - 1, closeMin);
+}
+
+
+/**
+ * SAMOCZYNNE ŁATANIE LUK
+ *
+ * Audyt wykrywa braki, ale sam ich nie naprawia — do tej pory każdą lukę
+ * trzeba było łatać ręcznie. Tu system bierze luki z arkusza _AUDYT i dociąga
+ * brakujące sesje z Yahoo w przebiegach, w których i tak nie ma nic do roboty
+ * (weekend, noc, po sesji). Dzięki temu przerwa w danych — na przykład z
+ * powodu limitu Firestore (HTTP 429) albo chwilowej awarii Yahoo — zasklepia
+ * się sama, bez pamiętania o niej.
+ *
+ * Ograniczenia celowe: PATCH_PER_RUN luk na przebieg i odstęp PATCH_MIN_GAP_MIN
+ * między przebiegami, żeby łatanie nigdy nie zjadło limitu potrzebnego bieżącym
+ * świecom. Luki starsze niż granica Yahoo (~730 dni) są pomijane — tych danych
+ * już nie da się odzyskać.
+ */
+function patchGapsIfIdle_(ctx) {
+  if (!CONFIG.PATCH_ENABLED || !CONFIG.FIRESTORE_ENABLED) return '';
+  const props = PropertiesService.getScriptProperties();
+  const last = props.getProperty('PATCH_LAST_AT');
+  if (last && Date.now() - Number(last) < CONFIG.PATCH_MIN_GAP_MIN * 60000) return '';
+
+  let gaps;
+  try {
+    gaps = patchReadGaps_();
+  } catch (e) {
+    return '';   // brak arkusza audytu — nie ma czego łatać
+  }
+  if (!gaps.length) return '';
+
+  props.setProperty('PATCH_LAST_AT', String(Date.now()));
+  const done = [];
+  for (let i = 0; i < gaps.length && done.length < CONFIG.PATCH_PER_RUN; i++) {
+    const g = gaps[i];
+    try {
+      if (patchOneGap_(g)) done.push(`${g.symbol} ${g.date}`);
+    } catch (e) {
+      log_('UWAGA', 'ŁATANIE', `${g.symbol} ${g.date}: ${e.message}`);
+      break;   // najczęściej limit Firestore — nie ma sensu próbować dalej
+    }
+  }
+  if (!done.length) return '';
+  log_('ZAPIS', 'ŁATANIE', `Uzupełniono z luk: ${done.join(', ')}.`);
+  return `załatano ${done.length}`;
+}
+
+/** Luki z arkusza _AUDYT, które da się jeszcze pobrać z Yahoo. */
+function patchReadGaps_() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PROJECT.AUDIT_SHEET);
+  if (!sh || sh.getLastRow() < 2) return [];
+  const rows = sh.getRange(2, 1, Math.min(sh.getLastRow() - 1, PROJECT.MAX_GAP_ROWS), 5).getValues();
+  const oldest = Utilities.formatDate(
+    new Date(Date.now() - 720 * 86400000), CONFIG.MARKET_TZ, 'yyyy-MM-dd');
+  const today = Utilities.formatDate(new Date(), CONFIG.MARKET_TZ, 'yyyy-MM-dd');
+  const known = liveSymbols_();
+  const out = [];
+  rows.forEach(r => {
+    const symbol = String(r[1] || '').trim();
+    const type = String(r[2] || '').trim();
+    const date = String(r[3] || '').trim();
+    if (!symbol || !date || known.indexOf(symbol) < 0) return;
+    if (type !== 'BRAK_SWIEC' && type !== 'BRAK_SESJI') return;
+    if (date < oldest || date >= today) return;   // poza zasięgiem Yahoo albo dzisiejsza sesja
+    out.push({ symbol, date, type });
+  });
+  return out;
+}
+
+/** Dociąga jedną sesję i dopisuje brakujące świece. true = coś zapisano. */
+function patchOneGap_(g) {
+  const sessions = proofFetchRange_(g.symbol, g.date, g.date);
+  const bySlot = sessions[g.date];
+  if (!bySlot || !Object.keys(bySlot).length) return false;   // Yahoo nadal nie ma tych danych
+
+  if (isMain_(g.symbol)) {
+    fsWriteMainCandles_(g.symbol, Object.keys(bySlot).map(Number).sort((a, b) => a - b).map(s => bySlot[s]));
+  } else {
+    proofSaveSessions_(g.symbol, sessions, [g.date]);
+  }
+  return true;
+}
+
 
 /** Czy w trybie automatycznym w ogóle warto pytać Yahoo? */
 function gate_(ctx) {

@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — SPÓŁKI KONTROLNE („for proof”)
  *
- *  Wersja projektu: 0.6 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.7 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera historię świec 1h dla 50 dodatkowych spółek i zapisuje je w Firestore.
  *  Te spółki NIE pojawiają się w dashboardzie ani w arkuszach — służą wyłącznie
@@ -16,9 +16,9 @@
  *  zapisuje na bieżąco automat z Code.gs, w tym samym formacie — listy
  *  PROOF.SYMBOLS i CONTEXT.SYMBOLS poniżej sterują oboma.
  *
- *  TŁO RYNKU (CONTEXT): SPY, QQQ i ^VIX. Nie handlujemy nimi — służą jako
- *  kontekst w Etapie 3. Zapisywane w context/{ID}/sessions/{data},
- *  gdzie ID to symbol bez „^” (^VIX → VIX). Format sesji identyczny.
+ *  TŁO RYNKU (CONTEXT): SPY i QQQ. Nie handlujemy nimi — służą jako kontekst
+ *  w Etapie 3. Zapisywane w context/{SYMBOL}/sessions/{data}; format sesji
+ *  identyczny jak u spółek kontrolnych. (VIX usunięty z projektu — decyzja D8.)
  *
  *  DLACZEGO INNY FORMAT NIŻ GŁÓWNE TRZY SPÓŁKI
  *  Główne spółki mają jeden dokument na świecę, bo dashboard nasłuchuje ich
@@ -73,7 +73,7 @@ const PROOF = {
 // Tło rynku (decyzja D3). Historia pobiera się w tej samej kolejce co spółki
 // kontrolne, po nich.
 const CONTEXT = {
-  SYMBOLS: ['SPY', 'QQQ', '^VIX'],
+  SYMBOLS: ['SPY', 'QQQ'],
 };
 
 /** Wszystkie instrumenty pobierane przez ten plik: kontrolne, potem tło rynku. */
@@ -477,7 +477,7 @@ function proofStatusToFirestore_(st) {
           proofPartial: strArr(st.symbolsPartial),
           proofFailed: strArr(st.symbolsFailed),
           proofDone: { booleanValue: !!st.done },
-          note: { stringValue: 'live: dokument na świecę w stocks/{SYM}/candles. proof: sesja w proof/{SYM}/sessions/{data}. context: sesja w context/{ID}/sessions/{data}, ID bez ^ (^VIX -> VIX).' },
+          note: { stringValue: 'live: dokument na świecę w stocks/{SYM}/candles. proof: sesja w proof/{SYM}/sessions/{data}. context: sesja w context/{SYMBOL}/sessions/{data}.' },
           updatedAt: { timestampValue: new Date().toISOString() },
         },
       },

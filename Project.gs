@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.6 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.7 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.6',
+  INSTRUCTION_VERSION: '0.7',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -34,7 +34,7 @@ const PROJECT = {
   NIGHTLY_HOUR: 23,          // nocny audyt (czas polski), po zamknięciu sesji w USA
   NIGHTLY_DAYS: 14,          // ile dni kalendarzowych wstecz sprawdza audyt nocny
   JUMP_PCT: 30,              // skok ceny między świecami podejrzany o split (split 3:2 to −33%)
-  JUMP_PCT_BY_SYMBOL: { '^VIX': 150 },   // VIX z natury skacze gwałtownie
+  JUMP_PCT_BY_SYMBOL: {},    // progi wyjątkowe per instrument (obecnie brak)
   MAX_GAP_ROWS: 300,         // ile luk pokazywać w arkuszu PROJEKT
   MAX_RUNTIME_MS: 4.5 * 60 * 1000,
   PAGE: 1000,
@@ -64,7 +64,7 @@ const STAGES = [
   { n: 0, name: 'Porządki i fundamenty', criteria: [
     { id: '0.1', text: 'Stare arkusze analiz usunięte', auto: 'oldSheetsGone' },
     { id: '0.2', text: 'Stare pliki kodu i ich triggery usunięte', auto: 'oldCodeGone' },
-    { id: '0.3', text: 'Tło rynku (SPY, QQQ, VIX): historia pobrana', auto: 'contextHistory' },
+    { id: '0.3', text: 'Tło rynku (SPY, QQQ): historia pobrana', auto: 'contextHistory' },
     { id: '0.4', text: 'Tło rynku zbierane na żywo', auto: 'contextLive' },
     { id: '0.5', text: 'Pełny audyt danych wykonany', auto: 'fullAudit' },
     { id: '0.6', text: 'Każda luka naprawiona albo zaakceptowana', auto: 'noNewGaps' },
@@ -102,7 +102,7 @@ const STAGES = [
 const DECISIONS = [
   ['D1', 'Wielkość skarbca', 'ostatnie 6 miesięcy: 2026-03-23 – 2026-09-22', '✅ przyjęta'],
   ['D2', 'Gdzie działa Etap 4', 'Apps Script, zaraz po dopisaniu świecy; model z Pythona eksportowany jako JSON', '✅ przyjęta'],
-  ['D3', 'Tło rynku', 'SPY, QQQ, ^VIX zbierane od Etapu 0', '✅ przyjęta'],
+  ['D3', 'Tło rynku', 'SPY, QQQ zbierane od Etapu 0 (VIX usunięty — D8)', '✅ przyjęta'],
   ['D4', 'Siatka SL/TP', 'pełna 10×10: 0,5 / 0,75 / 1 / 1,25 / 1,5 / 2 / 2,5 / 3 / 4 / 5%', '🔸 domyślna — potwierdzić przed Etapem 1'],
   ['D5', 'Limit czasu H', 'TP ≤ 1% → 14 świec, ≤ 2,5% → 35, ≤ 5% → 70', '🔸 domyślna — potwierdzić przed Etapem 1'],
   ['D6', 'Koszty', 'wynik bez kosztów + kolumna z 0,05% za transakcję', '🔸 domyślna — potwierdzić przed Etapem 1'],

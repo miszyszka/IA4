@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 0.6
+**Wersja:** 0.7
 **Data:** 23 września 2026
 **Aktualny etap:** 🟨 Etap 0 — 0A wdrożone; trwa pełne pobieranie historii po naprawie L13, przegląd 53 luk i budowa środowiska Pythona (0B)
 
@@ -58,12 +58,13 @@ Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która pr
 |---|---|---|
 | `Code.gs` | automat bieżący, 27 spółek, STATS | zostaje |
 | `History.gs` | historia 3 spółek głównych | zostaje |
-| `Proof.gs` | historia 50 spółek kontrolnych i tła rynku | zostaje |
+| `Proof.gs` | historia 50 spółek kontrolnych i tła rynku (SPY, QQQ) | zostaje |
 | `Project.gs` | arkusz PROJEKT, skarbiec, audyt danych, sprzątanie | od Etapu 0 |
 | `Strategies.gs`, `Backtest.gs`, `Combo.gs`, `Benchmark.gs` | stary katalog i analizy | usuwane w Etapie 0 (ręcznie w edytorze) |
 | `appsscript.json` | uprawnienia | zostaje |
 | `ia4-dashboard.html` | podgląd wykresów | zostaje |
 | `IA4_INSTRUKCJA.md` | ten plik | aktualizowany co etap |
+| `S1_KATALOG_BAZOWY.md` | 84 sygnały bazowe z definicjami i parametrami | punkt wyjścia Etapu 1 |
 | `ia4-research/ia4/config.py` | klucz serwisowy, granice skarbca i listy instrumentów czytane z Firestore | od Etapu 0B |
 | `ia4-research/ia4/sync.py` | Firestore → parquet, tylko przyrosty | od Etapu 0B |
 | `ia4-research/ia4/data.py` | wczytywanie danych z wymuszoną granicą skarbca | od Etapu 0B |
@@ -88,14 +89,14 @@ Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która pr
   - użyteczność publiczna: NEE, DUK,
   - bankowość inwestycyjna: GS, AXP,
   - dobra pierwszej potrzeby: KO, PEP.
-- **Tło rynku (D3):** SPY, QQQ, ^VIX — nie handlujemy nimi, służą jako kontekst w Etapie 3. Zbierane od Etapu 0: historia i na żywo.
+- **Tło rynku (D3):** SPY, QQQ — nie handlujemy nimi, służą jako kontekst w Etapie 3. Zbierane od Etapu 0: historia i na żywo. (VIX usunięty z projektu — D8.)
 
 ### Format w Firestore
 
 ```
 stocks/{SYMBOL}/candles/{data}_{nr}   spółki główne, jedna świeca na dokument
 proof/{SYMBOL}/sessions/{data}        spółki kontrolne, cała sesja w jednym dokumencie
-context/{ID}/sessions/{data}          tło rynku, ten sam format; ID bez „^” (^VIX → VIX)
+context/{SYMBOL}/sessions/{data}      tło rynku, ten sam format
 system/status                         ostatni zapis automatu
 system/history, system/universe       stan pobierania historii i listy instrumentów
 system/project                        etap, wersja instrukcji, granice skarbca
@@ -187,13 +188,13 @@ Etap dzielimy na dwie części:
    - `sync.py` — Firestore → parquet, tylko przyrosty; manifest pamięta ostatnią datę każdego instrumentu, więc codzienne uruchomienie pobiera kilkanaście świec zamiast 30 tysięcy,
    - `data.py` — jedyna droga, którą dane trafiają do backtestu; **domyślnie zwraca wyłącznie okres badawczy**, a sięgnięcie po skarbiec wymaga jawnego `unlock_vault=True` i kończy się wyjątkiem bez niego (zasada 5.1 wymuszona kodem, nie pamięcią),
    - `verify.py` — sprawdzian kryterium 0.9: tabela w układzie arkusza PROJEKT plus kontrole spójności (instrumenty bez danych, z historią zaczynającą się dopiero w skarbcu, poniżej 100 sesji, oznaczone przez `Proof.gs` jako niepełne lub nieudane).
-6. *(jeśli D3 = tak)* zbieranie SPY, QQQ, ^VIX: historia + na żywo. Musi ruszyć teraz, żeby dane były gotowe na Etap 3.
+6. Zbieranie SPY i QQQ: historia + na żywo. Musi ruszyć teraz, żeby dane były gotowe na Etap 3.
 
 **Wdrożenie 0A — kolejność:**
 1. Podmień `Code.gs` i `Proof.gs`, dodaj `Project.gs`. Usuń w edytorze `Strategies.gs`, `Backtest.gs`, `Combo.gs`, `Benchmark.gs`.
 2. Odśwież arkusz → IA 4 → Projekt → **Etap 0: usuń stare analizy**. Usuwa stare arkusze, triggery i stany, tworzy arkusz PROJEKT, zapisuje skarbiec w Firestore, instaluje nocny audyt.
 3. IA 4 → **Konfiguruj i włącz automat**. Przebudowuje STATS (30 instrumentów + stan projektu) i uzupełnia ostatni miesiąc, w tym tło rynku.
-4. IA 4 → Spółki kontrolne i tło rynku → **Pobierz historię**. Dociąga SPY, QQQ i VIX (3 × 10 min).
+4. IA 4 → Spółki kontrolne i tło rynku → **Pobierz historię**. Dociąga SPY i QQQ.
 5. Po zakończeniu historii: IA 4 → Projekt → **Pełny audyt danych**.
 6. W arkuszu PROJEKT przejrzyj luki: każdą albo zgłoś do naprawy, albo oznacz jako `zaakceptowana` z komentarzem.
 
@@ -212,7 +213,7 @@ Etap dzielimy na dwie części:
 
 **Cel:** pełny, przemyślany katalog hipotez i silnik, który je liczy. *(Proponowany rozdział: Etap 1 = definicje i silnik, Etap 2 = obliczenia i wybór. W pierwotnym planie oba etapy obejmowały liczenie wyników.)*
 
-- **Sygnały:** dotychczasowe 84 plus nowe rodziny, łącznie ok. 120–150. Nowe pomysły: wybicia z konsolidacji, zawężenie i rozszerzenie zmienności, sygnały zależne od pory dnia, sygnały wielodniowe, sygnały wzrostowe (lustra spadkowych — kandydaci na short).
+- **Sygnały:** dotychczasowe 84 (pełna lista z definicjami i parametrami JSON: **`S1_KATALOG_BAZOWY.md`**) plus nowe rodziny, łącznie ok. 120–150. Rodziny bazowe: spadek w N świecach (18), czerwone świece z rzędu (13), odchylenie od średniej (9), wyprzedanie RSI (8), luka spadkowa (6), formacje odwrócenia (6), spadek względem ATR (6), spadek od szczytu (5), spadek od otwarcia sesji (4), wstęga Bollingera (4), duża czerwona świeca (3), spadkowe sesje z rzędu (2). **Uwaga: wszystkie 84 to warianty jednej hipotezy (kupno po spadku) i wszystkie są LONG — patrz decyzja D9.** Nowe pomysły: wybicia z konsolidacji, zawężenie i rozszerzenie zmienności, sygnały zależne od pory dnia, sygnały wielodniowe, sygnały wzrostowe (lustra spadkowych — kandydaci na short).
 - **Kierunek:** każdy sygnał w dwóch wariantach — LONG i SHORT na tych samych zasadach (short: stop powyżej wejścia, cel poniżej).
 - **Siatka wyjść:** SL i TP ∈ {0,5; 0,75; 1; 1,25; 1,5; 2; 2,5; 3; 4; 5}%, wszystkie 100 kombinacji. Nic powyżej 5%.
 - **Limit czasu H** zależny od celu (propozycja): TP ≤ 1% → 14 świec (2 sesje), TP ≤ 2,5% → 35 (5 sesji), TP ≤ 5% → 70 (10 sesji).
@@ -257,9 +258,8 @@ Wynik trafia do arkusza S1_WYNIKI. Użytkownik wybiera strategie do S2, zaznacza
 7. Kalendarz — dzień tygodnia, koniec miesiąca i kwartału, dzień po święcie.
 8. Wielodniowe — zwroty z 1–20 sesji, serie sesji spadkowych i wzrostowych.
 9. Rynek (SPY, QQQ) — te same rodziny dla indeksów + siła względna spółki wobec rynku, krocząca beta i korelacja.
-10. VIX — poziom, zmiana, percentyl.
-11. Szerokość rynku z naszych 27 spółek — ile jest powyżej średnich, ile spadło dziś, średni zwrot grupy.
-12. Kontekst sygnału — ile razy wystąpił ostatnio, czas od poprzedniego, czy inne sygnały S2 odpaliły jednocześnie.
+10. Szerokość rynku z naszych 27 spółek — ile jest powyżej średnich, ile spadło dziś, średni zwrot grupy.
+11. Kontekst sygnału — ile razy wystąpił ostatnio, czas od poprzedniego, czy inne sygnały S2 odpaliły jednocześnie.
 
 **Metoda:**
 1. **Przesiew pojedynczych parametrów** — dla każdego parametru: jak zmienia się skuteczność w jego przedziałach, na ilu transakcjach, czy efekt powtarza się w obu grupach spółek i w kolejnych okresach czasu. Wynik: czytelna lista w stylu „80% transakcji zakończonych stopem wypadło przy cenie poniżej SMA(140)”.
@@ -280,6 +280,8 @@ Wynik trafia do arkusza S1_WYNIKI. Użytkownik wybiera strategie do S2, zaznacza
 
 ### Etap 4 — Monitor sygnałów na żywo ⬜
 
+- **Moment zamknięcia świecy jest momentem sygnału.** Automat chodzi co minutę; w oknie 5 minut po zamknięciu świecy jedno uruchomienie samo ponawia pytanie do Yahoo co 30 sekund, aż świeca się pojawi (Yahoo publikuje ją z opóźnieniem kilkunastu–kilkudziesięciu sekund). Dzięki temu świeca trafia do bazy zwykle w ciągu minuty od zamknięcia, a nie po 5 minutach.
+- **Łatanie luk bez udziału człowieka.** W przebiegach, w których nie ma nic do zebrania (noc, weekend, po sesji), automat bierze luki wykryte przez audyt i dociąga brakujące sesje z Yahoo — po dwie na przebieg, z odstępem, żeby nigdy nie zająć limitu potrzebnego bieżącym świecom. Przerwa w danych spowodowana limitem Firestore albo awarią Yahoo zasklepia się sama.
 - Co godzinę, po zamknięciu świecy, system sprawdza sygnały S3 na 3 spółkach głównych i dopisuje je do arkusza SYGNAŁY: czas, spółka, strategia, kierunek, planowane wejście, poziomy SL i TP, PT, czy powyżej progu.
 - **Propozycja:** gdy upłynie limit czasu sygnału, system sam dopisuje, jak transakcja by się skończyła. To daje sprawdzian na żywo jeszcze przed paper tradingiem.
 - Architektura (D2): automat bieżący w `Code.gs`, zaraz po zapisaniu zamkniętej świecy spółki głównej, liczy sygnały S3 i ich PT na tej świecy i dopisuje je do arkusza. Model PT pochodzi z Pythona (Etap 3) w postaci JSON.
@@ -307,7 +309,7 @@ Wirtualny inwestor co godzinę otwiera i zamyka transakcje według ustalonych za
 
 **STATS** wiersze 18–20: etap projektu, luki w danych, skarbiec. Aktualizowane od razu przy każdej zmianie w PROJEKT i co 5 minut przez automat.
 
-**Audyt danych** szuka: brakujących sesji (wg kalendarza NYSE), brakujących świec (sesje skrócone mają 4), nadmiarowych świec, błędnych świec (high poniżej max(open, close) itp.), duplikatów, skoków ceny powyżej 30% (podejrzenie splitu; dla VIX próg 150%) i instrumentów, które przestały się aktualizować.
+**Audyt danych** szuka: brakujących sesji (wg kalendarza NYSE), brakujących świec (sesje skrócone mają 4), nadmiarowych świec, błędnych świec (high poniżej max(open, close) itp.), duplikatów, skoków ceny powyżej 30% (podejrzenie splitu) i instrumentów, które przestały się aktualizować.
 - **pełny** — na żądanie; wszystkie instrumenty, cała historia; ok. 24 000 odczytów Firestore (prawie połowa dziennego darmowego limitu), więc uruchamiaj go rzadko,
 - **nocny** — codziennie ok. 23:00; ostatnie 14 dni; kilkaset odczytów.
 
@@ -329,11 +331,10 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | L8 | Licznik sesji w `proof/{SYMBOL}` nie jest aktualizowany na żywo | kosmetyka | backtest liczy sesje z dokumentów |
 | L9 | Kalendarz świąt (`History.gs`) i sesji skróconych (`Project.gs`) kończy się na 2026 | od 2027 audyt i historia źle rozpoznają dni sesji | uzupełnić obie listy na początku każdego roku |
 | L10 | Pełny audyt zużywa ~24 000 odczytów Firestore | przy częstym uruchamianiu grozi przekroczeniem limitu 50 000 dziennie | pełny audyt rzadko, na co dzień nocny |
-| L11 | Dane godzinowe VIX z Yahoo niezweryfikowane | możliwe luki albo przesunięte świece | pełny audyt pokaże; jeśli źle, VIX z tła wypada |
 | L12 | Kryteria etapów są w dwóch miejscach: ten plik i `STAGES` w `Project.gs` | mogą się rozjechać | przy każdej nowej wersji instrukcji aktualizujemy oba |
 | L13 | „Uzupełnij najnowsze” kasowało stan i przełączało tryb na `refresh`, a „Pobierz historię” po cichu go kontynuowała | 26 nowych spółek kontrolnych i tło rynku miały po 5–28 sesji zamiast ~500, bez ostrzeżenia w STATS (flaga „niepełna historia” nie działa w trybie `refresh`) | naprawione w 0.5: `startProof()` odrzuca stan spoza trybu `full`. Dane nie ucierpiały — Firestore tylko dopisuje |
 | L14 | 26 spółek kontrolnych i tło rynku nadal mają historię krótszą niż okres badawczy | nie nadają się do Etapów 1–3, bo cała ich historia leży w skarbcu albo po nim | pełne pobranie po wdrożeniu 0.5; `verify.py` wypisuje takie instrumenty osobno |
-| L16 | ^VIX ma 515 sesji, gdy reszta instrumentów pobranych tego samego dnia ma 501 | VIX może handlować w dniach, gdy giełda akcji jest zamknięta, albo mieć świece przesunięte (L11) | sprawdzić przy najbliższym pełnym audycie; jeśli to inne dni sesyjne, uwzględnić przy łączeniu VIX ze spółkami w Etapie 3 |
+| L17 | `expectedSlots_` w dniu sesji skróconej liczy 7 świec zamiast 4 | automat po zamknięciu skróconej sesji dopytuje Yahoo aż do `POLL_AFTER_CLOSE_MIN` zamiast uznać dzień za kompletny; dane są poprawne, marnuje się tylko kilka zapytań | wykryte testem 2026-09-23, niegroźne; poprawić przy najbliższej sesji skróconej (27.11.2026), gdy da się to sprawdzić na żywo |
 | L15 | Historia z Yahoo sięga ~730 dni, więc nowo dodane instrumenty nigdy nie dogonią tych z 2024 r. | grupa kontrolna ma dwa pokolenia: ~506 sesji i tyle, ile zdążyło się zebrać | jeśli po pełnym pobraniu różnica zostanie, zapisać ją jako świadomy kompromis i uwzględniać przy wymogu 5.6 |
 
 ---
@@ -344,11 +345,25 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 |---|---|---|---|
 | D1 | Wielkość skarbca | ostatnie 6 miesięcy: 2026-03-23 – 2026-09-22 | ✅ przyjęta |
 | D2 | Gdzie działa Etap 4 | Apps Script, zaraz po dopisaniu świecy; model z Pythona jako JSON | ✅ przyjęta |
-| D3 | Tło rynku | SPY, QQQ, ^VIX zbierane od Etapu 0 | ✅ przyjęta |
-| D4 | Siatka SL/TP | pełna 10×10 | 🔸 domyślna — potwierdzić przed Etapem 1 |
-| D5 | Limit czasu H | TP ≤ 1% → 14 świec, ≤ 2,5% → 35, ≤ 5% → 70 | 🔸 domyślna — potwierdzić przed Etapem 1 |
-| D6 | Koszty | wynik bez kosztów + kolumna z 0,05% | 🔸 domyślna — potwierdzić przed Etapem 1 |
+| D3 | Tło rynku | SPY, QQQ zbierane od Etapu 0 | ✅ przyjęta |
+| D4 | Siatka SL/TP | pełna 10×10 | ✅ przyjęta |
+| D5 | Limit czasu H | TP ≤ 1% → 14 świec, ≤ 2,5% → 35, ≤ 5% → 70 jako wartość wyjściowa; docelowo H dobierane statystycznie (patrz D10) | ✅ przyjęta |
+| D6 | Koszty | wynik bez kosztów + kolumna z 0,05% | ✅ przyjęta |
 | D7 | Usunięcie starego katalogu STRATEGIE | tak, zastąpi go S1 | ✅ przyjęta |
+| D8 | VIX w projekcie | usunięty całkowicie: z `Proof.gs`, audytu, rodzin parametrów Etapu 3 i tła rynku. Zostają SPY i QQQ | ✅ przyjęta |
+
+### Decyzje otwarte po przeglądzie katalogu bazowego (2026-09-23)
+
+| # | Decyzja | Na czym polega problem | Propozycja | Status |
+|---|---|---|---|---|
+| D9 | Katalog S1 to jedna hipoteza | Wszystkie 84 sygnały bazowe to warianty „spadło, więc odbije", wyłącznie LONG. Okres badawczy (wrzesień 2024 – marzec 2026) przypada na hossę w spółkach technologicznych, a kupowanie dołków w trendzie wzrostowym wygląda świetnie **nawet gdy sygnał nie ma żadnej wartości** — wystarczy dryf rynku. Kontrola z 5.3 to wyłapie, ale jeśli cały katalog jest jedną hipotezą, a ona nie przejdzie, zostajemy bez niczego. | Dołożyć do S1 co najmniej dwie rodziny o **przeciwnej logice**: wybicia/kontynuacja trendu (kupno siły, nie słabości) oraz lustrzane warianty SHORT. To nie jest kosmetyka — bez nich S1 nie odpowiada na pytanie „czy sygnały mają przewagę", tylko „czy w hossie opłacało się kupować dołki". | 🔸 do decyzji przed Etapem 1 |
+| D10 | Jak dobierać limit czasu H | Chcesz, żeby silnik dobierał statystycznie najlepsze H. Problem: H staje się wtedy trzecim przeszukiwanym parametrem, co mnoży liczbę testów (10 SL × 10 TP × k wariantów H × 120 sygnałów × 2 kierunki) i wprost pogłębia problem z 5.7 — im więcej kombinacji, tym łatwiej trafić świetny wynik przypadkiem. | Nie przeszukiwać H jak SL/TP. Zamiast tego liczyć dla każdej strategii **rozkład czasu do wyjścia** (mediana i kwantyle osobno dla wyjść na SL, TP i z limitu — to już jest w kolumnach Etapu 2) i wyznaczać H jako kwantyl, np. 90. percentyl czasu do TP. Wtedy H wynika z danych, ale nie jest osobnym wymiarem przeszukiwania. Wartości z D5 zostają jako punkt wyjścia. | 🔸 do decyzji przed Etapem 1 |
+| D11 | Splity akcji generują fałszywe sygnały | Split 2:1 to w danych spadek o 50% w jednej świecy. Dla katalogu opartego na spadkach to **nie jest drobiazg — to idealny sygnał kupna, który nigdy nie istniał**. DELL (−31,5%) i ORCL (−32,1%) już mają takie świece, a audyt wykrywa tylko skoki powyżej 30%, więc split 5:4 albo 3:2 przejdzie niezauważony. | Przed Etapem 1: wykryć wszystkie skoki powyżej 15% i sprawdzić ręcznie; sesje ze splitem wykluczyć z liczenia sygnałów (nie tylko oznaczyć); rozważyć pobranie cen skorygowanych o splity z Yahoo (`adjclose`) jako drugiego źródła do porównania. | 🔸 do decyzji przed Etapem 1 |
+| D12 | Nie zbieramy wolumenu | Świece mają tylko OHLC. Wolumen to jeden z najczęściej używanych filtrów potwierdzających przy sygnałach odbicia (kapitulacja = spadek na wysokim wolumenie), a w Etapie 3 byłby całą rodziną parametrów towarzyszących. Yahoo zwraca go w tej samej odpowiedzi, więc koszt zebrania jest zerowy — ale **dane historyczne bez wolumenu są nie do odzyskania później**. | Dodać wolumen do zapisu teraz, na początku Etapu 1, zanim ruszy backtest. Koszt: jedno pole w dokumencie, bez dodatkowych zapytań. Jeśli nie teraz, to nigdy — przy ponownym pobraniu historii i tak trzeba by przepisać wszystkie dokumenty. | 🔸 pilne — do decyzji przed Etapem 1 |
+| D13 | Grupa kontrolna składa się z ocalałych | 50 spółek kontrolnych to dzisiejsze duże spółki amerykańskie. Wszystkie przetrwały ostatnie dwa lata i większość rosła. Strategia „kupuj spadki" na zbiorze samych zwycięzców pokazuje przewagę, której nie miałaby na spółce, która w tym czasie straciła połowę wartości i nigdy nie odbiła. | Nie da się tego w pełni naprawić przy 730 dniach historii, ale można: dołożyć do grupy kontrolnej kilka spółek, które w tym okresie wyraźnie traciły, i **raportować wynik osobno dla spółek rosnących i spadających** w okresie badawczym. Jeśli przewaga jest tylko u rosnących, to nie jest przewaga sygnału. | 🔸 do decyzji przed Etapem 2 |
+| D14 | Jedno źródło danych bez kontroli | Yahoo jest jedynym źródłem i jednocześnie nieoficjalnym (L3). Nie mamy żadnego sposobu, żeby wykryć, że zwrócił **błędne** ceny — audyt sprawdza tylko braki i nieprawdopodobne skoki. Cicha zmiana danych historycznych (a takie się zdarzają po korektach) przeszłaby niezauważona. | Zapisywać przy każdej świecy sumę kontrolną i przy nocnym audycie porównywać próbkę świec sprzed tygodnia z tym, co Yahoo zwraca dziś. Rozbieżność = wpis do luk. Tanie, bo dotyczy próbki, nie całości. | 🔸 do decyzji przed Etapem 2 |
+| D15 | Budżet czasu w Etapie 4 | Decyzja D2 mówi, że model PT liczy się w Apps Script zaraz po zamknięciu świecy. Przy ~50 parametrach i drzewach z Pythona dla 3 spółek to realne, ale limit uruchomienia to 6 minut, a tryb szybkiego łapania świecy zużywa z niego do 4 minut na ponowienia. | Zmierzyć czas liczenia PT na próbce zanim Etap 4 ruszy. Jeśli nie zmieści się w pozostałym budżecie, rozdzielić: osobny trigger na zbieranie świec, osobny na liczenie sygnałów zaraz po nim. | 🔸 do decyzji przed Etapem 4 |
+| D16 | Co to znaczy „przewaga" | Instrukcja mówi o przewadze nad wejściem losowym (5.3) i o istotności z uwzględnieniem liczby testów (5.7), ale nigdzie nie ma **progu liczbowego**: ile transakcji minimum, jaka minimalna przewaga i jaki próg istotności kwalifikuje strategię do S2. Bez tego wybór S2 w Etapie 2 będzie uznaniowy, a uznaniowy wybór po obejrzeniu wyników to dokładnie ta furtka, którą skarbiec ma zamykać. | Ustalić progi **przed** policzeniem wyników Etapu 2 i zapisać je w tym pliku. Propozycja wyjściowa: minimum 100 transakcji w grupie głównej i 300 w kontrolnej, przewaga nad wejściem losowym dodatnia w obu grupach, wynik lepszy niż 99. percentyl rozkładu wejść losowych przy tej liczbie prób. | 🔸 do decyzji przed Etapem 2 |
 
 ---
 
@@ -362,6 +377,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 0.4 | 2026-09-23 | Repozytorium GitHub (`github.com/miszyszka/IA4.git`, branch `main`) jako jedyny kanał, przez który Claude czyta i zapisuje kod — zasada 2.6. Dogonienie pliku do stanu z wersji 0.3 (poprawki WMT i listy 50 spółek nie trafiły wcześniej do repo). Doprecyzowanie w tabeli plików i w L6, że dotyczy 50 spółek kontrolnych, nie 24. |
 | 0.5 | 2026-09-23 | Zasada 2.7: dziennik pushów i jedna wersja we wszystkich plikach. Nagłówek `Wersja projektu` w każdym `.gs` i w dashboardzie, `PROJECT.INSTRUCTION_VERSION` podbite z 0.2 na 0.5. Naprawa `startProof()` (tryb `refresh` udawał pełne pobieranie — luka L13). Etap 0B: powstał folder `ia4-research/` z `config.py`, `sync.py`, `data.py`, `verify.py`. Skarbiec wymuszony programowo w `data.load()`. Luki L13–L15. |
 | 0.6 | 2026-09-23 | Nowa funkcja `refetchProof()` i pozycja menu „Pobierz ponownie wybrane…” — naprawia skutek L13 bez pełnego resetu. Naprawa L13 potwierdzona: 19 instrumentów dociągnęło pełną historię. Luka L16 (^VIX ma więcej sesji niż reszta). |
+| 0.7 | 2026-09-23 | VIX usunięty z projektu (D8). Dashboard przepisany: nawigacja Start / Wykresy / Strategie / Inwestor, bez paska danych na dole. Automat łapie świecę w ciągu minuty od zamknięcia (ponowienia co 30 s) i sam łata luki w wolnych przebiegach. Katalog 84 sygnałów bazowych wyciągnięty z arkusza do `S1_KATALOG_BAZOWY.md`. D4–D6 przyjęte, nowe decyzje D8–D16 z krytycznego przeglądu. Luka L17. |
 
 ---
 
@@ -377,3 +393,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-23 17:21 | `93b461d` | `IA4_INSTRUKCJA.md`, `Code.gs`, `History.gs`, `Proof.gs`, `Project.gs`, `ia4-dashboard.html`, `ia4-research/*` | Wersja 0.5: zasada 2.7, jednolite nagłówki wersji, `INSTRUCTION_VERSION` 0.2 → 0.5, Etap 0B — folder `ia4-research/` (config, sync, data, verify, README), luki L13–L15. |
 | 2026-09-23 17:24 | `f7b0e40` | `IA4_INSTRUKCJA.md` | Uzupełnienie hasha poprzedniego pushu i doprecyzowanie zasady 2.7 o kolejności wpisywania hasha. |
 | 2026-09-23 22:23 | `af72e4b` | `Proof.gs`, `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.6: `refetchProof()` + menu „Pobierz ponownie wybrane…”, naprawa skutku L13 dla 10 spółek bez pełnego resetu. Luka L16. |
+| 2026-09-23 22:58 | `(uzupełniony niżej)` | wszystkie pliki | Wersja 0.7: usunięcie VIX, nowy dashboard, szybkie łapanie świecy + samoczynne łatanie luk, katalog 84 sygnałów, decyzje D8–D16. |
