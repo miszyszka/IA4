@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.7 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.8 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
@@ -317,7 +317,10 @@ function fastCollect_(ctx) {
 
   for (let i = 1; i < CONFIG.FAST_MAX_TRIES; i++) {
     const live = liveLoad_();
-    const waiting = liveSymbols_().filter(s => !live[s] || live[s].k < expectedKey);
+    // Decyzja D15: liczy się czas dojścia świecy dla TRZECH SPÓŁEK GŁÓWNYCH —
+    // to na nich powstają sygnały. Kontrolne i tło rynku dociągną się spokojnie
+    // przy kolejnych uruchomieniach; czekanie na nie opóźniałoby sygnał.
+    const waiting = CONFIG.SYMBOLS.filter(s => !live[s] || live[s].k < expectedKey);
     if (!waiting.length) {
       log_('INFO', 'SYSTEM',
         `Świeca złapana po ${i} ${i === 1 ? 'próbie' : 'próbach'} ` +
@@ -656,6 +659,7 @@ function parseBars_(result) {
   const ts = result.timestamp || [];
   const q = (result.indicators && result.indicators.quote && result.indicators.quote[0]) || {};
   const o = q.open || [], h = q.high || [], l = q.low || [], c = q.close || [];
+  const v = q.volume || [];   // wolumen (decyzja D12) — bywa null, wtedy zapisujemy 0
   const out = [];
 
   for (let i = 0; i < ts.length; i++) {
@@ -679,6 +683,10 @@ function parseBars_(result) {
       high: round_(vals[1]),
       low: round_(vals[2]),
       close: round_(vals[3]),
+      // Brak wolumenu nie unieważnia świecy — cena jest ważniejsza, a bez niej
+      // i tak pomijamy świecę wyżej. Zapisane 0 oznacza „Yahoo nie podał";
+      // świec z wolumenem 0 nie należy mylić z brakiem obrotu.
+      volume: (typeof v[i] === 'number' && isFinite(v[i])) ? Math.round(v[i]) : 0,
       startET: fmtMin_(slotStart),
       startPL: fmtMin_(slotStart + offset),
       openPL: fmtMin_(OPEN + offset),
@@ -1073,6 +1081,7 @@ function sessionFields_(symbol, date, bySlot, nowIso) {
     h: arr(bars.map(b => b.high)),
     l: arr(bars.map(b => b.low)),
     c: arr(bars.map(b => b.close)),
+    v: arr(bars.map(b => b.volume || 0), 'int'),
     startPL: { stringValue: bars[0].openPL },
     firstCandleTime: { timestampValue: bars[0].time.toISOString() },
     updatedAt: { timestampValue: nowIso },
@@ -1106,6 +1115,7 @@ function candleFields_(b, nowIso, source) {
     high: { doubleValue: b.high },
     low: { doubleValue: b.low },
     close: { doubleValue: b.close },
+    volume: { integerValue: String(b.volume || 0) },
     candleTime: { timestampValue: b.time.toISOString() },
     source: { stringValue: source },
     updatedAt: { timestampValue: nowIso },

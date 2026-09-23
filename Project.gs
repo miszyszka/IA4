@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.7 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.8 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.7',
+  INSTRUCTION_VERSION: '0.8',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -33,7 +33,7 @@ const PROJECT = {
 
   NIGHTLY_HOUR: 23,          // nocny audyt (czas polski), po zamknięciu sesji w USA
   NIGHTLY_DAYS: 14,          // ile dni kalendarzowych wstecz sprawdza audyt nocny
-  JUMP_PCT: 30,              // skok ceny między świecami podejrzany o split (split 3:2 to −33%)
+  JUMP_PCT: 15,              // skok ceny podejrzany o split (D11 — 30% przepuszczało split 3:2 i 5:4)
   JUMP_PCT_BY_SYMBOL: {},    // progi wyjątkowe per instrument (obecnie brak)
   MAX_GAP_ROWS: 300,         // ile luk pokazywać w arkuszu PROJEKT
   MAX_RUNTIME_MS: 4.5 * 60 * 1000,

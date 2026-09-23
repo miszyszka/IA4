@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 0.7
+**Wersja:** 0.8
 **Data:** 23 września 2026
 **Aktualny etap:** 🟨 Etap 0 — 0A wdrożone; trwa pełne pobieranie historii po naprawie L13, przegląd 53 luk i budowa środowiska Pythona (0B)
 
@@ -102,7 +102,7 @@ system/history, system/universe       stan pobierania historii i listy instrumen
 system/project                        etap, wersja instrukcji, granice skarbca
 ```
 
-Dokument sesji ma pola `symbol, date, bars, slots, o, h, l, c, startPL, firstCandleTime, updatedAt`. Tablice `slots, o, h, l, c` są równoległe, a `slots` zawiera numery świec 1–7. Ten sam format zapisuje historia (`Proof.gs`) i automat bieżący (`Code.gs`, funkcja `sessionFields_`).
+Dokument sesji ma pola `symbol, date, bars, slots, o, h, l, c, v, startPL, firstCandleTime, updatedAt`, gdzie `v` to wolumen (D12). Tablice `slots, o, h, l, c, v` są równoległe, a `slots` zawiera numery świec 1–7. Ten sam format zapisuje historia (`Proof.gs`) i automat bieżący (`Code.gs`, funkcja `sessionFields_`).
 
 ### Zakres
 
@@ -213,7 +213,7 @@ Etap dzielimy na dwie części:
 
 **Cel:** pełny, przemyślany katalog hipotez i silnik, który je liczy. *(Proponowany rozdział: Etap 1 = definicje i silnik, Etap 2 = obliczenia i wybór. W pierwotnym planie oba etapy obejmowały liczenie wyników.)*
 
-- **Sygnały:** dotychczasowe 84 (pełna lista z definicjami i parametrami JSON: **`S1_KATALOG_BAZOWY.md`**) plus nowe rodziny, łącznie ok. 120–150. Rodziny bazowe: spadek w N świecach (18), czerwone świece z rzędu (13), odchylenie od średniej (9), wyprzedanie RSI (8), luka spadkowa (6), formacje odwrócenia (6), spadek względem ATR (6), spadek od szczytu (5), spadek od otwarcia sesji (4), wstęga Bollingera (4), duża czerwona świeca (3), spadkowe sesje z rzędu (2). **Uwaga: wszystkie 84 to warianty jednej hipotezy (kupno po spadku) i wszystkie są LONG — patrz decyzja D9.** Nowe pomysły: wybicia z konsolidacji, zawężenie i rozszerzenie zmienności, sygnały zależne od pory dnia, sygnały wielodniowe, sygnały wzrostowe (lustra spadkowych — kandydaci na short).
+- **Sygnały:** dotychczasowe 84 (pełna lista z definicjami i parametrami JSON: **`S1_KATALOG_BAZOWY.md`**) plus nowe rodziny, łącznie ok. 120–150. Rodziny bazowe: spadek w N świecach (18), czerwone świece z rzędu (13), odchylenie od średniej (9), wyprzedanie RSI (8), luka spadkowa (6), formacje odwrócenia (6), spadek względem ATR (6), spadek od szczytu (5), spadek od otwarcia sesji (4), wstęga Bollingera (4), duża czerwona świeca (3), spadkowe sesje z rzędu (2). **Uwaga: wszystkie 84 to warianty jednej hipotezy (kupno po spadku) i wszystkie są LONG — patrz decyzja D9.** Nowe pomysły: sygnały z warunkiem wolumenu (kapitulacja = spadek na wolumenie powyżej średniej — D12), wybicia z konsolidacji, zawężenie i rozszerzenie zmienności, sygnały zależne od pory dnia, sygnały wielodniowe, sygnały wzrostowe (lustra spadkowych — kandydaci na short).
 - **Kierunek:** każdy sygnał w dwóch wariantach — LONG i SHORT na tych samych zasadach (short: stop powyżej wejścia, cel poniżej).
 - **Siatka wyjść:** SL i TP ∈ {0,5; 0,75; 1; 1,25; 1,5; 2; 2,5; 3; 4; 5}%, wszystkie 100 kombinacji. Nic powyżej 5%.
 - **Limit czasu H** zależny od celu (propozycja): TP ≤ 1% → 14 świec (2 sesje), TP ≤ 2,5% → 35 (5 sesji), TP ≤ 5% → 70 (10 sesji).
@@ -258,8 +258,11 @@ Wynik trafia do arkusza S1_WYNIKI. Użytkownik wybiera strategie do S2, zaznacza
 7. Kalendarz — dzień tygodnia, koniec miesiąca i kwartału, dzień po święcie.
 8. Wielodniowe — zwroty z 1–20 sesji, serie sesji spadkowych i wzrostowych.
 9. Rynek (SPY, QQQ) — te same rodziny dla indeksów + siła względna spółki wobec rynku, krocząca beta i korelacja.
-10. Szerokość rynku z naszych 27 spółek — ile jest powyżej średnich, ile spadło dziś, średni zwrot grupy.
-11. Kontekst sygnału — ile razy wystąpił ostatnio, czas od poprzedniego, czy inne sygnały S2 odpaliły jednocześnie.
+10. Wolumen — poziom względem średniej z N świec i N sesji, wolumen względem tej samej świecy dnia w poprzednich sesjach, wolumen świecy sygnału względem poprzedzających, narastający wolumen sesji, wolumen przy spadku kontra przy wzroście.
+11. Szerokość rynku z naszych 27 spółek — ile jest powyżej średnich, ile spadło dziś, średni zwrot grupy.
+12. Kontekst sygnału — ile razy wystąpił ostatnio, czas od poprzedniego, czy inne sygnały S2 odpaliły jednocześnie.
+
+**Skala obliczeń.** Etap 3 nie jest jednym przebiegiem, tylko **ciągłym przeszukiwaniem**: model liczy się na Macu godzinami albo dniami, przechodząc kolejne kombinacje parametrów, okna czasowe i progi, i zapisuje najlepsze znalezione zależności wraz z datą i wynikiem walidacji. Każdy kolejny przebieg startuje od zapisanego stanu i próbuje go poprawić. Dlatego kod Etapu 3 musi od początku: zapisywać postęp na dysk po każdej rundzie (przerwanie nie może kasować pracy), logować każdą sprawdzoną konfigurację z wynikiem, żeby dało się odtworzyć, ile prób wykonano (5.7), i nigdy nie dotykać skarbca (`data.load` pilnuje tego programowo).
 
 **Metoda:**
 1. **Przesiew pojedynczych parametrów** — dla każdego parametru: jak zmienia się skuteczność w jego przedziałach, na ilu transakcjach, czy efekt powtarza się w obu grupach spółek i w kolejnych okresach czasu. Wynik: czytelna lista w stylu „80% transakcji zakończonych stopem wypadło przy cenie poniżej SMA(140)”.
@@ -309,7 +312,7 @@ Wirtualny inwestor co godzinę otwiera i zamyka transakcje według ustalonych za
 
 **STATS** wiersze 18–20: etap projektu, luki w danych, skarbiec. Aktualizowane od razu przy każdej zmianie w PROJEKT i co 5 minut przez automat.
 
-**Audyt danych** szuka: brakujących sesji (wg kalendarza NYSE), brakujących świec (sesje skrócone mają 4), nadmiarowych świec, błędnych świec (high poniżej max(open, close) itp.), duplikatów, skoków ceny powyżej 30% (podejrzenie splitu) i instrumentów, które przestały się aktualizować.
+**Audyt danych** szuka: brakujących sesji (wg kalendarza NYSE), brakujących świec (sesje skrócone mają 4), nadmiarowych świec, błędnych świec (high poniżej max(open, close) itp.), duplikatów, skoków ceny powyżej 15% (podejrzenie splitu — D11) i instrumentów, które przestały się aktualizować.
 - **pełny** — na żądanie; wszystkie instrumenty, cała historia; ok. 24 000 odczytów Firestore (prawie połowa dziennego darmowego limitu), więc uruchamiaj go rzadko,
 - **nocny** — codziennie ok. 23:00; ostatnie 14 dni; kilkaset odczytów.
 
@@ -322,7 +325,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | # | Luka | Skutek | Obsługa |
 |---|---|---|---|
 | L1 | Wieloznaczność świecy 1h | wyniki ciasnych SL/TP zależą od reguły „stop pierwszy” | kolumna % wieloznacznych, próg 20% (5.4) |
-| L2 | Splity akcji | dane zbierane na żywo nie są korygowane wstecz, więc powstaje skok ceny | wykrywanie w audycie (Etap 0) |
+| L2 | Splity akcji | świeca ze splitem wygląda jak głęboki spadek, czyli fałszywie uruchamia sygnały katalogu | próg audytu obniżony do 15%, sesje ze splitem wykluczane z liczenia sygnałów (D11) |
 | L3 | Yahoo to nieoficjalne źródło | przerwy, blokady 429 | ponawianie + audyt luk |
 | L4 | Historia 1h tylko ~730 dni | ograniczona próba | skarbiec kosztem okresu badawczego — świadomy kompromis |
 | L5 | Transakcje nakładają się w czasie | statystyki zawyżają pewność | liczymy Z jako ranking, nie jako test |
@@ -352,18 +355,18 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | D7 | Usunięcie starego katalogu STRATEGIE | tak, zastąpi go S1 | ✅ przyjęta |
 | D8 | VIX w projekcie | usunięty całkowicie: z `Proof.gs`, audytu, rodzin parametrów Etapu 3 i tła rynku. Zostają SPY i QQQ | ✅ przyjęta |
 
-### Decyzje otwarte po przeglądzie katalogu bazowego (2026-09-23)
+### Decyzje z przeglądu katalogu bazowego — rozstrzygnięte 2026-09-23
 
-| # | Decyzja | Na czym polega problem | Propozycja | Status |
-|---|---|---|---|---|
-| D9 | Katalog S1 to jedna hipoteza | Wszystkie 84 sygnały bazowe to warianty „spadło, więc odbije", wyłącznie LONG. Okres badawczy (wrzesień 2024 – marzec 2026) przypada na hossę w spółkach technologicznych, a kupowanie dołków w trendzie wzrostowym wygląda świetnie **nawet gdy sygnał nie ma żadnej wartości** — wystarczy dryf rynku. Kontrola z 5.3 to wyłapie, ale jeśli cały katalog jest jedną hipotezą, a ona nie przejdzie, zostajemy bez niczego. | Dołożyć do S1 co najmniej dwie rodziny o **przeciwnej logice**: wybicia/kontynuacja trendu (kupno siły, nie słabości) oraz lustrzane warianty SHORT. To nie jest kosmetyka — bez nich S1 nie odpowiada na pytanie „czy sygnały mają przewagę", tylko „czy w hossie opłacało się kupować dołki". | 🔸 do decyzji przed Etapem 1 |
-| D10 | Jak dobierać limit czasu H | Chcesz, żeby silnik dobierał statystycznie najlepsze H. Problem: H staje się wtedy trzecim przeszukiwanym parametrem, co mnoży liczbę testów (10 SL × 10 TP × k wariantów H × 120 sygnałów × 2 kierunki) i wprost pogłębia problem z 5.7 — im więcej kombinacji, tym łatwiej trafić świetny wynik przypadkiem. | Nie przeszukiwać H jak SL/TP. Zamiast tego liczyć dla każdej strategii **rozkład czasu do wyjścia** (mediana i kwantyle osobno dla wyjść na SL, TP i z limitu — to już jest w kolumnach Etapu 2) i wyznaczać H jako kwantyl, np. 90. percentyl czasu do TP. Wtedy H wynika z danych, ale nie jest osobnym wymiarem przeszukiwania. Wartości z D5 zostają jako punkt wyjścia. | 🔸 do decyzji przed Etapem 1 |
-| D11 | Splity akcji generują fałszywe sygnały | Split 2:1 to w danych spadek o 50% w jednej świecy. Dla katalogu opartego na spadkach to **nie jest drobiazg — to idealny sygnał kupna, który nigdy nie istniał**. DELL (−31,5%) i ORCL (−32,1%) już mają takie świece, a audyt wykrywa tylko skoki powyżej 30%, więc split 5:4 albo 3:2 przejdzie niezauważony. | Przed Etapem 1: wykryć wszystkie skoki powyżej 15% i sprawdzić ręcznie; sesje ze splitem wykluczyć z liczenia sygnałów (nie tylko oznaczyć); rozważyć pobranie cen skorygowanych o splity z Yahoo (`adjclose`) jako drugiego źródła do porównania. | 🔸 do decyzji przed Etapem 1 |
-| D12 | Nie zbieramy wolumenu | Świece mają tylko OHLC. Wolumen to jeden z najczęściej używanych filtrów potwierdzających przy sygnałach odbicia (kapitulacja = spadek na wysokim wolumenie), a w Etapie 3 byłby całą rodziną parametrów towarzyszących. Yahoo zwraca go w tej samej odpowiedzi, więc koszt zebrania jest zerowy — ale **dane historyczne bez wolumenu są nie do odzyskania później**. | Dodać wolumen do zapisu teraz, na początku Etapu 1, zanim ruszy backtest. Koszt: jedno pole w dokumencie, bez dodatkowych zapytań. Jeśli nie teraz, to nigdy — przy ponownym pobraniu historii i tak trzeba by przepisać wszystkie dokumenty. | 🔸 pilne — do decyzji przed Etapem 1 |
-| D13 | Grupa kontrolna składa się z ocalałych | 50 spółek kontrolnych to dzisiejsze duże spółki amerykańskie. Wszystkie przetrwały ostatnie dwa lata i większość rosła. Strategia „kupuj spadki" na zbiorze samych zwycięzców pokazuje przewagę, której nie miałaby na spółce, która w tym czasie straciła połowę wartości i nigdy nie odbiła. | Nie da się tego w pełni naprawić przy 730 dniach historii, ale można: dołożyć do grupy kontrolnej kilka spółek, które w tym okresie wyraźnie traciły, i **raportować wynik osobno dla spółek rosnących i spadających** w okresie badawczym. Jeśli przewaga jest tylko u rosnących, to nie jest przewaga sygnału. | 🔸 do decyzji przed Etapem 2 |
-| D14 | Jedno źródło danych bez kontroli | Yahoo jest jedynym źródłem i jednocześnie nieoficjalnym (L3). Nie mamy żadnego sposobu, żeby wykryć, że zwrócił **błędne** ceny — audyt sprawdza tylko braki i nieprawdopodobne skoki. Cicha zmiana danych historycznych (a takie się zdarzają po korektach) przeszłaby niezauważona. | Zapisywać przy każdej świecy sumę kontrolną i przy nocnym audycie porównywać próbkę świec sprzed tygodnia z tym, co Yahoo zwraca dziś. Rozbieżność = wpis do luk. Tanie, bo dotyczy próbki, nie całości. | 🔸 do decyzji przed Etapem 2 |
-| D15 | Budżet czasu w Etapie 4 | Decyzja D2 mówi, że model PT liczy się w Apps Script zaraz po zamknięciu świecy. Przy ~50 parametrach i drzewach z Pythona dla 3 spółek to realne, ale limit uruchomienia to 6 minut, a tryb szybkiego łapania świecy zużywa z niego do 4 minut na ponowienia. | Zmierzyć czas liczenia PT na próbce zanim Etap 4 ruszy. Jeśli nie zmieści się w pozostałym budżecie, rozdzielić: osobny trigger na zbieranie świec, osobny na liczenie sygnałów zaraz po nim. | 🔸 do decyzji przed Etapem 4 |
-| D16 | Co to znaczy „przewaga" | Instrukcja mówi o przewadze nad wejściem losowym (5.3) i o istotności z uwzględnieniem liczby testów (5.7), ale nigdzie nie ma **progu liczbowego**: ile transakcji minimum, jaka minimalna przewaga i jaki próg istotności kwalifikuje strategię do S2. Bez tego wybór S2 w Etapie 2 będzie uznaniowy, a uznaniowy wybór po obejrzeniu wyników to dokładnie ta furtka, którą skarbiec ma zamykać. | Ustalić progi **przed** policzeniem wyników Etapu 2 i zapisać je w tym pliku. Propozycja wyjściowa: minimum 100 transakcji w grupie głównej i 300 w kontrolnej, przewaga nad wejściem losowym dodatnia w obu grupach, wynik lepszy niż 99. percentyl rozkładu wejść losowych przy tej liczbie prób. | 🔸 do decyzji przed Etapem 2 |
+| # | Decyzja | Rozstrzygnięcie | Status |
+|---|---|---|---|
+| D9 | Katalog S1 to jedna hipoteza | Do S1 wchodzą warianty **SHORT** jako pełnoprawne lustra sygnałów spadkowych, nie dodatek. Szukamy wzorców krótkiej sprzedaży na równi z długimi. | ✅ przyjęta |
+| D10 | Jak dobierać limit czasu H | H **nie jest przeszukiwany** jak SL/TP. Dla każdej strategii liczymy rozkład czasu do wyjścia osobno dla SL, TP i limitu, a H wyznaczamy jako kwantyl (propozycja: 90. percentyl czasu do TP). Wartości z D5 zostają jako punkt wyjścia. Dzięki temu H wynika z danych, ale nie mnoży liczby testów (5.7). | ✅ przyjęta |
+| D11 | Splity generują fałszywe sygnały | Przed Etapem 1: wykryć wszystkie skoki powyżej **15%** (nie 30%), sprawdzić ręcznie, a sesje ze splitem **wykluczyć z liczenia sygnałów**, nie tylko oznaczyć. | ✅ przyjęta |
+| D12 | Wolumen | **Zbierany od wersji 0.8.** Pole `volume` w dokumencie świecy spółek głównych, tablica `v` w dokumentach sesji spółek kontrolnych i tła rynku. Wolumen wchodzi do katalogu S1 jako filtr i warunek sygnałów oraz do Etapu 3 jako osobna rodzina parametrów towarzyszących. Świece zebrane wcześniej mają `v = 0` — parametry oparte na wolumenie liczymy dopiero od dnia wdrożenia albo po ponownym pobraniu historii. | ✅ przyjęta |
+| D13 | Grupa kontrolna to ocalali | Uznajemy, że dryf ma znaczenie, ale świeca godzinowa i warianty SHORT (D9) znacznie ograniczają wpływ długoterminowego trendu wzrostowego. Zostaje wymóg z 5.3 i raportowanie wyniku osobno dla spółek rosnących i spadających w okresie badawczym. Nie zmieniamy składu grupy kontrolnej. | ✅ przyjęta |
+| D14 | Kontrola źródła danych | Ufamy Yahoo. Zostaje audyt braków i skoków; nie dokładamy sum kontrolnych. | ✅ przyjęta |
+| D15 | Budżet czasu w Etapie 4 | Zaraz po zamknięciu świecy liczą się **tylko 3 spółki główne** — to na nich powstają sygnały. Spółki kontrolne i tło rynku dociągają się przy kolejnych uruchomieniach. Tryb szybki czeka wyłącznie na AAPL, TSLA i NVDA. | ✅ przyjęta |
+| D16 | Próg „przewagi" | Progi ustalone **przed** policzeniem Etapu 2: minimum **100 transakcji** w grupie głównej i **300** w kontrolnej, przewaga nad wejściem losowym dodatnia **w obu grupach**, wynik lepszy niż **99. percentyl** rozkładu wejść losowych przy tej liczbie prób. | ✅ przyjęta |
 
 ---
 
@@ -378,6 +381,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 0.5 | 2026-09-23 | Zasada 2.7: dziennik pushów i jedna wersja we wszystkich plikach. Nagłówek `Wersja projektu` w każdym `.gs` i w dashboardzie, `PROJECT.INSTRUCTION_VERSION` podbite z 0.2 na 0.5. Naprawa `startProof()` (tryb `refresh` udawał pełne pobieranie — luka L13). Etap 0B: powstał folder `ia4-research/` z `config.py`, `sync.py`, `data.py`, `verify.py`. Skarbiec wymuszony programowo w `data.load()`. Luki L13–L15. |
 | 0.6 | 2026-09-23 | Nowa funkcja `refetchProof()` i pozycja menu „Pobierz ponownie wybrane…” — naprawia skutek L13 bez pełnego resetu. Naprawa L13 potwierdzona: 19 instrumentów dociągnęło pełną historię. Luka L16 (^VIX ma więcej sesji niż reszta). |
 | 0.7 | 2026-09-23 | VIX usunięty z projektu (D8). Dashboard przepisany: nawigacja Start / Wykresy / Strategie / Inwestor, bez paska danych na dole. Automat łapie świecę w ciągu minuty od zamknięcia (ponowienia co 30 s) i sam łata luki w wolnych przebiegach. Katalog 84 sygnałów bazowych wyciągnięty z arkusza do `S1_KATALOG_BAZOWY.md`. D4–D6 przyjęte, nowe decyzje D8–D16 z krytycznego przeglądu. Luka L17. |
+| 0.8 | 2026-09-23 | Decyzje D9–D16 rozstrzygnięte. **Wolumen zbierany** (D12): pole `volume` w świecach głównych, tablica `v` w sesjach, kolumna `v` w parquet. Próg wykrywania splitu obniżony 30% → 15% (D11). Tryb szybki czeka tylko na 3 spółki główne (D15). Wolumen jako rodzina parametrów w Etapie 3, Etap 3 opisany jako ciągłe, wielodniowe przeszukiwanie z zapisem postępu. |
 
 ---
 
@@ -394,3 +398,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-23 17:24 | `f7b0e40` | `IA4_INSTRUKCJA.md` | Uzupełnienie hasha poprzedniego pushu i doprecyzowanie zasady 2.7 o kolejności wpisywania hasha. |
 | 2026-09-23 22:23 | `af72e4b` | `Proof.gs`, `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.6: `refetchProof()` + menu „Pobierz ponownie wybrane…”, naprawa skutku L13 dla 10 spółek bez pełnego resetu. Luka L16. |
 | 2026-09-23 23:01 | `c4a2f7e` | wszystkie pliki | Wersja 0.7: usunięcie VIX, nowy dashboard, szybkie łapanie świecy + samoczynne łatanie luk, katalog 84 sygnałów, decyzje D8–D16. |
+| 2026-09-23 23:20 | `(uzupełniony niżej)` | `Code.gs`, `Project.gs`, `ia4-research/*`, `IA4_INSTRUKCJA.md` | Wersja 0.8: wolumen (D12), próg splitu 15% (D11), priorytet 3 głównych w trybie szybkim (D15), decyzje D9–D16 rozstrzygnięte. |

@@ -1,6 +1,6 @@
 # IA 4 — środowisko badawcze (Python, Mac)
 
-**Wersja projektu: 0.7 (2026-09-23) — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 0.8 (2026-09-23) — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Etap 0B. Ten folder robi jedną rzecz: ściąga świece z Firestore na dysk i daje
 do nich dostęp tak, żeby nie dało się przypadkiem zajrzeć do skarbca.
@@ -84,7 +84,11 @@ df = data.load(["AAPL", "TSLA", "NVDA"])  # kilka instrumentów
 df = data.load()                          # wszystkie instrumenty
 ```
 
-Kolumny: `symbol, date, slot (1–7), o, h, l, c`.
+Kolumny: `symbol, date, slot (1–7), o, h, l, c, v`.
+
+`v` to wolumen (decyzja D12). Świece zebrane przed wersją 0.8 mają tam 0 —
+przy liczeniu parametrów opartych na wolumenie trzeba te sesje pominąć albo
+dociągnąć historię ponownie.
 
 **Skarbiec jest zamknięty programowo.** `data.load()` domyślnie zwraca tylko
 okres badawczy, a próba sięgnięcia po skarbiec kończy się wyjątkiem:

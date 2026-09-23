@@ -1,6 +1,6 @@
 """
 IA 4 — synchronizacja Firestore → lokalny parquet.
-Wersja projektu: 0.7 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.8 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Po co w ogóle kopia lokalna: backtest w Etapie 2 czyta te same świece dziesiątki
 tysięcy razy (24 000 strategii). Czytanie ich za każdym razem z Firestore
@@ -17,7 +17,7 @@ DWA FORMATY W FIRESTORE (sekcja 4 instrukcji):
   context/{ID}/sessions/{data}          tło rynku    — jak wyżej, ID bez „^"
 
 Oba sprowadzamy do jednej, płaskiej tabeli:
-  symbol, date, slot (1–7), o, h, l, c
+  symbol, date, slot (1–7), o, h, l, c, v (wolumen, decyzja D12)
 
 Uruchomienie:
   python -m ia4.sync             # przyrostowo, wszystkie instrumenty
@@ -36,7 +36,7 @@ import pandas as pd
 
 from . import config
 
-COLUMNS = ["symbol", "date", "slot", "o", "h", "l", "c"]
+COLUMNS = ["symbol", "date", "slot", "o", "h", "l", "c", "v"]
 GROUP_COLLECTION = {"main": "stocks", "proof": "proof", "context": "context"}
 
 
@@ -74,6 +74,8 @@ def _fetch_sessions(symbol: str, since: str | None) -> pd.DataFrame:
         d = doc.to_dict()
         slots = d.get("slots") or []
         o, h, l, c = d.get("o") or [], d.get("h") or [], d.get("l") or [], d.get("c") or []
+        # Wolumen doszedł w wersji 0.8 — starsze sesje go nie mają (D12).
+        vol = d.get("v") or []
         # Tablice są równoległe (sekcja 4 instrukcji). Gdyby któraś była krótsza,
         # bierzemy tylko wspólny prefiks — lepiej stracić świecę niż wpisać
         # do badań cenę z innej godziny.
@@ -81,7 +83,8 @@ def _fetch_sessions(symbol: str, since: str | None) -> pd.DataFrame:
         if n < len(slots):
             print(f"  ! {symbol} {d.get('date')}: tablice różnej długości, biorę {n} z {len(slots)}")
         for i in range(n):
-            rows.append((symbol, d.get("date"), int(slots[i]), o[i], h[i], l[i], c[i]))
+            rows.append((symbol, d.get("date"), int(slots[i]), o[i], h[i], l[i], c[i],
+                         int(vol[i]) if i < len(vol) and vol[i] is not None else 0))
     return pd.DataFrame(rows, columns=COLUMNS)
 
 
@@ -96,7 +99,8 @@ def _fetch_candles(symbol: str, since: str | None) -> pd.DataFrame:
     for doc in query.stream():
         d = doc.to_dict()
         rows.append((symbol, d.get("date"), int(d.get("slot")),
-                     d.get("open"), d.get("high"), d.get("low"), d.get("close")))
+                     d.get("open"), d.get("high"), d.get("low"), d.get("close"),
+                     int(d.get("volume") or 0)))
     return pd.DataFrame(rows, columns=COLUMNS)
 
 

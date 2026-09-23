@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 IA 4 — sprawdzian kryterium 0.9.
-Wersja projektu: 0.7 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.8 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kryterium 0.9 brzmi: „Python wczytuje dane wszystkich instrumentów, liczby
 zgadzają się z audytem". Ten skrypt wypisuje tabelę w tym samym układzie,

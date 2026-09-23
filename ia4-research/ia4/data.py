@@ -1,6 +1,6 @@
 """
 IA 4 — wczytywanie danych do badań.
-Wersja projektu: 0.7 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.8 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Ten moduł jest jedyną drogą, którą dane trafiają do backtestu — i celowo
 utrudnia złamanie zasady 5.1.
@@ -55,7 +55,7 @@ def load(
     period       research (domyślnie) | vault | live | all
     unlock_vault świadome potwierdzenie dostępu do skarbca (Etap 3, jeden raz)
 
-    Zwraca: symbol, date, slot, o, h, l, c — posortowane po dacie i świecy.
+    Zwraca: symbol, date, slot, o, h, l, c, v — posortowane po dacie i świecy.
     """
     if period not in PERIODS:
         raise ValueError(f"period musi być jednym z {PERIODS}, jest: {period!r}")
@@ -101,7 +101,7 @@ def sessions(df: pd.DataFrame) -> pd.DataFrame:
     return (
         df.groupby(["symbol", "date"])
         .agg(bars=("slot", "count"), o=("o", "first"), h=("h", "max"),
-             l=("l", "min"), c=("c", "last"))
+             l=("l", "min"), c=("c", "last"), v=("v", "sum"))
         .reset_index()
     )
 
