@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 0.5
+**Wersja:** 0.6
 **Data:** 23 września 2026
 **Aktualny etap:** 🟨 Etap 0 — 0A wdrożone; trwa pełne pobieranie historii po naprawie L13, przegląd 53 luk i budowa środowiska Pythona (0B)
 
@@ -333,6 +333,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | L12 | Kryteria etapów są w dwóch miejscach: ten plik i `STAGES` w `Project.gs` | mogą się rozjechać | przy każdej nowej wersji instrukcji aktualizujemy oba |
 | L13 | „Uzupełnij najnowsze” kasowało stan i przełączało tryb na `refresh`, a „Pobierz historię” po cichu go kontynuowała | 26 nowych spółek kontrolnych i tło rynku miały po 5–28 sesji zamiast ~500, bez ostrzeżenia w STATS (flaga „niepełna historia” nie działa w trybie `refresh`) | naprawione w 0.5: `startProof()` odrzuca stan spoza trybu `full`. Dane nie ucierpiały — Firestore tylko dopisuje |
 | L14 | 26 spółek kontrolnych i tło rynku nadal mają historię krótszą niż okres badawczy | nie nadają się do Etapów 1–3, bo cała ich historia leży w skarbcu albo po nim | pełne pobranie po wdrożeniu 0.5; `verify.py` wypisuje takie instrumenty osobno |
+| L16 | ^VIX ma 515 sesji, gdy reszta instrumentów pobranych tego samego dnia ma 501 | VIX może handlować w dniach, gdy giełda akcji jest zamknięta, albo mieć świece przesunięte (L11) | sprawdzić przy najbliższym pełnym audycie; jeśli to inne dni sesyjne, uwzględnić przy łączeniu VIX ze spółkami w Etapie 3 |
 | L15 | Historia z Yahoo sięga ~730 dni, więc nowo dodane instrumenty nigdy nie dogonią tych z 2024 r. | grupa kontrolna ma dwa pokolenia: ~506 sesji i tyle, ile zdążyło się zebrać | jeśli po pełnym pobraniu różnica zostanie, zapisać ją jako świadomy kompromis i uwzględniać przy wymogu 5.6 |
 
 ---
@@ -360,6 +361,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 0.3 | 2026-09-22 | Literówka WTM → WMT (Walmart). Grupa kontrolna poszerzona z 24 do 50 spółek, dobór pod różnorodność sektorową (9 sektorów). |
 | 0.4 | 2026-09-23 | Repozytorium GitHub (`github.com/miszyszka/IA4.git`, branch `main`) jako jedyny kanał, przez który Claude czyta i zapisuje kod — zasada 2.6. Dogonienie pliku do stanu z wersji 0.3 (poprawki WMT i listy 50 spółek nie trafiły wcześniej do repo). Doprecyzowanie w tabeli plików i w L6, że dotyczy 50 spółek kontrolnych, nie 24. |
 | 0.5 | 2026-09-23 | Zasada 2.7: dziennik pushów i jedna wersja we wszystkich plikach. Nagłówek `Wersja projektu` w każdym `.gs` i w dashboardzie, `PROJECT.INSTRUCTION_VERSION` podbite z 0.2 na 0.5. Naprawa `startProof()` (tryb `refresh` udawał pełne pobieranie — luka L13). Etap 0B: powstał folder `ia4-research/` z `config.py`, `sync.py`, `data.py`, `verify.py`. Skarbiec wymuszony programowo w `data.load()`. Luki L13–L15. |
+| 0.6 | 2026-09-23 | Nowa funkcja `refetchProof()` i pozycja menu „Pobierz ponownie wybrane…” — naprawia skutek L13 bez pełnego resetu. Naprawa L13 potwierdzona: 19 instrumentów dociągnęło pełną historię. Luka L16 (^VIX ma więcej sesji niż reszta). |
 
 ---
 
@@ -374,3 +376,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-23 17:11 | `8d198e1` | `Proof.gs` | Naprawa `startProof()`: zapisany stan z trybu `refresh` sprawiał, że „Pobierz historię” po cichu kontynuowało uzupełnianie 40 dni zamiast pełnej historii. Log przy cichym „brak danych” z Yahoo. |
 | 2026-09-23 17:21 | `93b461d` | `IA4_INSTRUKCJA.md`, `Code.gs`, `History.gs`, `Proof.gs`, `Project.gs`, `ia4-dashboard.html`, `ia4-research/*` | Wersja 0.5: zasada 2.7, jednolite nagłówki wersji, `INSTRUCTION_VERSION` 0.2 → 0.5, Etap 0B — folder `ia4-research/` (config, sync, data, verify, README), luki L13–L15. |
 | 2026-09-23 17:24 | `f7b0e40` | `IA4_INSTRUKCJA.md` | Uzupełnienie hasha poprzedniego pushu i doprecyzowanie zasady 2.7 o kolejności wpisywania hasha. |
+| 2026-09-23 17:52 | `(uzupełniony niżej)` | `Proof.gs`, `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.6: `refetchProof()` + menu „Pobierz ponownie wybrane…”, naprawa skutku L13 dla 10 spółek bez pełnego resetu. Luka L16. |

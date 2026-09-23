@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — SPÓŁKI KONTROLNE („for proof”)
  *
- *  Wersja projektu: 0.5 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.6 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera historię świec 1h dla 50 dodatkowych spółek i zapisuje je w Firestore.
  *  Te spółki NIE pojawiają się w dashboardzie ani w arkuszach — służą wyłącznie
@@ -155,6 +155,68 @@ function resetProof() {
   log_('INFO', 'KONTROLNE', 'Reset — wszystkie spółki kontrolne pobiorą się od nowa.');
   proofRefreshStats_();
   toast_('Wyzerowano. Kliknij „Pobierz historię”, żeby ruszyć.');
+}
+
+/**
+ * Pobiera PONOWNIE wskazane instrumenty, nie ruszając pozostałych.
+ *
+ * Po co: spółka raz wpisana na listę „gotowych” jest pomijana na zawsze, nawet
+ * jeśli zapisała się z niepełną historią (tak stało się przy luce L13 — dziesięć
+ * spółek zostało oznaczonych jako gotowe, mając po 6–28 sesji zamiast ~500).
+ * „Reset” naprawiłby to kosztem ponownego pobrania wszystkich 53 instrumentów:
+ * osiem godzin i ~24 000 zapisów do Firestore po to, żeby poprawić kilka spółek.
+ * Ta funkcja zdejmuje z listy gotowych tylko wskazane symbole, więc kolejka
+ * pobierze je od nowa, a resztę zostawi w spokoju.
+ *
+ * Dane w Firestore nie są kasowane — zapis tylko nadpisuje sesje tymi samymi
+ * albo pełniejszymi wartościami.
+ */
+function refetchProof() {
+  let input = '';
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const resp = ui.prompt('Pobierz ponownie wybrane instrumenty',
+      'Podaj symbole po przecinku, np.:\n\nCAT, HON, UNP, RTX, AMZN, MCD, NKE, SBUX, T, VZ\n\n' +
+      'Zostaną zdjęte z listy „gotowych” i pobrane od nowa. Pozostałe instrumenty nie są ruszane.',
+      ui.ButtonSet.OK_CANCEL);
+    if (resp.getSelectedButton() !== ui.Button.OK) return;
+    input = resp.getResponseText();
+  } catch (e) {
+    alert_('Tę funkcję uruchamia się z menu arkusza (IA 4 → Spółki kontrolne).');
+    return;
+  }
+
+  const wanted = String(input).toUpperCase().split(/[,\s]+/).filter(String);
+  if (!wanted.length) { alert_('Nie podałeś żadnego symbolu.'); return; }
+
+  const all = proofAllSymbols_();
+  const unknown = wanted.filter(s => all.indexOf(s) < 0);
+  if (unknown.length) {
+    alert_(`Nie znam tych symboli: ${unknown.join(', ')}.\n\n` +
+           'Muszą być na liście PROOF.SYMBOLS albo CONTEXT.SYMBOLS w Proof.gs.');
+    return;
+  }
+
+  let st = proofLoad_();
+  if (!st || st.mode !== 'full') st = proofInit_('full');
+
+  const before = st.symbolsDone.length;
+  st.symbolsDone = st.symbolsDone.filter(s => wanted.indexOf(s) < 0);
+  st.symbolsFailed = st.symbolsFailed.filter(s => wanted.indexOf(s) < 0);
+  st.symbolsPartial = st.symbolsPartial.filter(s => wanted.indexOf(s) < 0);
+  st.done = false;
+  st.finishedAt = '';
+  st.stopped = false;
+  st.retries = 0;
+  proofSave_(st);
+
+  proofSetupStats_();
+  proofInstallTrigger_();
+  startRun_();
+  log_('INFO', 'KONTROLNE',
+    `Ponowne pobranie: ${wanted.join(', ')} (zdjęto z listy gotowych ${before - st.symbolsDone.length}).`);
+  proofExecute_();
+  toast_(`Pobieram ponownie ${wanted.length} instrumentów. Postęp w STATS, kolumny M–N.`);
 }
 
 /** Lista spółek kontrolnych gotowych do backtestu (mają komplet danych). */
