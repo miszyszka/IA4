@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 1.0 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.10 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
@@ -77,6 +77,18 @@ const CONFIG = {
   PATCH_ENABLED: true,
   PATCH_PER_RUN: 2,          // ile luk łatamy w jednym wolnym przebiegu
   PATCH_MIN_GAP_MIN: 10,     // minimalny odstęp między przebiegami łatania
+
+  // DOPISYWANIE WOLUMENU DO STAREJ HISTORII (decyzja D12)
+  // Świece zebrane przed wersją 0.8 nie mają wolumenu. Zamiast pobierać całą
+  // historię od nowa (~37 000 zapisów, czyli dwa dni ponad limit Firestore),
+  // system dopisuje go sam: w wolnych przebiegach cofa się po historii każdego
+  // instrumentu oknami po VOLFILL_CHUNK_DAYS dni i nadpisuje sesje danymi z
+  // Yahoo — tymi samymi cenami plus wolumenem. Dzienny budżet zapisów pilnuje,
+  // żeby uzupełnianie nigdy nie zabrało limitu bieżącym świecom.
+  VOLFILL_ENABLED: true,
+  VOLFILL_DAILY_WRITES: 3000,  // ile dokumentów dziennie wolno przepisać
+  VOLFILL_CHUNK_DAYS: 60,      // ile dni historii bierzemy na jedno uruchomienie
+  VOLFILL_MIN_GAP_MIN: 7,      // minimalny odstęp między przebiegami
   LIVE_RANGE: '5d',          // zakres pobierania w trybie automatycznym
   CATCHUP_RANGE: '1mo',      // zakres przy konfiguracji i „Uzupełnij braki”
   FETCH_PAUSE_MS: 700,       // odstęp między zapytaniami do Yahoo (27 spółek)
@@ -269,6 +281,11 @@ function execute_(mode, initMessage) {
         // Yahoo w godzinach sesji i bez ryzyka, że opóźnimy bieżącą świecę).
         const patched = patchGapsIfIdle_(ctx);
         if (patched) action += ` · ${patched}`;
+        // Luki mają pierwszeństwo — dopisywanie wolumenu dopiero, gdy ich nie ma.
+        if (!patched) {
+          const vol = volfillIfIdle_(ctx);
+          if (vol) action += ` · ${vol}`;
+        }
       }
     } else {
       summary = collectAll_(CONFIG.CATCHUP_RANGE, ctx, true);
@@ -393,6 +410,126 @@ function patchGapsIfIdle_(ctx) {
   log_('ZAPIS', 'ŁATANIE', `Uzupełniono z luk: ${done.join(', ')}.`);
   return `załatano ${done.length}`;
 }
+
+/**
+ * DOPISYWANIE WOLUMENU DO STAREJ HISTORII (D12)
+ *
+ * Idzie po instrumentach w kolejności z liveSymbols_() (najpierw trzy główne —
+ * to na nich powstają sygnały), a w każdym cofa się od dziś w przeszłość oknami
+ * po VOLFILL_CHUNK_DAYS dni, aż do granicy Yahoo. Każde okno pobiera z Yahoo te
+ * same świece co wcześniej i zapisuje je ponownie — teraz razem z wolumenem.
+ *
+ * Nadpisanie jest bezpieczne: ceny pochodzą z tego samego źródła, a zapis to
+ * `update`, więc sesje, których Yahoo już nie zwraca (np. przerwa ze stycznia),
+ * zostają nietknięte w starej postaci zamiast zniknąć.
+ *
+ * Dzienny budżet: VOLFILL_DAILY_WRITES dokumentów. Po jego wyczerpaniu proces
+ * milknie do następnego dnia, żeby limit Firestore został dla bieżących świec.
+ * Przy 3000 zapisach dziennie całość (~37 000 dokumentów) zajmie ok. 2 tygodni
+ * i nie wymaga od nikogo uwagi.
+ */
+function volfillIfIdle_(ctx) {
+  if (!CONFIG.VOLFILL_ENABLED || !CONFIG.FIRESTORE_ENABLED) return '';
+  const props = PropertiesService.getScriptProperties();
+  const last = props.getProperty('VOLFILL_LAST_AT');
+  if (last && Date.now() - Number(last) < CONFIG.VOLFILL_MIN_GAP_MIN * 60000) return '';
+
+  const st = volfillLoad_(ctx);
+  if (st.done) return '';
+  if (st.spentDay === ctx.etDate && st.spent >= CONFIG.VOLFILL_DAILY_WRITES) return '';
+
+  props.setProperty('VOLFILL_LAST_AT', String(Date.now()));
+  const symbol = st.symbols[st.idx];
+  const to = st.cursor;
+  const from = addDays_(to, -CONFIG.VOLFILL_CHUNK_DAYS);
+  const floor = addDays_(ctx.etDate, -PROOF.YAHOO_MAX_AGE_DAYS);
+  const realFrom = from < floor ? floor : from;
+
+  let written = 0;
+  try {
+    const sessions = proofFetchRange_(symbol, realFrom, to);
+    const dates = Object.keys(sessions).sort();
+    if (dates.length) {
+      if (isMain_(symbol)) {
+        dates.forEach(d => {
+          const bySlot = sessions[d];
+          const bars = Object.keys(bySlot).map(Number).sort((a, b) => a - b).map(s => bySlot[s]);
+          fsWriteMainCandles_(symbol, bars);
+          written += bars.length;
+        });
+      } else {
+        written += proofSaveSessions_(symbol, sessions, dates);
+      }
+    }
+  } catch (e) {
+    // 429 albo chwilowy problem Yahoo — kursor zostaje, spróbujemy ponownie.
+    log_('UWAGA', 'WOLUMEN', `${symbol} ${realFrom}–${to}: ${e.message}`);
+    volfillSave_(st);
+    return '';
+  }
+
+  // Kursor przesuwamy dopiero po udanym zapisie.
+  st.spent = (st.spentDay === ctx.etDate ? st.spent : 0) + written;
+  st.spentDay = ctx.etDate;
+  st.written += written;
+
+  if (realFrom <= floor) {
+    st.idx++;
+    st.cursor = ctx.etDate;
+    if (st.idx >= st.symbols.length) {
+      st.done = true;
+      st.finishedAt = new Date().toISOString();
+      log_('INFO', 'WOLUMEN', `✓ Wolumen dopisany do całej historii: ${st.written} dokumentów.`);
+    } else {
+      log_('ZAPIS', 'WOLUMEN',
+        `${symbol}: gotowe. Następny: ${st.symbols[st.idx]} (${st.idx + 1}/${st.symbols.length}).`);
+    }
+  } else {
+    st.cursor = addDays_(realFrom, -1);
+  }
+  volfillSave_(st);
+  return written ? `wolumen +${written} (${symbol} do ${realFrom})` : '';
+}
+
+function volfillLoad_(ctx) {
+  const raw = PropertiesService.getScriptProperties().getProperty('VOLFILL_STATE');
+  if (raw) {
+    const st = JSON.parse(raw);
+    // Lista instrumentów mogła się zmienić — dopisujemy nowe na koniec.
+    liveSymbols_().forEach(s => { if (st.symbols.indexOf(s) < 0) { st.symbols.push(s); st.done = false; } });
+    return st;
+  }
+  return {
+    symbols: liveSymbols_(), idx: 0, cursor: ctx.etDate,
+    spent: 0, spentDay: '', written: 0, done: false,
+    startedAt: new Date().toISOString(), finishedAt: '',
+  };
+}
+
+function volfillSave_(st) {
+  PropertiesService.getScriptProperties().setProperty('VOLFILL_STATE', JSON.stringify(st));
+}
+
+/** Menu: pokazuje, jak daleko zaszło dopisywanie wolumenu. */
+function volfillStatus() {
+  const raw = PropertiesService.getScriptProperties().getProperty('VOLFILL_STATE');
+  if (!raw) { alert_('Dopisywanie wolumenu jeszcze się nie zaczęło — ruszy w pierwszym wolnym przebiegu automatu.'); return; }
+  const st = JSON.parse(raw);
+  const all = st.symbols.length;
+  alert_(st.done
+    ? `✓ Wolumen dopisany do całej historii.\nPrzepisanych dokumentów: ${st.written}.`
+    : `Instrument ${st.idx + 1} z ${all}: ${st.symbols[st.idx]}\n` +
+      `Cofnięto się do: ${st.cursor}\n` +
+      `Przepisanych dokumentów: ${st.written}\n` +
+      `Dziś zużyto: ${st.spentDay === Utilities.formatDate(new Date(), CONFIG.MARKET_TZ, 'yyyy-MM-dd') ? st.spent : 0} z ${CONFIG.VOLFILL_DAILY_WRITES}`);
+}
+
+/** Wyzerowanie postępu dopisywania wolumenu (zacznie od nowa). */
+function volfillReset() {
+  PropertiesService.getScriptProperties().deleteProperty('VOLFILL_STATE');
+  toast_('Dopisywanie wolumenu zacznie się od nowa przy najbliższym wolnym przebiegu.');
+}
+
 
 /** Luki z arkusza _AUDYT, które da się jeszcze pobrać z Yahoo. */
 function patchReadGaps_() {
