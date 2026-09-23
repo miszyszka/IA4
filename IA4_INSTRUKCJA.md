@@ -393,4 +393,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-23 17:21 | `93b461d` | `IA4_INSTRUKCJA.md`, `Code.gs`, `History.gs`, `Proof.gs`, `Project.gs`, `ia4-dashboard.html`, `ia4-research/*` | Wersja 0.5: zasada 2.7, jednolite nagłówki wersji, `INSTRUCTION_VERSION` 0.2 → 0.5, Etap 0B — folder `ia4-research/` (config, sync, data, verify, README), luki L13–L15. |
 | 2026-09-23 17:24 | `f7b0e40` | `IA4_INSTRUKCJA.md` | Uzupełnienie hasha poprzedniego pushu i doprecyzowanie zasady 2.7 o kolejności wpisywania hasha. |
 | 2026-09-23 22:23 | `af72e4b` | `Proof.gs`, `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.6: `refetchProof()` + menu „Pobierz ponownie wybrane…”, naprawa skutku L13 dla 10 spółek bez pełnego resetu. Luka L16. |
-| 2026-09-23 22:58 | `(uzupełniony niżej)` | wszystkie pliki | Wersja 0.7: usunięcie VIX, nowy dashboard, szybkie łapanie świecy + samoczynne łatanie luk, katalog 84 sygnałów, decyzje D8–D16. |
+| 2026-09-23 22:58 | `c4a2f7e` | wszystkie pliki | Wersja 0.7: usunięcie VIX, nowy dashboard, szybkie łapanie świecy + samoczynne łatanie luk, katalog 84 sygnałów, decyzje D8–D16. |
