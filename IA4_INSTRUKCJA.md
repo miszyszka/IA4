@@ -407,4 +407,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-23 23:33 | `c7bdb70` | `Code.gs`, `Project.gs`, `ia4-research/*`, `IA4_INSTRUKCJA.md` | Wersja 0.8: wolumen (D12), próg splitu 15% (D11), priorytet 3 głównych w trybie szybkim (D15), decyzje D9–D16 rozstrzygnięte. |
 | 2026-09-23 23:44 | `b3b1b17` | `History.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.9: przygotowanie do pełnego pobrania historii z wolumenem — data startu i tempo w `History.gs`, luka L18. |
 | 2026-09-23 23:47 | `c4fdbf3` | `Project.gs`, `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 1.0: `resetAfterWipe()` + menu, przygotowanie do pobrania całej historii od zera z wolumenem. |
-| 2026-09-23 23:50 | `(uzupełniony niżej)` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.10: samoczynne dopisywanie wolumenu do starej historii z dziennym budżetem zapisów. |
+| 2026-09-23 23:49 | `3f9573a` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.10: samoczynne dopisywanie wolumenu do starej historii z dziennym budżetem zapisów. |
