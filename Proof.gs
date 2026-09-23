@@ -94,6 +94,12 @@ function startProof() {
     return;
   }
   let st = proofLoad_();
+  // Zapisany stan pochodzi z innego trybu (np. „Uzupełnij najnowsze”, mode:
+  // 'refresh') — to nie jest bezpieczne wznowienie pełnej historii, tylko
+  // inne zadanie. Zaczynamy prawdziwe pełne pobieranie od nowa, żeby
+  // „Pobierz historię” zawsze robiło to, co obiecuje w nazwie. Dane w
+  // Firestore się nie cofają — proofSaveSessions_ tylko dopisuje.
+  if (st && st.mode !== 'full') st = null;
   // Lista się wydłużyła (np. doszło tło rynku) — wznawiamy tylko brakujące.
   if (st && st.done && st.mode === 'full' &&
       proofAllSymbols_().some(s => st.symbolsDone.indexOf(s) < 0 && st.symbolsFailed.indexOf(s) < 0)) {
@@ -342,7 +348,10 @@ function proofFetchChunk_(symbol, fromYmd, toYmd) {
 
       const err = json && json.chart && json.chart.error;
       const desc = err ? String(err.description || err.code || '') : '';
-      if (/no data found|not found/i.test(desc)) return [];
+      if (/no data found|not found/i.test(desc)) {
+        log_('UWAGA', 'KONTROLNE', `${symbol}: Yahoo „brak danych” dla ${fromYmd}–${toYmd} (${desc || 'brak opisu'})`);
+        return [];
+      }
       lastMsg = `HTTP ${code}${desc ? ' — ' + desc : ''}`;
     } catch (e) {
       lastMsg = e.message || String(e);
