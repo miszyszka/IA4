@@ -1,8 +1,8 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 0.2
-**Data:** 22 września 2026
-**Aktualny etap:** 🟨 Etap 0 — część 0A (Apps Script) gotowa do wdrożenia, następna 0B (Python)
+**Wersja:** 0.4
+**Data:** 23 września 2026
+**Aktualny etap:** 🟨 Etap 0 — 0A wdrożone, trwa uzupełnianie historii i przegląd luk; 0B (Python) jeszcze nie rozpoczęte
 
 Ten plik jest jedynym źródłem prawdy o tym, jak pracujemy nad projektem. Stan bieżący (który etap, co zrobione, jakie luki) jest widoczny na żywo w arkuszu **PROJEKT** i w podsumowaniu w **STATS**. Jeśli plik i arkusz się rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba zapisać jako lukę.
 
@@ -23,6 +23,12 @@ Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która pr
 3. **Aktualizacja po każdym etapie.** Zakończenie etapu = nowa wersja tego pliku (status, dziennik zmian, nowe luki) + aktualizacja arkusza PROJEKT.
 4. **Kod testowany przed przekazaniem.** Każda zmiana w kodzie jest sprawdzana na symulacji przed przekazaniem. Znane ograniczenia trafiają do sekcji 8, a nie są przemilczane.
 5. **Żaden wynik bez liczby transakcji.** Każda skuteczność, ekspektancja czy zysk jest podawana razem z *n*.
+6. **Repozytorium GitHub jako wspólny zapis kodu.** `github.com/miszyszka/IA4.git`, branch `main`, przechowuje aktualne kopie plików `.gs` (`Code.gs`, `Proof.gs`, `Project.gs`, `History.gs`), `ia4-dashboard.html` i tego pliku instrukcji. Zasady:
+   - Claude **nie ma dostępu** do lokalnego folderu na komputerze użytkownika ani do edytora Google Apps Script. Jedyny kanał, przez który Claude czyta i zapisuje kod, to GitHub.
+   - Gdy sesja dotyczy zmian w kodzie lub w tym pliku, Claude na początku klonuje/pobiera repozytorium, żeby pracować na aktualnej wersji, zamiast zakładać stan z pamięci rozmowy.
+   - Po każdej zmianie w pliku `.gs`, w `ia4-dashboard.html` lub w tej instrukcji, Claude **commituje i pushuje** zmianę do `main` w tej samej turze, w której ją wprowadził — nie zostawia zmian tylko lokalnie w swoim środowisku roboczym.
+   - **Użytkownik ręcznie przenosi** każdą zmianę z GitHub do Google Apps Script (wklejenie treści pliku) oraz do swojego lokalnego folderu na komputerze (`git pull`). To nie dzieje się automatycznie w żadną stronę — GitHub jest pośrednikiem, nie systemem, który sam wgrywa kod do Apps Script.
+   - Klucz serwisowy Firebase (Etap 0B) **nigdy** nie trafia do tego repozytorium, zgodnie z 6.5.
 
 ---
 
@@ -46,7 +52,7 @@ Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która pr
 |---|---|---|
 | `Code.gs` | automat bieżący, 27 spółek, STATS | zostaje |
 | `History.gs` | historia 3 spółek głównych | zostaje |
-| `Proof.gs` | historia 24 spółek kontrolnych i tła rynku | zostaje |
+| `Proof.gs` | historia 50 spółek kontrolnych i tła rynku | zostaje |
 | `Project.gs` | arkusz PROJEKT, skarbiec, audyt danych, sprzątanie | od Etapu 0 |
 | `Strategies.gs`, `Backtest.gs`, `Combo.gs`, `Benchmark.gs` | stary katalog i analizy | usuwane w Etapie 0 (ręcznie w edytorze) |
 | `appsscript.json` | uprawnienia | zostaje |
@@ -61,7 +67,17 @@ Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która pr
 ### Spółki
 
 - **Główne (3):** AAPL, TSLA, NVDA — na nich szukamy strategii, widoczne w dashboardzie.
-- **Kontrolne (24):** DELL, AMAT, PLTR, ORCL, XOM, V, WTM, JPM, MU, META, AVGO, MSFT, GOOGL, JNJ, MA, ABBV, BAC, CVX, MRK, PG, HD, PM, WFC, CRM — sprawdzian, czy strategia działa poza wykresami, na których ją znaleziono.
+- **Kontrolne (50):** sprawdzian, czy strategia działa poza wykresami, na których ją znaleziono. Dobrane pod różnorodność sektorową (poprzednia lista 24 była przechylona w stronę technologii i finansów):
+  - pierwotne 24: DELL, AMAT, PLTR, ORCL, XOM, V, WMT, JPM, MU, META, AVGO, MSFT, GOOGL, JNJ, MA, ABBV, BAC, CVX, MRK, PG, HD, PM, WFC, CRM,
+  - przemysł: CAT, HON, UNP, RTX,
+  - dobra cykliczne: AMZN, MCD, NKE, SBUX,
+  - media i telekomunikacja: T, VZ, NFLX, DIS,
+  - ochrona zdrowia: UNH, LLY, PFE, MDT,
+  - nieruchomości (REIT): PLD, AMT,
+  - surowce: LIN, FCX,
+  - użyteczność publiczna: NEE, DUK,
+  - bankowość inwestycyjna: GS, AXP,
+  - dobra pierwszej potrzeby: KO, PEP.
 - **Tło rynku (D3):** SPY, QQQ, ^VIX — nie handlujemy nimi, służą jako kontekst w Etapie 3. Zbierane od Etapu 0: historia i na żywo.
 
 ### Format w Firestore
@@ -294,7 +310,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | L3 | Yahoo to nieoficjalne źródło | przerwy, blokady 429 | ponawianie + audyt luk |
 | L4 | Historia 1h tylko ~730 dni | ograniczona próba | skarbiec kosztem okresu badawczego — świadomy kompromis |
 | L5 | Transakcje nakładają się w czasie | statystyki zawyżają pewność | liczymy Z jako ranking, nie jako test |
-| L6 | Grupa kontrolna to skorelowane duże spółki USA | 24 spółki to w praktyce mniej niezależnych prób | wymóg zgodności w wielu okresach czasu |
+| L6 | Grupa kontrolna to duże spółki USA | mimo poszerzenia do 50 i 9 sektorów, część nadal skorelowana | wymóg zgodności w wielu okresach czasu |
 | L7 | Dashboard ma własną kopię logiki sygnałów | może rozjechać się z Pythonem | do decyzji po Etapie 1 |
 | L8 | Licznik sesji w `proof/{SYMBOL}` nie jest aktualizowany na żywo | kosmetyka | backtest liczy sesje z dokumentów |
 | L9 | Kalendarz świąt (`History.gs`) i sesji skróconych (`Project.gs`) kończy się na 2026 | od 2027 audyt i historia źle rozpoznają dni sesji | uzupełnić obie listy na początku każdego roku |
@@ -324,3 +340,5 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 |---|---|---|
 | 0.1 | 2026-09-22 | Pierwsza wersja: architektura, zasady, etapy 0–5, luki, otwarte decyzje. |
 | 0.2 | 2026-09-22 | Decyzje D1–D3 i D7. Daty skarbca. Tło rynku (SPY, QQQ, VIX) w zbieraniu danych. Etap 0 podzielony na 0A i 0B; kod 0A: `Project.gs`, zmiany w `Code.gs` i `Proof.gs`. Ograniczenie przenośności modelu PT w Etapie 3. Opis arkusza PROJEKT i audytu. Luki L9–L12. |
+| 0.3 | 2026-09-22 | Literówka WTM → WMT (Walmart). Grupa kontrolna poszerzona z 24 do 50 spółek, dobór pod różnorodność sektorową (9 sektorów). |
+| 0.4 | 2026-09-23 | Repozytorium GitHub (`github.com/miszyszka/IA4.git`, branch `main`) jako jedyny kanał, przez który Claude czyta i zapisuje kod — zasada 2.6. Dogonienie pliku do stanu z wersji 0.3 (poprawki WMT i listy 50 spółek nie trafiły wcześniej do repo). Doprecyzowanie w tabeli plików i w L6, że dotyczy 50 spółek kontrolnych, nie 24. |
