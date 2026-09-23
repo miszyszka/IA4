@@ -1,8 +1,8 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 0.4
+**Wersja:** 0.5
 **Data:** 23 września 2026
-**Aktualny etap:** 🟨 Etap 0 — 0A wdrożone, trwa uzupełnianie historii i przegląd luk; 0B (Python) jeszcze nie rozpoczęte
+**Aktualny etap:** 🟨 Etap 0 — 0A wdrożone; trwa pełne pobieranie historii po naprawie L13, przegląd 53 luk i budowa środowiska Pythona (0B)
 
 Ten plik jest jedynym źródłem prawdy o tym, jak pracujemy nad projektem. Stan bieżący (który etap, co zrobione, jakie luki) jest widoczny na żywo w arkuszu **PROJEKT** i w podsumowaniu w **STATS**. Jeśli plik i arkusz się rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba zapisać jako lukę.
 
@@ -29,6 +29,12 @@ Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która pr
    - Po każdej zmianie w pliku `.gs`, w `ia4-dashboard.html` lub w tej instrukcji, Claude **commituje i pushuje** zmianę do `main` w tej samej turze, w której ją wprowadził — nie zostawia zmian tylko lokalnie w swoim środowisku roboczym.
    - **Użytkownik ręcznie przenosi** każdą zmianę z GitHub do Google Apps Script (wklejenie treści pliku) oraz do swojego lokalnego folderu na komputerze (`git pull`). To nie dzieje się automatycznie w żadną stronę — GitHub jest pośrednikiem, nie systemem, który sam wgrywa kod do Apps Script.
    - Klucz serwisowy Firebase (Etap 0B) **nigdy** nie trafia do tego repozytorium, zgodnie z 6.5.
+7. **Dziennik pushów i jednolita wersja.** Każdy push Claude do repozytorium zostawia ślad w tym pliku:
+   - **Każdy push** (nawet drobna poprawka) = nowy wiersz w **sekcji 11 — Dziennik pushów**: data i godzina (czas polski), commit, pliki, jednozdaniowy opis. Wiersz powstaje w tej samej turze co push, żeby dziennik nie rozjechał się z historią gita.
+   - **Zmiana znacząca** (nowa funkcja, zmiana logiki, nowa zasada, nowy etap) = dodatkowo **podbicie numeru wersji**: nagłówek tego pliku, wpis w sekcji 10 (dziennik zmian) i **ta sama wersja we wszystkich pozostałych plikach**.
+   - **Wersja jest jedna dla całego projektu.** Nagłówek `Wersja projektu: X.Y` na początku każdego pliku `.gs` i `ia4-dashboard.html` oraz stała `PROJECT.INSTRUCTION_VERSION` w `Project.gs` muszą zawsze pokazywać tę samą liczbę co nagłówek tej instrukcji. Rozjazd którejkolwiek z nich to luka do naprawy, a nie drobiazg — arkusz PROJEKT pokazuje wersję z kodu i to po niej poznajesz, czy wklejony do Apps Script kod jest aktualny.
+   - `appsscript.json` jest wyjątkiem: format JSON nie dopuszcza komentarzy, a Apps Script odrzuca nieznane pola w manifeście, więc ten plik nie nosi numeru wersji.
+   - Poprawka niepodbijająca wersji (literówka, komentarz, formatowanie) trafia tylko do dziennika pushów.
 
 ---
 
@@ -58,7 +64,11 @@ Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która pr
 | `appsscript.json` | uprawnienia | zostaje |
 | `ia4-dashboard.html` | podgląd wykresów | zostaje |
 | `IA4_INSTRUKCJA.md` | ten plik | aktualizowany co etap |
-| folder `ia4-research/` (Mac) | kod Pythona | powstaje w Etapie 0 |
+| `ia4-research/ia4/config.py` | klucz serwisowy, granice skarbca i listy instrumentów czytane z Firestore | od Etapu 0B |
+| `ia4-research/ia4/sync.py` | Firestore → parquet, tylko przyrosty | od Etapu 0B |
+| `ia4-research/ia4/data.py` | wczytywanie danych z wymuszoną granicą skarbca | od Etapu 0B |
+| `ia4-research/verify.py` | sprawdzian kryterium 0.9 wobec audytu | od Etapu 0B |
+| `ia4-research/data/` | pamięć podręczna parquet — **poza gitem** | od Etapu 0B |
 
 ---
 
@@ -172,7 +182,11 @@ Etap dzielimy na dwie części:
    - spółki, które przestały się aktualizować.
 3. **Wydzielenie skarbca:** granica dat zapisana w `system/project` i w tym pliku.
 4. **Arkusz PROJEKT** (sekcja 7) + podsumowanie w STATS.
-5. **Środowisko Python:** folder `ia4-research/`, klucz serwisowy Firebase (przechowywany poza folderem, nigdy w repozytorium), skrypt synchronizacji danych do lokalnej pamięci podręcznej (pliki parquet, pobierane tylko przyrosty).
+5. **Środowisko Python** (0B): folder `ia4-research/` — instalacja i użycie opisane w `ia4-research/README.md`. Zawiera:
+   - klucz serwisowy Firebase w `~/.ia4/serviceAccount.json`, **poza repozytorium**; `config.py` odmawia startu, gdyby klucz znalazł się wewnątrz folderu projektu,
+   - `sync.py` — Firestore → parquet, tylko przyrosty; manifest pamięta ostatnią datę każdego instrumentu, więc codzienne uruchomienie pobiera kilkanaście świec zamiast 30 tysięcy,
+   - `data.py` — jedyna droga, którą dane trafiają do backtestu; **domyślnie zwraca wyłącznie okres badawczy**, a sięgnięcie po skarbiec wymaga jawnego `unlock_vault=True` i kończy się wyjątkiem bez niego (zasada 5.1 wymuszona kodem, nie pamięcią),
+   - `verify.py` — sprawdzian kryterium 0.9: tabela w układzie arkusza PROJEKT plus kontrole spójności (instrumenty bez danych, z historią zaczynającą się dopiero w skarbcu, poniżej 100 sesji, oznaczone przez `Proof.gs` jako niepełne lub nieudane).
 6. *(jeśli D3 = tak)* zbieranie SPY, QQQ, ^VIX: historia + na żywo. Musi ruszyć teraz, żeby dane były gotowe na Etap 3.
 
 **Wdrożenie 0A — kolejność:**
@@ -317,6 +331,9 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | L10 | Pełny audyt zużywa ~24 000 odczytów Firestore | przy częstym uruchamianiu grozi przekroczeniem limitu 50 000 dziennie | pełny audyt rzadko, na co dzień nocny |
 | L11 | Dane godzinowe VIX z Yahoo niezweryfikowane | możliwe luki albo przesunięte świece | pełny audyt pokaże; jeśli źle, VIX z tła wypada |
 | L12 | Kryteria etapów są w dwóch miejscach: ten plik i `STAGES` w `Project.gs` | mogą się rozjechać | przy każdej nowej wersji instrukcji aktualizujemy oba |
+| L13 | „Uzupełnij najnowsze” kasowało stan i przełączało tryb na `refresh`, a „Pobierz historię” po cichu go kontynuowała | 26 nowych spółek kontrolnych i tło rynku miały po 5–28 sesji zamiast ~500, bez ostrzeżenia w STATS (flaga „niepełna historia” nie działa w trybie `refresh`) | naprawione w 0.5: `startProof()` odrzuca stan spoza trybu `full`. Dane nie ucierpiały — Firestore tylko dopisuje |
+| L14 | 26 spółek kontrolnych i tło rynku nadal mają historię krótszą niż okres badawczy | nie nadają się do Etapów 1–3, bo cała ich historia leży w skarbcu albo po nim | pełne pobranie po wdrożeniu 0.5; `verify.py` wypisuje takie instrumenty osobno |
+| L15 | Historia z Yahoo sięga ~730 dni, więc nowo dodane instrumenty nigdy nie dogonią tych z 2024 r. | grupa kontrolna ma dwa pokolenia: ~506 sesji i tyle, ile zdążyło się zebrać | jeśli po pełnym pobraniu różnica zostanie, zapisać ją jako świadomy kompromis i uwzględniać przy wymogu 5.6 |
 
 ---
 
@@ -342,3 +359,17 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 0.2 | 2026-09-22 | Decyzje D1–D3 i D7. Daty skarbca. Tło rynku (SPY, QQQ, VIX) w zbieraniu danych. Etap 0 podzielony na 0A i 0B; kod 0A: `Project.gs`, zmiany w `Code.gs` i `Proof.gs`. Ograniczenie przenośności modelu PT w Etapie 3. Opis arkusza PROJEKT i audytu. Luki L9–L12. |
 | 0.3 | 2026-09-22 | Literówka WTM → WMT (Walmart). Grupa kontrolna poszerzona z 24 do 50 spółek, dobór pod różnorodność sektorową (9 sektorów). |
 | 0.4 | 2026-09-23 | Repozytorium GitHub (`github.com/miszyszka/IA4.git`, branch `main`) jako jedyny kanał, przez który Claude czyta i zapisuje kod — zasada 2.6. Dogonienie pliku do stanu z wersji 0.3 (poprawki WMT i listy 50 spółek nie trafiły wcześniej do repo). Doprecyzowanie w tabeli plików i w L6, że dotyczy 50 spółek kontrolnych, nie 24. |
+| 0.5 | 2026-09-23 | Zasada 2.7: dziennik pushów i jedna wersja we wszystkich plikach. Nagłówek `Wersja projektu` w każdym `.gs` i w dashboardzie, `PROJECT.INSTRUCTION_VERSION` podbite z 0.2 na 0.5. Naprawa `startProof()` (tryb `refresh` udawał pełne pobieranie — luka L13). Etap 0B: powstał folder `ia4-research/` z `config.py`, `sync.py`, `data.py`, `verify.py`. Skarbiec wymuszony programowo w `data.load()`. Luki L13–L15. |
+
+---
+
+## 11. Dziennik pushów
+
+Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie polskim.
+
+| Data i godzina | Commit | Pliki | Co |
+|---|---|---|---|
+| 2026-09-23 17:02 | `d72cf9a` | `IA4_INSTRUKCJA.md` | Wersja 0.4: zasada 2.6 (praca przez GitHub), dogonienie pliku do stanu 0.3 — poprawka WMT i lista 50 spółek kontrolnych. |
+| 2026-09-23 17:06 | `93e078b` | — | Scalenie z `appsscript.json` dodanym równolegle przez użytkownika. Bez zmian treści. |
+| 2026-09-23 17:11 | `8d198e1` | `Proof.gs` | Naprawa `startProof()`: zapisany stan z trybu `refresh` sprawiał, że „Pobierz historię” po cichu kontynuowało uzupełnianie 40 dni zamiast pełnej historii. Log przy cichym „brak danych” z Yahoo. |
+| 2026-09-23 17:21 | `73bc2ce` | `IA4_INSTRUKCJA.md`, `Code.gs`, `History.gs`, `Proof.gs`, `Project.gs`, `ia4-dashboard.html`, `ia4-research/*` | Wersja 0.5: zasada 2.7, jednolite nagłówki wersji, `INSTRUCTION_VERSION` 0.2 → 0.5, Etap 0B — folder `ia4-research/` (config, sync, data, verify, README), luki L13–L15. |
