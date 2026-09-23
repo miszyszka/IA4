@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 0.8
+**Wersja:** 0.9
 **Data:** 23 września 2026
 **Aktualny etap:** 🟨 Etap 0 — 0A wdrożone; trwa pełne pobieranie historii po naprawie L13, przegląd 53 luk i budowa środowiska Pythona (0B)
 
@@ -337,6 +337,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | L12 | Kryteria etapów są w dwóch miejscach: ten plik i `STAGES` w `Project.gs` | mogą się rozjechać | przy każdej nowej wersji instrukcji aktualizujemy oba |
 | L13 | „Uzupełnij najnowsze” kasowało stan i przełączało tryb na `refresh`, a „Pobierz historię” po cichu go kontynuowała | 26 nowych spółek kontrolnych i tło rynku miały po 5–28 sesji zamiast ~500, bez ostrzeżenia w STATS (flaga „niepełna historia” nie działa w trybie `refresh`) | naprawione w 0.5: `startProof()` odrzuca stan spoza trybu `full`. Dane nie ucierpiały — Firestore tylko dopisuje |
 | L14 | 26 spółek kontrolnych i tło rynku nadal mają historię krótszą niż okres badawczy | nie nadają się do Etapów 1–3, bo cała ich historia leży w skarbcu albo po nim | pełne pobranie po wdrożeniu 0.5; `verify.py` wypisuje takie instrumenty osobno |
+| L18 | Pełne pobranie historii z wolumenem to ~37 000 zapisów, a darmowy limit Firestore to 20 000 dziennie | pobranie musi rozłożyć się na 2–3 dni; w tym czasie część instrumentów ma wolumen, a część jeszcze nie | kod sam wraca do przerwanej spółki po 429; nie liczyć parametrów wolumenowych, dopóki `verify.py` nie pokaże wolumenu u wszystkich instrumentów |
 | L17 | `expectedSlots_` w dniu sesji skróconej liczy 7 świec zamiast 4 | automat po zamknięciu skróconej sesji dopytuje Yahoo aż do `POLL_AFTER_CLOSE_MIN` zamiast uznać dzień za kompletny; dane są poprawne, marnuje się tylko kilka zapytań | wykryte testem 2026-09-23, niegroźne; poprawić przy najbliższej sesji skróconej (27.11.2026), gdy da się to sprawdzić na żywo |
 | L15 | Historia z Yahoo sięga ~730 dni, więc nowo dodane instrumenty nigdy nie dogonią tych z 2024 r. | grupa kontrolna ma dwa pokolenia: ~506 sesji i tyle, ile zdążyło się zebrać | jeśli po pełnym pobraniu różnica zostanie, zapisać ją jako świadomy kompromis i uwzględniać przy wymogu 5.6 |
 
@@ -382,6 +383,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 0.6 | 2026-09-23 | Nowa funkcja `refetchProof()` i pozycja menu „Pobierz ponownie wybrane…” — naprawia skutek L13 bez pełnego resetu. Naprawa L13 potwierdzona: 19 instrumentów dociągnęło pełną historię. Luka L16 (^VIX ma więcej sesji niż reszta). |
 | 0.7 | 2026-09-23 | VIX usunięty z projektu (D8). Dashboard przepisany: nawigacja Start / Wykresy / Strategie / Inwestor, bez paska danych na dole. Automat łapie świecę w ciągu minuty od zamknięcia (ponowienia co 30 s) i sam łata luki w wolnych przebiegach. Katalog 84 sygnałów bazowych wyciągnięty z arkusza do `S1_KATALOG_BAZOWY.md`. D4–D6 przyjęte, nowe decyzje D8–D16 z krytycznego przeglądu. Luka L17. |
 | 0.8 | 2026-09-23 | Decyzje D9–D16 rozstrzygnięte. **Wolumen zbierany** (D12): pole `volume` w świecach głównych, tablica `v` w sesjach, kolumna `v` w parquet. Próg wykrywania splitu obniżony 30% → 15% (D11). Tryb szybki czeka tylko na 3 spółki główne (D15). Wolumen jako rodzina parametrów w Etapie 3, Etap 3 opisany jako ciągłe, wielodniowe przeszukiwanie z zapisem postępu. |
+| 0.9 | 2026-09-23 | Ponowne pobranie całej historii, żeby wszystkie świece miały wolumen (D12). `History.gs`: data startu 2026-09-02 → 2026-09-23 (trzy tygodnie wypadały z zakresu), tempo 2 dni co 10 min → 5 dni co 5 min. Opisany porządek i budżet zapisów przy pełnym pobraniu. Luka L18. |
 
 ---
 

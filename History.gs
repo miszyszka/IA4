@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — HISTORIA WSTECZ  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.8 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.9 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Co kilka minut pobiera świece 1h z kolejnych dni sesji dla AAPL, TSLA i NVDA
  *  i zapisuje je w Firestore. Każde kolejne uruchomienie cofa się o jeden
@@ -25,9 +25,9 @@
  */
 
 const HISTORY = {
-  START_DATE: '2026-09-02',  // pierwszy dzień do pobrania (potem w tył)
-  EVERY_MINUTES: 10,         // co ile minut kolejna porcja (dozwolone: 1, 5, 10, 15, 30)
-  DAYS_PER_RUN: 2,           // ile dni sesyjnych na jedno uruchomienie
+  START_DATE: '2026-09-23',  // pierwszy dzień do pobrania (potem w tył)
+  EVERY_MINUTES: 5,          // co ile minut kolejna porcja (dozwolone: 1, 5, 10, 15, 30)
+  DAYS_PER_RUN: 5,           // ile dni sesyjnych na jedno uruchomienie
   MAX_RETRIES: 3,            // ile razy ponawiać dzień z niepełnymi danymi, zanim go przepuścimy
   YAHOO_MAX_AGE_DAYS: 729,   // granica Yahoo dla interwału 1h (~730 dni wstecz)
   STATS_COL: 10,             // blok w STATS zaczyna się w kolumnie J
