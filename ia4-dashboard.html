@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IA 4 — wykres świec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root {
+    --bg: #121C27;
+    --panel: #16222F;
+    --raise: #1D2C3D;
+    --line: #26384B;
+    --grid: #1A2735;
+    --text: #DCE4EC;
+    --muted: #8497AC;
+    --faint: #56697F;
+    --up: #35C28E;
+    --down: #F0605A;
+    --accent: #E8B04B;
+    --font: 'Barlow Semi Condensed', 'Barlow', 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    overflow: hidden;
+  }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .up { color: var(--up); }
+  .down { color: var(--down); }
+
+  /* Pasek górny: lista obserwowanych */
+  .bar {
+    display: flex;
+    align-items: stretch;
+    min-height: 58px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    font-size: 19px;
+    font-weight: 600;
+    border-right: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .tickers { display: flex; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .ticker {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto auto;
+    column-gap: 18px;
+    align-content: center;
+    min-width: 188px;
+    padding: 8px 18px;
+    background: none;
+    border: 0;
+    border-right: 1px solid var(--line);
+    text-align: left;
+    cursor: pointer;
+  }
+  .ticker:hover { background: var(--raise); }
+  .ticker[aria-selected="true"] { background: var(--raise); }
+  .ticker[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 2px;
+    background: var(--accent);
+  }
+  .ticker .sym { font-size: 18px; font-weight: 600; }
+  .ticker .px { font-size: 18px; justify-self: end; }
+  .ticker .nm { font-size: 13px; color: var(--muted); }
+  .ticker .ch { font-size: 13px; justify-self: end; }
+  .conn {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 20px;
+    font-size: 14px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+  .conn[data-state="live"] .dot { background: var(--up); box-shadow: 0 0 0 0 rgba(53,194,142,.6); animation: pulse 2.4s infinite; }
+  .conn[data-state="error"] .dot { background: var(--down); }
+  .conn[data-state="demo"] .dot { background: var(--accent); }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 7px rgba(53,194,142,0); } 100% { box-shadow: 0 0 0 0 rgba(53,194,142,0); } }
+
+  /* Pulpit */
+  .desk { display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: minmax(0, 1fr); min-height: 0; min-width: 0; }
+  .instrument {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px 36px;
+    padding: 18px 20px 14px;
+  }
+  .ident h1 { margin: 0; font-size: 36px; font-weight: 600; line-height: 1; }
+  .ident .name { display: block; margin-top: 4px; font-size: 15px; color: var(--muted); }
+  .quote { display: flex; align-items: baseline; gap: 12px; }
+  .quote .price { font-size: 36px; font-weight: 500; line-height: 1; }
+  .quote .chg { font-size: 18px; }
+  .meta { font-size: 14px; color: var(--muted); padding-bottom: 3px; }
+  .ranges {
+    margin-left: auto;
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .ranges button {
+    padding: 7px 15px;
+    background: none;
+    border: 0;
+    border-right: 1px solid var(--line);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .ranges button:last-child { border-right: 0; }
+  .ranges button:hover { background: var(--raise); }
+  .ranges button[aria-pressed="true"] { background: var(--accent); color: #1E1606; font-weight: 600; }
+
+  .chart-wrap {
+    position: relative;
+    min-height: 300px;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  #chart { position: absolute; inset: 0; }
+  .legend {
+    position: absolute;
+    top: 10px; left: 14px;
+    z-index: 3;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    padding: 5px 9px;
+    font-size: 14px;
+    background: rgba(18, 28, 39, .78);
+    border-radius: 4px;
+    pointer-events: none;
+  }
+  .legend span b { font-weight: 500; color: var(--muted); margin-right: 5px; }
+  .legend .when { color: var(--text); }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(18, 28, 39, .9);
+    text-align: center;
+  }
+  .overlay[hidden] { display: none; }
+  .overlay h2 { margin: 0 0 8px; font-size: 22px; font-weight: 600; }
+  .overlay p { max-width: 56ch; margin: 0 auto; line-height: 1.5; color: var(--muted); }
+  .overlay code { color: var(--accent); font-family: inherit; }
+
+  /* Pasek statystyk */
+  .strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 30px;
+    padding: 11px 20px;
+    background: var(--panel);
+    font-size: 14px;
+  }
+  .strip dl { display: flex; flex-wrap: wrap; gap: 6px 26px; margin: 0; }
+  .strip .item { display: flex; gap: 7px; }
+  .strip dt { color: var(--muted); }
+  .strip dd { margin: 0; }
+  .sys { margin-left: auto; display: flex; flex-wrap: wrap; gap: 4px 22px; color: var(--muted); }
+
+  @media (max-width: 760px) {
+    .brand { display: none; }
+    .ticker { flex: 1 1 0; min-width: 0; padding: 8px 10px; column-gap: 8px; }
+    .ticker .nm { display: none; }
+    .ticker .sym, .ticker .px { font-size: 16px; }
+    .ticker .ch { grid-column: 2; }
+    .conn { padding: 0 12px; }
+    .conn .txt { display: none; }
+    .instrument { gap: 10px 20px; padding: 14px; }
+    .ident h1, .quote .price { font-size: 27px; }
+    .ranges { margin-left: 0; width: 100%; }
+    .ranges button { flex: 1; padding: 8px 4px; }
+    .strip { padding: 10px 14px; }
+    .sys { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .conn[data-state="live"] .dot { animation: none; }
+  }
+</style>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">IA 4</div>
+    <nav class="tickers" id="tickers" role="tablist" aria-label="Spółki"></nav>
+    <div class="conn" id="conn" data-state="idle" role="status">
+      <span class="dot" aria-hidden="true"></span><span class="txt" id="connText">Łączenie z bazą…</span>
+    </div>
+  </header>
+
+  <main class="desk">
+    <section class="instrument" aria-live="polite">
+      <div class="ident">
+        <h1 id="sym">AAPL</h1>
+        <span class="name" id="name">Apple Inc.</span>
+      </div>
+      <div class="quote">
+        <span class="price" id="price">—</span>
+        <span class="chg" id="chg"></span>
+      </div>
+      <div class="meta" id="meta"></div>
+      <div class="ranges" id="ranges" role="group" aria-label="Zakres wykresu"></div>
+    </section>
+
+    <div class="chart-wrap" id="panel" role="tabpanel">
+      <div class="legend" id="legend" aria-hidden="true"></div>
+      <div id="chart"></div>
+      <div class="overlay" id="overlay" hidden></div>
+    </div>
+
+    <footer class="strip">
+      <dl id="stats"></dl>
+      <div class="sys" id="sys"></div>
+    </footer>
+  </main>
+
+<script type="module">
+// ============================================================================
+//  KONFIGURACJA
+// ============================================================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyA93n-tq5hR5OPooVMDbNzCi3-i7_3QmfU",
+  authDomain: "ia-4-ff7af.firebaseapp.com",
+  projectId: "ia-4-ff7af",
+  storageBucket: "ia-4-ff7af.firebasestorage.app",
+  messagingSenderId: "994881822983",
+  appId: "1:994881822983:web:255c54c41a1f63ae0ba5a2",
+};
+const FIREBASE_SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
+
+const SYMBOLS = [
+  { s: "AAPL", name: "Apple Inc." },
+  { s: "TSLA", name: "Tesla, Inc." },
+  { s: "NVDA", name: "NVIDIA Corporation" },
+];
+const RANGES = [
+  { id: "7d", label: "7 dni", days: 7 },
+  { id: "14d", label: "14 dni", days: 14 },
+  { id: "30d", label: "30 dni", days: 30 },
+  { id: "q", label: "Kwartał", months: 3 },
+  { id: "all", label: "Wszystko" },
+];
+const TZ = "Europe/Warsaw";
+const DEMO = location.hash === "#demo";   // otwórz plik z #demo, żeby zobaczyć wykres na danych losowych
+const CACHE_VERSION = "v1";
+
+// ============================================================================
+//  STAN
+// ============================================================================
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* brak miejsca lub zablokowane */ } },
+};
+
+const state = {
+  active: SYMBOLS.some(x => x.s === store.get("ia4.symbol")) ? store.get("ia4.symbol") : "AAPL",
+  range: RANGES.some(r => r.id === store.get("ia4.range")) ? store.get("ia4.range") : "7d",
+  bars: {}, sorted: {}, sync: {}, loaded: {},
+  error: null, libError: false, sys: {},
+};
+SYMBOLS.forEach(({ s }) => { state.bars[s] = new Map(); state.sync[s] = 0; state.loaded[s] = false; });
+
+const css = getComputedStyle(document.documentElement);
+const cssVar = (n) => css.getPropertyValue(n).trim();
+
+const fmt = {
+  time: new Intl.DateTimeFormat("pl-PL", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }),
+  day: new Intl.DateTimeFormat("pl-PL", { timeZone: TZ, day: "numeric", month: "short" }),
+  month: new Intl.DateTimeFormat("pl-PL", { timeZone: TZ, month: "short", year: "numeric" }),
+  year: new Intl.DateTimeFormat("pl-PL", { timeZone: TZ, year: "numeric" }),
+  full: new Intl.DateTimeFormat("pl-PL", { timeZone: TZ, weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+  dayLong: new Intl.DateTimeFormat("pl-PL", { timeZone: TZ, weekday: "short", day: "numeric", month: "short", year: "numeric" }),
+  stamp: new Intl.DateTimeFormat("pl-PL", { timeZone: TZ, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+};
+const price = (v) => v == null ? "—" : v.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const signed = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + price(Math.abs(v));
+const pct = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
+const dir = (v) => v > 0 ? "up" : v < 0 ? "down" : "";
+const toDate = (sec) => new Date(sec * 1000);
+
+// ============================================================================
+//  DANE
+// ============================================================================
+function sortedBars(s) {
+  if (!state.sorted[s]) state.sorted[s] = [...state.bars[s].values()].sort((a, b) => a.time - b.time);
+  return state.sorted[s];
+}
+
+/** Ostatnia świeca i zamknięcie poprzedniej sesji (do liczenia zmiany dziennej). */
+function lastQuote(s) {
+  const arr = sortedBars(s);
+  if (!arr.length) return null;
+  const last = arr[arr.length - 1];
+  let prevClose = null;
+  for (let i = arr.length - 2; i >= 0; i--) {
+    if (arr[i].date !== last.date) { prevClose = arr[i].close; break; }
+  }
+  const change = prevClose == null ? null : last.close - prevClose;
+  return { last, change, changePct: prevClose ? change / prevClose * 100 : null };
+}
+
+function shiftDate(ymd, { days = 0, months = 0 }) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1 + months, d + days)).toISOString().slice(0, 10);
+}
+
+function loadCache(s) {
+  const raw = store.get(`ia4.${CACHE_VERSION}.${s}`);
+  if (!raw) return;
+  try {
+    const c = JSON.parse(raw);
+    state.sync[s] = c.sync || 0;
+    c.rows.forEach(([id, time, open, high, low, close, date, slot]) => {
+      state.bars[s].set(id, { time, open, high, low, close, date, slot });
+    });
+  } catch { /* uszkodzony cache — pobierzemy wszystko od nowa */ }
+}
+
+const saveTimers = {};
+function saveCache(s) {
+  clearTimeout(saveTimers[s]);
+  saveTimers[s] = setTimeout(() => {
+    const rows = [...state.bars[s].entries()].map(([id, b]) => [id, b.time, b.open, b.high, b.low, b.close, b.date, b.slot]);
+    store.set(`ia4.${CACHE_VERSION}.${s}`, JSON.stringify({ sync: state.sync[s], rows }));
+  }, 800);
+}
+
+function dataChanged(s) {
+  state.sorted[s] = null;
+  renderTicker(s);
+  if (s === state.active) renderActive();
+}
+
+// ============================================================================
+//  FIRESTORE — nasłuch na żywo, pobierane są tylko nowe/zmienione świece
+// ============================================================================
+async function initFirebase() {
+  const [{ initializeApp }, fs] = await Promise.all([
+    import(FIREBASE_SDK + "firebase-app.js"),
+    import(FIREBASE_SDK + "firebase-firestore.js"),
+  ]);
+  const db = fs.getFirestore(initializeApp(FIREBASE_CONFIG));
+
+  SYMBOLS.forEach(({ s }) => {
+    const q = fs.query(
+      fs.collection(db, "stocks", s, "candles"),
+      fs.where("updatedAt", ">", fs.Timestamp.fromMillis(state.sync[s])),
+    );
+    fs.onSnapshot(q, (snap) => {
+      let maxSync = state.sync[s];
+      let changed = false;
+      snap.docChanges().forEach((ch) => {
+        if (ch.type === "removed") return;
+        const d = ch.doc.data();
+        const t = d.candleTime && d.candleTime.seconds;
+        if (!t || typeof d.close !== "number") return;
+        state.bars[s].set(ch.doc.id, {
+          time: t, open: d.open, high: d.high, low: d.low, close: d.close, date: d.date, slot: d.slot,
+        });
+        const u = d.updatedAt && d.updatedAt.toMillis ? d.updatedAt.toMillis() : 0;
+        if (u > maxSync) maxSync = u;
+        changed = true;
+      });
+      state.sync[s] = maxSync;
+      state.error = null;
+      const firstLoad = !state.loaded[s];
+      state.loaded[s] = true;
+      setConn("live", "Na żywo");
+      if (changed) saveCache(s);
+      if (changed || firstLoad) dataChanged(s);
+    }, onDbError);
+  });
+
+  fs.onSnapshot(fs.doc(db, "system", "status"), (d) => { state.sys.status = d.data(); renderSys(); }, () => {});
+  fs.onSnapshot(fs.doc(db, "system", "history"), (d) => { state.sys.history = d.data(); renderSys(); }, () => {});
+}
+
+function onDbError(err) {
+  console.error(err);
+  state.error = err;
+  setConn("error", "Brak połączenia z bazą");
+  renderOverlay();
+}
+
+// ============================================================================
+//  WYKRES
+// ============================================================================
+let chart = null;
+let series = null;
+let rangeLines = [];
+let timeIndex = new Map();
+
+function tickMarkFormatter(time, type) {
+  const d = toDate(time);
+  if (type === 0) return fmt.year.format(d);
+  if (type === 1) return fmt.month.format(d);
+  if (type === 2) return fmt.day.format(d);
+  return fmt.time.format(d);
+}
+
+function initChart() {
+  if (!window.LightweightCharts) { state.libError = true; return; }
+  const LWC = window.LightweightCharts;
+  chart = LWC.createChart($("chart"), {
+    autoSize: true,
+    layout: {
+      background: { type: LWC.ColorType.Solid, color: cssVar("--bg") },
+      textColor: cssVar("--muted"),
+      fontFamily: cssVar("--font"),
+      fontSize: 13,
+    },
+    grid: { vertLines: { color: cssVar("--grid") }, horzLines: { color: cssVar("--grid") } },
+    rightPriceScale: { borderColor: cssVar("--line"), scaleMargins: { top: 0.14, bottom: 0.08 } },
+    timeScale: {
+      borderColor: cssVar("--line"),
+      timeVisible: true,
+      secondsVisible: false,
+      rightOffset: 4,
+      barSpacing: 10,
+      minBarSpacing: 1,
+      tickMarkFormatter,
+    },
+    crosshair: {
+      mode: LWC.CrosshairMode.Normal,
+      vertLine: { color: cssVar("--faint"), labelBackgroundColor: cssVar("--raise") },
+      horzLine: { color: cssVar("--faint"), labelBackgroundColor: cssVar("--raise") },
+    },
+    localization: {
+      locale: "pl-PL",
+      timeFormatter: (t) => fmt.full.format(toDate(t)),
+      priceFormatter: (p) => p.toFixed(2).replace(".", ","),
+    },
+    watermark: {
+      visible: true,
+      text: state.active,
+      color: "rgba(132, 151, 172, 0.07)",
+      fontSize: 140,
+      fontFamily: cssVar("--font"),
+      fontStyle: "600",
+      horzAlign: "center",
+      vertAlign: "center",
+    },
+  });
+  series = chart.addCandlestickSeries({
+    upColor: cssVar("--up"),
+    downColor: cssVar("--down"),
+    borderUpColor: cssVar("--up"),
+    borderDownColor: cssVar("--down"),
+    wickUpColor: cssVar("--up"),
+    wickDownColor: cssVar("--down"),
+    priceLineColor: cssVar("--accent"),
+    priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+  });
+  chart.subscribeCrosshairMove(onCrosshair);
+}
+
+function renderActive() {
+  const s = state.active;
+  const info = SYMBOLS.find(x => x.s === s);
+  const arr = sortedBars(s);
+  $("sym").textContent = s;
+  $("name").textContent = info.name;
+  document.title = `${s} — IA 4`;
+
+  if (chart) {
+    chart.applyOptions({ watermark: { text: s } });
+    timeIndex = new Map(arr.map((b, i) => [b.time, i]));
+    series.setData(arr.map(({ time, open, high, low, close }) => ({ time, open, high, low, close })));
+  }
+  renderHeader();
+  applyRange();
+  renderLegend(null);
+  renderOverlay();
+}
+
+function applyRange() {
+  const arr = sortedBars(state.active);
+  if (series) rangeLines.forEach(l => series.removePriceLine(l));
+  rangeLines = [];
+  if (!arr.length) { renderStats([]); return; }
+
+  const r = RANGES.find(x => x.id === state.range);
+  let from = 0;
+  if (r.days || r.months) {
+    const last = arr[arr.length - 1].date;
+    const cutoff = r.days ? shiftDate(last, { days: -(r.days - 1) }) : shiftDate(last, { months: -r.months, days: 1 });
+    from = Math.max(0, arr.findIndex(b => b.date >= cutoff));
+  }
+  const slice = arr.slice(from);
+
+  if (chart) {
+    if (r.id === "all") chart.timeScale().fitContent();
+    else chart.timeScale().setVisibleLogicalRange({ from: from - 0.5, to: arr.length - 1 + 4 });
+
+    const hi = Math.max(...slice.map(b => b.high));
+    const lo = Math.min(...slice.map(b => b.low));
+    const LWC = window.LightweightCharts;
+    const line = (p, title) => series.createPriceLine({
+      price: p, title, color: cssVar("--faint"), lineWidth: 1,
+      lineStyle: LWC.LineStyle.Dashed, axisLabelVisible: true,
+    });
+    rangeLines = [line(hi, "maks."), line(lo, "min.")];
+  }
+  renderStats(slice);
+}
+
+// ============================================================================
+//  INTERFEJS
+// ============================================================================
+function buildUI() {
+  const tabs = $("tickers");
+  SYMBOLS.forEach(({ s, name }, i) => {
+    const b = document.createElement("button");
+    b.className = "ticker";
+    b.id = `tab-${s}`;
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-controls", "panel");
+    b.dataset.symbol = s;
+    b.innerHTML = `<span class="sym">${s}</span><span class="px">—</span><span class="nm">${name}</span><span class="ch"></span>`;
+    b.addEventListener("click", () => setActive(s));
+    b.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const next = SYMBOLS[(i + (e.key === "ArrowRight" ? 1 : SYMBOLS.length - 1)) % SYMBOLS.length].s;
+      setActive(next);
+      $(`tab-${next}`).focus();
+    });
+    tabs.appendChild(b);
+  });
+
+  const ranges = $("ranges");
+  RANGES.forEach((r) => {
+    const b = document.createElement("button");
+    b.textContent = r.label;
+    b.dataset.range = r.id;
+    b.addEventListener("click", () => setRange(r.id));
+    ranges.appendChild(b);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea") || e.ctrlKey || e.metaKey || e.altKey) return;
+    const n = Number(e.key);
+    if (n >= 1 && n <= SYMBOLS.length) setActive(SYMBOLS[n - 1].s);
+  });
+  syncControls();
+}
+
+function syncControls() {
+  document.querySelectorAll(".ticker").forEach((b) => {
+    const on = b.dataset.symbol === state.active;
+    b.setAttribute("aria-selected", on);
+    b.tabIndex = on ? 0 : -1;
+  });
+  $("panel").setAttribute("aria-labelledby", `tab-${state.active}`);
+  document.querySelectorAll("#ranges button").forEach((b) => {
+    b.setAttribute("aria-pressed", b.dataset.range === state.range);
+  });
+}
+
+function setActive(s) {
+  if (s === state.active) return;
+  state.active = s;
+  store.set("ia4.symbol", s);
+  syncControls();
+  renderActive();
+}
+
+function setRange(id) {
+  state.range = id;
+  store.set("ia4.range", id);
+  syncControls();
+  applyRange();
+}
+
+function renderTicker(s) {
+  const b = $(`tab-${s}`);
+  if (!b) return;
+  const q = lastQuote(s);
+  b.querySelector(".px").textContent = q ? price(q.last.close) : "—";
+  const ch = b.querySelector(".ch");
+  ch.textContent = q && q.changePct != null ? pct(q.changePct) : "";
+  ch.className = "ch " + (q ? dir(q.change) : "");
+}
+
+function candleSpan(b) {
+  const end = b.time + (b.slot === 7 ? 1800 : 3600);
+  return `${fmt.time.format(toDate(b.time))}–${fmt.time.format(toDate(end))}`;
+}
+
+function renderHeader() {
+  const q = lastQuote(state.active);
+  $("price").textContent = q ? price(q.last.close) : "—";
+  const chg = $("chg");
+  if (q && q.change != null) {
+    chg.textContent = `${signed(q.change)} (${pct(q.changePct)})`;
+    chg.className = "chg " + dir(q.change);
+  } else {
+    chg.textContent = "";
+  }
+  $("meta").textContent = q
+    ? `Ostatnia świeca: ${fmt.dayLong.format(toDate(q.last.time))}, ${candleSpan(q.last)}`
+    : "";
+}
+
+function onCrosshair(param) {
+  const i = param && param.time != null ? timeIndex.get(param.time) : undefined;
+  renderLegend(i);
+}
+
+function renderLegend(i) {
+  const arr = sortedBars(state.active);
+  const el = $("legend");
+  if (!arr.length) { el.innerHTML = ""; return; }
+  const idx = i == null ? arr.length - 1 : i;
+  const b = arr[idx];
+  const change = b.close - b.open;
+  const cls = dir(change);
+  el.innerHTML =
+    `<span class="when">${fmt.dayLong.format(toDate(b.time))}, ${candleSpan(b)}</span>` +
+    `<span><b>O</b><em class="${cls}">${price(b.open)}</em></span>` +
+    `<span><b>H</b><em class="${cls}">${price(b.high)}</em></span>` +
+    `<span><b>L</b><em class="${cls}">${price(b.low)}</em></span>` +
+    `<span><b>C</b><em class="${cls}">${price(b.close)}</em></span>` +
+    `<span class="${cls}">${signed(change)} (${pct(change / b.open * 100)})</span>`;
+  el.querySelectorAll("em").forEach(e => { e.style.fontStyle = "normal"; });
+}
+
+function renderStats(slice) {
+  const el = $("stats");
+  if (!slice.length) { el.innerHTML = ""; return; }
+  const first = slice[0];
+  const last = slice[slice.length - 1];
+  const hi = Math.max(...slice.map(b => b.high));
+  const lo = Math.min(...slice.map(b => b.low));
+  const change = last.close - first.open;
+  const sessions = new Set(slice.map(b => b.date)).size;
+  const range = RANGES.find(r => r.id === state.range);
+  const item = (dt, dd, cls = "") => `<div class="item"><dt>${dt}</dt><dd class="${cls}">${dd}</dd></div>`;
+  el.innerHTML =
+    item(range.label, `${fmt.day.format(toDate(first.time))} – ${fmt.day.format(toDate(last.time))}`) +
+    item("Otwarcie", price(first.open)) +
+    item("Maks.", price(hi)) +
+    item("Min.", price(lo)) +
+    item("Zamknięcie", price(last.close)) +
+    item("Zmiana", `${signed(change)} (${pct(change / first.open * 100)})`, dir(change)) +
+    item("Sesje", sessions) +
+    item("Świece", slice.length);
+}
+
+function renderSys() {
+  const parts = [];
+  const st = state.sys.status;
+  if (st && st.lastWrite) parts.push(`Automat: ostatni zapis ${fmt.stamp.format(st.lastWrite.toDate())}`);
+  const h = state.sys.history;
+  if (h) {
+    if (h.done) parts.push(`Historia zakończona, najstarsza sesja ${h.lastDate}`);
+    else if (h.lastDate) parts.push(`Historia: pobrano wstecz do ${h.lastDate}`);
+  }
+  $("sys").innerHTML = parts.map(p => `<span>${p}</span>`).join("");
+}
+
+function setConn(stateName, text) {
+  $("conn").dataset.state = stateName;
+  $("connText").textContent = text;
+}
+
+function renderOverlay() {
+  const el = $("overlay");
+  const s = state.active;
+  const has = sortedBars(s).length > 0;
+  let html = "";
+
+  if (state.libError) {
+    html = `<h2>Nie udało się wczytać biblioteki wykresów</h2>
+      <p>Dashboard potrzebuje internetu, żeby pobrać bibliotekę wykresów. Sprawdź połączenie i odśwież stronę.</p>`;
+  } else if (!has && state.error) {
+    const code = state.error.code || "";
+    if (code === "permission-denied") {
+      html = `<h2>Baza odrzuciła odczyt</h2>
+        <p>W konsoli Firebase otwórz Firestore → Reguły, ustaw <code>allow read: if true;</code> i kliknij Opublikuj. Potem odśwież stronę.</p>`;
+    } else {
+      html = `<h2>Brak połączenia z Firestore</h2>
+        <p>${state.error.message || state.error}. Sprawdź internet i odśwież stronę. Jeśli plik otwarty z dysku nie łączy się z bazą, uruchom go przez lokalny serwer (instrukcja w odpowiedzi).</p>`;
+    }
+  } else if (!has && !state.loaded[s]) {
+    html = `<h2>Pobieram świece ${s}…</h2>
+      <p>Pierwsze wczytanie całej historii trwa kilka sekund. Kolejne otwarcia korzystają z danych zapisanych w przeglądarce.</p>`;
+  } else if (!has) {
+    html = `<h2>Brak świec ${s} w bazie</h2>
+      <p>W arkuszu wybierz IA 4 → Pobierz teraz albo uruchom Historię wstecz. Nowe świece pojawią się tutaj same.</p>`;
+  }
+  el.innerHTML = html;
+  el.hidden = !html;
+}
+
+// ============================================================================
+//  TRYB DEMO (plik otwarty z #demo na końcu adresu)
+// ============================================================================
+function loadDemo() {
+  const start = [228, 345, 124];
+  const now = new Date();
+  SYMBOLS.forEach(({ s }, k) => {
+    let p = start[k];
+    for (let back = 260; back >= 0; back--) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - back));
+      const wd = d.getUTCDay();
+      if (wd === 0 || wd === 6) continue;
+      const date = d.toISOString().slice(0, 10);
+      const base = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 13, 30) / 1000;
+      p *= 1 + (Math.random() - 0.5) * 0.02; // luka między sesjami
+      for (let slot = 1; slot <= 7; slot++) {
+        const open = +p.toFixed(2);
+        const close = +(open * (1 + (Math.random() - 0.49) * 0.014)).toFixed(2);
+        const high = +(Math.max(open, close) * (1 + Math.random() * 0.005)).toFixed(2);
+        const low = +(Math.min(open, close) * (1 - Math.random() * 0.005)).toFixed(2);
+        state.bars[s].set(`${date}_${slot}`, { time: base + (slot - 1) * 3600, open, high, low, close, date, slot });
+        p = close;
+      }
+    }
+    state.loaded[s] = true;
+    state.sorted[s] = null;
+  });
+  state.sys.status = { lastWrite: { toDate: () => new Date() } };
+}
+
+// ============================================================================
+//  START
+// ============================================================================
+buildUI();
+initChart();
+
+if (DEMO) {
+  loadDemo();
+  setConn("demo", "Tryb demo, dane losowe");
+} else {
+  SYMBOLS.forEach(({ s }) => {
+    loadCache(s);
+    if (state.bars[s].size) state.loaded[s] = true; // pokaż od razu dane z przeglądarki
+  });
+  initFirebase().catch(onDbError);
+}
+SYMBOLS.forEach(({ s }) => renderTicker(s));
+renderSys();
+renderActive();
+</script>
+</body>
+</html>
