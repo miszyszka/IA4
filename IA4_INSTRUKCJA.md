@@ -1,7 +1,7 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 0.9
-**Data:** 23 września 2026
+**Wersja:** 1.0
+**Data:** 24 września 2026
 **Aktualny etap:** 🟨 Etap 0 — 0A wdrożone; trwa pełne pobieranie historii po naprawie L13, przegląd 53 luk i budowa środowiska Pythona (0B)
 
 Ten plik jest jedynym źródłem prawdy o tym, jak pracujemy nad projektem. Stan bieżący (który etap, co zrobione, jakie luki) jest widoczny na żywo w arkuszu **PROJEKT** i w podsumowaniu w **STATS**. Jeśli plik i arkusz się rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba zapisać jako lukę.
@@ -384,6 +384,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 0.7 | 2026-09-23 | VIX usunięty z projektu (D8). Dashboard przepisany: nawigacja Start / Wykresy / Strategie / Inwestor, bez paska danych na dole. Automat łapie świecę w ciągu minuty od zamknięcia (ponowienia co 30 s) i sam łata luki w wolnych przebiegach. Katalog 84 sygnałów bazowych wyciągnięty z arkusza do `S1_KATALOG_BAZOWY.md`. D4–D6 przyjęte, nowe decyzje D8–D16 z krytycznego przeglądu. Luka L17. |
 | 0.8 | 2026-09-23 | Decyzje D9–D16 rozstrzygnięte. **Wolumen zbierany** (D12): pole `volume` w świecach głównych, tablica `v` w sesjach, kolumna `v` w parquet. Próg wykrywania splitu obniżony 30% → 15% (D11). Tryb szybki czeka tylko na 3 spółki główne (D15). Wolumen jako rodzina parametrów w Etapie 3, Etap 3 opisany jako ciągłe, wielodniowe przeszukiwanie z zapisem postępu. |
 | 0.9 | 2026-09-23 | Ponowne pobranie całej historii, żeby wszystkie świece miały wolumen (D12). `History.gs`: data startu 2026-09-02 → 2026-09-23 (trzy tygodnie wypadały z zakresu), tempo 2 dni co 10 min → 5 dni co 5 min. Opisany porządek i budżet zapisów przy pełnym pobraniu. Luka L18. |
+| 1.0 | 2026-09-24 | **Baza wyczyszczona i pobierana od zera**, żeby cała historia miała wolumen (D12). Nowa funkcja `resetAfterWipe()` i pozycja menu — zeruje stan pobierania po ręcznym skasowaniu bazy w konsoli Firebase (bez tego automat uznaje, że wszystko już ma). Okres 2026-09-09 – 2026-09-23 świadomie porzucony: zostanie pobrany razem z resztą historii. |
 
 ---
 

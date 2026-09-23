@@ -1,6 +1,6 @@
 """
 IA 4 — synchronizacja Firestore → lokalny parquet.
-Wersja projektu: 0.9 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.0 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Po co w ogóle kopia lokalna: backtest w Etapie 2 czyta te same świece dziesiątki
 tysięcy razy (24 000 strategii). Czytanie ich za każdym razem z Firestore

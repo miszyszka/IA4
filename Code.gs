@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.9 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.0 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
@@ -149,7 +149,8 @@ function onOpen() {
       .addItem('🔍 Pełny audyt danych', 'runFullAudit')
       .addItem('✅ Zamknij bieżący etap', 'closeCurrentStage')
       .addSeparator()
-      .addItem('🧹 Etap 0: usuń stare analizy', 'etap0Cleanup'))
+      .addItem('🧹 Etap 0: usuń stare analizy', 'etap0Cleanup')
+      .addItem('⚠️ Wyzeruj stan po wyczyszczeniu bazy', 'resetAfterWipe'))
     .addSeparator()
     .addItem('⚙️ Konfiguruj i włącz automat', 'setup')
     .addItem('▶️ Uzupełnij braki (ostatni miesiąc)', 'runNow')

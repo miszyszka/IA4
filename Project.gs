@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.9 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.0 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.9',
+  INSTRUCTION_VERSION: '1.0',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -160,6 +160,56 @@ function etap0Cleanup() {
   const left = projOldCodeLeft_();
   alert_(`Usunięto arkuszy: ${removed.length}, triggerów: ${trig}.` +
     (left.length ? `\n\nW edytorze skryptów zostały jeszcze pliki ze starymi funkcjami: ${left.join(', ')}. Usuń je ręcznie (trzy kropki przy nazwie pliku → Usuń).` : '\n\nStarych plików kodu już nie ma.'));
+}
+
+/**
+ * ZEROWANIE STANU PO WYCZYSZCZENIU FIRESTORE
+ *
+ * Skrypt pamięta we właściwościach projektu, co już zapisał do bazy. Gdy baza
+ * zostanie skasowana ręcznie w konsoli Firebase, ta pamięć zostaje i automat
+ * uznaje, że wszystko ma — czyli nie pobiera niczego, a historia nigdy nie
+ * rusza. Ta funkcja czyści wszystkie stany pobierania, żeby projekt zaczął od
+ * zera razem z pustą bazą.
+ *
+ * NIE kasuje niczego w Firestore — od tego jest konsola Firebase. Nie rusza
+ * też stanu projektu (etap, decyzje, akceptacje luk), bo to zapis Twoich
+ * ustaleń, a nie danych giełdowych.
+ */
+function resetAfterWipe() {
+  const props = PropertiesService.getScriptProperties();
+  const keys = ['LIVE_STATE', 'HISTORY_STATE', 'PROOF_STATE', 'AUDIT_STATE',
+                'SESSION', 'LAST_WRITE', 'COUNTERS', 'FS_STATUS',
+                'LAST_ERROR', 'ERR_SEEN', 'PATCH_LAST_AT'];
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const ok = ui.alert('Zerowanie stanu po wyczyszczeniu bazy',
+      'Użyj tego TYLKO po skasowaniu danych w konsoli Firebase.\n\n' +
+      'Wyzeruje postęp pobierania (bieżący automat, historia spółek głównych, ' +
+      'spółki kontrolne, audyt), żeby wszystko zaczęło się od nowa.\n\n' +
+      'Stan projektu — etap, decyzje, zaakceptowane luki — zostaje nietknięty.\n\n' +
+      'Kontynuować?', ui.ButtonSet.YES_NO);
+    if (ok !== ui.Button.YES) return;
+  } catch (e) { /* uruchomione z edytora */ }
+
+  // Triggery pobierania zatrzymujemy, żeby nie ruszyły w połowie czyszczenia.
+  let stopped = 0;
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (['runProof', 'runHistory', 'auditStep'].indexOf(t.getHandlerFunction()) >= 0) {
+      ScriptApp.deleteTrigger(t); stopped++;
+    }
+  });
+  keys.forEach(k => props.deleteProperty(k));
+
+  startRun_();
+  log_('INFO', 'PROJEKT', `Stan wyzerowany po wyczyszczeniu bazy (usunięto triggerów: ${stopped}).`);
+  const stats = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.STATS_SHEET);
+  if (stats) flushLog_(stats);
+
+  alert_('Stan wyzerowany.\n\nKolejność uruchamiania:\n' +
+         '1. IA 4 → Konfiguruj i włącz automat  (odtworzy system/status i zacznie zbierać na żywo)\n' +
+         '2. IA 4 → Projekt → Pokaż / odśwież stan projektu  (odtworzy system/project)\n' +
+         '3. IA 4 → Historia → Start / wznów  (3 spółki główne, ~17 h)\n' +
+         '4. Następnego dnia: IA 4 → Spółki kontrolne → Pobierz historię');
 }
 
 /** Pełny audyt wszystkich spółek. Liczy się w tle w partiach. */
