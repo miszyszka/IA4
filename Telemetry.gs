@@ -125,7 +125,7 @@ function telemetryPublish_(force) {
 
   // 2) GitHub — tylko gdy treść się zmieniła i minął odstęp.
   const props = PropertiesService.getScriptProperties();
-  const hash = telemetryHash_(json);
+  const hash = telemetryHash_(snapshot);
   const lastHash = props.getProperty('TELEMETRY_HASH');
   const lastAt = Number(props.getProperty('TELEMETRY_PUSHED_AT') || 0);
 
@@ -171,8 +171,23 @@ function telemetryToFirestore_(snapshot, json, bytes) {
   }]);
 }
 
-function telemetryHash_(s) {
-  const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, s, Utilities.Charset.UTF_8);
+/**
+ * Suma kontrolna TREŚCI, z pominięciem pól, które zmieniają się przy każdym
+ * uruchomieniu (czas wygenerowania, czas ostatniego przebiegu automatu).
+ *
+ * Bez tego pominięcia porównanie „czy coś się zmieniło" nigdy nie wykrywało
+ * braku zmian — `generatedAt` zawsze był inny, więc telemetria wypychała do
+ * repozytorium nowy commit co godzinę, także w nocy i w weekend, gdy nic się
+ * nie działo. Przy dwóch plikach na publikację dawało to ~48 commitów dziennie
+ * i przepisywanie całej migawki od nowa bez powodu.
+ */
+function telemetryHash_(snapshot) {
+  const copy = JSON.parse(JSON.stringify(snapshot));
+  delete copy.meta.generatedAt;
+  delete copy.meta.generatedAtPL;
+  if (copy.collector) delete copy.collector.lastRunAt;
+  const raw = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.MD5, JSON.stringify(copy), Utilities.Charset.UTF_8);
   return raw.map(b => ((b & 0xFF) + 0x100).toString(16).slice(1)).join('');
 }
 
