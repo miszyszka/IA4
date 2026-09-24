@@ -1,6 +1,6 @@
 # IA 4 — katalog bazowy sygnałów (84)
 
-**Wersja projektu: 0.17 (2026-09-24) — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 0.18 (2026-09-24) — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Katalog przeniesiony z arkusza `STRATEGIE_LEGENDA` starego projektu. To **punkt
 wyjścia dla Etapu 1**, a nie gotowy katalog S1: wszystkie 84 sygnały są wyłącznie

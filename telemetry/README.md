@@ -1,6 +1,6 @@
 # telemetry/
 
-**Wersja projektu: 0.17 (2026-09-24)**
+**Wersja projektu: 0.18 (2026-09-24)**
 
 Ten katalog wypełnia się sam — nic tu nie edytuj ręcznie.
 

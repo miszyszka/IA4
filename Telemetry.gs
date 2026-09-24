@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — TELEMETRIA  (stan systemu → Firestore → GitHub)
  *
- *  Wersja projektu: 0.17 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.18 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  PO CO TO JEST
  *  Claude nie ma dostępu do arkusza ani do edytora Apps Script — widzi wyłącznie
@@ -111,11 +111,16 @@ function telemetryPublish_(force) {
   const json = JSON.stringify(snapshot, null, 2);
   const bytes = Utilities.newBlob(json).getBytes().length;
 
-  // 1) Firestore — zawsze, to jest źródło prawdy dla dashboardu.
-  try {
-    telemetryToFirestore_(snapshot, json, bytes);
-  } catch (e) {
-    console.error('Telemetria → Firestore: ' + e.message);
+  // 1) Firestore — źródło prawdy dla dashboardu. Przy wyczerpanym limicie
+  //    pomijamy, ale NIE rezygnujemy z punktu 2: GitHub to inny serwis, więc
+  //    właśnie wtedy telemetria jest najbardziej potrzebna — to z niej dowiemy
+  //    się, co się działo w dniu, w którym baza przestała przyjmować zapisy.
+  if (!fsQuotaBlocked_()) {
+    try {
+      telemetryToFirestore_(snapshot, json, bytes);
+    } catch (e) {
+      console.error('Telemetria → Firestore: ' + e.message);
+    }
   }
 
   // 2) GitHub — tylko gdy treść się zmieniła i minął odstęp.
@@ -317,11 +322,19 @@ function telemetryCollector_() {
     lastClose: live[s].c || null,
   }));
 
+  const quotaDay = props.getProperty('FS_QUOTA_DAY') || '';
   return {
     lastRunAt: telemetryLastRun_(),
     symbols,
     symbolsCount: symbols.length,
     firestore: fs,
+    // Gdy limit jest wyczerpany, połowa dziennika to komunikaty o 429 i łatwo
+    // uznać, że system jest zepsuty. To pole mówi wprost: czeka na reset.
+    quota: {
+      blocked: quotaDay === Utilities.formatDate(new Date(), 'America/Los_Angeles', 'yyyy-MM-dd'),
+      exhaustedOnPacificDay: quotaDay,
+      note: quotaDay ? 'Zadania w tle wstrzymane do resetu (północ czasu pacyficznego, ok. 9:00 w Polsce).' : '',
+    },
     errors: symbols.filter(x => /✗|błąd|error/i.test(x.status))
       .map(x => ({ symbol: x.symbol, status: x.status })),
     lastError,

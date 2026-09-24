@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.17 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.18 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
@@ -396,6 +396,7 @@ function minutesSinceLastClose_(ctx, closeMin) {
  */
 function patchGapsIfIdle_(ctx) {
   if (!CONFIG.PATCH_ENABLED || !CONFIG.FIRESTORE_ENABLED) return '';
+  if (fsQuotaBlocked_()) return '';   // limit wyczerpany — wrócimy jutro
   const props = PropertiesService.getScriptProperties();
   const last = props.getProperty('PATCH_LAST_AT');
   if (last && Date.now() - Number(last) < CONFIG.PATCH_MIN_GAP_MIN * 60000) return '';
@@ -477,6 +478,7 @@ function patchGapsIfIdle_(ctx) {
  */
 function volfillIfIdle_(ctx) {
   if (!CONFIG.VOLFILL_ENABLED || !CONFIG.FIRESTORE_ENABLED) return '';
+  if (fsQuotaBlocked_()) return '';   // limit wyczerpany — wrócimy jutro
   const props = PropertiesService.getScriptProperties();
   const last = props.getProperty('VOLFILL_LAST_AT');
   if (last && Date.now() - Number(last) < CONFIG.VOLFILL_MIN_GAP_MIN * 60000) return '';
@@ -1378,8 +1380,55 @@ function firestoreCommit_(writes) {
   if (code !== 200) {
     let msg = resp.getContentText();
     try { msg = JSON.parse(msg).error.message; } catch (e) { /* zostaw surowy tekst */ }
+    if (code === 429) fsQuotaNoteExhausted_();
     throw new Error(`Firestore HTTP ${code}: ${String(msg).slice(0, 250)}`);
   }
+  fsQuotaNoteSuccess_();
+}
+
+
+// ----------------------------------------------------------------------------
+//  LIMIT DZIENNY FIRESTORE — wspólna blokada zadań drugoplanowych
+//
+//  Darmowy limit (20 000 zapisów / 50 000 odczytów) resetuje się o północy czasu
+//  pacyficznego. Do wersji 0.18 każde zadanie w tle po napotkaniu 429 próbowało
+//  dalej co kilka minut do końca doby: setki nieudanych zapytań i dziennik pełen
+//  identycznych wpisów, przez które nie widać prawdziwych zdarzeń.
+//
+//  Teraz pierwszy 429 zapala blokadę na resztę doby pacyficznej. Zadania w tle
+//  (dopisywanie wolumenu, łatanie luk, telemetria do Firestore) same się wtedy
+//  wstrzymują, bez logowania. NIE blokujemy zbierania świec na żywo — to
+//  najważniejsze zadanie systemu i ma próbować do skutku; jego błędy i tak
+//  przechodzą przez recordError_, które nie powtarza tego samego komunikatu.
+// ----------------------------------------------------------------------------
+/** Dzisiejsza data w strefie pacyficznej — po niej rozpoznajemy reset limitu. */
+function fsQuotaDay_() {
+  return Utilities.formatDate(new Date(), 'America/Los_Angeles', 'yyyy-MM-dd');
+}
+
+function fsQuotaNoteExhausted_() {
+  const props = PropertiesService.getScriptProperties();
+  const day = fsQuotaDay_();
+  if (props.getProperty('FS_QUOTA_DAY') === day) return;   // już wiemy, nie logujemy drugi raz
+  props.setProperty('FS_QUOTA_DAY', day);
+  log_('UWAGA', 'LIMIT',
+    'Dzienny limit Firestore wyczerpany. Zadania w tle (wolumen, łatanie luk, telemetria) ' +
+    'wstrzymane do resetu — ok. 9:00 czasu polskiego. Zbieranie świec próbuje dalej.');
+}
+
+/** Udany zapis po resecie zdejmuje blokadę. */
+function fsQuotaNoteSuccess_() {
+  const props = PropertiesService.getScriptProperties();
+  const stored = props.getProperty('FS_QUOTA_DAY');
+  if (stored && stored !== fsQuotaDay_()) {
+    props.deleteProperty('FS_QUOTA_DAY');
+    log_('INFO', 'LIMIT', 'Limit Firestore odnowiony — zadania w tle wracają do pracy.');
+  }
+}
+
+/** Czy zadania drugoplanowe mają dziś odpuścić? */
+function fsQuotaBlocked_() {
+  return PropertiesService.getScriptProperties().getProperty('FS_QUOTA_DAY') === fsQuotaDay_();
 }
 
 

@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.17 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.18 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.17',
+  INSTRUCTION_VERSION: '0.18',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -177,9 +177,20 @@ function etap0Cleanup() {
  */
 function resetAfterWipe() {
   const props = PropertiesService.getScriptProperties();
+  // Każdy nowy stan trzymany w Script Properties MUSI trafić na tę listę —
+  // inaczej po wyczyszczeniu bazy system wierzy w postęp, którego już nie ma
+  // (np. „wolumen dopisany" dla danych, które właśnie skasowano).
   const keys = ['LIVE_STATE', 'HISTORY_STATE', 'PROOF_STATE', 'AUDIT_STATE',
                 'SESSION', 'LAST_WRITE', 'COUNTERS', 'FS_STATUS',
-                'LAST_ERROR', 'ERR_SEEN', 'PATCH_LAST_AT'];
+                'LAST_ERROR', 'ERR_SEEN',
+                'PATCH_LAST_AT', 'PATCH_ATTEMPTS',        // łatanie luk (0.10, 0.17)
+                'VOLFILL_STATE', 'VOLFILL_LAST_AT',       // dopisywanie wolumenu (0.10)
+                'AUDIT_READ_BUDGET',                      // budżet odczytów (0.15)
+                'FS_QUOTA_DAY',                           // blokada po wyczerpaniu limitu (0.18)
+                'TELEMETRY_HASH', 'TELEMETRY_PUSHED_AT',  // telemetria (0.12)
+                'STATS_LAYOUT_SYMS'];                     // cache układu arkusza STATS
+  // Świadomie NIE czyścimy: GITHUB_TOKEN (poświadczenie, nie postęp)
+  // ani PROJECT_STATE (etap, decyzje i zaakceptowane luki — obiecane niżej w oknie).
   try {
     const ui = SpreadsheetApp.getUi();
     const ok = ui.alert('Zerowanie stanu po wyczyszczeniu bazy',
