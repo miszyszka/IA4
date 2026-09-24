@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.15 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.16 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.15',
+  INSTRUCTION_VERSION: '0.16',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',

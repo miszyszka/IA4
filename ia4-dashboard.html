@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IA 4 — Wersja projektu: 0.15 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md -->
+<!-- IA 4 — Wersja projektu: 0.16 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md -->
 <html lang="pl">
 <head>
 <meta charset="utf-8">
@@ -812,12 +812,30 @@ async function init() {
   fs.onSnapshot(fs.doc(dbRef, "system", "status"), (d) => { state.sys.status = d.data(); state.connected = true; renderHome(); }, onError);
   fs.onSnapshot(fs.doc(dbRef, "system", "project"), (d) => { state.sys.project = d.data(); renderHome(); }, () => {});
 
-  // Lista S2 — pojawi się w Etapie 2. Do tego czasu kolekcja po prostu nie istnieje.
-  fs.onSnapshot(fs.collection(dbRef, "s2"), (snap) => {
-    state.s2 = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
-    if (state.view === "strategies") renderStrategies();
-    if (state.view === "ia") renderInvestors();
-  }, () => {});
+  loadS2();
+  setInterval(loadS2, 60 * 60 * 1000);   // godzina wystarcza — S2 zmienia się skokowo, nie na bieżąco
+}
+
+// ============================================================================
+//  LISTA S2 — czytana z GitHub, nie z Firestore (D18)
+//  S2 zamyka się raz na koniec Etapu 2 i potem zmienia rzadko; trzymanie jej
+//  w repozytorium daje darmowe wersjonowanie i zero obciążenia limitu Firestore.
+//  Plik jeszcze nie istnieje przed Etapem 2 — 404 jest normalnym stanem, nie błędem.
+// ============================================================================
+const S2_URL = "https://raw.githubusercontent.com/miszyszka/IA4/main/s2/strategies.json";
+
+async function loadS2() {
+  try {
+    const resp = await fetch(S2_URL, { cache: "no-store" });
+    if (!resp.ok) { state.s2 = []; return; }   // 404 przed Etapem 2 — nic złego
+    const data = await resp.json();
+    state.s2 = Array.isArray(data) ? data : (data.strategies || []);
+  } catch (e) {
+    console.warn("Nie udało się wczytać s2/strategies.json:", e);
+    return;   // zostaw to, co już mieliśmy — chwilowy problem z siecią nie czyści listy
+  }
+  if (state.view === "strategies") renderStrategies();
+  if (state.view === "ia") renderInvestors();
 }
 
 /**

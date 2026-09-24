@@ -46,7 +46,7 @@ Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która pr
 |---|---|---|---|
 | Zbieranie danych | Google Apps Script | świece 1h na żywo i historia | stale |
 | Magazyn danych | Firestore | **jedyne** źródło danych świecowych | wszystkie |
-| Badania | Python na Macu | katalog S1, backtest, parametry towarzyszące, model PT | 1–3 |
+| Badania | Python na Macu | katalog S1, backtest, parametry towarzyszące, model PT — wynik (S2, PT) commitowany do GitHub (D18) | 1–3 |
 | Monitoring | arkusze STATS i PROJEKT | stan systemu, etapów i luk | wszystkie |
 | Sygnały na żywo | Apps Script, zaraz po dopisaniu świecy (D2) | wykrywanie sygnałów S3 co godzinę | 4 |
 | Paper trading | Apps Script + arkusz | wirtualny inwestor | 5 |
@@ -74,6 +74,36 @@ Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która pr
 | `ia4-research/ia4/data.py` | wczytywanie danych z wymuszoną granicą skarbca | od Etapu 0B |
 | `ia4-research/verify.py` | sprawdzian kryterium 0.9 wobec audytu | od Etapu 0B |
 | `ia4-research/data/` | pamięć podręczna parquet — **poza gitem** | od Etapu 0B |
+
+### 3.1 Dwa magazyny danych — i dlaczego nie jeden (D18)
+
+Świece i strategie/PT mają inną naturę, więc żyją w różnych miejscach:
+
+| | Firestore | GitHub |
+|---|---|---|
+| Co | świece 1h, stan systemu, telemetria, inwestorzy (D17) | strategie S2, model PT, historia jego wersji |
+| Jak się zmienia | co godzinę, bez przerwy, przez cały dzień handlowy | skokowo — raz na zamknięcie Etapu 2, potem przy każdym udoskonaleniu modelu PT |
+| Czy potrzebny nasłuch na żywo | tak — zamknięcie świecy ma być sygnałem (Etap 4), dashboard i przyszły silnik inwestora (D17) muszą wiedzieć **natychmiast** | nie — Apps Script sprawdza raz na godzinę, czy jest nowsza wersja |
+| Czy potrzebne wersjonowanie | nie — nikogo nie interesuje „poprzednia" świeca | tak — które strategie przeszły do S2, jaka wersja modelu PT dała jaki wynik |
+| Limit dzienny | 50 000 odczytów / 20 000 zapisów (Spark) | 5000 zapytań/h (REST API), brak limitu na rozmiar repo w praktyce |
+
+GitHub nie ma odpowiednika `onSnapshot` — sprawdzenie „czy coś się zmieniło" wymaga odpytywania, a zapis pliku to zawsze cała jego zawartość na nowo (nie da się dopisać jednej świecy). Dla strumienia świec na żywo to fatalny wybór; dla strategii, które zmieniają się rzadko i którym zależy na historii zmian, to naturalne środowisko — dokładnie to, czym Git jest.
+
+**Pliki w repozytorium (`ia4-research/` commituje je z Maca, w miarę postępu Etapów 2–3):**
+
+```
+s2/strategies.json      lista S2 zamknięta na koniec Etapu 2: id, parametry, wynik backtestu,
+                         wynik na skarbcu (po jego otwarciu), ocena, czy wybrana
+pt/model.json           aktualne drzewa modelu PT (eksport z Etapu 3, zgodnie z D2):
+                         wersja, data, próg PT, lista ~50 użytych parametrów, drzewa jako JSON
+pt/history/RRRR-MM-DD_wersja.json
+                         poprzednie wersje modelu — do porównań, gdy przeszukiwanie (Etap 3)
+                         znajdzie lepszą zależność
+```
+
+**Jak Apps Script z tego korzysta.** `Code.gs` pobiera `pt/model.json` przez zwykłe, tanie `GET` (np. `raw.githubusercontent.com`, bez tokenu — repo jest publiczne) — raz na godzinę, sprawdzając wpierw commit hash, żeby nie ściągać pliku bez potrzeby. Model liczy się **lokalnie w Apps Script**, na świeżej świecy, zaraz po jej zapisaniu (Etap 4). Firestore w ogóle nie uczestniczy w tym zadaniu — zero dodatkowych odczytów.
+
+**Kierunek przepływu jest jednostronny i świadomy:** Python na Macu **pisze** do GitHub (ma do tego token z prawem zapisu, tak jak Claude), Apps Script tylko **czyta** (bez tokenu, publiczny odczyt). Żadna strona nie musi rozwiązywać konfliktów zapisu, bo tylko jedna strona zapisuje.
 
 ---
 
@@ -244,7 +274,7 @@ Kolumny wyniku dla każdej strategii, osobno dla grupy głównej i kontrolnej:
 
 Wynik trafia do arkusza **S2**. Użytkownik wybiera strategie do dalszej pracy, zaznaczając je w arkuszu. Claude proponuje filtry i ranking, ale nie wybiera za użytkownika.
 
-**Czym jest arkusz S2.** Jeden wiersz = jedna strategia. Kolumny: `id_strategii`, parametry (sygnał, kierunek, SL, TP, H), wynik backtestu na okresie badawczym, wynik na skarbcu (wypełniany dopiero po jego otwarciu w Etapie 3), ocena Claude i pole wyboru „bierzemy". Strategie zaznaczone tu i tylko one przechodzą dalej. **Zamknięcie Etapu 2 zamyka listę S2** — po tym momencie jej skład się nie zmienia, bo inaczej Etap 3 liczyłby transakcje strategii, które dopiero co dołożyliśmy po obejrzeniu wyników.
+**Czym jest arkusz S2.** Jeden wiersz = jedna strategia. Kolumny: `id_strategii`, parametry (sygnał, kierunek, SL, TP, H), wynik backtestu na okresie badawczym, wynik na skarbcu (wypełniany dopiero po jego otwarciu w Etapie 3), ocena Claude i pole wyboru „bierzemy". Strategie zaznaczone tu i tylko one przechodzą dalej. **Zamknięcie Etapu 2 zamyka listę S2** — po tym momencie jej skład się nie zmienia, bo inaczej Etap 3 liczyłby transakcje strategii, które dopiero co dołożyliśmy po obejrzeniu wyników. Zamknięta lista trafia do repozytorium jako `s2/strategies.json` (D18) — to ona, nie arkusz, jest wersją, z której korzysta Etap 3 i Apps Script.
 
 **Kryteria ukończenia:** wszystkie strategie policzone; lista S2 zatwierdzona przez użytkownika i zapisana (arkusz + Firestore); w tym pliku zapisane kryteria, którymi się kierowano.
 
@@ -288,6 +318,8 @@ Wynik trafia do arkusza **S2**. Użytkownik wybiera strategie do dalszej pracy, 
 - przesiew obejmuje ~1000 parametrów, ale model używa najwyżej ~50,
 - drzewa są eksportowane z Pythona jako JSON i wykonywane w Apps Script,
 - każdy parametr jest liczony identycznie w obu językach — test zgodności na tych samych świecach jest częścią kryteriów ukończenia.
+
+**Model żyje w repozytorium, nie w Firestore (D18):** `ia4-research` commituje go jako `pt/model.json`, a poprzednie wersje trafiają do `pt/history/` — Etap 3 to ciągłe przeszukiwanie (sekcja opisana wyżej), więc model będzie się zmieniał wielokrotnie i każda zmiana zasługuje na własny commit. Apps Script czyta `pt/model.json` raz na godzinę, licząc PT lokalnie na świeżej świecy — zero dodatkowych odczytów Firestore na to zadanie.
 
 **Kryteria ukończenia:** raport najsilniejszych zależności; model PT; próg PT; model przenośny z zaliczonym testem zgodności; wynik skarbca zapisany niezależnie od tego, czy potwierdził przewagę. Sygnały S2 z ratingiem PT stają się S3.
 
@@ -408,6 +440,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | D14 | Kontrola źródła danych | Ufamy Yahoo. Zostaje audyt braków i skoków; nie dokładamy sum kontrolnych. | ✅ przyjęta |
 | D15 | Budżet czasu w Etapie 4 | Zaraz po zamknięciu świecy liczą się **tylko 3 spółki główne** — to na nich powstają sygnały. Spółki kontrolne i tło rynku dociągają się przy kolejnych uruchomieniach. Tryb szybki czeka wyłącznie na AAPL, TSLA i NVDA. | ✅ przyjęta |
 | D17 | Gdzie żyją inwestorzy | Ustawienia inwestorów przenoszą się z przeglądarki do Firestore (`investors/{id}`), a silnik działa w Apps Script: po zapisaniu każdej świecy godzinowej automat przechodzi po aktywnych inwestorach, czyta ich ustawienia i otwarte pozycje, sprawdza sygnały S3 i ich PT, zamyka pozycje, które w minionej świecy dotknęły SL albo TP, i otwiera nowe w granicach limitów. Dashboard przestaje być miejscem, gdzie cokolwiek się liczy — tylko pokazuje. Wdrożenie: Etap 5. | ✅ przyjęta |
+| D18 | Gdzie żyją strategie S2 i model PT | Firestore ma darmowy dzienny limit (50 000 odczytów, 20 000 zapisów) i żadnego wersjonowania — dwie rzeczy, które akurat świecom nie przeszkadzają (płyną bez przerwy, nikt nie musi widzieć „poprzedniej wersji" świecy), ale strategiom i modelowi PT bardzo. Podział: **świece i wszystko na żywo zostają w Firestore** (nasłuch w czasie rzeczywistym, którego Git nie ma; opisane niżej w sekcji 3.1). **Strategie S2 i model PT przenoszą się do repozytorium GitHub** jako pliki JSON — tam, gdzie i tak mają trafić zgodnie z D2 (eksport modelu PT do Apps Script). Szczegóły w sekcji 3.1. | ✅ przyjęta |
 | D16 | Próg „przewagi" | Progi ustalone **przed** policzeniem Etapu 2: minimum **100 transakcji** w grupie głównej i **300** w kontrolnej, przewaga nad wejściem losowym dodatnia **w obu grupach**, wynik lepszy niż **99. percentyl** rozkładu wejść losowych przy tej liczbie prób. | ✅ przyjęta |
 
 ---
@@ -432,6 +465,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 0.13 | 2026-09-24 | Dashboard: zakładka Inwestorzy przepisana na **wielu niezależnych inwestorów** — własne ustawienia (kapitał, kapitał na transakcję, limit na świecę, limit otwartych, wybór strategii S2, próg PT), zmiana nazwy, start/stop osobno dla każdego. Statystyki odrzuceń z trzech powodów i średnie dzienne. Uproszczony wykres trzech spółek znormalizowany do procentu ze znacznikami wejść i wyjść. Nowy `Investor.gs`: arkusz `Transaction LOG` wspólny dla wszystkich inwestorów, zasilany z Firestore. Etap 5 opisany na nowo. |
 | 0.14 | 2026-09-24 | Poprawki znalezione dzięki telemetrii: tabela instrumentów czytana z `st.audit.stats` zamiast `st.stats` (była pusta), nowa funkcja `cleanupRemovedSymbols()` usuwająca pozostałości po instrumentach wyrzuconych z projektu — wpis w stanie automatu, luki w audycie i miejsce w kolejce wolumenu (dotyczy VIX, D8). Decyzja D17: ustawienia inwestorów przenoszone z przeglądarki do Firestore. |
 | 0.15 | 2026-09-24 | Ochrona przed przekroczeniem dziennego limitu 50 000 odczytów Firestore (przyczyna dzisiejszego przekroczenia widocznego w konsoli Firebase). Dashboard: skończone zapytania zamiast subskrypcji całych kolekcji — 8 świec dla strony startowej, zależny od zakresu limit dla Wykresów i Inwestorów, odłączanie nasłuchu przy zmianie widoku. Pełny audyt: dzienny budżet 35 000 odczytów z bezpiecznym wstrzymaniem i ochroną przed przypadkowym drugim uruchomieniem tego samego dnia. Luka L19. |
+| 0.16 | 2026-09-24 | Decyzja D18: strategie S2 i model PT trafiają do repozytorium (`s2/strategies.json`, `pt/model.json`, `pt/history/`) zamiast Firestore — nowa sekcja 3.1 tłumaczy podział (świece na żywo potrzebują nasłuchu, którego Git nie ma; strategie/PT zmieniają się rzadko i chcą wersjonowania, którego nie ma Firestore). Dashboard: lista S2 czytana z GitHub (`fetch` raz na godzinę) zamiast z kolekcji Firestore. |
 
 ---
 
