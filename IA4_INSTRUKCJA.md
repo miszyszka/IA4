@@ -446,4 +446,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-23 23:49 | `3f9573a` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.10: samoczynne dopisywanie wolumenu do starej historii z dziennym budżetem zapisów. |
 | 2026-09-24 10:11 | `d27ae75` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.11: naprawa brakującego `symbol` w łataniu luk i dopisywaniu wolumenu (HTTP 400 „type unset"). |
 | 2026-09-24 14:32 | `6237caa` | `Telemetry.gs` (nowy), `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.12: telemetria stanu systemu do Firestore i GitHub, metodologia S2/S3/PT. |
-| 2026-09-24 15:00 | `(uzupełniony niżej)` | `ia4-dashboard.html`, `Investor.gs` (nowy), `Code.gs`, `IA4_INSTRUKCJA.md` | Wersja 0.13: wielu inwestorów w dashboardzie, arkusz Transaction LOG. |
+| 2026-09-24 14:46 | `ae3339b` | `ia4-dashboard.html`, `Investor.gs` (nowy), `Code.gs`, `IA4_INSTRUKCJA.md` | Wersja 0.13: wielu inwestorów w dashboardzie, arkusz Transaction LOG. |
