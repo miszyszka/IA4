@@ -1,6 +1,6 @@
 """
 IA 4 — wczytywanie danych do badań.
-Wersja projektu: 0.18 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.19 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Ten moduł jest jedyną drogą, którą dane trafiają do backtestu — i celowo
 utrudnia złamanie zasady 5.1.
@@ -25,16 +25,46 @@ import pandas as pd
 
 from . import config, sync
 
-PERIODS = ("research", "vault", "live", "all")
+PERIODS = ("discovery", "plot", "research", "vault", "live", "all")
 
 
 class VaultError(RuntimeError):
-    """Próba sięgnięcia do skarbca przed Etapem 3."""
+    """Proba siegniecia do skarbca przed Etapem 3."""
+
+
+class PlotError(RuntimeError):
+    """Proba siegniecia do poletka bez jawnego potwierdzenia."""
+
+
+PLOT_LOG = config.RESEARCH_DIR / "poletko_zajrzenia.jsonl"
+
+
+def _log_plot_peek(reason: str) -> int:
+    """
+    Zapisuje kazde zajrzenie na poletko i zwraca ich laczna liczbe.
+
+    Poletko wolno uzyc raz na etap (5.1). Bez licznika ta zasada bylaby tylko
+    deklaracja - a poletko przegladane co kilka godzin przestaje byc
+    sprawdzianem i staje sie drugim zbiorem treningowym, tyle ze niezauwazenie.
+    """
+    import json
+    from datetime import datetime, timezone
+
+    entry = {"at": datetime.now(timezone.utc).isoformat(), "reason": reason}
+    PLOT_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with PLOT_LOG.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    return sum(1 for _ in PLOT_LOG.open(encoding="utf-8"))
 
 
 def _filter_period(df: pd.DataFrame, period: str) -> pd.DataFrame:
     v = config.vault()
+    if period == "discovery":
+        return df[df["date"] < v.discovery_end_exclusive]
+    if period == "plot":
+        return df[(df["date"] >= v.plot_start) & (df["date"] <= v.plot_end)]
     if period == "research":
+        # odkrywanie + poletko razem; do uczenia uzywaj "discovery"
         return df[df["date"] < v.vault_start]
     if period == "vault":
         return df[(df["date"] >= v.vault_start) & (df["date"] <= v.vault_end)]
@@ -45,22 +75,38 @@ def _filter_period(df: pd.DataFrame, period: str) -> pd.DataFrame:
 
 def load(
     symbols: str | list[str] | None = None,
-    period: str = "research",
+    period: str = "discovery",
     unlock_vault: bool = False,
+    plot_reason: str | None = None,
 ) -> pd.DataFrame:
     """
     Świece 1h z lokalnej pamięci podręcznej.
 
     symbols      pojedynczy symbol, lista, albo None = wszystkie
-    period       research (domyślnie) | vault | live | all
+    period       discovery (domyslnie) | plot | research | vault | live | all
     unlock_vault świadome potwierdzenie dostępu do skarbca (Etap 3, jeden raz)
 
     Zwraca: symbol, date, slot, o, h, l, c, v — posortowane po dacie i świecy.
     """
     if period not in PERIODS:
-        raise ValueError(f"period musi być jednym z {PERIODS}, jest: {period!r}")
+        raise ValueError(f"period musi byc jednym z {PERIODS}, jest: {period!r}")
 
     v = config.vault()
+
+    if period == "plot":
+        if not plot_reason:
+            raise PlotError(
+                f"Proba odczytu poletka ({v.plot_start} - {v.plot_end}) bez podania powodu.\n"
+                "Poletko sluzy do sprawdzenia gotowego wyniku etapu, RAZ na etap (5.1),\n"
+                "a nie do strojenia. Podaj, co sprawdzasz:\n"
+                '    load(..., period="plot", plot_reason="Etap 2: lista S2 po filtrach")\n'
+                f"Dotychczasowe zajrzenia: {PLOT_LOG if PLOT_LOG.exists() else 'brak'}"
+            )
+        n = _log_plot_peek(plot_reason)
+        print(f"POLETKO: zajrzenie nr {n} ({plot_reason}). Zapisane w {PLOT_LOG.name}.")
+        if n > 4:
+            print("UWAGA: to juz wiecej niz jedno zajrzenie na etap. Poletko traci wartosc "
+                  "sprawdzianu - kolejne decyzje podejmowane pod jego wynik to przeuczenie.")
     if period in ("vault", "all") and not unlock_vault:
         raise VaultError(
             f"Próba odczytu skarbca ({v.vault_start} – {v.vault_end}) bez potwierdzenia.\n"

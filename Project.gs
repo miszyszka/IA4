@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.18 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.19 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,15 +19,21 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.18',
+  INSTRUCTION_VERSION: '0.19',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
 
   // Skarbiec (decyzja D1): 6 miesięcy przed datą cięcia 2026-09-22.
-  //   okres badawczy: wszystko PRZED VAULT_START
-  //   skarbiec:       VAULT_START … VAULT_END (włącznie)
-  //   dane na żywo:   PO VAULT_END
+  //   odkrywanie:     wszystko PRZED PLOT_START  (uczenie i strojenie, bez ograniczen)
+  //   poletko:        PLOT_START … PLOT_END       (sprawdzian raz na etap)
+  //   skarbiec:       VAULT_START … VAULT_END     (jeden sprawdzian w calym projekcie)
+  //   dane na zywo:   PO VAULT_END
+  //
+  // Poletko (0.19) wydzielono z okresu badawczego, zeby Etapy 1-3 mialy tania
+  // informacje zwrotna przed otwarciem skarbca. Szczegoly: instrukcja, 5.1.
+  PLOT_START: '2025-10-01',
+  PLOT_END: '2026-03-22',
   VAULT_START: '2026-03-23',
   VAULT_END: '2026-09-22',
 
@@ -1024,6 +1030,9 @@ function projWriteFirestore_(st) {
         stage: { integerValue: String(st.current) },
         stageName: { stringValue: STAGES[st.current].name },
         researchEndExclusive: { stringValue: PROJECT.VAULT_START },
+        discoveryEndExclusive: { stringValue: PROJECT.PLOT_START },
+        plotStart: { stringValue: PROJECT.PLOT_START },
+        plotEnd: { stringValue: PROJECT.PLOT_END },
         vaultStart: { stringValue: PROJECT.VAULT_START },
         vaultEnd: { stringValue: PROJECT.VAULT_END },
         liveFrom: { stringValue: addDays_(PROJECT.VAULT_END, 1) },

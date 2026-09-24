@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 0.18
+**Wersja:** 0.19
 **Data:** 24 września 2026
 **Aktualny etap:** 🟨 Etap 0 — 0A wdrożone; trwa pełne pobieranie historii po naprawie L13, przegląd 53 luk i budowa środowiska Pythona (0B)
 
@@ -12,7 +12,32 @@ Ten plik jest jedynym źródłem prawdy o tym, jak pracujemy nad projektem. Stan
 
 Znaleźć sygnały wejścia w transakcje na świecach godzinowych, które mają **realną, powtarzalną przewagę** — potwierdzoną poza danymi, na których je znaleziono — a następnie sprawdzić je w działaniu na żywo, najpierw jako monitor sygnałów, potem jako wirtualny inwestor.
 
-Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która przetrwa trzy sprawdziany: spółki kontrolne, skarbiec danych i dane na żywo.
+Miara sukcesu nie jest najwyzszy zysk w backtescie, tylko przewaga, ktora przetrwa cztery sprawdziany: spolki kontrolne, poletko, skarbiec danych i dane na zywo.
+
+### Czego konkretnie szukamy
+
+Koncowym produktem ma byc **regula zero-jedynkowa**: po zamknieciu swiecy godzinowej system odpowiada „wchodzic" albo „nie wchodzic", bez uznaniowosci. Regula sklada sie z trzech czesci:
+
+1. **sygnal** - warunek na cenie i wolumenie, ktory odpala sie sam (katalog S1 -> lista S2),
+2. **rating PT** - liczba 1-100 mowiaca, czy akurat to wystapienie sygnalu jest warte zachodu (Etap 3),
+3. **zasady wyjscia** - SL, TP i limit czasu, ustalone razem z sygnalem, nie dobierane pozniej.
+
+Wejscie nastepuje wtedy i tylko wtedy, gdy sygnal odpalil **i** PT jest powyzej progu. Zadnego „wyglada dobrze", zadnego dobierania wielkosci pozycji pod przeczucie.
+
+### Kiedy uznamy, ze sie udalo
+
+Do handlu prawdziwymi pieniedzmi kwalifikuje sie regula, ktora **jednoczesnie**:
+
+- ma dodatnia ekspektancje po kosztach z zapasem (5.11) w grupie glownej **i** kontrolnej osobno,
+- przetrwala poletko i skarbiec bez strojenia miedzy jednym a drugim (5.1),
+- daje wystarczajaco duzo sygnalow, zeby mialo to sens - propozycja progu: **min. 50 transakcji rocznie** na instrument przy trzech spolkach glownych,
+- w Etapie 5 (paper trading) osiagnela wynik **mieszczacy sie w przedziale przewidzianym przez backtest**, na min. 100 transakcjach.
+
+Ostatni punkt jest wazniejszy, niz wyglada: chodzi o **zgodnosc z przewidywaniem**, nie o sam zysk. Strategia, ktora w backtescie dawala 0,2% na transakcje, a na zywo daje 0,8%, jest tak samo podejrzana jak ta, ktora daje -0,1% - w obu wypadkach model nie rozumie tego, co sie dzieje.
+
+### Czego NIE szukamy
+
+Zeby nie tracic czasu: nie szukamy prognozy ceny, nie budujemy portfela optymalnego, nie zajmujemy sie wielkoscia pozycji ani dzwignia, nie handlujemy niczym poza tymi trzema spolkami. Grupa kontrolna sluzy **wylacznie do sprawdzania**, czy przewaga jest prawdziwa - nie handlujemy nia.
 
 ---
 
@@ -52,13 +77,13 @@ Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która pr
 | Paper trading | Apps Script + arkusz | wirtualny inwestor | 5 |
 | Podgląd | dashboard HTML | wykresy 3 spółek głównych | — |
 
-**Dlaczego badania w Pythonie już od Etapu 1, a nie od 3:** nowy katalog to ok. 24 000 strategii × 27 spółek. Apps Script ma limit 6 minut na uruchomienie i liczyłby to wiele godzin w partiach. Python na Macu policzy to w minutach. Apps Script zostaje przy tym, w czym jest dobry: praca na żywo, bez włączonego komputera.
+**Dlaczego badania w Pythonie już od Etapu 1, a nie od 3:** nowy katalog to ok. 24 000 strategii x 53 instrumenty. Apps Script ma limit 6 minut na uruchomienie i liczyłby to wiele godzin w partiach. Python na Macu policzy to w minutach. Apps Script zostaje przy tym, w czym jest dobry: praca na żywo, bez włączonego komputera.
 
 ### Pliki
 
 | Plik | Rola | Los |
 |---|---|---|
-| `Code.gs` | automat bieżący, 27 spółek, STATS | zostaje |
+| `Code.gs` | automat biezacy, 53 instrumenty, STATS | zostaje |
 | `History.gs` | historia 3 spółek głównych | zostaje |
 | `Proof.gs` | historia 50 spółek kontrolnych i tła rynku (SPY, QQQ) | zostaje |
 | `Project.gs` | arkusz PROJEKT, skarbiec, audyt danych, sprzątanie | od Etapu 0 |
@@ -152,15 +177,20 @@ Te zasady obowiązują w każdym etapie. Złamanie którejś unieważnia wyniki.
 
 - Ostatnie **6 miesięcy** historii to skarbiec (D1). **Granica jest ustalona w Etapie 0, przed stworzeniem jakiejkolwiek strategii:**
 
-  | Okres | Daty | Kto używa |
-  |---|---|---|
-  | badawczy | do 2026-03-22 włącznie | Etapy 1–3 |
-  | skarbiec | 2026-03-23 – 2026-09-22 | tylko jednorazowy sprawdzian w Etapie 3 |
-  | dane na żywo | od 2026-09-23 | Etapy 4–5 |
+  | Okres | Daty | Kto uzywa | Ile razy wolno zajrzec |
+  |---|---|---|---|
+  | **odkrywanie** | do 2025-09-30 | Etapy 1-3: szukanie sygnalow, strojenie, uczenie modelu | bez ograniczen |
+  | **poletko** | 2025-10-01 - 2026-03-22 | sprawdzian po kazdym etapie | raz na etap |
+  | **skarbiec** | 2026-03-23 - 2026-09-22 | jednorazowy sprawdzian koncowy | raz w calym projekcie |
+  | **dane na zywo** | od 2026-09-23 | Etapy 4-5 | na biezaco |
+
+  **Dlaczego trzy okresy, a nie dwa.** W pierwotnym planie skarbiec byl jedynym sprawdzianem poza danymi, na ktorych szukamy. To znaczy, ze przez caly Etap 1, 2 i 3 - tygodnie pracy - nie mielibysmy zadnego sygnalu, czy idziemy w dobrym kierunku, a pierwsza informacja zwrotna przyszlaby dopiero na koncu, gdy juz nie ma jak zareagowac. Poletko to tania przymiarka: po kazdym etapie sprawdzamy na nim wynik raz, i jesli przewaga znika, wiemy o tym od razu, zanim zbudujemy na niej kolejne pietro.
+
+  Poletko nie zastepuje skarbca. Po kilku uzyciach (raz na etap) przestaje byc czyste - dobieranie decyzji pod jego wynik to to samo przeuczenie, tylko wolniejsze. Dlatego liczba zajrzen jest zapisana w arkuszu PROJEKT, a skarbiec pozostaje nietkniety do samego konca.
 
   Granice są zapisane w `Project.gs` (stała `PROJECT`) i w Firestore (`system/project`). Python czyta je z Firestore, nie z kodu.
 - Skarbiec to **ciągły blok czasu**, nie losowe świece. Losowe świece przeciekałyby, bo sąsiednie świece dzielą wskaźniki i nakładające się transakcje.
-- Etapy 1, 2 i 3 widzą wyłącznie dane sprzed skarbca (**okres badawczy**).
+- Etapy 1, 2 i 3 ucza sie i stroja **wylacznie na okresie odkrywania**. Poletko sluzy do sprawdzenia gotowego wyniku etapu, nie do strojenia.
 - Skarbiec jest otwierany **raz**, na końcu Etapu 3, do jednego ostatecznego sprawdzianu. Data otwarcia zostaje zapisana w PROJEKT.
 - Porażka na skarbcu jest wynikiem, a nie błędem do naprawienia. Nie wolno poprawić modelu i sprawdzić go na skarbcu ponownie.
 - Dane nowsze niż granica cięcia (zbierane na żywo) to trzeci, naturalny sprawdzian w Etapach 4–5.
@@ -186,13 +216,54 @@ Wynik główny: bez kosztów. Dodatkowa kolumna: ekspektancja przy koszcie **0,0
 
 Każdy wynik jest liczony osobno dla grupy głównej i kontrolnej. Zależność liczy się jako prawdziwa tylko wtedy, gdy występuje w obu grupach.
 
-### 5.7 Liczba testów
+### 5.7 Liczba testow
 
-Przy ~24 000 strategii kilkaset wygląda świetnie czystym przypadkiem. Ranking w Etapie 2 uwzględnia, jak dobry wynik da się uzyskać losowo przy tej liczbie prób (rozkład wyników wejść losowych), a nie tylko wynik strategii.
+Przy ~24 000 strategii kilkaset wyglada swietnie czystym przypadkiem. **Konkretnie: przy progu "99. percentyl" spodziewamy sie okolo 240 strategii, ktore przejda wylacznie dzieki szczesciu.** Sam wysoki percentyl nie jest wiec zadnym filtrem - to jest najczestszy sposob, w jaki takie projekty same siebie oszukuja.
+
+Obowiazuja trzy rzeczy naraz:
+
+1. **Kontrola odsetka falszywych odkryc (FDR, metoda Benjamniego-Hochberga)** zamiast progu na pojedynczej strategii. Ustalamy z gory, jaki odsetek wybranych strategii godzimy sie miec falszywych (propozycja: 10%), i procedura sama wyznacza prog p-wartosci dla calego zestawu 24 000 testow. To jest wlasciwe narzedzie: Bonferroni przy tej liczbie testow wymagalby p < 2,1x10^-6, czego przy kilkuset transakcjach nie da sie osiagnac nawet przy prawdziwej przewadze.
+2. **Licznik prób.** Kazda policzona konfiguracja - lacznie z tymi odrzuconymi po drodze i z przebiegami Etapu 3 - jest zapisywana. Bez tej liczby nie da sie policzyc poprawki. Etap 3 potrafi wykonac miliony prob w ciagu kilku dni i to one, a nie 24 000 z Etapu 2, decyduja o skali problemu.
+3. **Potwierdzenie na poletku (5.1).** Poprawka statystyczna mowi, czy wynik moglby powstac przypadkiem na tych samych danych. Poletko mowi, czy utrzymuje sie na innych. Strategia musi przejsc oba sprawdziany.
 
 ### 5.8 Zapisy na żywo tylko dopisywane
 
 Sygnały z Etapu 4 i transakcje z Etapu 5 są wyłącznie dopisywane, nigdy poprawiane wstecz. Błędy koryguje się nowym wpisem z adnotacją.
+
+### 5.9 Odstep miedzy uczeniem a sprawdzianem
+
+Transakcja otwarta blisko konca okresu uczenia trwa jeszcze H swiec i konczy sie juz w okresie sprawdzianu. Jej wynik zalezy od tych samych ruchow ceny, ktore sprawdzian ma oceniac - to jest przeciek, ktory potrafi zamienic zerowa przewage w pozornie swietna.
+
+Dlatego przy kazdym podziale danych (walidacja kroczaca, poletko, skarbiec):
+- **usuwamy z okresu uczenia** wszystkie transakcje, ktore koncza sie po jego granicy (*purging*),
+- **odrzucamy poczatek okresu sprawdzianu** o dlugosci H swiec (*embargo*), zeby zadna transakcja uczaca w niego nie siegala.
+
+Przy H = 70 swiec to 10 sesji po kazdej stronie granicy. Kosztuje kilka procent danych i jest tego warte.
+
+### 5.10 Efektywna liczba obserwacji
+
+Liczba wierszy w tabeli transakcji nie jest liczba niezaleznych obserwacji, i roznica jest tu bardzo duza:
+- transakcja trwajaca H swiec **nakłada sie** na kolejne sygnaly tej samej spolki,
+- **53 instrumenty reaguja na ten sam ruch rynku** w tej samej godzinie - 53 transakcje z jednego poranka to blizej jednej obserwacji niz pieciu dziesieciu.
+
+Skutek: zwykle testy istotnosci, ktore zakladaja niezaleznosc, pokaza przewage tam, gdzie jej nie ma. Dlatego istotnosc liczymy **blokowym bootstrapem po czasie** (losujemy cale dni albo tygodnie, nie pojedyncze transakcje), a liczbe transakcji raportujemy razem z liczba **roznych dni**, w ktorych wystapily. Strategia z 500 transakcjami w 20 dniach jest czyms innym niz 500 transakcji w 300 dniach - i tylko ta druga cos znaczy.
+
+### 5.11 Minimalna przewaga, ktora ma sens
+
+Przewaga istotna statystycznie i przewaga oplacalna to dwie rozne rzeczy. Przy TP 0,5% i koszcie 0,05% (5.5) sam koszt zjada 10% zysku brutto, a do tego dochodzi poslizg przy wejsciu po cenie otwarcia nastepnej swiecy.
+
+Dlatego strategia przechodzi dalej tylko wtedy, gdy **ekspektancja po kosztach jest dodatnia z zapasem**, nie tylko rozna od zera. Propozycja progu do potwierdzenia przed Etapem 2: ekspektancja po kosztach >= 0,05% na transakcje (czyli drugie tyle, co koszt). Strategia, ktora po kosztach daje 0,01% na transakcje, jest statystycznie moze i prawdziwa, ale handlowo bezwartosciowa - a kazda taka w zestawie rozcienczna te, ktore cos wnosza.
+
+### 5.12 Co, jesli nic nie wyjdzie
+
+To jest realny i powazny scenariusz, nie formalnosc: **wiekszosc takich poszukiwan nie znajduje trwalej przewagi**, i plan musi z gory powiedziec, co wtedy, zeby w tamtym momencie nie kusilo zlamanie zasady 5.1.
+
+Dopuszczalne po nieudanym sprawdzianie na skarbcu:
+- opisac, co nie zadzialalo, i zamknac projekt w tej formie,
+- zaczac **nowy** projekt z nowym skarbcem, na nowych danych zebranych po tej dacie - czyli zaplacic za kolejna probe czasem, uczciwie,
+- uzyc wynikow jako filtra negatywnego (wiemy, ktore hipotezy nie dzialaja) i handlowac dalej bez nich.
+
+Niedopuszczalne: poprawienie modelu i ponowny sprawdzian na tym samym skarbcu. Drugi sprawdzian na tych samych danych nie jest sprawdzianem - to jest strojenie, tylko wolniejsze.
 
 ---
 
@@ -250,7 +321,7 @@ Etap dzielimy na dwie części:
 - **Sygnały:** dotychczasowe 84 (pełna lista z definicjami i parametrami JSON: **`S1_KATALOG_BAZOWY.md`**) plus nowe rodziny, łącznie ok. 120–150. Rodziny bazowe: spadek w N świecach (18), czerwone świece z rzędu (13), odchylenie od średniej (9), wyprzedanie RSI (8), luka spadkowa (6), formacje odwrócenia (6), spadek względem ATR (6), spadek od szczytu (5), spadek od otwarcia sesji (4), wstęga Bollingera (4), duża czerwona świeca (3), spadkowe sesje z rzędu (2). **Uwaga: wszystkie 84 to warianty jednej hipotezy (kupno po spadku) i wszystkie są LONG — patrz decyzja D9.** Nowe pomysły: sygnały z warunkiem wolumenu (kapitulacja = spadek na wolumenie powyżej średniej — D12), wybicia z konsolidacji, zawężenie i rozszerzenie zmienności, sygnały zależne od pory dnia, sygnały wielodniowe, sygnały wzrostowe (lustra spadkowych — kandydaci na short).
 - **Kierunek:** każdy sygnał w dwóch wariantach — LONG i SHORT na tych samych zasadach (short: stop powyżej wejścia, cel poniżej).
 - **Siatka wyjść:** SL i TP ∈ {0,5; 0,75; 1; 1,25; 1,5; 2; 2,5; 3; 4; 5}%, wszystkie 100 kombinacji. Nic powyżej 5%.
-- **Limit czasu H** zależny od celu (propozycja): TP ≤ 1% → 14 świec (2 sesje), TP ≤ 2,5% → 35 (5 sesji), TP ≤ 5% → 70 (10 sesji).
+- **Limit czasu H**: wartosc wyjsciowa wedlug D5 (TP <= 1% -> 14 swiec, <= 2,5% -> 35, <= 5% -> 70), ale **H nie jest przeszukiwany jak SL/TP** (D10). Po policzeniu backtestu H jest wyznaczany z rozkladu czasu do celu (90. percentyl) i strategia liczona ponownie z ta jedna wartoscia. Dzieki temu H wynika z danych, a nie mnozy liczby testow.
 - **Skala:** ~120 sygnałów × 2 kierunki × 100 wyjść ≈ 24 000 strategii.
 - **Nazewnictwo:** jak dotąd, z dodanym kierunkiem, np. `DROP_N3_X2__L__SL1_TP1.5_H35`.
 - **Zasady portfela i wyjścia:** jak w dotychczasowym silniku (jedna pozycja = 100 $, maks. 3 otwarte na strategię w grupie, stop przed celem w tej samej świecy, luka rozliczana po otwarciu).
@@ -268,7 +339,8 @@ Kolumny wyniku dla każdej strategii, osobno dla grupy głównej i kontrolnej:
 - % transakcji wieloznacznych (5.4),
 - ekspektancja po kosztach (5.5),
 - wejście losowe i przewaga nad nim (5.3),
-- spółek kontrolnych na plusie z 24,
+- spolek kontrolnych na plusie z 50,
+- **wynik osobno dla spolek rosnacych i spadajacych w okresie badawczym (D13)** - jesli przewaga jest tylko u rosnacych, to nie jest przewaga sygnalu, tylko dryfu,
 - porównanie z wariantem przeciwnego kierunku,
 - wskaźnik istotności z uwzględnieniem liczby testów (5.7).
 
@@ -276,7 +348,7 @@ Wynik trafia do arkusza **S2**. Użytkownik wybiera strategie do dalszej pracy, 
 
 **Czym jest arkusz S2.** Jeden wiersz = jedna strategia. Kolumny: `id_strategii`, parametry (sygnał, kierunek, SL, TP, H), wynik backtestu na okresie badawczym, wynik na skarbcu (wypełniany dopiero po jego otwarciu w Etapie 3), ocena Claude i pole wyboru „bierzemy". Strategie zaznaczone tu i tylko one przechodzą dalej. **Zamknięcie Etapu 2 zamyka listę S2** — po tym momencie jej skład się nie zmienia, bo inaczej Etap 3 liczyłby transakcje strategii, które dopiero co dołożyliśmy po obejrzeniu wyników. Zamknięta lista trafia do repozytorium jako `s2/strategies.json` (D18) — to ona, nie arkusz, jest wersją, z której korzysta Etap 3 i Apps Script.
 
-**Kryteria ukończenia:** wszystkie strategie policzone; lista S2 zatwierdzona przez użytkownika i zapisana (arkusz + Firestore); w tym pliku zapisane kryteria, którymi się kierowano.
+**Kryteria ukonczenia:** wszystkie strategie policzone; **lista S2 sprawdzona raz na poletku** (5.1) - strategie, ktore tam traca przewage, wypadaja przed zamknieciem listy; lista zatwierdzona przez uzytkownika i zapisana (arkusz + `s2/strategies.json` w repozytorium, D18); w tym pliku zapisane kryteria, ktorymi sie kierowano, razem z liczba policzonych konfiguracji (5.7).
 
 ### Etap 3 — Parametry towarzyszące i rating PT → S3 ⬜
 
@@ -288,7 +360,19 @@ Wynik trafia do arkusza **S2**. Użytkownik wybiera strategie do dalszej pracy, 
 
 **Czym jest rating PT.** PT to **liczba 1–100 przypisana pojedynczemu sygnałowi w chwili jego powstania** — percentyl przewidywanej jakości transakcji na tle wszystkich sygnałów tej samej strategii. 1 oznacza najgorszy procent sygnałów, 100 najlepszy. PT nie ocenia strategii (to robi S2), tylko **konkretne wystąpienie sygnału w konkretnym kontekście rynkowym**: ten sam sygnał DROP_N3 może mieć PT 20 w jednych warunkach i PT 85 w innych. Model liczący PT bierze parametry towarzyszące z chwili sygnału i zwraca przewidywaną jakość; próg PT decyduje, czy wchodzimy w transakcję.
 
-**Zbiór danych do uczenia:** każda historyczna transakcja S2 z okresu badawczego to jeden wiersz: ~1000 parametrów towarzyszących policzonych w chwili sygnału + wynik transakcji.
+**Zbior danych do uczenia:** kazda historyczna transakcja S2 z **okresu odkrywania** to jeden wiersz: parametry towarzyszace policzone w chwili sygnalu + wynik transakcji.
+
+**Ile danych naprawde mamy - i co z tego wynika.** Okres odkrywania to ~260 sesji, czyli ~1800 swiec na instrument. Typowy sygnal odpala na ~5% swiec:
+
+| Zbior | Transakcji | Obserwacji na 1 ceche przy 1000 cech |
+|---|---|---|
+| same 3 spolki glowne | ~270 | 0,3 |
+| wszystkie 53 instrumenty | ~4800 | 4,8 |
+
+Regula kciuka mowi o minimum 10-20 obserwacji na ceche. **Uczenie modelu o 1000 cechach na samych spolkach glownych jest z gory skazane na przeuczenie** - model nauczy sie szumu i pokaze swietny wynik, ktory rozsypie sie na poletku. Stad dwie wiazace decyzje:
+
+1. **Model PT uczy sie na wszystkich 53 instrumentach naraz**, nie osobno na kazdym i nie tylko na glownych. Spolka wchodzi do modelu jako cecha (sektor, zmiennosc, kapitalizacja), a nie jako osobny model. Kontrola z 5.6 przenosi sie na sprawdzian: model uczony na wszystkich musi dzialac w obu grupach osobno.
+2. **Cechy redukujemy przed uczeniem, nie w jego trakcie.** ~1000 parametrow to material na przesiew (punkt 1 metody), nie na wejscie modelu. Do modelu trafia najwyzej ~50, a **wybor tych 50 jest czescia procedury walidacji** - jesli wybierzemy je patrzac na cale dane, a potem sprawdzimy model walidacja kroczaca, to sprawdzian jest juz skazony. Wybor cech musi odbywac sie wewnatrz kazdego okna uczenia osobno (walidacja zagniezdzona).
 
 **Rodziny parametrów (~1000 łącznie, każda w wielu oknach):**
 1. Trend — odległość od SMA/EMA w oknach 5–700 świec, nachylenie średnich.
@@ -301,7 +385,7 @@ Wynik trafia do arkusza **S2**. Użytkownik wybiera strategie do dalszej pracy, 
 8. Wielodniowe — zwroty z 1–20 sesji, serie sesji spadkowych i wzrostowych.
 9. Rynek (SPY, QQQ) — te same rodziny dla indeksów + siła względna spółki wobec rynku, krocząca beta i korelacja.
 10. Wolumen — poziom względem średniej z N świec i N sesji, wolumen względem tej samej świecy dnia w poprzednich sesjach, wolumen świecy sygnału względem poprzedzających, narastający wolumen sesji, wolumen przy spadku kontra przy wzroście.
-11. Szerokość rynku z naszych 27 spółek — ile jest powyżej średnich, ile spadło dziś, średni zwrot grupy.
+11. Szerokosc rynku z naszych 53 instrumentow — ile jest powyżej średnich, ile spadło dziś, średni zwrot grupy.
 12. Kontekst sygnału — ile razy wystąpił ostatnio, czas od poprzedniego, czy inne sygnały S2 odpaliły jednocześnie.
 
 **Skala obliczeń.** Etap 3 nie jest jednym przebiegiem, tylko **ciągłym przeszukiwaniem**: model liczy się na Macu godzinami albo dniami, przechodząc kolejne kombinacje parametrów, okna czasowe i progi, i zapisuje najlepsze znalezione zależności wraz z datą i wynikiem walidacji. Każdy kolejny przebieg startuje od zapisanego stanu i próbuje go poprawić. Dlatego kod Etapu 3 musi od początku: zapisywać postęp na dysk po każdej rundzie (przerwanie nie może kasować pracy), logować każdą sprawdzoną konfigurację z wynikiem, żeby dało się odtworzyć, ile prób wykonano (5.7), i nigdy nie dotykać skarbca (`data.load` pilnuje tego programowo).
@@ -309,10 +393,11 @@ Wynik trafia do arkusza **S2**. Użytkownik wybiera strategie do dalszej pracy, 
 **Metoda:**
 1. **Przesiew pojedynczych parametrów** — dla każdego parametru: jak zmienia się skuteczność w jego przedziałach, na ilu transakcjach, czy efekt powtarza się w obu grupach spółek i w kolejnych okresach czasu. Wynik: czytelna lista w stylu „80% transakcji zakończonych stopem wypadło przy cenie poniżej SMA(140)”.
 2. **Model zależności** — zespół drzew decyzyjnych (gradient boosting). Robi dokładnie to, co opisałeś jako sieć zależności: bierze najbardziej obiecujący parametr, dzieli po nim dane, a w każdej części szuka kolejnego. Sieć neuronowa nie jest tu dobrym wyborem: przy kilku tysiącach transakcji i tysiącu parametrów przeuczy się niemal na pewno, a drzewa radzą sobie z takimi danymi lepiej i dają się zinterpretować.
-3. **Walidacja krocząca** w okresie badawczym — model uczony na starszych danych, sprawdzany na nowszych, kilka razy z przesunięciem.
+3. **Walidacja kroczaca** w okresie odkrywania - model uczony na starszych danych, sprawdzany na nowszych, kilka razy z przesunieciem. Obowiazkowo z purging i embargo (5.9) oraz z wyborem cech wewnatrz kazdego okna (patrz wyzej). Wynik raportujemy jako rozrzut miedzy oknami, nie srednia: model, ktory dziala swietnie w trzech oknach i fatalnie w dwoch, jest gorszy niz rowny, choc srednia moze byc ta sama.
 4. **PT 1–100** = percentyl przewidywanej jakości transakcji (1 — najgorszy 1% sygnałów, 100 — najlepszy).
-5. **Próg PT** dobierany na walidacji kroczącej.
-6. **Jednorazowy sprawdzian na skarbcu** (5.1).
+5. **Prog PT** dobierany na walidacji kroczacej. Raportujemy tez, ile transakcji zostaje po odcieciu - prog, ktory przepuszcza 5% sygnalow, moze dac swietna ekspektancje na 30 transakcjach rocznie i byc bezuzyteczny w praktyce.
+6. **Sprawdzian na poletku** (5.1) - raz, po ustaleniu modelu i progu. Jesli przewaga tu znika, wracamy do pracy bez otwierania skarbca.
+7. **Jednorazowy sprawdzian na skarbcu** (5.1) - dopiero gdy poletko potwierdzilo.
 
 **Ograniczenie z decyzji D2:** model PT będzie liczony w Apps Script, zaraz po dopisaniu świecy. Dlatego ostateczny model musi być przenośny:
 - przesiew obejmuje ~1000 parametrów, ale model używa najwyżej ~50,
@@ -352,7 +437,9 @@ Wynik trafia do arkusza **S2**. Użytkownik wybiera strategie do dalszej pracy, 
 
 **Log w arkuszu.** Wszystkie transakcje wszystkich inwestorów trafiają do jednego arkusza `Transaction LOG` (`Investor.gs`), z kolumną `inwestor` do filtrowania. Powielone transakcje między inwestorami o podobnych ustawieniach są oczekiwane — filtrowanie po jednym inwestorze rozwiązuje to w Excelu. Kolumny obejmują parametry wejścia i wyjścia, PT sygnału, próg inwestora, powód wyjścia, `wieloznaczna` (5.4) oraz biegnącą skuteczność i ekspektancję.
 
-Do ustalenia na początku etapu: priorytet przy wielu sygnałach naraz (propozycja: wyższy PT pierwszy), zachowanie przy kolejnym sygnale na tej samej spółce, koszty.
+**Jak dlugo i po czym poznamy wynik.** Paper trading trwa do uzbierania **min. 100 transakcji** (przy spodziewanej czestosci sygnalow to kilka miesiecy) - wczesniejsze wnioski nie maja podstaw. Wynik oceniamy przez **zgodnosc z przewidywaniem backtestu**, nie przez sam zysk: liczymy przedzial ufnosci ekspektancji z backtestu i sprawdzamy, czy wynik na zywo sie w nim miesci. Wynik znaczaco lepszy od przewidywanego traktujemy jako ostrzezenie, nie sukces - najczestsza przyczyna jest blad w liczeniu, a nie nadzwyczajna przewaga.
+
+Do ustalenia na poczatku etapu: priorytet przy wielu sygnalach naraz (propozycja: wyzszy PT pierwszy), zachowanie przy kolejnym sygnale na tej samej spolce, koszty.
 
 ---
 
@@ -443,7 +530,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | D15 | Budżet czasu w Etapie 4 | Zaraz po zamknięciu świecy liczą się **tylko 3 spółki główne** — to na nich powstają sygnały. Spółki kontrolne i tło rynku dociągają się przy kolejnych uruchomieniach. Tryb szybki czeka wyłącznie na AAPL, TSLA i NVDA. | ✅ przyjęta |
 | D17 | Gdzie żyją inwestorzy | Ustawienia inwestorów przenoszą się z przeglądarki do Firestore (`investors/{id}`), a silnik działa w Apps Script: po zapisaniu każdej świecy godzinowej automat przechodzi po aktywnych inwestorach, czyta ich ustawienia i otwarte pozycje, sprawdza sygnały S3 i ich PT, zamyka pozycje, które w minionej świecy dotknęły SL albo TP, i otwiera nowe w granicach limitów. Dashboard przestaje być miejscem, gdzie cokolwiek się liczy — tylko pokazuje. Wdrożenie: Etap 5. | ✅ przyjęta |
 | D18 | Gdzie żyją strategie S2 i model PT | Firestore ma darmowy dzienny limit (50 000 odczytów, 20 000 zapisów) i żadnego wersjonowania — dwie rzeczy, które akurat świecom nie przeszkadzają (płyną bez przerwy, nikt nie musi widzieć „poprzedniej wersji" świecy), ale strategiom i modelowi PT bardzo. Podział: **świece i wszystko na żywo zostają w Firestore** (nasłuch w czasie rzeczywistym, którego Git nie ma; opisane niżej w sekcji 3.1). **Strategie S2 i model PT przenoszą się do repozytorium GitHub** jako pliki JSON — tam, gdzie i tak mają trafić zgodnie z D2 (eksport modelu PT do Apps Script). Szczegóły w sekcji 3.1. | ✅ przyjęta |
-| D16 | Próg „przewagi" | Progi ustalone **przed** policzeniem Etapu 2: minimum **100 transakcji** w grupie głównej i **300** w kontrolnej, przewaga nad wejściem losowym dodatnia **w obu grupach**, wynik lepszy niż **99. percentyl** rozkładu wejść losowych przy tej liczbie prób. | ✅ przyjęta |
+| D16 | Prog „przewagi" | **Zmieniony w 0.19** - poprzednia wersja (99. percentyl) przepuszczalaby ~240 strategii czystym przypadkiem przy 24 000 testow. Obowiazuja teraz jednoczesnie: (a) **minimum 100 transakcji w grupie glownej i 300 w kontrolnej**, rozlozonych na **min. 30 roznych dni** (5.10); (b) przewaga nad wejsciem losowym dodatnia **w obu grupach osobno**; (c) istotnosc liczona **blokowym bootstrapem** i przepuszczona przez **kontrole FDR na poziomie 10%** dla calego zestawu testow (5.7); (d) **ekspektancja po kosztach >= 0,05% na transakcje** (5.11); (e) **potwierdzenie na poletku** - przewaga utrzymuje sie na danych, ktorych strojenie nie widzialo. Strategia musi spelnic wszystkie piec. | ✅ przyjęta |
 
 ---
 
@@ -470,6 +557,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 0.16 | 2026-09-24 | Decyzja D18: strategie S2 i model PT trafiają do repozytorium (`s2/strategies.json`, `pt/model.json`, `pt/history/`) zamiast Firestore — nowa sekcja 3.1 tłumaczy podział (świece na żywo potrzebują nasłuchu, którego Git nie ma; strategie/PT zmieniają się rzadko i chcą wersjonowania, którego nie ma Firestore). Dashboard: lista S2 czytana z GitHub (`fetch` raz na godzinę) zamiast z kolekcji Firestore. |
 | 0.17 | 2026-09-24 | Naprawa nieskończonej pętli w łataniu luk (L20): `patchOneGap_` teraz sprawdza, czy zwrócone świece faktycznie wypełniają brak, zamiast uznawać za sukces każdy niepusty wynik z Yahoo. Po `PATCH_MAX_RETRIES` (3) próbach bez postępu luka jest automatycznie zapisywana jako zaakceptowana, z komentarzem, i znika z kolejki łatania — bez udziału człowieka. Naprawdę załatane luki są od razu usuwane z arkusza `_AUDYT`, nie czekają do następnego audytu. |
 | 0.18 | 2026-09-24 | Przegląd fundamentów. **Blokada po wyczerpaniu limitu Firestore** — pierwszy 429 wstrzymuje zadania w tle do resetu i loguje raz zamiast w kółko (to samo co L20, ale dla limitu zamiast łatania). **Uzupełniona lista kluczy czyszczonych przy „Wyzeruj stan"** — brakowało siedmiu stanów dodanych w 0.10–0.18, więc po wyczyszczeniu bazy system wierzyłby w nieistniejący postęp. **Wycofana luka L17** — sesje skrócone są liczone poprawnie przez `slotsInSession_()`; zgłoszenie wynikało z błędu w mojej symulacji, nie z kodu. Sprawdzona zgodność nazw pól między Apps Script, Pythonem i dashboardem oraz kompletność handlerów triggerów i pozycji menu. |
+| 0.19 | 2026-09-24 | **Przebudowa metodologii, zeby projekt mial realna szanse znalezc prawdziwa przewage.** Okres badawczy podzielony na **odkrywanie** (do 2025-09-30) i **poletko** (2025-10-01 - 2026-03-22) - tania informacja zwrotna po kazdym etapie, zanim otworzymy skarbiec; wczesniej skarbiec byl jedynym sprawdzianem i pierwsza informacja przyszlaby za pozno. **D16 przepisane**: poprzedni prog (99. percentyl) przepuszczalby ~240 strategii czystym przypadkiem przy 24 000 testow - teraz kontrola FDR, blokowy bootstrap, minimum roznych dni, prog oplacalnosci i potwierdzenie na poletku. Nowe zasady: **5.9** purging i embargo przy podzialach danych, **5.10** efektywna liczba obserwacji (nakladajace sie transakcje i 53 instrumenty reagujace na ten sam ruch), **5.11** minimalna przewaga ekonomiczna, **5.12** co zrobic, jesli skarbiec nie potwierdzi. **Etap 3**: model PT uczy sie na wszystkich 53 instrumentach (na samych glownych 1000 cech na ~270 transakcji = pewne przeuczenie), wybor cech wewnatrz walidacji. Sekcja 1 mowi wprost, czego szukamy i po czym poznamy sukces. Poprawione niespojnosci: 24 -> 50 spolek kontrolnych, 27 -> 53 instrumenty, S2 do GitHub nie Firestore, H wedlug D10. |
 
 ---
 

@@ -1,6 +1,6 @@
 """
 IA 4 — konfiguracja środowiska badawczego.
-Wersja projektu: 0.18 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.19 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Dwie rzeczy, które ten moduł załatwia raz dla całego projektu:
 
@@ -64,7 +64,10 @@ def client():
 class Vault:
     """Granice okresów z system/project (zasada 5.1)."""
 
-    research_end_exclusive: str  # okres badawczy: wszystko PRZED tą datą
+    research_end_exclusive: str  # caly okres badawczy: wszystko PRZED ta data
+    discovery_end_exclusive: str  # odkrywanie: wszystko PRZED ta data (= plot_start)
+    plot_start: str
+    plot_end: str
     vault_start: str
     vault_end: str
     live_from: str
@@ -96,6 +99,11 @@ def vault() -> Vault:
         raise RuntimeError(f"system/project nie ma pól: {', '.join(missing)}")
     return Vault(
         research_end_exclusive=d["researchEndExclusive"],
+        # Poletko doszlo w 0.19; starsze dokumenty go nie maja - wtedy caly
+        # okres badawczy jest odkrywaniem, a poletko puste.
+        discovery_end_exclusive=d.get("plotStart", d["vaultStart"]),
+        plot_start=d.get("plotStart", d["vaultStart"]),
+        plot_end=d.get("plotEnd", d["vaultStart"]),
         vault_start=d["vaultStart"],
         vault_end=d["vaultEnd"],
         live_from=d["liveFrom"],

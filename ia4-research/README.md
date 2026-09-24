@@ -1,6 +1,6 @@
 # IA 4 — środowisko badawcze (Python, Mac)
 
-**Wersja projektu: 0.18 (2026-09-24) — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 0.19 (2026-09-24) — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Etap 0B. Ten folder robi jedną rzecz: ściąga świece z Firestore na dysk i daje
 do nich dostęp tak, żeby nie dało się przypadkiem zajrzeć do skarbca.
@@ -79,7 +79,7 @@ Kod wyjścia 0 = wszystko się zgadza, 1 = są rozbieżności do wyjaśnienia.
 ```python
 from ia4 import data
 
-df = data.load("AAPL")                    # okres badawczy — DOMYŚLNIE
+df = data.load("AAPL")                    # OKRES ODKRYWANIA - domyslnie
 df = data.load(["AAPL", "TSLA", "NVDA"])  # kilka instrumentów
 df = data.load()                          # wszystkie instrumenty
 ```
@@ -89,6 +89,14 @@ Kolumny: `symbol, date, slot (1–7), o, h, l, c, v`.
 `v` to wolumen (decyzja D12). Świece zebrane przed wersją 0.8 mają tam 0 —
 przy liczeniu parametrów opartych na wolumenie trzeba te sesje pominąć albo
 dociągnąć historię ponownie.
+
+**Okresy (5.1):** `discovery` (domyslny, uczenie), `plot` (poletko - sprawdzian raz
+na etap, wymaga podania powodu i jest logowany), `vault` (skarbiec, raz w projekcie),
+`live`, `research` (odkrywanie + poletko lacznie).
+
+```python
+data.load("AAPL", period="plot", plot_reason="Etap 2: lista S2 po filtrach")
+```
 
 **Skarbiec jest zamknięty programowo.** `data.load()` domyślnie zwraca tylko
 okres badawczy, a próba sięgnięcia po skarbiec kończy się wyjątkiem:
