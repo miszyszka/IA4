@@ -388,6 +388,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 0.9 | 2026-09-23 | Ponowne pobranie całej historii, żeby wszystkie świece miały wolumen (D12). `History.gs`: data startu 2026-09-02 → 2026-09-23 (trzy tygodnie wypadały z zakresu), tempo 2 dni co 10 min → 5 dni co 5 min. Opisany porządek i budżet zapisów przy pełnym pobraniu. Luka L18. |
 | 1.0 | 2026-09-24 | **Baza wyczyszczona i pobierana od zera**, żeby cała historia miała wolumen (D12). Nowa funkcja `resetAfterWipe()` i pozycja menu — zeruje stan pobierania po ręcznym skasowaniu bazy w konsoli Firebase (bez tego automat uznaje, że wszystko już ma). Okres 2026-09-09 – 2026-09-23 świadomie porzucony: zostanie pobrany razem z resztą historii. |
 | 0.10 | 2026-09-23 | (numeracja dwuczłonowa — 0.10 następuje po 0.9.) Zamiast ręcznego pobrania historii od nowa: automat **sam dopisuje wolumen** do starych świec w wolnych przebiegach, oknami po 60 dni, z dziennym budżetem 3000 dokumentów. Stare dane zostają — zapis nadpisuje je tymi samymi cenami plus wolumenem, a sesje, których Yahoo już nie zwraca, pozostają nietknięte. Menu: postęp i reset. |
+| 0.11 | 2026-09-24 | Naprawa błędu z wersji 0.10: `patchOneGap_` i `volfillIfIdle_` nie ustawiały `symbol` na obiekcie świecy przed zapisem spółek głównych, więc `candleFields_` dostawał puste pole i Firestore odrzucał zapis (HTTP 400 „type unset"). Widoczne w STATS jako np. „AAPL 2026-01-30: …". Żadne dane nie zginęły — nieudany zapis nie przesuwa kursora, więc próby same się powtórzą teraz poprawnie. |
 
 ---
 
@@ -408,3 +409,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-23 23:44 | `b3b1b17` | `History.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.9: przygotowanie do pełnego pobrania historii z wolumenem — data startu i tempo w `History.gs`, luka L18. |
 | 2026-09-23 23:47 | `c4fdbf3` | `Project.gs`, `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 1.0: `resetAfterWipe()` + menu, przygotowanie do pobrania całej historii od zera z wolumenem. |
 | 2026-09-23 23:49 | `3f9573a` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.10: samoczynne dopisywanie wolumenu do starej historii z dziennym budżetem zapisów. |
+| 2026-09-24 00:12 | `(uzupełniony niżej)` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.11: naprawa brakującego `symbol` w łataniu luk i dopisywaniu wolumenu (HTTP 400 „type unset"). |

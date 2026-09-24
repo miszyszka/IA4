@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.10 (2026-09-23) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.11 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
@@ -454,6 +454,7 @@ function volfillIfIdle_(ctx) {
         dates.forEach(d => {
           const bySlot = sessions[d];
           const bars = Object.keys(bySlot).map(Number).sort((a, b) => a - b).map(s => bySlot[s]);
+          bars.forEach(b => { b.symbol = symbol; });   // candleFields_ tego wymaga
           fsWriteMainCandles_(symbol, bars);
           written += bars.length;
         });
@@ -560,7 +561,9 @@ function patchOneGap_(g) {
   if (!bySlot || !Object.keys(bySlot).length) return false;   // Yahoo nadal nie ma tych danych
 
   if (isMain_(g.symbol)) {
-    fsWriteMainCandles_(g.symbol, Object.keys(bySlot).map(Number).sort((a, b) => a - b).map(s => bySlot[s]));
+    const bars = Object.keys(bySlot).map(Number).sort((a, b) => a - b).map(s => bySlot[s]);
+    bars.forEach(b => { b.symbol = g.symbol; });   // candleFields_ tego wymaga
+    fsWriteMainCandles_(g.symbol, bars);
   } else {
     proofSaveSessions_(g.symbol, sessions, [g.date]);
   }
