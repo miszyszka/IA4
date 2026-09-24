@@ -428,4 +428,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-23 23:47 | `c4fdbf3` | `Project.gs`, `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 1.0: `resetAfterWipe()` + menu, przygotowanie do pobrania całej historii od zera z wolumenem. |
 | 2026-09-23 23:49 | `3f9573a` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.10: samoczynne dopisywanie wolumenu do starej historii z dziennym budżetem zapisów. |
 | 2026-09-24 10:11 | `d27ae75` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.11: naprawa brakującego `symbol` w łataniu luk i dopisywaniu wolumenu (HTTP 400 „type unset"). |
-| 2026-09-24 00:00 | `(uzupełniony niżej)` | `Telemetry.gs` (nowy), `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.12: telemetria stanu systemu do Firestore i GitHub, metodologia S2/S3/PT. |
+| 2026-09-24 14:32 | `6237caa` | `Telemetry.gs` (nowy), `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.12: telemetria stanu systemu do Firestore i GitHub, metodologia S2/S3/PT. |
