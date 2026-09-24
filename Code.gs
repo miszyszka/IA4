@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.16 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.17 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
@@ -77,6 +77,7 @@ const CONFIG = {
   PATCH_ENABLED: true,
   PATCH_PER_RUN: 2,          // ile luk łatamy w jednym wolnym przebiegu
   PATCH_MIN_GAP_MIN: 10,     // minimalny odstęp między przebiegami łatania
+  PATCH_MAX_RETRIES: 3,      // po tylu próbach bez postępu luka jest uznawana za trwałą
 
   // DOPISYWANIE WOLUMENU DO STAREJ HISTORII (decyzja D12)
   // Świece zebrane przed wersją 0.8 nie mają wolumenu. Zamiast pobierać całą
@@ -408,19 +409,53 @@ function patchGapsIfIdle_(ctx) {
   if (!gaps.length) return '';
 
   props.setProperty('PATCH_LAST_AT', String(Date.now()));
-  const done = [];
-  for (let i = 0; i < gaps.length && done.length < CONFIG.PATCH_PER_RUN; i++) {
+  const attempts = JSON.parse(props.getProperty('PATCH_ATTEMPTS') || '{}');
+  const fixed = [], gaveUp = [];
+
+  for (let i = 0; i < gaps.length && fixed.length + gaveUp.length < CONFIG.PATCH_PER_RUN; i++) {
     const g = gaps[i];
+    let r;
     try {
-      if (patchOneGap_(g)) done.push(`${g.symbol} ${g.date}`);
+      r = patchOneGap_(g);
     } catch (e) {
       log_('UWAGA', 'ŁATANIE', `${g.symbol} ${g.date}: ${e.message}`);
       break;   // najczęściej limit Firestore — nie ma sensu próbować dalej
     }
+
+    if (r.gained) {
+      // Naprawdę wypełniło brakującą świecę — luka znika z arkusza od razu,
+      // zamiast czekać do następnego pełnego audytu.
+      patchRemoveGapRow_(g.key);
+      delete attempts[g.key];
+      fixed.push(`${g.symbol} ${g.date}`);
+      continue;
+    }
+    // Brak postępu — czy to dlatego, że Yahoo nic nie zwrócił, czy zwrócił
+    // dokładnie to, co już mieliśmy (typowe przy trwałej przerwie, L3) —
+    // liczy się tak samo. Licznik prób, nie kolejny "sukces" w logu.
+    attempts[g.key] = (attempts[g.key] || 0) + 1;
+    if (attempts[g.key] >= CONFIG.PATCH_MAX_RETRIES) {
+      patchAutoAccept_(g.key,
+        `Automatycznie zaakceptowana po ${CONFIG.PATCH_MAX_RETRIES} próbach bez postępu — ` +
+        (r.wrote
+          ? 'Yahoo zwraca te same, już posiadane świece (prawdopodobnie trwały przestój, L3).'
+          : 'Yahoo nie zwraca żadnych danych dla tej daty.'));
+      delete attempts[g.key];
+      gaveUp.push(`${g.symbol} ${g.date}`);
+    }
   }
-  if (!done.length) return '';
-  log_('ZAPIS', 'ŁATANIE', `Uzupełniono z luk: ${done.join(', ')}.`);
-  return `załatano ${done.length}`;
+  props.setProperty('PATCH_ATTEMPTS', JSON.stringify(attempts));
+
+  const parts = [];
+  if (fixed.length) {
+    log_('ZAPIS', 'ŁATANIE', `Uzupełniono z luk: ${fixed.join(', ')}.`);
+    parts.push(`załatano ${fixed.length}`);
+  }
+  if (gaveUp.length) {
+    log_('INFO', 'ŁATANIE', `Zaakceptowano jako trwałe (bez postępu po ${CONFIG.PATCH_MAX_RETRIES} próbach): ${gaveUp.join(', ')}.`);
+    parts.push(`zaakceptowano ${gaveUp.length}`);
+  }
+  return parts.join(' · ');
 }
 
 /**
@@ -553,24 +588,78 @@ function patchReadGaps_() {
     new Date(Date.now() - 720 * 86400000), CONFIG.MARKET_TZ, 'yyyy-MM-dd');
   const today = Utilities.formatDate(new Date(), CONFIG.MARKET_TZ, 'yyyy-MM-dd');
   const known = liveSymbols_();
+  const accepted = patchAcceptedKeys_();
   const out = [];
   rows.forEach(r => {
+    const key = String(r[0] || '').trim();
     const symbol = String(r[1] || '').trim();
     const type = String(r[2] || '').trim();
     const date = String(r[3] || '').trim();
-    if (!symbol || !date || known.indexOf(symbol) < 0) return;
+    const desc = String(r[4] || '').trim();
+    if (!key || !symbol || !date || known.indexOf(symbol) < 0) return;
+    if (accepted[key]) return;   // decyzja („zaakceptowana") już podjęta — nie ruszamy
     if (type !== 'BRAK_SWIEC' && type !== 'BRAK_SESJI') return;
     if (date < oldest || date >= today) return;   // poza zasięgiem Yahoo albo dzisiejsza sesja
-    out.push({ symbol, date, type });
+    out.push({ key, symbol, type, date, desc });
   });
   return out;
 }
 
-/** Dociąga jedną sesję i dopisuje brakujące świece. true = coś zapisano. */
+/** Klucze luk już oznaczonych jako `zaakceptowana` w arkuszu decyzji. */
+function patchAcceptedKeys_() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PROJECT.DECISION_SHEET);
+  if (!sh || sh.getLastRow() < 2) return {};
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues();
+  const set = {};
+  rows.forEach(r => { if (r[0] && String(r[1]).trim() === 'zaakceptowana') set[String(r[0])] = true; });
+  return set;
+}
+
+/** Zapisuje (albo nadpisuje) decyzję o luce — używane do auto-akceptacji trwałych luk. */
+function patchAutoAccept_(key, comment) {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PROJECT.DECISION_SHEET);
+  if (!sh) return;
+  const last = sh.getLastRow();
+  const ids = last > 1 ? sh.getRange(2, 1, last - 1, 1).getValues().map(r => String(r[0])) : [];
+  const at = ids.indexOf(key);
+  const row = [key, 'zaakceptowana', comment];
+  if (at >= 0) sh.getRange(at + 2, 1, 1, 3).setValues([row]);
+  else sh.getRange(last + 1, 1, 1, 3).setValues([row]);
+}
+
+/** Usuwa wiersz luki z arkusza audytu — używane, gdy łatanie naprawdę ją zamknęło. */
+function patchRemoveGapRow_(key) {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PROJECT.AUDIT_SHEET);
+  if (!sh || sh.getLastRow() < 2) return;
+  const keys = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
+  for (let i = 0; i < keys.length; i++) {
+    if (String(keys[i][0]) === key) { sh.deleteRow(i + 2); return; }
+  }
+}
+
+/** Numery brakujących świec (1–7) wynikające z opisu luki. Cała sesja = wszystkie. */
+function patchExpectedSlots_(g) {
+  if (g.type === 'BRAK_SESJI') return [1, 2, 3, 4, 5, 6, 7];
+  const m = /nr ([\d, ]+) z/.exec(g.desc || '');
+  if (!m) return [1, 2, 3, 4, 5, 6, 7];   // opis w nietypowym formacie — bezpieczniej sprawdzić wszystko
+  return m[1].split(',').map(s => Number(s.trim())).filter(n => n > 0);
+}
+
+/**
+ * Dociąga jedną sesję. Zwraca { wrote, gained }:
+ *   wrote  — Yahoo zwróciło cokolwiek (nawet jeśli to tylko to, co już mieliśmy),
+ *   gained — wśród zwróconych świec jest choć jedna z brakujących — realny postęp.
+ * Bez rozróżnienia tych dwóch stanów luka bez rozwiązania (np. trwała przerwa
+ * Yahoo) byłaby "łatana" w kółko, bo te same istniejące świece zawsze wracają.
+ */
 function patchOneGap_(g) {
   const sessions = proofFetchRange_(g.symbol, g.date, g.date);
   const bySlot = sessions[g.date];
-  if (!bySlot || !Object.keys(bySlot).length) return false;   // Yahoo nadal nie ma tych danych
+  if (!bySlot || !Object.keys(bySlot).length) return { wrote: false, gained: false };
+
+  const fetched1based = Object.keys(bySlot).map(Number).map(s => s + 1);
+  const expected = patchExpectedSlots_(g);
+  const gained = fetched1based.some(s => expected.indexOf(s) >= 0);
 
   if (isMain_(g.symbol)) {
     const bars = Object.keys(bySlot).map(Number).sort((a, b) => a - b).map(s => bySlot[s]);
@@ -579,7 +668,7 @@ function patchOneGap_(g) {
   } else {
     proofSaveSessions_(g.symbol, sessions, [g.date]);
   }
-  return true;
+  return { wrote: true, gained };
 }
 
 
