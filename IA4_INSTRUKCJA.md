@@ -456,4 +456,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-24 14:32 | `6237caa` | `Telemetry.gs` (nowy), `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.12: telemetria stanu systemu do Firestore i GitHub, metodologia S2/S3/PT. |
 | 2026-09-24 14:46 | `ae3339b` | `ia4-dashboard.html`, `Investor.gs` (nowy), `Code.gs`, `IA4_INSTRUKCJA.md` | Wersja 0.13: wielu inwestorów w dashboardzie, arkusz Transaction LOG. |
 | 2026-09-24 14:55 | `a878cc1` | `Telemetry.gs`, `Project.gs`, `Code.gs`, `IA4_INSTRUKCJA.md` | Wersja 0.14: poprawki z telemetrii, sprzątanie po VIX, D17. |
-| 2026-09-24 16:00 | `(uzupełniony niżej)` | `ia4-dashboard.html`, `Project.gs`, `IA4_INSTRUKCJA.md` | Wersja 0.15: ochrona limitu odczytów Firestore — dashboard i pełny audyt. |
+| 2026-09-24 15:12 | `2538dee` | `ia4-dashboard.html`, `Project.gs`, `IA4_INSTRUKCJA.md` | Wersja 0.15: ochrona limitu odczytów Firestore — dashboard i pełny audyt. |
