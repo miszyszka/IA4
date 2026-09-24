@@ -36,6 +36,8 @@ Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która pr
    - `appsscript.json` jest wyjątkiem: format JSON nie dopuszcza komentarzy, a Apps Script odrzuca nieznane pola w manifeście, więc ten plik nie nosi numeru wersji.
    - Poprawka niepodbijająca wersji (literówka, komentarz, formatowanie) trafia tylko do dziennika pushów.
 
+8. **Telemetria zamiast wklejania.** Stan systemu (etap, kryteria, luki, błędy, postęp zadań, dziennik) jest publikowany automatycznie do `telemetry/state.json` w repozytorium. Na początku rozmowy o kodzie Claude czyta ten plik zamiast prosić o wklejenie podsumowania z arkusza. Jeśli plik jest starszy niż kilka godzin, warto poprosić o „Wyślij stan do GitHub teraz" albo sprawdzić, czy trigger telemetrii działa.
+
 ---
 
 ## 3. Architektura
@@ -60,6 +62,7 @@ Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która pr
 | `History.gs` | historia 3 spółek głównych | zostaje |
 | `Proof.gs` | historia 50 spółek kontrolnych i tła rynku (SPY, QQQ) | zostaje |
 | `Project.gs` | arkusz PROJEKT, skarbiec, audyt danych, sprzątanie | od Etapu 0 |
+| `Telemetry.gs` | stan systemu → Firestore i GitHub | od wersji 0.12 |
 | `Strategies.gs`, `Backtest.gs`, `Combo.gs`, `Benchmark.gs` | stary katalog i analizy | usuwane w Etapie 0 (ręcznie w edytorze) |
 | `appsscript.json` | uprawnienia | zostaje |
 | `ia4-dashboard.html` | podgląd wykresów | zostaje |
@@ -238,7 +241,9 @@ Kolumny wyniku dla każdej strategii, osobno dla grupy głównej i kontrolnej:
 - porównanie z wariantem przeciwnego kierunku,
 - wskaźnik istotności z uwzględnieniem liczby testów (5.7).
 
-Wynik trafia do arkusza S1_WYNIKI. Użytkownik wybiera strategie do S2, zaznaczając je w arkuszu. Claude proponuje filtry i ranking, ale nie wybiera za użytkownika.
+Wynik trafia do arkusza **S2**. Użytkownik wybiera strategie do dalszej pracy, zaznaczając je w arkuszu. Claude proponuje filtry i ranking, ale nie wybiera za użytkownika.
+
+**Czym jest arkusz S2.** Jeden wiersz = jedna strategia. Kolumny: `id_strategii`, parametry (sygnał, kierunek, SL, TP, H), wynik backtestu na okresie badawczym, wynik na skarbcu (wypełniany dopiero po jego otwarciu w Etapie 3), ocena Claude i pole wyboru „bierzemy". Strategie zaznaczone tu i tylko one przechodzą dalej. **Zamknięcie Etapu 2 zamyka listę S2** — po tym momencie jej skład się nie zmienia, bo inaczej Etap 3 liczyłby transakcje strategii, które dopiero co dołożyliśmy po obejrzeniu wyników.
 
 **Kryteria ukończenia:** wszystkie strategie policzone; lista S2 zatwierdzona przez użytkownika i zapisana (arkusz + Firestore); w tym pliku zapisane kryteria, którymi się kierowano.
 
@@ -246,7 +251,13 @@ Wynik trafia do arkusza S1_WYNIKI. Użytkownik wybiera strategie do S2, zaznacza
 
 **Cel:** dla każdego sygnału S2 ocenić, w jakim kontekście działa, i nadać mu rating PT od 1 do 100.
 
-**Zbiór danych:** każda historyczna transakcja S2 z okresu badawczego to jeden wiersz: ~1000 parametrów towarzyszących policzonych w chwili sygnału + wynik transakcji.
+**Czym jest arkusz S3.** Tu wiersz to **pojedyncza transakcja**, nie strategia. Każda strategia z zamkniętej listy S2 przechodzi backtest i zapisuje do S3 wszystkie swoje historyczne wejścia. Kolumny: `id_strategii`, `id_transakcji`, data i godzina wejścia, kierunek, cena wejścia i wyjścia, powód wyjścia (SL / TP / limit czasu), wynik, `rating_PT` policzony dla tej transakcji, oraz **`wieloznaczna`** — czy w świecy dało się osiągnąć i stop, i cel, więc wynik wynika z ostrożnego założenia „stop pierwszy" (5.4), a nie z danych. Udział takich transakcji jest osobną kolumną podsumowania, bo przy ciasnych SL/TP potrafi zdominować wynik.
+
+**S3 musi dać się przeliczyć od nowa jednym poleceniem.** Baza warunków wyznaczających PT będzie się zmieniać w miarę, jak model szuka lepszych zależności; wtedy zmieniają się wszystkie ratingi. Dlatego S3 nie jest zapisem historycznym, tylko wynikiem, który za każdym razem powstaje na nowo z tych samych danych i bieżącej wersji modelu. Wersja modelu i data przeliczenia są zapisane w nagłówku arkusza.
+
+**Czym jest rating PT.** PT to **liczba 1–100 przypisana pojedynczemu sygnałowi w chwili jego powstania** — percentyl przewidywanej jakości transakcji na tle wszystkich sygnałów tej samej strategii. 1 oznacza najgorszy procent sygnałów, 100 najlepszy. PT nie ocenia strategii (to robi S2), tylko **konkretne wystąpienie sygnału w konkretnym kontekście rynkowym**: ten sam sygnał DROP_N3 może mieć PT 20 w jednych warunkach i PT 85 w innych. Model liczący PT bierze parametry towarzyszące z chwili sygnału i zwraca przewidywaną jakość; próg PT decyduje, czy wchodzimy w transakcję.
+
+**Zbiór danych do uczenia:** każda historyczna transakcja S2 z okresu badawczego to jeden wiersz: ~1000 parametrów towarzyszących policzonych w chwili sygnału + wynik transakcji.
 
 **Rodziny parametrów (~1000 łącznie, każda w wielu oknach):**
 1. Trend — odległość od SMA/EMA w oknach 5–700 świec, nachylenie średnich.
@@ -311,6 +322,12 @@ Wirtualny inwestor co godzinę otwiera i zamyka transakcje według ustalonych za
 **Zamykanie etapu:** IA 4 → Projekt → Zamknij bieżący etap. Skrypt odmówi, jeśli któreś kryterium nie jest spełnione, i wypisze które. Po zamknięciu: nowa wersja tej instrukcji.
 
 **STATS** wiersze 18–20: etap projektu, luki w danych, skarbiec. Aktualizowane od razu przy każdej zmianie w PROJEKT i co 5 minut przez automat.
+
+**Telemetria — pełny stan systemu dla Claude.** `Telemetry.gs` zbiera w jeden dokument JSON wszystko, co Claude musiałby inaczej dostać wklejone ręcznie: etap i kryteria (liczone tą samą funkcją co arkusz PROJEKT, więc nie mogą się rozjechać), pełną listę luk ze statusami i komentarzami, tabelę instrumentów z ostatniego audytu, stan każdej spółki w automacie, błędy, postęp pobierania historii i dopisywania wolumenu, listę triggerów oraz ostatnie 80 wpisów dziennika. Dokument trafia do `system/telemetry` w Firestore (źródło prawdy, czyta go też dashboard) i do repozytorium jako `telemetry/state.json` plus dzienna migawka `telemetry/history/RRRR-MM-DD.json`.
+
+Wysyłka idzie **z Apps Script do GitHub**, a nie odwrotnie. Rozważaliśmy automat w repozytorium odpytujący Firestore co 10 minut; ma trzy wady, których to rozwiązanie nie ma: wymagałby drugiej kopii klucza serwisowego Firebase jako sekretu GitHuba (wbrew 6.5), zadania cykliczne na GitHubie potrafią spóźniać się kilkanaście minut lub zostać pominięte, a odpytywanie zużywałoby odczyty Firestore także wtedy, gdy nic się nie zmieniło. Apps Script wie, kiedy coś się zmieniło, więc wysyła tylko wtedy — porównuje sumę kontrolną dokumentu i pomija wysyłkę, gdy treść jest identyczna, z minimalnym odstępem 10 minut. Token GitHub leży w Script Properties pod kluczem `GITHUB_TOKEN`, ustawiany z menu; **nigdy nie trafia do repozytorium ani do arkusza**.
+
+Menu: IA 4 → Projekt → **Wyślij stan do GitHub teraz** / **Ustaw token GitHub** / **Włącz telemetrię co godzinę**.
 
 **Dopisywanie wolumenu do starej historii** (D12): świece zebrane przed wersją 0.8 nie mają wolumenu. Zamiast pobierać wszystko od nowa (~37 000 zapisów, czyli dwa dni ponad dzienny limit Firestore), automat uzupełnia je sam. W przebiegach, w których nie ma nic do zebrania, cofa się po historii każdego instrumentu oknami po 60 dni i zapisuje te same świece ponownie — tym razem z wolumenem. Kolejność jak w `liveSymbols_()`: najpierw trzy spółki główne. Dzienny budżet 3000 dokumentów pilnuje, żeby uzupełnianie nigdy nie zabrało limitu bieżącym świecom; całość zajmuje ok. dwóch tygodni bez niczyjej uwagi. Luki mają pierwszeństwo — wolumen dopisuje się dopiero, gdy nie ma nic do załatania. Postęp: menu IA 4 → Projekt → **Postęp dopisywania wolumenu**.
 
@@ -389,6 +406,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 1.0 | 2026-09-24 | **Baza wyczyszczona i pobierana od zera**, żeby cała historia miała wolumen (D12). Nowa funkcja `resetAfterWipe()` i pozycja menu — zeruje stan pobierania po ręcznym skasowaniu bazy w konsoli Firebase (bez tego automat uznaje, że wszystko już ma). Okres 2026-09-09 – 2026-09-23 świadomie porzucony: zostanie pobrany razem z resztą historii. |
 | 0.10 | 2026-09-23 | (numeracja dwuczłonowa — 0.10 następuje po 0.9.) Zamiast ręcznego pobrania historii od nowa: automat **sam dopisuje wolumen** do starych świec w wolnych przebiegach, oknami po 60 dni, z dziennym budżetem 3000 dokumentów. Stare dane zostają — zapis nadpisuje je tymi samymi cenami plus wolumenem, a sesje, których Yahoo już nie zwraca, pozostają nietknięte. Menu: postęp i reset. |
 | 0.11 | 2026-09-24 | Naprawa błędu z wersji 0.10: `patchOneGap_` i `volfillIfIdle_` nie ustawiały `symbol` na obiekcie świecy przed zapisem spółek głównych, więc `candleFields_` dostawał puste pole i Firestore odrzucał zapis (HTTP 400 „type unset"). Widoczne w STATS jako np. „AAPL 2026-01-30: …". Żadne dane nie zginęły — nieudany zapis nie przesuwa kursora, więc próby same się powtórzą teraz poprawnie. |
+| 0.12 | 2026-09-24 | Nowy plik `Telemetry.gs`: pełny stan systemu do `system/telemetry` w Firestore i do `telemetry/state.json` w repozytorium (plus dzienne migawki), wysyłany przy zmianie treści, nie w odstępach. Zasada 2.8. Doprecyzowana metodologia: czym jest arkusz **S2** (wiersz = strategia), arkusz **S3** (wiersz = transakcja, przeliczalny od nowa po zmianie modelu, z kolumną transakcji wieloznacznych) i czym jest **rating PT** (1–100 dla pojedynczego wystąpienia sygnału, nie dla strategii). |
 
 ---
 
@@ -410,3 +428,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-23 23:47 | `c4fdbf3` | `Project.gs`, `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 1.0: `resetAfterWipe()` + menu, przygotowanie do pobrania całej historii od zera z wolumenem. |
 | 2026-09-23 23:49 | `3f9573a` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.10: samoczynne dopisywanie wolumenu do starej historii z dziennym budżetem zapisów. |
 | 2026-09-24 10:11 | `d27ae75` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.11: naprawa brakującego `symbol` w łataniu luk i dopisywaniu wolumenu (HTTP 400 „type unset"). |
+| 2026-09-24 00:00 | `(uzupełniony niżej)` | `Telemetry.gs` (nowy), `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.12: telemetria stanu systemu do Firestore i GitHub, metodologia S2/S3/PT. |

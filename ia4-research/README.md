@@ -1,6 +1,6 @@
 # IA 4 — środowisko badawcze (Python, Mac)
 
-**Wersja projektu: 0.11 (2026-09-24) — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 0.12 (2026-09-24) — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Etap 0B. Ten folder robi jedną rzecz: ściąga świece z Firestore na dysk i daje
 do nich dostęp tak, żeby nie dało się przypadkiem zajrzeć do skarbca.
