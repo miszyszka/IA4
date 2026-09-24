@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.14 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.15 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '1.0',
+  INSTRUCTION_VERSION: '0.15',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -213,17 +213,58 @@ function resetAfterWipe() {
 }
 
 /** Pełny audyt wszystkich spółek. Liczy się w tle w partiach. */
+/**
+ * Pełny audyt czyta z Firestore KAŻDY dokument całej historii każdego
+ * instrumentu — przy obecnym rozmiarze bazy (~35-40 tys. dokumentów) to
+ * prawie cały dzienny darmowy limit 50 000 odczytów. Dwa uruchomienia tego
+ * samego dnia go przebijają. AUDIT_READ_BUDGET (poniżej) pilnuje tego licznika
+ * i wstrzymuje audyt, zanim zabraknie odczytów potrzebnych czemuś innemu;
+ * ta stała pilnuje drugiej strony — żeby w ogóle nie zaczynać drugi raz bez
+ * pytania, gdy pierwszy przebieg i tak już dziś wykorzystał budżet.
+ */
 function runFullAudit() {
+  const today = Utilities.formatDate(new Date(), CONFIG.MARKET_TZ, 'yyyy-MM-dd');
+  const prev = auditLoadState_();
+  if (prev && prev.startedAt && prev.startedAt.slice(0, 10) === today && !prev.forceConfirmed) {
+    const ui = SpreadsheetApp.getUi();
+    const resp = ui.alert('Pełny audyt już dziś ruszał',
+      `Pełny audyt dziś już był uruchamiany (${prev.done ? 'ukończony' : 'w toku'}) i zużył część ` +
+      'dziennego limitu odczytów Firestore (50 000). Uruchomienie go ponownie dziś może wyczerpać ' +
+      'limit potrzebny bieżącej zbiórce świec.\n\nUruchomić mimo to?',
+      ui.ButtonSet.YES_NO);
+    if (resp !== ui.Button.YES) return;
+  }
+
   const ctx = marketContext_(new Date());
   auditPrepareSheet_(true);
   auditSaveState_({
     mode: 'full', since: null, symbols: liveSymbols_(), idx: 0,
-    startedAt: new Date().toISOString(), etDate: ctx.etDate, stats: {},
+    startedAt: new Date().toISOString(), etDate: ctx.etDate, stats: {}, forceConfirmed: true,
   });
   auditRemoveTrigger_();
   ScriptApp.newTrigger('auditStep').timeBased().everyMinutes(1).create();
   auditStep();
   toast_('Audyt danych ruszył. Wynik pojawi się w arkuszu PROJEKT.');
+}
+
+// ----------------------------------------------------------------------------
+//  BUDŻET ODCZYTÓW FIRESTORE (dotyczy pełnego audytu — jedynego, co czyta dużo)
+// ----------------------------------------------------------------------------
+const AUDIT_READ_BUDGET = {
+  DAILY_MAX: 35000,   // margines poniżej limitu 50 000 — zostawia miejsce na dashboard i inne zadania
+};
+
+/** Współdzielony licznik na czas jednego wywołania auditStep_; zapisywany raz na koniec. */
+function auditReadBudget_() {
+  const day = Utilities.formatDate(new Date(), CONFIG.MARKET_TZ, 'yyyy-MM-dd');
+  const raw = JSON.parse(PropertiesService.getScriptProperties().getProperty('AUDIT_READ_BUDGET') || '{}');
+  const used = raw.day === day ? (raw.used || 0) : 0;
+  const b = { day, used, spent: 0 };
+  b.left = () => AUDIT_READ_BUDGET.DAILY_MAX - b.used - b.spent;
+  b.spend = (n) => { b.spent += n; };
+  b.persist = () => PropertiesService.getScriptProperties()
+    .setProperty('AUDIT_READ_BUDGET', JSON.stringify({ day: b.day, used: b.used + b.spent }));
+  return b;
 }
 
 /** Handler triggera pełnego audytu — NIE zmieniaj nazwy. */
@@ -232,17 +273,31 @@ function auditStep() {
   if (!lock.tryLock(10 * 1000)) return;
   const t0 = Date.now();
   const st = auditLoadState_();
+  const budget = auditReadBudget_();
   try {
     if (!st || st.done) { auditRemoveTrigger_(); return; }
+    if (budget.left() <= 0) {
+      log_('UWAGA', 'AUDYT', `Dzienny budżet odczytów Firestore wyczerpany (${AUDIT_READ_BUDGET.DAILY_MAX}) — pełny audyt czeka do jutra.`);
+      return;   // trigger co minutę zostaje — sam ruszy dalej, gdy dzień się zmieni
+    }
     const ctx = marketContext_(new Date());
+    let stoppedByBudget = false;
     do {
       const symbol = st.symbols[st.idx];
-      const r = auditSymbol_(symbol, st.since, ctx);
+      const r = auditSymbol_(symbol, st.since, ctx, budget);
+      if (r.partial) {
+        // Symbol nie doczytany do końca — spróbujemy go od nowa, gdy budżet się odnowi.
+        stoppedByBudget = true;
+        break;
+      }
       auditAppend_(r.gaps);
       st.stats[symbol] = r.stats;
       st.idx++;
-    } while (st.idx < st.symbols.length && Date.now() - t0 < PROJECT.MAX_RUNTIME_MS);
+    } while (st.idx < st.symbols.length && budget.left() > 0 && Date.now() - t0 < PROJECT.MAX_RUNTIME_MS);
 
+    if (stoppedByBudget) {
+      log_('UWAGA', 'AUDYT', `Budżet odczytów wyczerpany w trakcie ${st.symbols[st.idx]} — dokończy jutro.`);
+    }
     if (st.idx >= st.symbols.length) {
       st.done = true;
       auditRemoveTrigger_();
@@ -262,6 +317,7 @@ function auditStep() {
     console.error(e);
   } finally {
     if (st) auditSaveState_(st);
+    budget.persist();
     lock.releaseLock();
   }
 }
@@ -421,8 +477,10 @@ function projectSummary_(st) {
 //  AUDYT DANYCH
 // ============================================================================
 /** Sprawdza jedną spółkę od daty `since` (albo od początku danych). */
-function auditSymbol_(symbol, since, ctx) {
-  const data = auditRead_(symbol, since);
+function auditSymbol_(symbol, since, ctx, budget) {
+  const data = auditRead_(symbol, since, budget);
+  if (data.partial) return { gaps: [], stats: null, partial: true };
+
   const dates = Object.keys(data.byDate).sort();
   const gaps = [];
   const add = (type, date, extra, desc) => gaps.push(auditGap_(symbol, type, date, extra, desc));
@@ -501,7 +559,7 @@ function projTradingDay_(d) {
  * Spółki główne: dokument na świecę. Kontrolne i tło rynku: dokument na sesję.
  * Stronicowanie po (date, __name__) działa na indeksie jednego pola.
  */
-function auditRead_(symbol, since) {
+function auditRead_(symbol, since, budget) {
   const coll = fsCollection_(symbol);
   const id = fsId_(symbol);
   const main = coll === 'stocks';
@@ -513,6 +571,7 @@ function auditRead_(symbol, since) {
   let cursor = null;
 
   for (let page = 0; page < 100; page++) {
+    if (budget && budget.left() <= 0) return { byDate, dups, partial: true };
     const q = {
       from: [{ collectionId: sub }],
       select: { fields: fields.map(f => ({ fieldPath: f })) },
@@ -526,6 +585,7 @@ function auditRead_(symbol, since) {
     if (cursor) q.startAt = { values: [{ stringValue: cursor.date }, { referenceValue: cursor.name }], before: false };
 
     const rows = fsRunQuery_(`${coll}/${id}`, q);
+    if (budget) budget.spend(rows.filter(r => r.document).length);
     let got = 0;
     rows.forEach(r => {
       if (!r.document) return;

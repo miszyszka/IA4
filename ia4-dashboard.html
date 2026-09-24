@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IA 4 — Wersja projektu: 0.14 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md -->
+<!-- IA 4 — Wersja projektu: 0.15 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md -->
 <html lang="pl">
 <head>
 <meta charset="utf-8">
@@ -308,10 +308,20 @@ const nf = new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFra
 const nf0 = new Intl.NumberFormat("pl-PL");
 const fmtFull = new Intl.DateTimeFormat("pl-PL", { dateStyle: "medium", timeStyle: "short" });
 
+// Ile świec pobieramy zależnie od wybranego zakresu — NIE całą kolekcję.
+// Bez tego jedno otwarcie dashboardu czyta całą historię (dziś ~3500 świec ×
+// 3 spółki = ~10 500 odczytów Firestore za jedno wejście na stronę; kilka
+// odświeżeń wystarczy, żeby wyczerpać dzienny darmowy limit 50 000).
+const RANGE_CANDLE_LIMIT = { 7: 60, 30: 220, 90: 650, 365: 2600, 0: 4000 };
+const HOME_PEEK_LIMIT = 8;   // tyle najnowszych świec wystarcza na statystyki strony startowej
+
 const state = {
   bars: Object.fromEntries(SYMBOLS.map((s) => [s, new Map()])),
   sys: {}, s2: [], active: SYMBOLS[0], range: 30, view: "home", connected: false,
 };
+let dbRef = null, fsRef = null;
+let chartUnsub = null;                                    // aktywny nasłuch wykresu głównego
+let invUnsub = Object.fromEntries(SYMBOLS.map((s) => [s, null]));  // nasłuchy wykresu inwestora
 
 // ============================================================================
 //  TRWAŁOŚĆ USTAWIEŃ
@@ -368,16 +378,23 @@ inv.activeId = inv.list[0].id;
 //  NAWIGACJA
 // ============================================================================
 function show(view, symbol) {
+  const leaving = state.view;
   state.view = view;
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + view));
   document.querySelectorAll(".nav > button").forEach((b) =>
     b.setAttribute("aria-current", b.dataset.view === view ? "page" : "false"));
   $("symbolList").classList.toggle("open", view === "charts");
+
+  // Odłącz nasłuchy widoku, z którego wychodzimy — inaczej rosną w nieskończoność.
+  if (leaving === "charts" && view !== "charts" && chartUnsub) { chartUnsub(); chartUnsub = null; }
+  if (leaving === "ia" && view !== "ia") detachInvestorChart();
+
   if (view === "charts") {
     if (symbol) state.active = symbol;
     document.querySelectorAll("#symbolList button").forEach((b) =>
       b.setAttribute("aria-current", b.dataset.symbol === state.active ? "true" : "false"));
-    ensureChart(); drawChart();
+    ensureChart();
+    reattachChart();
   }
   if (view === "ia") renderInvestors();
   if (view === "strategies") renderStrategies();
@@ -395,8 +412,16 @@ document.querySelectorAll("#ranges button").forEach((b) =>
   b.addEventListener("click", () => {
     state.range = Number(b.dataset.days);
     document.querySelectorAll("#ranges button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-    drawChart();
+    reattachChart();
   }));
+
+/** Zdejmuje stary nasłuch wykresu głównego i zakłada nowy dla aktywnej spółki/zakresu. */
+function reattachChart() {
+  if (chartUnsub) { chartUnsub(); chartUnsub = null; }
+  chartUnsub = attachChartListener(state.active, state.range, () => {
+    if (state.view === "charts") drawChart();
+  });
+}
 
 // ============================================================================
 //  ZEGAR SESJI
@@ -695,9 +720,24 @@ const escapeAttr = escapeHtml;
 // ============================================================================
 let invChart = null, invSeries = {};
 
+const INV_CHART_DAYS = 90;   // wykres inwestora jest poglądowy, nie potrzebuje pełnej historii
+
+/** Podpina ograniczone nasłuchy dla 3 spółek — tylko gdy zakładka Inwestorzy jest widoczna. */
+function ensureInvestorListeners(onUpdate) {
+  SYMBOLS.forEach((s) => {
+    if (invUnsub[s]) return;   // już podpięty
+    invUnsub[s] = attachChartListener(s, INV_CHART_DAYS, onUpdate);
+  });
+}
+
+function detachInvestorChart() {
+  SYMBOLS.forEach((s) => { if (invUnsub[s]) { invUnsub[s](); invUnsub[s] = null; } });
+}
+
 function drawInvestorChart(x) {
   const box = $("invChart");
   if (!box || !window.LightweightCharts) return;
+  ensureInvestorListeners(() => { if (state.view === "ia") drawInvestorChart(activeInvestor()); });
   const L = window.LightweightCharts;
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
@@ -736,42 +776,70 @@ function drawInvestorChart(x) {
 // ============================================================================
 //  FIRESTORE
 // ============================================================================
+function barFromDoc(s, d) {
+  const t = d.candleTime && d.candleTime.seconds;
+  if (!t || typeof d.close !== "number") return null;
+  return { symbol: s, time: t, open: d.open, high: d.high, low: d.low,
+           close: d.close, date: d.date, slot: d.slot, label: d.label, volume: d.volume };
+}
+
 async function init() {
   const [{ initializeApp }, fs] = await Promise.all([
     import(SDK + "firebase-app.js"),
     import(SDK + "firebase-firestore.js"),
   ]);
-  const db = fs.getFirestore(initializeApp(FIREBASE_CONFIG));
+  dbRef = fs.getFirestore(initializeApp(FIREBASE_CONFIG));
+  fsRef = fs;
 
+  // Mały, zawsze aktywny nasłuch — tylko tyle świec, ile trzeba na statystyki
+  // strony startowej. To jedyny stały koszt odczytów; wykresy dociągają dane
+  // dopiero, gdy faktycznie na nie patrzysz (patrz attachChartListener niżej).
   SYMBOLS.forEach((s) => {
-    fs.onSnapshot(fs.collection(db, "stocks", s, "candles"), (snap) => {
+    const q = fs.query(fs.collection(dbRef, "stocks", s, "candles"),
+      fs.orderBy("candleTime", "desc"), fs.limit(HOME_PEEK_LIMIT));
+    fs.onSnapshot(q, (snap) => {
       snap.docChanges().forEach((ch) => {
         if (ch.type === "removed") return;
-        const d = ch.doc.data();
-        const t = d.candleTime && d.candleTime.seconds;
-        if (!t || typeof d.close !== "number") return;
-        state.bars[s].set(ch.doc.id, {
-          symbol: s, time: t, open: d.open, high: d.high, low: d.low,
-          close: d.close, date: d.date, slot: d.slot, label: d.label, volume: d.volume,
-        });
+        const b = barFromDoc(s, ch.doc.data());
+        if (b) state.bars[s].set(ch.doc.id, b);
       });
       state.connected = true;
       $("overlay").hidden = true;
       renderHome();
-      if (state.view === "charts" && s === state.active) drawChart();
-      if (state.view === "ia") drawInvestorChart(activeInvestor());
     }, onError);
   });
 
-  fs.onSnapshot(fs.doc(db, "system", "status"), (d) => { state.sys.status = d.data(); state.connected = true; renderHome(); }, onError);
-  fs.onSnapshot(fs.doc(db, "system", "project"), (d) => { state.sys.project = d.data(); renderHome(); }, () => {});
+  fs.onSnapshot(fs.doc(dbRef, "system", "status"), (d) => { state.sys.status = d.data(); state.connected = true; renderHome(); }, onError);
+  fs.onSnapshot(fs.doc(dbRef, "system", "project"), (d) => { state.sys.project = d.data(); renderHome(); }, () => {});
 
   // Lista S2 — pojawi się w Etapie 2. Do tego czasu kolekcja po prostu nie istnieje.
-  fs.onSnapshot(fs.collection(db, "s2"), (snap) => {
+  fs.onSnapshot(fs.collection(dbRef, "s2"), (snap) => {
     state.s2 = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
     if (state.view === "strategies") renderStrategies();
     if (state.view === "ia") renderInvestors();
   }, () => {});
+}
+
+/**
+ * Dociąga dane JEDNEJ spółki, ograniczone do wybranego zakresu, i podpina
+ * żywy nasłuch tylko na czas, gdy wykres jest widoczny. Odłącza poprzedni
+ * nasłuch, żeby nie zbierały się otwarte subskrypcje przy każdej zmianie
+ * zakresu czy spółki.
+ */
+function attachChartListener(symbol, days, onUpdate) {
+  if (!dbRef) return () => {};
+  const fs = fsRef;
+  const limit = RANGE_CANDLE_LIMIT[days] || RANGE_CANDLE_LIMIT[30];
+  const q = fs.query(fs.collection(dbRef, "stocks", symbol, "candles"),
+    fs.orderBy("candleTime", "desc"), fs.limit(limit));
+  return fs.onSnapshot(q, (snap) => {
+    snap.docChanges().forEach((ch) => {
+      if (ch.type === "removed") return;
+      const b = barFromDoc(symbol, ch.doc.data());
+      if (b) state.bars[symbol].set(ch.doc.id, b);
+    });
+    onUpdate();
+  }, onError);
 }
 
 function onError(err) {
