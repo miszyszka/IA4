@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — SPÓŁKI KONTROLNE („for proof”)
  *
- *  Wersja projektu: 0.12 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.13 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera historię świec 1h dla 50 dodatkowych spółek i zapisuje je w Firestore.
  *  Te spółki NIE pojawiają się w dashboardzie ani w arkuszach — służą wyłącznie

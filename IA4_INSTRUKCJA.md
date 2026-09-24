@@ -63,6 +63,7 @@ Miarą sukcesu nie jest najwyższy zysk w backteście, tylko przewaga, która pr
 | `Proof.gs` | historia 50 spółek kontrolnych i tła rynku (SPY, QQQ) | zostaje |
 | `Project.gs` | arkusz PROJEKT, skarbiec, audyt danych, sprzątanie | od Etapu 0 |
 | `Telemetry.gs` | stan systemu → Firestore i GitHub | od wersji 0.12 |
+| `Investor.gs` | arkusz `Transaction LOG` — wspólny log transakcji wszystkich inwestorów | od wersji 0.13 |
 | `Strategies.gs`, `Backtest.gs`, `Combo.gs`, `Benchmark.gs` | stary katalog i analizy | usuwane w Etapie 0 (ręcznie w edytorze) |
 | `appsscript.json` | uprawnienia | zostaje |
 | `ia4-dashboard.html` | podgląd wykresów | zostaje |
@@ -304,7 +305,22 @@ Wynik trafia do arkusza **S2**. Użytkownik wybiera strategie do dalszej pracy, 
 
 ### Etap 5 — Paper trading ⬜
 
-Wirtualny inwestor co godzinę otwiera i zamyka transakcje według ustalonych zasad i zapisuje wszystko w arkuszach: pozycje otwarte, zamknięte, stan portfela. Zasady do ustalenia na początku etapu: kapitał, wielkość pozycji, limit otwartych pozycji, priorytet przy wielu sygnałach naraz (np. według PT), zachowanie przy kolejnym sygnale na tej samej spółce, koszty.
+**Wielu inwestorów naraz.** Nie jeden portfel, tylko dowolna liczba niezależnych — każdy z własnym zestawem strategii S2, własnym progiem PT i własnymi limitami. Dzięki temu porównanie „co by było, gdyby" dzieje się na tych samych danych i w tym samym czasie, zamiast po kolei. Ustawienia każdego inwestora (zakładka w dashboardzie):
+
+| Ustawienie | Rola |
+|---|---|
+| kapitał początkowy | punkt odniesienia dla wyniku |
+| kapitał na transakcję | ile wchodzi w jedną pozycję |
+| maks. pozycji na jednej świecy | ile sygnałów z tej samej świecy wolno przyjąć |
+| maks. otwartych pozycji | ile pozycji może żyć jednocześnie |
+| strategie S2 | lista wyboru — kilka strategii naraz |
+| najniższy dopuszczalny PT | sygnały poniżej progu są pomijane |
+
+**Statystyki odrzuceń są równie ważne jak wynik.** Każdy inwestor liczy osobno, ile sygnałów odrzucił z powodu limitu na świecę, limitu otwartych pozycji i progu PT. Wysoki odsetek odrzuceń znaczy, że wynik nie pochodzi ze strategii, tylko z tego, które sygnały akurat zmieściły się w limitach — a to zupełnie inna informacja niż „strategia działa". Do tego średnie dzienne: ile sygnałów, ile transakcji, jaki wynik.
+
+**Log w arkuszu.** Wszystkie transakcje wszystkich inwestorów trafiają do jednego arkusza `Transaction LOG` (`Investor.gs`), z kolumną `inwestor` do filtrowania. Powielone transakcje między inwestorami o podobnych ustawieniach są oczekiwane — filtrowanie po jednym inwestorze rozwiązuje to w Excelu. Kolumny obejmują parametry wejścia i wyjścia, PT sygnału, próg inwestora, powód wyjścia, `wieloznaczna` (5.4) oraz biegnącą skuteczność i ekspektancję.
+
+Do ustalenia na początku etapu: priorytet przy wielu sygnałach naraz (propozycja: wyższy PT pierwszy), zachowanie przy kolejnym sygnale na tej samej spółce, koszty.
 
 ---
 
@@ -407,6 +423,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 0.10 | 2026-09-23 | (numeracja dwuczłonowa — 0.10 następuje po 0.9.) Zamiast ręcznego pobrania historii od nowa: automat **sam dopisuje wolumen** do starych świec w wolnych przebiegach, oknami po 60 dni, z dziennym budżetem 3000 dokumentów. Stare dane zostają — zapis nadpisuje je tymi samymi cenami plus wolumenem, a sesje, których Yahoo już nie zwraca, pozostają nietknięte. Menu: postęp i reset. |
 | 0.11 | 2026-09-24 | Naprawa błędu z wersji 0.10: `patchOneGap_` i `volfillIfIdle_` nie ustawiały `symbol` na obiekcie świecy przed zapisem spółek głównych, więc `candleFields_` dostawał puste pole i Firestore odrzucał zapis (HTTP 400 „type unset"). Widoczne w STATS jako np. „AAPL 2026-01-30: …". Żadne dane nie zginęły — nieudany zapis nie przesuwa kursora, więc próby same się powtórzą teraz poprawnie. |
 | 0.12 | 2026-09-24 | Nowy plik `Telemetry.gs`: pełny stan systemu do `system/telemetry` w Firestore i do `telemetry/state.json` w repozytorium (plus dzienne migawki), wysyłany przy zmianie treści, nie w odstępach. Zasada 2.8. Doprecyzowana metodologia: czym jest arkusz **S2** (wiersz = strategia), arkusz **S3** (wiersz = transakcja, przeliczalny od nowa po zmianie modelu, z kolumną transakcji wieloznacznych) i czym jest **rating PT** (1–100 dla pojedynczego wystąpienia sygnału, nie dla strategii). |
+| 0.13 | 2026-09-24 | Dashboard: zakładka Inwestorzy przepisana na **wielu niezależnych inwestorów** — własne ustawienia (kapitał, kapitał na transakcję, limit na świecę, limit otwartych, wybór strategii S2, próg PT), zmiana nazwy, start/stop osobno dla każdego. Statystyki odrzuceń z trzech powodów i średnie dzienne. Uproszczony wykres trzech spółek znormalizowany do procentu ze znacznikami wejść i wyjść. Nowy `Investor.gs`: arkusz `Transaction LOG` wspólny dla wszystkich inwestorów, zasilany z Firestore. Etap 5 opisany na nowo. |
 
 ---
 
@@ -429,3 +446,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-23 23:49 | `3f9573a` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.10: samoczynne dopisywanie wolumenu do starej historii z dziennym budżetem zapisów. |
 | 2026-09-24 10:11 | `d27ae75` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.11: naprawa brakującego `symbol` w łataniu luk i dopisywaniu wolumenu (HTTP 400 „type unset"). |
 | 2026-09-24 14:32 | `6237caa` | `Telemetry.gs` (nowy), `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.12: telemetria stanu systemu do Firestore i GitHub, metodologia S2/S3/PT. |
+| 2026-09-24 15:00 | `(uzupełniony niżej)` | `ia4-dashboard.html`, `Investor.gs` (nowy), `Code.gs`, `IA4_INSTRUKCJA.md` | Wersja 0.13: wielu inwestorów w dashboardzie, arkusz Transaction LOG. |

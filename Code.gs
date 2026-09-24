@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.12 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.13 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
@@ -170,6 +170,10 @@ function onOpen() {
       .addItem('📡 Wyślij stan do GitHub teraz', 'telemetryPublishNow')
       .addItem('🔑 Ustaw token GitHub', 'telemetrySetToken')
       .addItem('⏱ Włącz telemetrię co godzinę', 'telemetryInstallTrigger'))
+    .addSubMenu(ui.createMenu('💼 Inwestorzy')
+      .addItem('📒 Utwórz / odśwież Transaction LOG', 'txlogSetup')
+      .addItem('🔄 Dociągnij transakcje z bazy', 'txlogSync')
+      .addItem('⏱ Odświeżaj co godzinę', 'txlogInstallTrigger'))
     .addSeparator()
     .addItem('⚙️ Konfiguruj i włącz automat', 'setup')
     .addItem('▶️ Uzupełnij braki (ostatni miesiąc)', 'runNow')
