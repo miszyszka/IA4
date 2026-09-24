@@ -1,8 +1,8 @@
 {
   "meta": {
-    "version": "0.15",
-    "generatedAt": "2026-09-24T17:46:56.001Z",
-    "generatedAtPL": "2026-09-24 19:46",
+    "version": "0.18",
+    "generatedAt": "2026-09-24T18:46:56.088Z",
+    "generatedAtPL": "2026-09-24 20:46",
     "spreadsheet": "IA 4",
     "note": "Pełny stan systemu IA 4. Zapisywany przez Telemetry.gs, czytany przez Claude z repozytorium."
   },
@@ -1567,7 +1567,7 @@
     }
   },
   "collector": {
-    "lastRunAt": "2026-09-24T17:41:00.628Z",
+    "lastRunAt": "2026-09-24T18:41:00.400Z",
     "symbols": [
       {
         "symbol": "AAPL",
@@ -1599,10 +1599,10 @@
       },
       {
         "symbol": "AMAT",
-        "lastKey": 202609241,
+        "lastKey": 202609244,
         "status": "✗ Firestore HTTP 429: Quota exceeded.",
         "lastDate": "2026-09-24",
-        "lastClose": 464.31
+        "lastClose": 470.43
       },
       {
         "symbol": "PLTR",
@@ -1958,8 +1958,13 @@
     "symbolsCount": 55,
     "firestore": {
       "ok": false,
-      "at": "2026-09-24T14:34:06.295Z",
-      "count": 4
+      "at": "2026-09-24T17:51:03.294Z",
+      "count": 3
+    },
+    "quota": {
+      "blocked": true,
+      "exhaustedOnPacificDay": "2026-09-24",
+      "note": "Zadania w tle wstrzymane do resetu (północ czasu pacyficznego, ok. 9:00 w Polsce)."
     },
     "errors": [
       {
@@ -2184,8 +2189,8 @@
       }
     ],
     "lastError": {
-      "at": "2026-09-24T17:46:59.286Z",
-      "text": "BAC: Firestore HTTP 429: Quota exceeded."
+      "at": "2026-09-24T18:46:57.367Z",
+      "text": "PFE: Firestore HTTP 429: Quota exceeded."
     }
   },
   "jobs": {
@@ -2222,6 +2227,24 @@
     ]
   },
   "log": [
+    {
+      "at": "Thu Sep 24 2026 20:41:06 GMT+0200 (Central European Summer Time)",
+      "level": "BŁĄD",
+      "source": "AMAT",
+      "message": "Firestore HTTP 429: Quota exceeded."
+    },
+    {
+      "at": "Thu Sep 24 2026 20:26:01 GMT+0200 (Central European Summer Time)",
+      "level": "UWAGA",
+      "source": "LIMIT",
+      "message": "Dzienny limit Firestore wyczerpany. Zadania w tle (wolumen, łatanie luk, telemetria) wstrzymane do resetu — ok. 9:00 czasu polskiego. Zbieranie świec próbuje dalej."
+    },
+    {
+      "at": "Thu Sep 24 2026 19:54:09 GMT+0200 (Central European Summer Time)",
+      "level": "ZAPIS",
+      "source": "KONTROLNE",
+      "message": "Zapisano 3 świec na 1 spółkach kontrolnych."
+    },
     {
       "at": "Thu Sep 24 2026 16:21:13 GMT+0200 (Central European Summer Time)",
       "level": "UWAGA",
@@ -2683,24 +2706,6 @@
       "level": "ZAPIS",
       "source": "KONTROLNE",
       "message": "LLY: 500 sesji (2024-09-25 – 2026-09-23). Gotowych: 38/52."
-    },
-    {
-      "at": "Thu Sep 24 2026 09:40:49 GMT+0200 (Central European Summer Time)",
-      "level": "ZAPIS",
-      "source": "KONTROLNE",
-      "message": "UNH: 500 sesji (2024-09-25 – 2026-09-23). Gotowych: 37/52."
-    },
-    {
-      "at": "Thu Sep 24 2026 09:36:38 GMT+0200 (Central European Summer Time)",
-      "level": "ZAPIS",
-      "source": "KONTROLNE",
-      "message": "DIS: 500 sesji (2024-09-25 – 2026-09-23). Gotowych: 36/52."
-    },
-    {
-      "at": "Thu Sep 24 2026 09:36:16 GMT+0200 (Central European Summer Time)",
-      "level": "ZAPIS",
-      "source": "KONTROLNE",
-      "message": "NFLX: 500 sesji (2024-09-25 – 2026-09-23). Gotowych: 35/52."
     }
   ]
 }
