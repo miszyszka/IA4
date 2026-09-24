@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — TELEMETRIA  (stan systemu → Firestore → GitHub)
  *
- *  Wersja projektu: 0.13 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.14 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  PO CO TO JEST
  *  Claude nie ma dostępu do arkusza ani do edytora Apps Script — widzi wyłącznie
@@ -273,8 +273,9 @@ function telemetryGaps_(ss) {
 }
 
 function telemetryInstruments_(st) {
-  // st.stats to mapa symbol → { sessions, candles, first, last } z pełnego audytu.
-  const s = st.stats || {};
+  // Pełny audyt zapisuje tabelę instrumentów pod st.audit.stats (nie st.stats) —
+  // mapa symbol → { sessions, candles, first, last }.
+  const s = (st.audit && st.audit.stats) || {};
   const items = Object.keys(s).map(sym => ({
     symbol: sym,
     sessions: s[sym].sessions || 0,

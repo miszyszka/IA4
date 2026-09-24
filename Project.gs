@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.13 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.14 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -866,6 +866,59 @@ function projRender_(st) {
 // ============================================================================
 //  STAN PROJEKTU
 // ============================================================================
+/**
+ * Usuwa pozostałości po instrumentach, których nie ma już w projekcie (D8: VIX).
+ *
+ * Usunięcie symbolu z list w kodzie nie czyści tego, co już zostało zapisane:
+ * w LIVE_STATE zostaje jego wpis, a w arkuszu luk jego luki, które liczą się
+ * do kryterium 0.6 i blokują zamknięcie etapu. Ta funkcja sprząta jedno i drugie.
+ * Dokumentów w Firestore nie rusza — te kasuje się świadomie, z konsoli.
+ */
+function cleanupRemovedSymbols() {
+  const known = liveSymbols_();
+  const props = PropertiesService.getScriptProperties();
+
+  // 1) stan automatu
+  const live = JSON.parse(props.getProperty('LIVE_STATE') || '{}');
+  const strayLive = Object.keys(live).filter(s => known.indexOf(s) < 0);
+  strayLive.forEach(s => delete live[s]);
+  if (strayLive.length) props.setProperty('LIVE_STATE', JSON.stringify(live));
+
+  // 2) luki w arkuszu audytu
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(PROJECT.AUDIT_SHEET);
+  let removedGaps = 0;
+  if (sh && sh.getLastRow() > 1) {
+    const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 6).getValues();
+    const keep = rows.filter(r => !r[1] || known.indexOf(String(r[1])) >= 0);
+    removedGaps = rows.length - keep.length;
+    if (removedGaps) {
+      sh.getRange(2, 1, rows.length, 6).clearContent();
+      if (keep.length) sh.getRange(2, 1, keep.length, 6).setNumberFormat('@').setValues(keep);
+    }
+  }
+
+  // 3) stan dopisywania wolumenu
+  const vol = JSON.parse(props.getProperty('VOLFILL_STATE') || 'null');
+  let strayVol = 0;
+  if (vol && vol.symbols) {
+    const before = vol.symbols.length;
+    vol.symbols = vol.symbols.filter(s => known.indexOf(s) >= 0);
+    strayVol = before - vol.symbols.length;
+    if (strayVol) {
+      if (vol.idx >= vol.symbols.length) { vol.idx = Math.max(0, vol.symbols.length - 1); }
+      props.setProperty('VOLFILL_STATE', JSON.stringify(vol));
+    }
+  }
+
+  projRender_(projLoad_());
+  alert_('Sprzątanie po usuniętych instrumentach:\n\n' +
+    `• stan automatu: ${strayLive.length ? strayLive.join(', ') : 'nic do usunięcia'}\n` +
+    `• luki w audycie: usunięto ${removedGaps}\n` +
+    `• kolejka wolumenu: usunięto ${strayVol}\n\n` +
+    'Dokumenty w Firestore zostają — skasuj je ręcznie w konsoli, jeśli chcesz.');
+}
+
 function projLoad_() {
   const raw = PropertiesService.getScriptProperties().getProperty('PROJECT_STATE');
   const st = raw ? JSON.parse(raw) : {};
