@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.20 (2026-09-25) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.21 (2026-09-25) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.20',
+  INSTRUCTION_VERSION: '0.21',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -109,9 +109,9 @@ const DECISIONS = [
   ['D1', 'Wielkość skarbca', 'ostatnie 6 miesięcy: 2026-03-23 – 2026-09-22', '✅ przyjęta'],
   ['D2', 'Gdzie działa Etap 4', 'Apps Script, zaraz po dopisaniu świecy; model z Pythona eksportowany jako JSON', '✅ przyjęta'],
   ['D3', 'Tło rynku', 'SPY, QQQ zbierane od Etapu 0 (VIX usunięty — D8)', '✅ przyjęta'],
-  ['D4', 'Siatka SL/TP', 'pełna 10×10: 0,5 / 0,75 / 1 / 1,25 / 1,5 / 2 / 2,5 / 3 / 4 / 5%', '🔸 domyślna — potwierdzić przed Etapem 1'],
-  ['D5', 'Limit czasu H', 'TP ≤ 1% → 14 świec, ≤ 2,5% → 35, ≤ 5% → 70', '🔸 domyślna — potwierdzić przed Etapem 1'],
-  ['D6', 'Koszty', 'wynik bez kosztów + kolumna z 0,05% za transakcję', '🔸 domyślna — potwierdzić przed Etapem 1'],
+  ['D4', 'Siatka SL/TP', 'pełna 10×10: 0,5 / 0,75 / 1 / 1,25 / 1,5 / 2 / 2,5 / 3 / 4 / 5%', '✅ przyjęta'],
+  ['D5', 'Limit czasu H', 'TP ≤ 1% → 14 świec, ≤ 2,5% → 35, ≤ 5% → 70 (docelowo dobierany statystycznie, D10)', '✅ przyjęta'],
+  ['D6', 'Koszty', 'wynik bez kosztów + kolumna z 0,05% za transakcję', '✅ przyjęta'],
   ['D7', 'Stary katalog STRATEGIE', 'usunięty w Etapie 0, zastąpi go S1', '✅ przyjęta'],
 ];
 

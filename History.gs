@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — HISTORIA WSTECZ  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.20 (2026-09-25) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.21 (2026-09-25) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Co kilka minut pobiera świece 1h z kolejnych dni sesji dla AAPL, TSLA i NVDA
  *  i zapisuje je w Firestore. Każde kolejne uruchomienie cofa się o jeden
