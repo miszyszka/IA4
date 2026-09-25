@@ -1,8 +1,8 @@
 {
   "meta": {
-    "version": "0.19",
-    "generatedAt": "2026-09-25T10:55:25.042Z",
-    "generatedAtPL": "2026-09-25 12:55",
+    "version": "0.20",
+    "generatedAt": "2026-09-25T11:12:28.748Z",
+    "generatedAtPL": "2026-09-25 13:12",
     "spreadsheet": "IA 4",
     "note": "Pełny stan systemu IA 4. Zapisywany przez Telemetry.gs, czytany przez Claude z repozytorium."
   },
@@ -87,14 +87,14 @@
         "text": "Pełny audyt danych wykonany",
         "mode": "automatycznie",
         "ok": true,
-        "detail": "2026-09-22 21:30"
+        "detail": "audyt w toku: 52/55 (PEP) · poprzedni: 2026-09-22 21:30"
       },
       {
         "id": "0.6",
         "text": "Każda luka naprawiona albo zaakceptowana",
         "mode": "automatycznie",
         "ok": false,
-        "detail": "nowych luk: 105"
+        "detail": "audyt w toku (52/55) — luki policzone po zakończeniu"
       },
       {
         "id": "0.7",
@@ -135,8 +135,8 @@
     },
     "gaps": {
       "total": 116,
-      "new": 114,
-      "accepted": 2,
+      "new": 110,
+      "accepted": 6,
       "byType": {
         "BRAK_SWIEC": 104,
         "SKOK_CENY": 12
@@ -202,8 +202,8 @@
           "date": "2026-01-30",
           "desc": "brak świec nr 3, 4, 5, 6, 7 z 7",
           "detectedAt": "2026-09-25T10:53:05.181Z",
-          "status": "nowa",
-          "comment": ""
+          "status": "zaakceptowana",
+          "comment": "Automatycznie zaakceptowana po 3 próbach bez postępu — Yahoo zwraca te same, już posiadane świece (prawdopodobnie trwały przestój, L3)."
         },
         {
           "symbol": "AAPL",
@@ -211,8 +211,8 @@
           "date": "2026-02-02",
           "desc": "brak świec nr 1, 2, 3, 4 z 7",
           "detectedAt": "2026-09-25T10:53:05.182Z",
-          "status": "nowa",
-          "comment": ""
+          "status": "zaakceptowana",
+          "comment": "Automatycznie zaakceptowana po 3 próbach bez postępu — Yahoo zwraca te same, już posiadane świece (prawdopodobnie trwały przestój, L3)."
         },
         {
           "symbol": "TSLA",
@@ -598,8 +598,8 @@
           "date": "2026-02-02",
           "desc": "brak świec nr 1, 2, 3, 4 z 7",
           "detectedAt": "2026-09-25T10:53:24.618Z",
-          "status": "nowa",
-          "comment": ""
+          "status": "zaakceptowana",
+          "comment": "Automatycznie zaakceptowana po 3 próbach bez postępu — Yahoo zwraca te same, już posiadane świece (prawdopodobnie trwały przestój, L3)."
         },
         {
           "symbol": "ABBV",
@@ -607,8 +607,8 @@
           "date": "2026-01-30",
           "desc": "brak świec nr 2, 3, 4, 5, 6, 7 z 7",
           "detectedAt": "2026-09-25T10:53:25.605Z",
-          "status": "nowa",
-          "comment": ""
+          "status": "zaakceptowana",
+          "comment": "Automatycznie zaakceptowana po 3 próbach bez postępu — Yahoo zwraca te same, już posiadane świece (prawdopodobnie trwały przestój, L3)."
         },
         {
           "symbol": "ABBV",
@@ -1645,7 +1645,7 @@
     }
   },
   "collector": {
-    "lastRunAt": "2026-09-25T10:55:24.361Z",
+    "lastRunAt": "2026-09-25T11:12:25.648Z",
     "symbols": [
       {
         "symbol": "AAPL",
@@ -2077,6 +2077,17 @@
       "spentToday": 3205,
       "spentDay": "2026-09-25"
     },
+    "fullAudit": {
+      "running": true,
+      "done": false,
+      "index": 52,
+      "total": 55,
+      "current": "PEP",
+      "startedAt": "2026-09-25T10:53:00.989Z",
+      "lastError": null,
+      "readsSpentToday": 35323,
+      "readsBudget": 35000
+    },
     "triggers": [
       "telemetryHourly",
       "runCollector",
@@ -2085,6 +2096,18 @@
     ]
   },
   "log": [
+    {
+      "at": "Fri Sep 25 2026 13:11:32 GMT+0200 (Central European Summer Time)",
+      "level": "INFO",
+      "source": "ŁATANIE",
+      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): AAPL 2026-01-30, AAPL 2026-02-02."
+    },
+    {
+      "at": "Fri Sep 25 2026 13:01:47 GMT+0200 (Central European Summer Time)",
+      "level": "INFO",
+      "source": "ŁATANIE",
+      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): MA 2026-02-02, ABBV 2026-01-30."
+    },
     {
       "at": "Fri Sep 25 2026 12:51:41 GMT+0200 (Central European Summer Time)",
       "level": "INFO",
