@@ -1,8 +1,8 @@
 {
   "meta": {
     "version": "0.19",
-    "generatedAt": "2026-09-24T21:46:56.761Z",
-    "generatedAtPL": "2026-09-24 23:46",
+    "generatedAt": "2026-09-25T07:46:56.097Z",
+    "generatedAtPL": "2026-09-25 09:46",
     "spreadsheet": "IA 4",
     "note": "Pełny stan systemu IA 4. Zapisywany przez Telemetry.gs, czytany przez Claude z repozytorium."
   },
@@ -134,18 +134,18 @@
       "nightlyAt": "2026-09-24T21:15:01.746Z"
     },
     "gaps": {
-      "total": 106,
-      "new": 106,
-      "accepted": 0,
+      "total": 105,
+      "new": 100,
+      "accepted": 5,
       "byType": {
-        "BRAK_SWIEC": 51,
+        "BRAK_SWIEC": 50,
         "SKOK_CENY": 2,
         "BLAD_ODCZYTU": 53
       },
       "bySymbol": {
         "AAPL": 2,
         "TSLA": 3,
-        "NVDA": 3,
+        "NVDA": 2,
         "DELL": 4,
         "PLTR": 3,
         "ORCL": 4,
@@ -206,8 +206,8 @@
           "date": "2026-01-30",
           "desc": "brak świec nr 3, 4, 5, 6, 7 z 7",
           "detectedAt": "2026-09-22T19:30:08.972Z",
-          "status": "nowa",
-          "comment": ""
+          "status": "zaakceptowana",
+          "comment": "Automatycznie zaakceptowana po 3 próbach bez postępu — Yahoo zwraca te same, już posiadane świece (prawdopodobnie trwały przestój, L3)."
         },
         {
           "symbol": "AAPL",
@@ -215,8 +215,8 @@
           "date": "2026-02-02",
           "desc": "brak świec nr 1, 2, 3, 4 z 7",
           "detectedAt": "2026-09-22T19:30:08.972Z",
-          "status": "nowa",
-          "comment": ""
+          "status": "zaakceptowana",
+          "comment": "Automatycznie zaakceptowana po 3 próbach bez postępu — Yahoo zwraca te same, już posiadane świece (prawdopodobnie trwały przestój, L3)."
         },
         {
           "symbol": "TSLA",
@@ -224,8 +224,8 @@
           "date": "2026-01-30",
           "desc": "brak świec nr 3, 4, 5, 6, 7 z 7",
           "detectedAt": "2026-09-22T19:30:11.508Z",
-          "status": "nowa",
-          "comment": ""
+          "status": "zaakceptowana",
+          "comment": "Automatycznie zaakceptowana po 3 próbach bez postępu — Yahoo zwraca te same, już posiadane świece (prawdopodobnie trwały przestój, L3)."
         },
         {
           "symbol": "TSLA",
@@ -233,8 +233,8 @@
           "date": "2026-02-02",
           "desc": "brak świec nr 1, 2, 3, 4 z 7",
           "detectedAt": "2026-09-22T19:30:11.508Z",
-          "status": "nowa",
-          "comment": ""
+          "status": "zaakceptowana",
+          "comment": "Automatycznie zaakceptowana po 3 próbach bez postępu — Yahoo zwraca te same, już posiadane świece (prawdopodobnie trwały przestój, L3)."
         },
         {
           "symbol": "NVDA",
@@ -242,8 +242,8 @@
           "date": "2026-01-30",
           "desc": "brak świec nr 3, 4, 5, 6, 7 z 7",
           "detectedAt": "2026-09-22T19:30:13.780Z",
-          "status": "nowa",
-          "comment": ""
+          "status": "zaakceptowana",
+          "comment": "Automatycznie zaakceptowana po 3 próbach bez postępu — Yahoo zwraca te same, już posiadane świece (prawdopodobnie trwały przestój, L3)."
         },
         {
           "symbol": "NVDA",
@@ -674,15 +674,6 @@
           "date": "2026-09-24",
           "desc": "Firestore HTTP 429: [{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"Quota exceeded.\",\n    \"status\": \"RESOURCE_EXHAUSTED\"\n  }\n}\n]",
           "detectedAt": "2026-09-24T21:14:48.894Z",
-          "status": "nowa",
-          "comment": ""
-        },
-        {
-          "symbol": "NVDA",
-          "type": "BRAK_SWIEC",
-          "date": "2026-09-24",
-          "desc": "brak świec nr 2, 3, 4, 5, 6, 7 z 7",
-          "detectedAt": "2026-09-24T21:14:49.411Z",
           "status": "nowa",
           "comment": ""
         },
@@ -1559,7 +1550,7 @@
     }
   },
   "collector": {
-    "lastRunAt": "2026-09-24T21:46:00.510Z",
+    "lastRunAt": "2026-09-25T07:46:00.351Z",
     "symbols": [
       {
         "symbol": "AAPL",
@@ -1954,9 +1945,9 @@
       "count": 10
     },
     "quota": {
-      "blocked": true,
-      "exhaustedOnPacificDay": "2026-09-24",
-      "note": "Zadania w tle wstrzymane do resetu (północ czasu pacyficznego, ok. 9:00 w Polsce)."
+      "blocked": false,
+      "exhaustedOnPacificDay": "",
+      "note": ""
     },
     "errors": [
       {
@@ -2203,10 +2194,10 @@
       "index": 0,
       "total": 55,
       "current": "AAPL",
-      "cursor": "2025-11-22",
-      "written": 1445,
-      "spentToday": 1445,
-      "spentDay": "2026-09-24"
+      "cursor": "2025-03-23",
+      "written": 2636,
+      "spentToday": 1191,
+      "spentDay": "2026-09-25"
     },
     "triggers": [
       "telemetryHourly",
@@ -2215,6 +2206,36 @@
     ]
   },
   "log": [
+    {
+      "at": "Fri Sep 25 2026 09:31:03 GMT+0200 (Central European Summer Time)",
+      "level": "INFO",
+      "source": "ŁATANIE",
+      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): AAPL 2026-01-30, NVDA 2026-01-30."
+    },
+    {
+      "at": "Fri Sep 25 2026 09:16:04 GMT+0200 (Central European Summer Time)",
+      "level": "INFO",
+      "source": "ŁATANIE",
+      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): TSLA 2026-01-30, TSLA 2026-02-02."
+    },
+    {
+      "at": "Fri Sep 25 2026 09:01:23 GMT+0200 (Central European Summer Time)",
+      "level": "INFO",
+      "source": "ŁATANIE",
+      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): AAPL 2026-02-02."
+    },
+    {
+      "at": "Fri Sep 25 2026 09:01:23 GMT+0200 (Central European Summer Time)",
+      "level": "ZAPIS",
+      "source": "ŁATANIE",
+      "message": "Uzupełniono z luk: NVDA 2026-09-24."
+    },
+    {
+      "at": "Fri Sep 25 2026 09:01:02 GMT+0200 (Central European Summer Time)",
+      "level": "INFO",
+      "source": "LIMIT",
+      "message": "Limit Firestore odnowiony — zadania w tle wracają do pracy."
+    },
     {
       "at": "Thu Sep 24 2026 22:31:01 GMT+0200 (Central European Summer Time)",
       "level": "ZAPIS",
@@ -2664,36 +2685,6 @@
       "level": "ZAPIS",
       "source": "KONTROLNE",
       "message": "FCX: 500 sesji (2024-09-25 – 2026-09-23). Gotowych: 44/52."
-    },
-    {
-      "at": "Thu Sep 24 2026 09:51:06 GMT+0200 (Central European Summer Time)",
-      "level": "ZAPIS",
-      "source": "KONTROLNE",
-      "message": "LIN: 500 sesji (2024-09-25 – 2026-09-23). Gotowych: 43/52."
-    },
-    {
-      "at": "Thu Sep 24 2026 09:46:35 GMT+0200 (Central European Summer Time)",
-      "level": "ZAPIS",
-      "source": "KONTROLNE",
-      "message": "AMT: 500 sesji (2024-09-25 – 2026-09-23). Gotowych: 42/52."
-    },
-    {
-      "at": "Thu Sep 24 2026 09:46:12 GMT+0200 (Central European Summer Time)",
-      "level": "ZAPIS",
-      "source": "KONTROLNE",
-      "message": "PLD: 500 sesji (2024-09-25 – 2026-09-23). Gotowych: 41/52."
-    },
-    {
-      "at": "Thu Sep 24 2026 09:45:49 GMT+0200 (Central European Summer Time)",
-      "level": "ZAPIS",
-      "source": "KONTROLNE",
-      "message": "MDT: 500 sesji (2024-09-25 – 2026-09-23). Gotowych: 40/52."
-    },
-    {
-      "at": "Thu Sep 24 2026 09:41:39 GMT+0200 (Central European Summer Time)",
-      "level": "ZAPIS",
-      "source": "KONTROLNE",
-      "message": "PFE: 500 sesji (2024-09-25 – 2026-09-23). Gotowych: 39/52."
     }
   ]
 }
