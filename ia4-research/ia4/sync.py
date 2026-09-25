@@ -1,6 +1,6 @@
 """
 IA 4 — synchronizacja Firestore → lokalny parquet.
-Wersja projektu: 0.19 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.22 (2026-09-25) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Po co w ogóle kopia lokalna: backtest w Etapie 2 czyta te same świece dziesiątki
 tysięcy razy (24 000 strategii). Czytanie ich za każdym razem z Firestore
@@ -8,8 +8,15 @@ przekroczyłoby dzienny darmowy limit odczytów po kilku minutach pracy i byłob
 setki razy wolniejsze niż plik na dysku. Firestore zostaje jedynym źródłem
 prawdy (sekcja 3 instrukcji) — parquet to tylko jego pamięć podręczna.
 
-Pobieramy TYLKO PRZYROSTY: manifest pamięta ostatnią zsynchronizowaną datę
-każdego instrumentu, a kolejne uruchomienie pyta wyłącznie o sesje nowsze.
+JAK TO DZIAŁA: pierwsze uruchomienie ściąga CAŁOŚĆ. Każde kolejne pyta tylko
+o ostatnie RECHECK_DAYS (14) dni — nie o całą historię. Manifest pamięta
+ostatnią datę każdego instrumentu, więc codzienna synchronizacja to kilkanaście
+do kilkudziesięciu świec na instrument zamiast 30 tysięcy.
+
+Dlaczego 14 dni, a nie „tylko nowsze niż ostatnia": Apps Script dopisuje świece
+także WSTECZ (łatanie luk, dopisywanie wolumenu D12). Zapytanie „tylko nowsze"
+nigdy by tego nie zobaczyło i zostawiłoby w kopii lokalnej dziurę nie do
+zamknięcia. Pełne odświeżenie: python -m ia4.sync --full
 
 DWA FORMATY W FIRESTORE (sekcja 4 instrukcji):
   stocks/{SYMBOL}/candles/{data}_{nr}   spółki główne — dokument na świecę
@@ -38,6 +45,34 @@ from . import config
 
 COLUMNS = ["symbol", "date", "slot", "o", "h", "l", "c", "v"]
 GROUP_COLLECTION = {"main": "stocks", "proof": "proof", "context": "context"}
+
+# Ile ostatnich dni sprawdzamy ponownie przy każdej synchronizacji.
+#
+# Pytanie wyłącznie o sesje NOWSZE niż ostatnia posiadana (date > last_date)
+# jest najtańsze, ale ma dziurę: automat w Apps Script dopisuje świece
+# WSTECZ — łatanie luk uzupełnia stare sesje, a dopisywanie wolumenu (D12)
+# nadpisuje świece sprzed miesięcy. Takie uzupełnienie ma datę starszą niż
+# last_date, więc zapytanie „tylko nowsze" nigdy by go nie zobaczyło i kopia
+# lokalna zostałaby z dziurą, której nic już nie zamknie.
+#
+# 14 dni to to samo okno, co nocny audyt w Apps Script (PROJECT.NIGHTLY_DAYS)
+# — czyli dokładnie zakres, w którym dane jeszcze się ruszają. Starsze sesje
+# są już ustabilizowane; gdyby trzeba było je odświeżyć (np. po wykryciu
+# splitu), służy do tego „python -m ia4.sync --full".
+RECHECK_DAYS = 14
+
+
+def _since_for(last_date: str | None) -> str | None:
+    """Od której daty (wyłącznie) pytać Firestore: cofka o RECHECK_DAYS."""
+    if not last_date:
+        return None
+    from datetime import date, timedelta
+
+    try:
+        d = date.fromisoformat(last_date) - timedelta(days=RECHECK_DAYS)
+    except ValueError:      # nietypowy zapis daty w manifeście — bezpieczniej pobrać całość
+        return None
+    return d.isoformat()
 
 
 # ---------------------------------------------------------------------------
@@ -115,12 +150,19 @@ def fetch(symbol: str, since: str | None) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 def sync_symbol(symbol: str, manifest: dict, full: bool = False) -> dict:
     path = parquet_path(symbol)
-    since = None if full else manifest.get(symbol, {}).get("last_date")
+    last_date = None if full else manifest.get(symbol, {}).get("last_date")
+    since = _since_for(last_date)
 
     new = fetch(symbol, since)
 
+    had = 0
     if path.exists() and not full:
         old = pd.read_parquet(path)
+        had = len(old)
+        # Świeże wiersze idą PO starych, a niżej drop_duplicates(keep="last")
+        # zostawia właśnie je — dzięki temu ponowne pobranie ostatnich 14 dni
+        # nadpisuje to, co mieliśmy (np. świecę, która dostała wolumen), zamiast
+        # tworzyć duplikat.
         df = pd.concat([old, new], ignore_index=True) if not new.empty else old
     else:
         df = new
@@ -144,12 +186,16 @@ def sync_symbol(symbol: str, manifest: dict, full: bool = False) -> dict:
         "candles": int(len(df)),
         "first": str(df["date"].iloc[0]),
         "last": str(df["date"].iloc[-1]),
-        "added": int(len(new)),
+        # Realny przyrost, a nie liczba pobranych wierszy: przy oknie 14 dni
+        # większość pobranych świec to te, które już mieliśmy.
+        "added": int(len(df)) - had,
+        "refreshed": int(len(new)) - (int(len(df)) - had),
     }
     manifest[symbol] = {"last_date": stats["last"], **stats}
     extra = f", duplikatów usuniętych: {dups}" if dups else ""
+    seen = f", sprawdzono ponownie {stats['refreshed']}" if stats["refreshed"] > 0 else ""
     print(f"  {symbol}: +{stats['added']} świec → {stats['candles']} w {stats['sessions']} sesjach "
-          f"({stats['first']} – {stats['last']}){extra}")
+          f"({stats['first']} – {stats['last']}){seen}{extra}")
     return stats
 
 
