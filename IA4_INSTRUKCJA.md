@@ -589,4 +589,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-24 15:23 | `738c7f7` | `ia4-dashboard.html`, `IA4_INSTRUKCJA.md` | Wersja 0.16: D18, sekcja 3.1, S2 z GitHub w dashboardzie. |
 | 2026-09-24 15:27 | `617a9e5` | `Code.gs`, `IA4_INSTRUKCJA.md` | Wersja 0.17: naprawa L20 - pętla łatania luk. |
 | 2026-09-24 20:48 | `09ed4b7` | `IA4_INSTRUKCJA.md`, `Project.gs`, `ia4-research/*` | Wersja 0.19: przebudowa metodologii - poletko, FDR, purging, ochrona poletka w kodzie.
-| 2026-09-25 13:05 | `(uzupełnić)` | `Project.gs`, `Telemetry.gs`, `Code.gs`, `History.gs`, `Proof.gs`, `Investor.gs`, `ia4-dashboard.html`, `IA4_INSTRUKCJA.md` | Wersja 0.20: widoczność trwającego pełnego audytu — `auditProgress_()`, postęp w kryteriach 0.5/0.6, w arkuszu PROJEKT i w telemetrii (`jobs.fullAudit`). Luka L21. |
+| 2026-09-25 13:05 | `f0126ef` | `Project.gs`, `Telemetry.gs`, `Code.gs`, `History.gs`, `Proof.gs`, `Investor.gs`, `ia4-dashboard.html`, `IA4_INSTRUKCJA.md` | Wersja 0.20: widoczność trwającego pełnego audytu — `auditProgress_()`, postęp w kryteriach 0.5/0.6, w arkuszu PROJEKT i w telemetrii (`jobs.fullAudit`). Luka L21. |
