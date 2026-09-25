@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.19 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.20 (2026-09-25) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.19',
+  INSTRUCTION_VERSION: '0.20',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -712,6 +712,22 @@ function auditSaveDecisions_(map) {
   }
 }
 
+/**
+ * Postęp trwającego pełnego audytu. Jedno miejsce prawdy dla arkusza PROJEKT,
+ * kryteriów i telemetrii — audyt kończy się dopiero po ostatnim symbolu.
+ */
+function auditProgress_() {
+  const st = auditLoadState_();
+  const total = (st && st.symbols || []).length;
+  const running = !!total && !st.done;
+  return {
+    running, done: !!(st && st.done), total,
+    index: st ? (st.idx || 0) : 0,
+    current: st && st.symbols ? (st.symbols[st.idx || 0] || '') : '',
+    startedAt: st ? (st.startedAt || '') : '',
+  };
+}
+
 function auditLoadState_() {
   const raw = PropertiesService.getScriptProperties().getProperty('AUDIT_STATE');
   return raw ? JSON.parse(raw) : null;
@@ -754,10 +770,23 @@ function projEvalCriteria_(n, st, inputs) {
       const left = ctxSyms.filter(s => !(live[s] && live[s].k));
       return [ctxSyms.length > 0 && !left.length, left.length ? 'jeszcze nie zapisane: ' + left.join(', ') : ''];
     },
-    fullAudit: () => [!!(st.audit && st.audit.fullAt), st.audit && st.audit.fullAt ? projFmt_(st.audit.fullAt) : 'jeszcze nie wykonany'],
+    fullAudit: () => {
+      const done = !!(st.audit && st.audit.fullAt);
+      const p = auditProgress_();
+      // Trwający przebieg ustawia fullAt dopiero na końcu, więc bez tej informacji
+      // kryterium przez cały audyt pokazywałoby datę POPRZEDNIego audytu i wyglądało
+      // na zepsute. Postęp ma pierwszeństwo przed starą datą.
+      if (p.running) {
+        return [done, `audyt w toku: ${p.index}/${p.total}` + (p.current ? ` (${p.current})` : '') +
+          (done ? ` · poprzedni: ${projFmt_(st.audit.fullAt)}` : '')];
+      }
+      return [done, done ? projFmt_(st.audit.fullAt) : 'jeszcze nie wykonany'];
+    },
     noNewGaps: () => {
       const s = st.summary || {};
-      const ok = !!(st.audit && st.audit.fullAt) && !s.gapsNew;
+      const p = auditProgress_();
+      const ok = !!(st.audit && st.audit.fullAt) && !p.running && !s.gapsNew;
+      if (p.running) return [false, `audyt w toku (${p.index}/${p.total}) — luki policzone po zakończeniu`];
       return [ok, st.audit && st.audit.fullAt ? `nowych luk: ${s.gapsNew || 0}` : 'najpierw pełny audyt'];
     },
     vaultWritten: () => [!!st.vaultWrittenAt, st.vaultWrittenAt ? projFmt_(st.vaultWrittenAt) : 'jeszcze nie zapisana'],
@@ -868,7 +897,12 @@ function projRender_(st) {
 
   push(['#DANE', 'DANE'], 'section');
   const a = st.audit || {};
-  push(['', 'Pełny audyt', a.fullAt ? projFmt_(a.fullAt) : 'jeszcze nie wykonany', 'menu IA 4 → Projekt → Pełny audyt danych']);
+  const ap = auditProgress_();
+  push(['', 'Pełny audyt',
+    ap.running ? `W TOKU ${ap.index}/${ap.total}${ap.current ? ' — ' + ap.current : ''}`
+      : (a.fullAt ? projFmt_(a.fullAt) : 'jeszcze nie wykonany'),
+    ap.running ? `idzie co minutę, kończy się sam; poprzedni: ${a.fullAt ? projFmt_(a.fullAt) : 'brak'}`
+      : 'menu IA 4 → Projekt → Pełny audyt danych']);
   push(['', 'Nocny audyt', a.nightlyAt ? projFmt_(a.nightlyAt) : 'jeszcze nie było', `codziennie ok. ${PROJECT.NIGHTLY_HOUR}:00, ostatnie ${PROJECT.NIGHTLY_DAYS} dni`]);
   push(['', 'Luki', `nowych: ${gapsNew}`, `zaakceptowanych: ${gaps.length - gapsNew}`]);
   if (a.stats) {

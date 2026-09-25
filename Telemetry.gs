@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — TELEMETRIA  (stan systemu → Firestore → GitHub)
  *
- *  Wersja projektu: 0.19 (2026-09-24) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.20 (2026-09-25) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  PO CO TO JEST
  *  Claude nie ma dostępu do arkusza ani do edytora Apps Script — widzi wyłącznie
@@ -362,6 +362,8 @@ function telemetryJobs_() {
   const proof = parse('PROOF_STATE') || {};
   const hist = parse('HISTORY_STATE') || {};
   const vol = parse('VOLFILL_STATE') || {};
+  const aud = parse('AUDIT_STATE') || {};
+  const audBudget = parse('AUDIT_READ_BUDGET') || {};
 
   return {
     proof: {
@@ -382,6 +384,21 @@ function telemetryJobs_() {
       current: (vol.symbols || [])[vol.idx || 0] || '',
       cursor: vol.cursor || '', written: vol.written || 0,
       spentToday: vol.spent || 0, spentDay: vol.spentDay || '',
+    },
+    // Pełny audyt idzie symbol po symbolu co minutę i kończy się dopiero po
+    // ostatnim (wtedy ustawia audit.fullAt). Bez tego bloku nie dało się odróżnić
+    // „audyt trwa" od „audyt padł" — data fullAt przez cały przebieg pokazuje
+    // poprzedni, ukończony audyt.
+    fullAudit: {
+      running: !!(aud.symbols && aud.symbols.length) && !aud.done,
+      done: !!aud.done,
+      index: aud.idx || 0,
+      total: (aud.symbols || []).length,
+      current: (aud.symbols || [])[aud.idx || 0] || '',
+      startedAt: aud.startedAt || '',
+      lastError: aud.error || null,
+      readsSpentToday: audBudget.used || 0,
+      readsBudget: (typeof AUDIT_READ_BUDGET === 'object') ? AUDIT_READ_BUDGET.DAILY_MAX : null,
     },
     triggers: ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction()),
   };
