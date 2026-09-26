@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.25 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.26 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.25',
+  INSTRUCTION_VERSION: '0.26',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -128,9 +128,9 @@ const DECISIONS = [
   ['D16', 'Próg przewagi', 'min. transakcji i dni, przewaga w obu grupach, bootstrap + FDR 10%, ≥ 0,05% po kosztach, poletko', '✅ przyjęta'],
   ['D17', 'Inwestorzy', 'ustawienia w Firestore, silnik w Apps Script (Etap 5)', '✅ przyjęta'],
   ['D18', 'Strategie i model PT', 'w repozytorium jako JSON; świece zostają w Firestore', '✅ przyjęta'],
-  ['D19', 'Rozmiar S1', '286 sygnałów w 8 kategoriach → 57 200 strategii; limit 300', '🔸 propozycja — do potwierdzenia'],
-  ['D20', 'Źródło katalogu S1', 's1/catalog.json w repo; arkusz S1 to widok z pliku', '🔸 propozycja — do potwierdzenia'],
-  ['D21', 'Katalog na ślepo', 'zero wyników w Etapie 1, przesiew tylko po częstości, zamrożenie z hashem', '🔸 propozycja — do potwierdzenia'],
+  ['D19', 'Rozmiar S1', '286 sygnałów w 8 kategoriach → 57 200 strategii; limit 300', '✅ przyjęta'],
+  ['D20', 'Źródło katalogu S1', 's1/catalog.json w repo; arkusz S1 to widok z pliku', '✅ przyjęta'],
+  ['D21', 'Katalog na ślepo', 'zero wyników w Etapie 1, przesiew tylko po częstości, zamrożenie z hashem', '✅ przyjęta'],
 ];
 
 const PJ_WIDTH = 7;

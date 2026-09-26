@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — WIRTUALNI INWESTORZY: wspólny log transakcji
  *
- *  Wersja projektu: 0.25 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.26 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Jeden arkusz `Transaction LOG` zbiera transakcje WSZYSTKICH inwestorów.
  *  Kolumna `inwestor` pozwala filtrować je w Excelu — celowo nie rozbijamy ich
