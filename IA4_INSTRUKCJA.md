@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 0.24
+**Wersja:** 0.25
 **Data:** 26 września 2026
 **Aktualny etap:** 🟨 Etap 0 — 0A wdrożone; trwa pełne pobieranie historii po naprawie L13, przegląd 53 luk i budowa środowiska Pythona (0B)
 
@@ -218,7 +218,7 @@ Każdy wynik jest liczony osobno dla grupy głównej i kontrolnej. Zależność 
 
 ### 5.7 Liczba testow
 
-Przy ~24 000 strategii kilkaset wyglada swietnie czystym przypadkiem. **Konkretnie: przy progu "99. percentyl" spodziewamy sie okolo 240 strategii, ktore przejda wylacznie dzieki szczesciu.** Sam wysoki percentyl nie jest wiec zadnym filtrem - to jest najczestszy sposob, w jaki takie projekty same siebie oszukuja.
+Przy ~24 000 strategii kilkaset wyglada swietnie czystym przypadkiem. **Konkretnie: przy progu "99. percentyl" spodziewamy sie okolo 240 strategii, ktore przejda wylacznie dzieki szczesciu.** Przy S1 rozszerzonym do ~57 000 strategii (D19) to juz ok. 570. Sam wysoki percentyl nie jest wiec zadnym filtrem - to jest najczestszy sposob, w jaki takie projekty same siebie oszukuja.
 
 Obowiazuja trzy rzeczy naraz:
 
@@ -316,17 +316,169 @@ Etap dzielimy na dwie części:
 
 ### Etap 1 — Katalog strategii S1 ⬜
 
-**Cel:** pełny, przemyślany katalog hipotez i silnik, który je liczy. *(Proponowany rozdział: Etap 1 = definicje i silnik, Etap 2 = obliczenia i wybór. W pierwotnym planie oba etapy obejmowały liczenie wyników.)*
+**Cel:** zapisać — **zanim zobaczymy jakikolwiek wynik** — pełny katalog hipotez (sygnałów), zbudować silnik, który je liczy, i pokazać cały katalog w arkuszu Google **S1**. Etap 1 = definicje i silnik, Etap 2 = obliczenia i wybór.
 
-- **Sygnały:** dotychczasowe 84 (pełna lista z definicjami i parametrami JSON: **`S1_KATALOG_BAZOWY.md`**) plus nowe rodziny, łącznie ok. 120–150. Rodziny bazowe: spadek w N świecach (18), czerwone świece z rzędu (13), odchylenie od średniej (9), wyprzedanie RSI (8), luka spadkowa (6), formacje odwrócenia (6), spadek względem ATR (6), spadek od szczytu (5), spadek od otwarcia sesji (4), wstęga Bollingera (4), duża czerwona świeca (3), spadkowe sesje z rzędu (2). **Uwaga: wszystkie 84 to warianty jednej hipotezy (kupno po spadku) i wszystkie są LONG — patrz decyzja D9.** Nowe pomysły: sygnały z warunkiem wolumenu (kapitulacja = spadek na wolumenie powyżej średniej — D12), wybicia z konsolidacji, zawężenie i rozszerzenie zmienności, sygnały zależne od pory dnia, sygnały wielodniowe, sygnały wzrostowe (lustra spadkowych — kandydaci na short).
-- **Kierunek:** każdy sygnał w dwóch wariantach — LONG i SHORT na tych samych zasadach (short: stop powyżej wejścia, cel poniżej).
-- **Siatka wyjść:** SL i TP ∈ {0,5; 0,75; 1; 1,25; 1,5; 2; 2,5; 3; 4; 5}%, wszystkie 100 kombinacji. Nic powyżej 5%.
-- **Limit czasu H**: wartosc wyjsciowa wedlug D5 (TP <= 1% -> 14 swiec, <= 2,5% -> 35, <= 5% -> 70), ale **H nie jest przeszukiwany jak SL/TP** (D10). Po policzeniu backtestu H jest wyznaczany z rozkladu czasu do celu (90. percentyl) i strategia liczona ponownie z ta jedna wartoscia. Dzieki temu H wynika z danych, a nie mnozy liczby testow.
-- **Skala:** ~120 sygnałów × 2 kierunki × 100 wyjść ≈ 24 000 strategii.
-- **Nazewnictwo:** jak dotąd, z dodanym kierunkiem, np. `DROP_N3_X2__L__SL1_TP1.5_H35`.
-- **Zasady portfela i wyjścia:** jak w dotychczasowym silniku (jedna pozycja = 100 $, maks. 3 otwarte na strategię w grupie, stop przed celem w tej samej świecy, luka rozliczana po otwarciu).
+**Kiedy startuje:** po zamknięciu Etapu 0 (kryteria 0.6 i 0.9). Część 1a (definicje, arkusz S1) nie potrzebuje danych i może ruszyć wcześniej. Część 1b (silnik, częstość sygnałów) potrzebuje lokalnej kopii danych z `ia4.sync` i zakończonego dopisywania wolumenu (D12).
 
-**Kryteria ukończenia:** katalog S1 z opisami i parametrami; silnik w Pythonie przechodzi testy zgodności (wyniki kontrolnych przypadków identyczne z ręcznie policzonymi); obliczenie kilku strategii próbnych zgadza się z dotychczasowym silnikiem z Apps Script.
+#### 1.1 Zasada nadrzędna: katalog powstaje na ślepo
+
+- W Etapie 1 **nie liczymy żadnego wyniku transakcji** (zysku, skuteczności, ekspektancji) — ani na okresie odkrywania, ani tym bardziej na poletku czy w skarbcu. Katalog to lista hipotez zapisana z góry. Jeśli pomysł na sygnał pojawia się po obejrzeniu wykresu zysków, nie jest hipotezą, tylko dopasowaniem.
+- Wolno policzyć **częstość** sygnału na okresie odkrywania (ile razy odpala i w ilu różnych dniach), bo nie mówi nic o tym, co było potem. Sygnał, który w grupie głównej odpala w mniej niż **30 różnych dniach**, i tak nie spełni D16a — wypada przed Etapem 2 ze statusem „za rzadki” i zostaje w liczniku prób (5.7).
+- **Zamrożenie katalogu:** koniec Etapu 1 = commit `s1/catalog.json`, którego hash i data trafiają do arkusza PROJEKT. Każdy sygnał dopisany później (zwłaszcza po wynikach Etapu 2) jest nową próbą: dostaje datę dodania i powiększa licznik prób (5.7). Nie ma „cichego” dokładania sygnałów.
+
+#### 1.2 Osiem kategorii hipotez
+
+Katalog bazowy (84 sygnały) to w całości jedna hipoteza: „spadło, więc odbije”. Jeśli cały katalog opiera się na jednym mechanizmie, to w reżimie rynku, w którym ten mechanizm nie działa (silny trend), przegrywa cały naraz. Dlatego S1 obejmuje osiem **różnych** mechanizmów — to dywersyfikacja samego badania, nie tylko przyszłego portfela.
+
+| Kat. | Hipoteza — co ma działać | Zwykle działa, gdy… | Zwykle zawodzi, gdy… |
+|---|---|---|---|
+| **H1** | Powrót do średniej: ruch był przesadzony, cena wraca (katalog bazowy + lustra wzrostowe) | rynek chodzi w bok, spadek bez nowej informacji | silny trend, zła wiadomość o spółce |
+| **H2** | Podążanie za trendem: średnie kroczące, ich przecięcia, MACD, VWAP | wyraźny trend, rynek „idzie” | konsolidacja — dużo fałszywych przecięć |
+| **H3** | Wybicie z zakresu: przełamanie maksimum / minimum N świec, sesji, zakresu otwarcia | po okresie spokoju, przy nowej informacji | rynek bez kierunku — wybicia wracają |
+| **H4** | Zmienność: po ściśnięciu przychodzi rozszerzenie; bardzo szeroka świeca coś zapowiada | przed ważnymi wydarzeniami, po długiej konsolidacji | zmienność stale wysoka |
+| **H5** | Oscylatory i dywergencje: stochastyk, wyjście RSI ze strefy, dywergencja ceny i RSI | rynek w zakresie | silny trend (oscylator „leży” w strefie tygodniami) |
+| **H6** | Struktura sesji i kalendarz: zamknięcie przy minimum dnia, odwrócenie pierwszej godziny, koniec miesiąca | stałe przepływy (fundusze, zamykanie pozycji na noc) | efekt jest powszechnie znany i już wykorzystany |
+| **H7** | Kontekst rynku: czy spółka ruszyła sama, czy razem z całym rynkiem (SPY, QQQ — D3) | ruch własny spółki bez wiadomości | panika na całym rynku |
+| **H8** | Wolumen: potwierdza ruch (wybicie na wolumenie) albo zdradza wyczerpanie (kapitulacja, wysychanie wolumenu) | płynne spółki, wyraźne różnice wolumenu | dni o nietypowym wolumenie (wygasanie opcji, rebalansowanie indeksów) |
+
+**Dwa kierunki (D9) to nie formalność.** Ten sam sygnał testowany w obu kierunkach sprawdza dwie przeciwne hipotezy: LONG na sygnale spadkowym to powrót do średniej (H1), SHORT na tym samym sygnale to kontynuacja spadku (H2). Podobnie LONG na lustrze wzrostowym (np. `RISE_N3_X2`) to czyste momentum. Dlatego w S1 nie ma osobnej rodziny „momentum” — zawiera się w lustrach.
+
+#### 1.3 Wspólne definicje (identyczne w Pythonie i w Apps Script)
+
+Każdy wskaźnik jest liczony dokładnie tak samo w obu językach, bo w Etapie 4 sygnały liczy Apps Script (D2). Drobna różnica w definicji (np. inny start EMA) daje inne sygnały na żywo niż w backteście.
+
+- **Świeca** 1h, **sesja** = 7 świec (numer świecy w sesji: 1–7; świeca 7 trwa 30 min). Szereg jest ciągły przez noce i weekendy (kontrakt silnika, pkt 9).
+- **SMA(n)** — średnia arytmetyczna n zamknięć.
+- **EMA(n)** — α = 2/(n+1), start od SMA(n) z pierwszych n zamknięć.
+- **RSI(n), ATR(n)** — metoda Wildera (α = 1/n), start od średniej prostej z pierwszych n wartości.
+- **Wstęga Bollingera(n, k)** — SMA(n) ± k × odchylenie standardowe populacyjne (dzielone przez n). Szerokość wstęgi = (górna − dolna) / SMA.
+- **MACD(12, 26, 9)** — EMA(12) − EMA(26); linia sygnału = EMA(9) z MACD.
+- **Stochastyk** — %K(14) wygładzony SMA(3), %D = SMA(3) z %K.
+- **VWAP sesji** — Σ(TP × v) / Σv od pierwszej świecy sesji, TP = (high + low + close) / 3; zeruje się z każdą sesją. **VWMA(n)** — to samo w oknie n świec.
+- **OBV** — suma narastająca: +v, gdy zamknięcie wyższe od poprzedniego, −v, gdy niższe.
+- **RVOL (wolumen względny)** — wolumen świecy podzielony przez średni wolumen **tej samej świecy dnia** (tego samego numeru 1–7) z 20 poprzednich sesji. **Nigdy przez średnią z ostatnich N świec:** wolumen w ciągu dnia ma kształt litery U — pierwsza i ostatnia godzina są zawsze „ciężkie”, a świeca 7 trwa tylko 30 minut. Zwykła średnia oznaczałaby niemal każde otwarcie jako „wolumen powyżej normy” i każdą świecę 7 jako „wysychanie”.
+- **Przecięcie w górę** na świecy t: A[t] > B[t] i A[t−1] ≤ B[t−1]. W dół symetrycznie.
+- **Nowe rodziny są zdarzeniami:** odpalają na świecy, w której warunek *staje się* prawdziwy, a nie na każdej, w której trwa. Sygnały bazowe zostają zdefiniowane tak jak w `S1_KATALOG_BAZOWY.md` (część jest poziomowa; pkt 8 kontraktu i tak ignoruje sygnały w trakcie pozycji).
+- **Rozgrzewka:** sygnał jest ważny dopiero przy pełnej historii najdłuższego okna, którego używa (kontrakt, pkt 10). **Najdłuższe okno w S1 to 350 świec (50 sesji).** Klasyczny dzienny „złoty krzyż” 50/200 sesji (1400 świec) jest świadomie poza katalogiem: okres odkrywania to ok. 250 sesji, więc sama rozgrzewka zjadłaby prawie cały okres i zostałoby po kilka sygnałów na spółkę.
+- **Splity (D11):** sygnał nie może odpalić na zmianie ceny, która przechodzi przez sesję ze splitem — silnik pomija każde okno obejmujące taką sesję.
+- **Wolumen (D12):** sygnały z kolumną „Wol.” wymagają `v > 0` w całym swoim oknie; bez tego nie odpalają.
+- **Wejście:** po otwarciu następnej świecy (NEXT_OPEN), wyjątki (SESSION_OPEN) wyłącznie tam, gdzie zaznaczono. **Luka z warunkiem wolumenu (GAPV) wchodzi na otwarciu drugiej świecy**, nie sesji — wolumen pierwszej świecy znamy dopiero po jej zamknięciu (5.2).
+
+#### 1.4 Rodziny sygnałów
+
+„Zdarzeń” = liczba odrębnych sygnałów w katalogu. Każdy z nich jest potem liczony w dwóch kierunkach i na siatce 10×10 wyjść. Wartości parametrów są celowo rzadkie i leżą na punktach, które coś znaczą na świecach godzinowych — 7 świec = sesja, 35 = tydzień, 140 = miesiąc, 350 = ok. 2,5 miesiąca. Gęsta siatka parametrów nie dodaje nowych hipotez, tylko mnoży liczbę testów (5.7).
+
+**H1 — powrót do średniej (168)**
+
+| Rodzina | Definicja | Zdarzeń |
+|---|---|---|
+| Katalog bazowy S001–S084 | bez zmian, `S1_KATALOG_BAZOWY.md` | 84 |
+| Lustra wzrostowe S085–S168 | każdy sygnał bazowy odbity: DROP → RISE, RED → GREEN (zielone świece z rzędu), MADEV poniżej → powyżej średniej, RSI poniżej x → powyżej 100−x, dolna → górna wstęga Bollingera, luka spadkowa → wzrostowa, GAPRED → GAPGREEN, spadek od otwarcia → wzrost od otwarcia, spadek od szczytu → wzrost od dołka, duża czerwona → duża zielona, młot → spadająca gwiazda, objęcie wzrostowe → spadkowe, REVCONF w górę → w dół, ATRDROP → ATRRISE, spadkowe sesje z rzędu → wzrostowe. Filtr `TREND140` → `DOWN140` (zamknięcie poniżej SMA(140)); `LASTBAR` i `FIRSTBAR` bez zmian | 84 |
+
+**H2 — trend: średnie kroczące, MACD, VWAP (44)**
+
+| Kod | Definicja | Parametry | Zdarzeń | Wol. |
+|---|---|---|---|---|
+| `MAX` | przecięcie szybkiej średniej przez wolną, w górę i w dół | EMA 7/21 (sesja / 3 sesje), EMA 14/35, EMA 50/200, SMA 35/140 (tydzień / miesiąc), SMA 70/350 | 10 | |
+| `PXMA` | zamknięcie przecina średnią, w górę i w dół | SMA(n), n ∈ {20, 50, 140, 350} | 8 | |
+| `PULLMA` | cofnięcie do średniej w trendzie: trend wzrostowy, low świecy dotyka średniej, zamknięcie powyżej niej; lustro w trendzie spadkowym | EMA20 przy EMA20 > EMA50; EMA50 przy EMA50 > EMA200; SMA140 przy SMA140 rosnącej od 7 świec | 6 | |
+| `MASLOPE` | średnia zaczyna rosnąć po co najmniej 7 świecach spadku (i odwrotnie) | SMA(n), n ∈ {35, 140} | 4 | |
+| `RIBBON` | pierwsza świeca, w której EMA7 > EMA21 > EMA50 > SMA140 (średnie ułożone w trend); lustro | — | 2 | |
+| `MACD` | przecięcie linii sygnału w górę / w dół; przecięcie zera w górę / w dół; przecięcie sygnału w górę **poniżej zera** / w dół **powyżej zera** (klasyczny filtr) | 12, 26, 9 | 6 | |
+| `VWAP` | zamknięcie przecina VWAP sesji (od 2. świecy sesji); zamknięcie co najmniej x% poniżej / powyżej VWAP sesji; zamknięcie przecina VWMA(35) | x ∈ {1; 2} | 8 | tak |
+
+**H3 — wybicia (16)**
+
+| Kod | Definicja | Parametry | Zdarzeń |
+|---|---|---|---|
+| `DONCH` | zamknięcie powyżej najwyższego high / poniżej najniższego low z n poprzednich świec | n ∈ {35, 140} | 4 |
+| `NSES` | sesja zamyka się najwyżej / najniżej od n sesji; sygnał na ostatniej świecy sesji | n ∈ {20, 60} | 4 |
+| `PDHL` | pierwsze w sesji zamknięcie powyżej high / poniżej low poprzedniej sesji | — | 2 |
+| `ORB` | wybicie z zakresu otwarcia: zakres = pierwsza świeca sesji (ORB1) albo dwie pierwsze (ORB2); pierwsze zamknięcie świecy 2–5 powyżej / poniżej zakresu | ORB1, ORB2 | 4 |
+| `INSIDE` | sesja w całości w zakresie poprzedniej; w następnej sesji pierwsze zamknięcie powyżej jej high / poniżej low | — | 2 |
+
+**H4 — zmienność (12)**
+
+| Kod | Definicja | Parametry | Zdarzeń |
+|---|---|---|---|
+| `SQZ` | ściśnięcie: szerokość wstęgi Bollingera(20, 2) była najniższa od n świec w ciągu ostatnich 7 świec; teraz zamknięcie poza wstęgą, górą albo dołem | n ∈ {70, 140} | 4 |
+| `NR` | najwęższa sesja z 7 (NR7), w następnej pierwsze zamknięcie powyżej high / poniżej low; świeca najwęższa z 14, następna zamyka się ponad / pod nią | NR7 sesji, NR14 świec | 4 |
+| `WRB` | bardzo szeroka świeca: zakres ≥ k × ATR(14), zamknięcie w górnej / dolnej ćwiartce zakresu | k ∈ {2; 3} | 4 |
+
+**H5 — oscylatory i dywergencje (6)**
+
+| Kod | Definicja | Zdarzeń |
+|---|---|---|
+| `STOCH` | %K przecina %D w górę poniżej 20 / w dół powyżej 80 | 2 |
+| `RSIX` | RSI(14) **wraca** ponad 30 / pod 70. Uzupełnia bazowe RSI, które odpala przy **wejściu** w strefę — porównanie „łapania spadającego noża” z czekaniem na potwierdzenie | 2 |
+| `RSIDIV` | zamknięcie na minimum 35 świec, ale RSI(14) wyżej niż przy poprzednim minimum w tym oknie (dywergencja wzrostowa); lustro | 2 |
+
+**H6 — sesja i kalendarz (8)**
+
+| Kod | Definicja | Zdarzeń |
+|---|---|---|
+| `IBS` | na ostatniej świecy sesji zamknięcie sesji w dolnych / górnych 10% jej zakresu (high–low sesji); wejście na otwarciu następnej sesji | 2 |
+| `FHR` | odwrócenie pierwszej godziny: świeca 1 spada o ≥ 1% (rośnie o ≥ 1%), świeca 2 zamyka się powyżej (poniżej) połowy świecy 1 | 2 |
+| `CAL` | ostatnia sesja miesiąca; ostatnia sesja tygodnia — sygnał na ostatniej świecy, wejście na otwarciu kolejnej sesji | 2 |
+| `BASE` | **sygnały kontrolne, nie kandydaci do S2:** wejście na otwarciu każdej sesji i wejście na ostatniej świecy każdej sesji. Mierzą czysty efekt pory dnia — punkt odniesienia dla reszty H6, obok wejścia losowego z 5.3 | 2 |
+
+**H7 — kontekst rynku (8)** — dotyczy spółek; SPY i QQQ same nie dostają sygnałów
+
+| Kod | Definicja | Parametry | Zdarzeń |
+|---|---|---|---|
+| `IDIO` | ruch własny: spółka spadła o ≥ x% w 7 świecach, a SPY w tym czasie nie spadł o więcej niż 0,3%; lustro wzrostowe | x ∈ {2; 3} | 4 |
+| `MKT` | ruch całego rynku: SPY spadł o ≥ 1% w 7 świecach i spółka o ≥ 1,5%; lustro wzrostowe | — | 2 |
+| `RSX` | siła względna: stosunek ceny spółki do SPY na maksimum 35 świec, a SPY nie; lustro | — | 2 |
+
+**H8 — wolumen (24)** — wszystkie wymagają wolumenu i RVOL z 1.3
+
+| Kod | Definicja | Parametry | Zdarzeń |
+|---|---|---|---|
+| `CAP` | kapitulacja: `DROP_N3_X2` z RVOL ≥ 2; to samo z RVOL ≥ 3; `BIGRED_X1.5` z RVOL ≥ 2. Lustra: wzrost na wolumenie (wykupienie) | RVOL ∈ {2; 3} | 6 |
+| `CLX` | kulminacja: RVOL ≥ 3, nowe minimum 35 świec, zamknięcie w górnej połowie świecy (niższe ceny odrzucone); lustro | — | 2 |
+| `VBRK` | wybicie `DONCH` n=35 z RVOL ≥ 1,5 (potwierdzone) i z RVOL < 0,8 (bez wolumenu — kandydat na fałszywe wybicie, sprawdzamy go SHORT-em); lustra w dół | — | 4 |
+| `VMAX` | przecięcie EMA 14/35 z RVOL ≥ 1,5; lustro | — | 2 |
+| `DRY` | cofnięcie w trendzie przy wysychającym wolumenie: `PULLMA` EMA20 i średni RVOL 3 ostatnich świec ≤ 0,7; lustro | — | 2 |
+| `OBVD` | zamknięcie na minimum 35 świec, a OBV wyżej niż przy poprzednim minimum (ktoś kupuje spadek); lustro | — | 2 |
+| `GAPV` | luka spadkowa ≥ 2% z RVOL pierwszej świecy ≥ 2 oraz < 1; to samo dla luki wzrostowej. Wejście na otwarciu **2. świecy** (1.3) | — | 4 |
+| `ACC` | akumulacja: wolumen świec wzrostowych / spadkowych z 35 świec ≥ 2 przy zmianie ceny z 35 świec poniżej 2% (co do wartości); dystrybucja: ≤ 0,5 | — | 2 |
+
+**Wolumen testujemy dwa razy, i to celowo.** Tu, w S1, jako **twardy warunek** sygnału (odpala albo nie). W Etapie 3 jako **parametr towarzyszący** w PT (rodzina 10). To dwa różne pytania: czy wolumen zmienia *to, czy* warto wejść, i czy zmienia *jak dobre* jest dane wejście. Rodziny H8 są zbudowane na sygnałach, które istnieją też bez warunku wolumenu (`CAP` ↔ `DROP_N3_X2` i `BIGRED_X1.5`, `VBRK` ↔ `DONCH`, `VMAX` ↔ `MAX`, `DRY` ↔ `PULLMA`), więc Etap 2 pokaże wprost, ile wolumen dodaje (patrz kolumny S2).
+
+#### 1.5 Skala
+
+| | Liczba |
+|---|---|
+| Sygnały (zdarzenia) | 168 (H1) + 44 + 16 + 12 + 6 + 8 + 8 + 24 = **286**, w tym 2 kontrolne |
+| Strategie | 286 × 2 kierunki × 100 wyjść = **57 200** |
+
+To ponad dwa razy więcej niż ~24 000 zakładane dotąd. Nie psuje metody — kontrola FDR (5.7) skaluje się z liczbą testów — ale ma koszt: próg istotności robi się ostrzejszy, a przy progu 99. percentyla przypadkiem przeszłoby ok. 570 strategii zamiast 240. Proponowany twardy limit: **300 sygnałów** (D19). Gdyby trzeba było ciąć, najpierw idą najgęstsze siatki H1 (DROP 18 i RED 13 wraz z lustrami), bo to dziesiątki wariantów jednej hipotezy.
+
+#### 1.6 Plik katalogu i arkusz S1
+
+- **Źródło prawdy: `s1/catalog.json` w repozytorium** (tak jak S2 i model PT, D18). Tworzy go Python z definicji rodzin (`ia4/catalog.py`) — jedna definicja siatek parametrów, z której powstaje i plik, i silnik (D20).
+- **Arkusz S1 w Google Sheets jest widokiem tego pliku.** Apps Script wczytuje `s1/catalog.json` przez GitHub API — tym samym tokenem, którego używa telemetria — z menu IA 4 → Projekt → „Wczytaj katalog S1” i odbudowuje arkusz od zera. Arkusza nie edytujemy ręcznie: zmiana w arkuszu nie trafiłaby do silnika i powstałby rozjazd dokładnie taki jak L12. Jedyna kolumna do ręcznego pisania to „Uwagi” (zachowywana przy odbudowie).
+- **Kolumny S1:** ID (S001–S286) · Kod · Kategoria (H1–H8) · Rodzina · Zdarzenie (spadkowe / wzrostowe / neutralne) · Definicja słownie · Parametry JSON · Wolumen (tak/nie) · SPY/QQQ (tak/nie) · Rozgrzewka (świec) · Wejście (NEXT_OPEN / SESSION_OPEN / 2. świeca) · Pochodzenie (bazowy / lustro Sxxx / nowy) · Częstość w okresie odkrywania: sygnałów i różnych dni (uzupełniane w 1b) · Status (aktywny / za rzadki / kontrolny) · Strategii (2 × 100) · Uwagi.
+- **Nagłówek S1:** wersja katalogu, hash commitu, data zamrożenia, liczba sygnałów aktywnych, liczba strategii. Pod tabelą sygnałów: siatka SL/TP 10×10 i zasada wyznaczania H (D10) — cały przepis na strategię w jednym miejscu.
+- **Wiersz na strategię pojawia się w S2, nie w S1.** Strategia to iloczyn sygnał × kierunek × SL × TP, a jej nazwa wynika z nazwy sygnału (`DROP_N3_X2__L__SL1_TP1.5_H35`), więc 57 200 pustych wierszy w S1 nie wnosiłoby nic poza objętością. W S2 każda strategia ma swój wiersz razem z wynikiem.
+
+#### 1.7 Silnik (Python, `ia4-research`)
+
+- `ia4/indicators.py` — wskaźniki z 1.3, wektorowo (numpy / pandas), jedna funkcja na wskaźnik.
+- `ia4/signals.py` — jedna funkcja na rodzinę: przyjmuje świece jednego instrumentu (dla H7 także SPY), zwraca maskę zdarzeń.
+- `ia4/engine.py` — symulacja transakcji według kontraktu silnika (12 zasad z `S1_KATALOG_BAZOWY.md`) dla LONG i SHORT; cała siatka 10×10 w jednym przebiegu po sygnałach.
+- Świece wyłącznie przez `data.load` (pilnuje skarbca, 5.1).
+- Testy (`tests/`): ręcznie policzone przypadki na sztucznych świecach — co najmniej jeden na rodzinę, plus przypadki brzegowe: rozgrzewka, granica sesji, 30-minutowa świeca 7, luka przez noc, stop i cel w tej samej świecy, split, brak wolumenu.
+- Przenośność (D2): w S1 nie ma wskaźnika, którego Apps Script nie policzy w ułamku sekundy na świeżej świecy, ani danych spoza świec, SPY i QQQ.
+
+**Kryteria ukończenia:**
+1. `s1/catalog.json` i arkusz S1 zawierają wszystkie rodziny z 1.4; każdy sygnał ma definicję słowną i parametry JSON.
+2. Silnik przechodzi wszystkie testy przypadków policzonych ręcznie.
+3. Kilka strategii bazowych daje te same transakcje co dotychczasowy silnik z Apps Script.
+4. Częstość policzona dla każdego sygnału na okresie odkrywania; sygnały za rzadkie oznaczone (1.1).
+5. Pełny wolumen w okresie odkrywania dla każdego sygnału z kolumną „Wol.” (dopisywanie wolumenu D12 zakończone).
+6. Katalog zamrożony: commit, hash i data w PROJEKT; liczba sygnałów i strategii wpisana do licznika prób (5.7).
+7. W tym etapie nie policzono żadnego wyniku transakcji (1.1).
 
 ### Etap 2 — Backtest S1 i wybór S2 ⬜
 
@@ -342,6 +494,8 @@ Kolumny wyniku dla każdej strategii, osobno dla grupy głównej i kontrolnej:
 - spolek kontrolnych na plusie z 50,
 - **wynik osobno dla spolek rosnacych i spadajacych w okresie badawczym (D13)** - jesli przewaga jest tylko u rosnacych, to nie jest przewaga sygnalu, tylko dryfu,
 - porównanie z wariantem przeciwnego kierunku,
+- **dla rodzin H8: porównanie z tym samym sygnałem bez warunku wolumenu** (`CAP` ↔ `DROP_N3_X2`, `VBRK` ↔ `DONCH` itd., 1.4) — odpowiedź na pytanie, czy wolumen jako twardy filtr cokolwiek dodaje,
+- kategoria hipotezy (H1–H8, 1.2), żeby dało się zobaczyć, które mechanizmy w ogóle mają przewagę,
 - wskaźnik istotności z uwzględnieniem liczby testów (5.7).
 
 Wynik trafia do arkusza **S2**. Użytkownik wybiera strategie do dalszej pracy, zaznaczając je w arkuszu. Claude proponuje filtry i ranking, ale nie wybiera za użytkownika.
@@ -508,6 +662,9 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 
 | L23 | `projComputeGaps_` daje pierwszeństwo migawce Statusu z WIDOCZNEGO arkusza nad `_AUDYT_DECYZJE` (żeby ręczna edycja dropdowna przetrwała render) — bezpieczne przy rzadkich, ręcznych renderach, ale przy wywołaniu zaraz po background-zapisie (`patchAutoAccept_`) migawka jest o krok stara i kasuje właśnie zapisaną decyzję z powrotem na „nowa”. Spowodowało to regresję w 0.23 (naprawione w 0.24 flagą `applyManual`) | każde PRZYSZŁE częste, automatyczne wywołanie `projRender_` musi jawnie przekazać `applyManual: false`, inaczej ten sam błąd wróci w nowej postaci | `patchGapsIfIdle_` już to robi (0.24); pozostałe wywołania (audyt, ręczne odświeżenie) zostają przy domyślnym `true`, bo są rzadkie i tam ta funkcja ma sens — pamiętać o tym przy każdym nowym background jobie, który miałby wołać `projRender_` |
 
+| L24 | Stała siatka SL/TP (D4, maks. 5%) krzywdzi rodziny trendowe H2 i H3 — w praktyce jeździ się na nich ruchomym stopem, a duży ruch trendu jest ucinany celem 5% | wynik H2/H3 w Etapie 2 może być zaniżony względem ich realnej wartości | nie zmieniamy przed Etapem 2 (D4); przy interpretacji wyników pamiętać. Ruchomy stop to osobna decyzja po Etapie 2 i nowe próby w liczniku 5.7 |
+| L25 | Arkusz S2 przy 57 200 strategiach × ~30 kolumn to ok. 1,7 mln komórek | Google Sheets to udźwignie (limit 10 mln), ale arkusz będzie wolny i ciężki do przeglądania | rozstrzygnąć przed Etapem 2: np. w arkuszu tylko strategie po wstępnym filtrze D16, pełna tabela w repozytorium obok `s2/strategies.json` |
+
 ---
 
 ## 9. Otwarte decyzje
@@ -537,6 +694,9 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | D17 | Gdzie żyją inwestorzy | Ustawienia inwestorów przenoszą się z przeglądarki do Firestore (`investors/{id}`), a silnik działa w Apps Script: po zapisaniu każdej świecy godzinowej automat przechodzi po aktywnych inwestorach, czyta ich ustawienia i otwarte pozycje, sprawdza sygnały S3 i ich PT, zamyka pozycje, które w minionej świecy dotknęły SL albo TP, i otwiera nowe w granicach limitów. Dashboard przestaje być miejscem, gdzie cokolwiek się liczy — tylko pokazuje. Wdrożenie: Etap 5. | ✅ przyjęta |
 | D18 | Gdzie żyją strategie S2 i model PT | Firestore ma darmowy dzienny limit (50 000 odczytów, 20 000 zapisów) i żadnego wersjonowania — dwie rzeczy, które akurat świecom nie przeszkadzają (płyną bez przerwy, nikt nie musi widzieć „poprzedniej wersji" świecy), ale strategiom i modelowi PT bardzo. Podział: **świece i wszystko na żywo zostają w Firestore** (nasłuch w czasie rzeczywistym, którego Git nie ma; opisane niżej w sekcji 3.1). **Strategie S2 i model PT przenoszą się do repozytorium GitHub** jako pliki JSON — tam, gdzie i tak mają trafić zgodnie z D2 (eksport modelu PT do Apps Script). Szczegóły w sekcji 3.1. | ✅ przyjęta |
 | D16 | Prog „przewagi" | **Zmieniony w 0.19** - poprzednia wersja (99. percentyl) przepuszczalaby ~240 strategii czystym przypadkiem przy 24 000 testow. Obowiazuja teraz jednoczesnie: (a) **minimum 100 transakcji w grupie glownej i 300 w kontrolnej**, rozlozonych na **min. 30 roznych dni** (5.10); (b) przewaga nad wejsciem losowym dodatnia **w obu grupach osobno**; (c) istotnosc liczona **blokowym bootstrapem** i przepuszczona przez **kontrole FDR na poziomie 10%** dla calego zestawu testow (5.7); (d) **ekspektancja po kosztach >= 0,05% na transakcje** (5.11); (e) **potwierdzenie na poletku** - przewaga utrzymuje sie na danych, ktorych strojenie nie widzialo. Strategia musi spelnic wszystkie piec. | ✅ przyjęta |
+| D19 | Rozmiar katalogu S1 | 286 sygnałów w 8 kategoriach hipotez (Etap 1, 1.4) → 57 200 strategii; twardy limit 300 sygnałów. Przy potrzebie cięcia najpierw najgęstsze siatki H1 (DROP, RED i ich lustra) | 🔸 propozycja — do potwierdzenia |
+| D20 | Źródło prawdy katalogu S1 | `s1/catalog.json` w repozytorium, generowany przez `ia4/catalog.py`; arkusz S1 to widok odbudowywany z pliku przez Apps Script (GitHub API, token telemetrii). Ręcznie tylko kolumna „Uwagi” | 🔸 propozycja — do potwierdzenia |
+| D21 | Katalog na ślepo i zamrożenie | W Etapie 1 zero wyników transakcji; jedyny dozwolony przesiew to częstość (< 30 różnych dni w grupie głównej → „za rzadki”). Koniec Etapu 1 = commit katalogu z hashem w PROJEKT; każdy sygnał dodany później to nowa próba w liczniku 5.7 | 🔸 propozycja — do potwierdzenia |
 
 ---
 
@@ -563,6 +723,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 0.16 | 2026-09-24 | Decyzja D18: strategie S2 i model PT trafiają do repozytorium (`s2/strategies.json`, `pt/model.json`, `pt/history/`) zamiast Firestore — nowa sekcja 3.1 tłumaczy podział (świece na żywo potrzebują nasłuchu, którego Git nie ma; strategie/PT zmieniają się rzadko i chcą wersjonowania, którego nie ma Firestore). Dashboard: lista S2 czytana z GitHub (`fetch` raz na godzinę) zamiast z kolekcji Firestore. |
 | 0.17 | 2026-09-24 | Naprawa nieskończonej pętli w łataniu luk (L20): `patchOneGap_` teraz sprawdza, czy zwrócone świece faktycznie wypełniają brak, zamiast uznawać za sukces każdy niepusty wynik z Yahoo. Po `PATCH_MAX_RETRIES` (3) próbach bez postępu luka jest automatycznie zapisywana jako zaakceptowana, z komentarzem, i znika z kolejki łatania — bez udziału człowieka. Naprawdę załatane luki są od razu usuwane z arkusza `_AUDYT`, nie czekają do następnego audytu. |
 | 0.18 | 2026-09-24 | Przegląd fundamentów. **Blokada po wyczerpaniu limitu Firestore** — pierwszy 429 wstrzymuje zadania w tle do resetu i loguje raz zamiast w kółko (to samo co L20, ale dla limitu zamiast łatania). **Uzupełniona lista kluczy czyszczonych przy „Wyzeruj stan"** — brakowało siedmiu stanów dodanych w 0.10–0.18, więc po wyczyszczeniu bazy system wierzyłby w nieistniejący postęp. **Wycofana luka L17** — sesje skrócone są liczone poprawnie przez `slotsInSession_()`; zgłoszenie wynikało z błędu w mojej symulacji, nie z kodu. Sprawdzona zgodność nazw pól między Apps Script, Pythonem i dashboardem oraz kompletność handlerów triggerów i pozycji menu. |
+| 0.25 | 2026-09-26 | **Etap 1 uszczegółowiony.** Katalog S1 rozszerzony z ~120–150 do 286 sygnałów w ośmiu kategoriach hipotez (H1 powrót do średniej, H2 trend: średnie, ich przecięcia, MACD, VWAP; H3 wybicia; H4 zmienność; H5 oscylatory; H6 sesja i kalendarz; H7 kontekst rynku; H8 wolumen), z pełnymi definicjami rodzin i siatkami parametrów. Nowe: wspólne definicje wskaźników identyczne w Pythonie i Apps Script (1.3), w tym RVOL względem tej samej świecy dnia; zasada katalogu „na ślepo” i jego zamrożenia (1.1); arkusz S1 jako widok pliku `s1/catalog.json` (1.6); struktura silnika i kryteria ukończenia (1.7). Etap 2 dostaje porównanie sygnałów H8 z ich wersjami bez warunku wolumenu. Propozycje do potwierdzenia: D19 (rozmiar S1), D20 (źródło prawdy katalogu), D21 (katalog na ślepo i zamrożenie). Nowe luki: L24 (stała siatka wyjść a rodziny trendowe), L25 (rozmiar arkusza S2). |
 | 0.24 | 2026-09-26 | **Naprawa regresji wprowadzonej w 0.23 (luka L23).** Fix z 0.23 (odświeżanie arkusza po łataniu) miał efekt uboczny gorszy niż problem, który naprawiał: `projComputeGaps_` daje pierwszeństwo migawce z WIDOCZNEGO arkusza nad `_AUDYT_DECYZJE`, żeby ręczna zmiana dropdowna przetrwała render — ale ta migawka jest zawsze sprzed BIEŻĄCEGO renderu. Wołanie `projRender_` zaraz po `patchAutoAccept_` czytało więc arkusz sprzed własnej, świeżo zapisanej decyzji i nadpisywało ją z powrotem na „nowa”. Skutek w logu: te same ~37 spółek „akceptowane” w kółko co ~6 godzin (AAPL zaakceptowane 06:30, wciąż aktywne i złatane naprawdę dopiero 12:18), zamiast raz na zawsze. Naprawione: `projComputeGaps_`/`projRender_` przyjmują `applyManual` (domyślnie true — pozostałe wywołania bez zmian); wywołanie z `patchGapsIfIdle_` jawnie przekazuje `applyManual: false` — czyta i renderuje świeże decyzje, nic nie nadpisuje. Przetestowane na symulacji dokładnej sekwencji z logu. |
 | 0.23 | 2026-09-26 | **Widoczność łatania w tle + przyspieszenie wolumenu.** `patchGapsIfIdle_` (`Code.gs`) zmieniała statusy luk co ~10 minut, ale nigdy nie wywoływała `projRender_` — arkusz PROJEKT i kryterium 0.6 pokazywały migawkę sprzed OSTATNIEGO PEŁNEGO AUDYTU, nie licząc nic z bieżącego łatania. Wykryte 2026-09-26: arkusz pokazywał „nowych luk: 104”, naprawdę było 40. Naprawione: po każdym łataniu z realną zmianą (`fixed`/`gaveUp`) arkusz odświeża się od razu. **`VOLFILL_DAILY_WRITES` 3000 → 10000, `VOLFILL_MIN_GAP_MIN` 7 → 3** — margines 3000 trzymaliśmy na wypadek, gdyby ręcznie powtarzane pełne audyty (potrzebne tylko do zamknięcia 0.6) wywołały wspólną blokadę `fsQuotaBlocked_`; odtąd pełny audyt jest czynnością jednorazową z Etapu 0, a nocny audyt (14 dni) prawie nie czyta, więc nic już nie grozi tą blokadą. Reszta historii (~29 000 dokumentów) skończy się w 3–4 dni zamiast ~2 tygodni. |
 | 0.22 | 2026-09-25 | **Okno 14 dni w synchronizacji Pythona.** `sync.py` pytało wyłącznie o sesje nowsze niż ostatnia posiadana (`date > last_date`), co pomijało świece dopisywane WSTECZ — łatanie luk i dopisywanie wolumenu (D12) uzupełniają sesje starsze niż ostatnia, więc kopia lokalna zostawałaby z dziurą, której kolejne synchronizacje nigdy by nie zamknęły. Nowa stała `RECHECK_DAYS = 14` (to samo okno co nocny audyt): pierwsze uruchomienie ściąga całość, każde kolejne sprawdza ostatnie 14 dni i nadpisuje to, co się zmieniło. Statystyka rozróżnia realny przyrost od świec sprawdzonych ponownie. Wyrównane wersje w `ia4-research/` (były 0.19, a `requirements.txt` 1.0 — rozjazd L12). |
@@ -602,3 +763,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-25 14:05 | `7296031` | `ia4-research/ia4/sync.py`, `ia4-research/` (wersje), `IA4_INSTRUKCJA.md` + wersje | Wersja 0.22: okno RECHECK_DAYS=14 w synchronizacji Pythona (łapie świece dopisywane wstecz), wyrównanie wersji w folderze badawczym. |
 | 2026-09-26 12:15 | `12f0270` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.23: `patchGapsIfIdle_` odświeża arkusz PROJEKT po każdej zmianie statusu luki (trzeci przypadek L12); `VOLFILL_DAILY_WRITES` 3000→10000, `VOLFILL_MIN_GAP_MIN` 7→3 — koniec potrzeby ostrożności po zamknięciu 0.6, reszta historii dogoni się w 3–4 dni. |
 | 2026-09-26 13:10 | `f83bb60` | `Code.gs`, `Project.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.24: naprawa regresji z 0.23 (L23) — `projComputeGaps_`/`projRender_` z `applyManual: false` dla wywołań w tle, żeby nie kasować świeżych auto-akceptacji migawką arkusza sprzed renderu. |
+| 2026-09-26 15:00 | `(uzupełnić)` | `IA4_INSTRUKCJA.md`, `Project.gs` (STAGES Etapu 1, DECISIONS D8–D21), `S1_KATALOG_BAZOWY.md`, `telemetry/README.md` + wersje | Wersja 0.25: szczegółowy plan Etapu 1 — 286 sygnałów w 8 kategoriach, wspólne definicje wskaźników, arkusz S1, silnik i kryteria; D19–D21 do potwierdzenia; L24, L25. |

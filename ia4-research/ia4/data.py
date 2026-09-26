@@ -1,6 +1,6 @@
 """
 IA 4 — wczytywanie danych do badań.
-Wersja projektu: 0.24 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.25 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Ten moduł jest jedyną drogą, którą dane trafiają do backtestu — i celowo
 utrudnia złamanie zasady 5.1.

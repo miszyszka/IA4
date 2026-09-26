@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.24 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.25 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.24',
+  INSTRUCTION_VERSION: '0.25',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -79,9 +79,13 @@ const STAGES = [
     { id: '0.9', text: 'Python wczytuje dane wszystkich spółek, liczby zgadzają się z audytem (Etap 0B)' },
   ] },
   { n: 1, name: 'Katalog strategii S1', criteria: [
-    { id: '1.1', text: 'Katalog S1 z opisami i parametrami gotowy' },
+    { id: '1.1', text: 's1/catalog.json i arkusz S1: wszystkie rodziny, definicje i parametry JSON' },
     { id: '1.2', text: 'Silnik w Pythonie przechodzi testy na ręcznie policzonych przypadkach' },
-    { id: '1.3', text: 'Wyniki próbnych strategii zgodne z dotychczasowym silnikiem' },
+    { id: '1.3', text: 'Strategie bazowe dają te same transakcje co dotychczasowy silnik' },
+    { id: '1.4', text: 'Częstość policzona dla każdego sygnału, za rzadkie oznaczone' },
+    { id: '1.5', text: 'Pełny wolumen w okresie odkrywania dla sygnałów H8/VWAP' },
+    { id: '1.6', text: 'Katalog zamrożony: commit i hash w PROJEKT, licznik prób uzupełniony' },
+    { id: '1.7', text: 'Żaden wynik transakcji nie został policzony w tym etapie' },
   ] },
   { n: 2, name: 'Backtest S1 i wybór S2', criteria: [
     { id: '2.1', text: 'Wszystkie strategie S1 policzone na okresie badawczym' },
@@ -113,6 +117,20 @@ const DECISIONS = [
   ['D5', 'Limit czasu H', 'TP ≤ 1% → 14 świec, ≤ 2,5% → 35, ≤ 5% → 70 (docelowo dobierany statystycznie, D10)', '✅ przyjęta'],
   ['D6', 'Koszty', 'wynik bez kosztów + kolumna z 0,05% za transakcję', '✅ przyjęta'],
   ['D7', 'Stary katalog STRATEGIE', 'usunięty w Etapie 0, zastąpi go S1', '✅ przyjęta'],
+  ['D8', 'VIX', 'usunięty z projektu; tło rynku to SPY i QQQ', '✅ przyjęta'],
+  ['D9', 'Kierunek', 'warianty SHORT pełnoprawne, każdy sygnał LONG i SHORT', '✅ przyjęta'],
+  ['D10', 'Dobór H', 'nie przeszukiwany; kwantyl czasu do celu z backtestu', '✅ przyjęta'],
+  ['D11', 'Splity', 'skoki > 15% sprawdzane ręcznie, sesje ze splitem wyłączone z sygnałów', '✅ przyjęta'],
+  ['D12', 'Wolumen', 'zbierany od 0.8, dopisywany wstecz; filtr w S1 i parametr w PT', '✅ przyjęta'],
+  ['D13', 'Grupa kontrolna', 'bez zmian składu; wynik osobno dla spółek rosnących i spadających', '✅ przyjęta'],
+  ['D14', 'Kontrola źródła', 'ufamy Yahoo; audyt braków i skoków', '✅ przyjęta'],
+  ['D15', 'Budżet czasu Etapu 4', 'po zamknięciu świecy liczą się tylko AAPL, TSLA, NVDA', '✅ przyjęta'],
+  ['D16', 'Próg przewagi', 'min. transakcji i dni, przewaga w obu grupach, bootstrap + FDR 10%, ≥ 0,05% po kosztach, poletko', '✅ przyjęta'],
+  ['D17', 'Inwestorzy', 'ustawienia w Firestore, silnik w Apps Script (Etap 5)', '✅ przyjęta'],
+  ['D18', 'Strategie i model PT', 'w repozytorium jako JSON; świece zostają w Firestore', '✅ przyjęta'],
+  ['D19', 'Rozmiar S1', '286 sygnałów w 8 kategoriach → 57 200 strategii; limit 300', '🔸 propozycja — do potwierdzenia'],
+  ['D20', 'Źródło katalogu S1', 's1/catalog.json w repo; arkusz S1 to widok z pliku', '🔸 propozycja — do potwierdzenia'],
+  ['D21', 'Katalog na ślepo', 'zero wyników w Etapie 1, przesiew tylko po częstości, zamrożenie z hashem', '🔸 propozycja — do potwierdzenia'],
 ];
 
 const PJ_WIDTH = 7;
