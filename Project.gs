@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.23 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.24 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.23',
+  INSTRUCTION_VERSION: '0.24',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -414,11 +414,34 @@ function projectExportBriefing() {
   SpreadsheetApp.getUi().showModalDialog(html, 'Podsumowanie dla Claude — wklej na start rozmowy');
 }
 
-/** Luki połączone z decyzjami użytkownika. Współdzielone przez arkusz i briefing. */
-function projComputeGaps_(inputs) {
+/**
+ * Luki połączone z decyzjami użytkownika. Współdzielone przez arkusz i briefing.
+ *
+ * applyManual (domyślnie true) kontroluje, czy `inputs.gaps` — migawka Statusu
+ * z WIDOCZNEGO arkusza, sprzed TEGO renderu — wolno nadpisać nią to, co właśnie
+ * przeczytaliśmy z `_AUDYT_DECYZJE`. To bezpieczne przy rzadkich, ręcznych
+ * odświeżeniach (audyt, „Odśwież stan projektu") — arkusz zdążył się ustabilizować
+ * między jednym renderem a drugim, więc ta migawka to naprawdę czyjaś ręczna
+ * zmiana dropdowna.
+ *
+ * PRZY CZĘSTYCH, AUTOMATYCZNYCH wywołaniach (patchGapsIfIdle_, co ~10 minut)
+ * jest to niebezpieczne z zupełnie innego powodu: `patchAutoAccept_` zapisuje
+ * świeżą akceptację WPROST do `_AUDYT_DECYZJE`, ale widoczny arkusz jeszcze
+ * o tym nie wie (dowie się dopiero z TEGO renderu, kilka linii niżej) — więc
+ * jego migawka jest o jeden krok stara i nadpisanie nią właśnie zapisanej
+ * decyzji ją kasuje z powrotem na „nowa". Błąd wykryty 2026-09-26 (L23):
+ * `projRender_` wołany po każdym łataniu w wersji 0.23 czyścił własne
+ * akceptacje w kółko, cofając każdą z nich do stanu sprzed decyzji zamiast
+ * ją utrwalać — te same ~37 spółek były „akceptowane" w kółko co ~6 godzin.
+ * Wywołania z tła przekazują applyManual=false: czytają decyzje takie, jakie
+ * naprawdę są, i tylko nimi renderują arkusz — bez zapisu, bez ryzyka.
+ */
+function projComputeGaps_(inputs, applyManual) {
   const decisions = auditLoadDecisions_();
-  Object.keys(inputs.gaps).forEach(k => { decisions[k] = inputs.gaps[k]; });
-  auditSaveDecisions_(decisions);
+  if (applyManual !== false) {
+    Object.keys(inputs.gaps).forEach(k => { decisions[k] = inputs.gaps[k]; });
+    auditSaveDecisions_(decisions);
+  }
   return auditLoadGaps_().map(r => {
     const d = decisions[r[0]] || {};
     return { key: r[0], symbol: r[1], type: r[2], date: String(r[3]), desc: r[4], status: d.status || 'nowa', comment: d.comment || '' };
@@ -832,13 +855,15 @@ function projReadInputs_() {
   return inputs;
 }
 
-function projRender_(st) {
+function projRender_(st, opts) {
+  const applyManual = !opts || opts.applyManual !== false;
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const inputs = projReadInputs_();
   st.manual = inputs.manual;
 
-  // Decyzje o lukach: to, co jest w arkuszu, ma pierwszeństwo przed zapisanym.
-  const gaps = projComputeGaps_(inputs);
+  // Decyzje o lukach: to, co jest w arkuszu, ma pierwszeństwo przed zapisanym —
+  // ale TYLKO gdy applyManual=true (patrz komentarz w projComputeGaps_, L23).
+  const gaps = projComputeGaps_(inputs, applyManual);
   const gapsNew = gaps.filter(g => g.status === 'nowa').length;
   st.summary = { gapsTotal: gaps.length, gapsNew, gapsAccepted: gaps.length - gapsNew };
 

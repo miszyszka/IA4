@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.23 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.24 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
@@ -467,11 +467,14 @@ function patchGapsIfIdle_(ctx) {
   }
   if (fixed.length || gaveUp.length) {
     // Bez tego arkusz PROJEKT i kryterium 0.6 pokazują liczbę luk sprzed
-    // OSTATNIEGO PEŁNEGO AUDYTU — łatanie zmienia _AUDYT_DECYZJE co ~10 minut,
-    // ale nikt dotąd nie kazał przeliczyć podsumowania (L21-podobny rozjazd,
-    // wykryty 2026-09-26: arkusz pokazywał 104 nowe luki, naprawdę było 40).
+    // OSTATNIEGO PEŁNEGO AUDYTU. applyManual: false jest tu KONIECZNE (L23) —
+    // inaczej ten render czyta widoczny arkusz sprzed WŁASNEJ decyzji sprzed
+    // chwili (patchAutoAccept_ wyżej) i nadpisuje nią świeżą akceptację
+    // z powrotem na „nowa". Bez tej flagi ta sama poprawka z 0.23 cofała
+    // każdą akceptację, którą sama miała ujawnić — te same ~37 spółek
+    // „akceptowane" w kółko co ~6 godzin, zamiast raz na zawsze.
     const p = projLoad_();
-    projRender_(p);
+    projRender_(p, { applyManual: false });
     projSave_(p);
   }
   return parts.join(' · ');
