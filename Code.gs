@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.22 (2026-09-25) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.23 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
@@ -87,9 +87,18 @@ const CONFIG = {
   // Yahoo — tymi samymi cenami plus wolumenem. Dzienny budżet zapisów pilnuje,
   // żeby uzupełnianie nigdy nie zabrało limitu bieżącym świecom.
   VOLFILL_ENABLED: true,
-  VOLFILL_DAILY_WRITES: 3000,  // ile dokumentów dziennie wolno przepisać
+  // Podniesione z 3000/7 w wersji 0.23: dopóki 0.6 nie było zamknięte, pełny
+  // audyt uruchamiany był ręcznie i wielokrotnie (rozpychał limit odczytów,
+  // a przy błędach 429 uruchamiał WSPÓLNĄ blokadę fsQuotaBlocked_, którą
+  // sprawdza też ta funkcja) — trzymaliśmy tu spory margines na wszelki
+  // wypadek. Odtąd pełny audyt jest czynnością jednorazową z Etapu 0, a na
+  // stałe zostaje tylko lekki audyt nocny (14 dni, znikomy odczyt) — nic już
+  // nie grozi wspólną blokadą, więc można przepisywać szybciej.
+  // 10 000/dzień + reszta ruchu (~2500-3000) to 65% limitu zapisu (20 000/dzień,
+  // Spark) — kończy resztę historii (~29 000 dokumentów) w ok. 3 dni.
+  VOLFILL_DAILY_WRITES: 10000, // ile dokumentów dziennie wolno przepisać
   VOLFILL_CHUNK_DAYS: 60,      // ile dni historii bierzemy na jedno uruchomienie
-  VOLFILL_MIN_GAP_MIN: 7,      // minimalny odstęp między przebiegami
+  VOLFILL_MIN_GAP_MIN: 3,      // minimalny odstęp między przebiegami
   LIVE_RANGE: '5d',          // zakres pobierania w trybie automatycznym
   CATCHUP_RANGE: '1mo',      // zakres przy konfiguracji i „Uzupełnij braki”
   FETCH_PAUSE_MS: 700,       // odstęp między zapytaniami do Yahoo (27 spółek)
@@ -456,6 +465,15 @@ function patchGapsIfIdle_(ctx) {
     log_('INFO', 'ŁATANIE', `Zaakceptowano jako trwałe (bez postępu po ${CONFIG.PATCH_MAX_RETRIES} próbach): ${gaveUp.join(', ')}.`);
     parts.push(`zaakceptowano ${gaveUp.length}`);
   }
+  if (fixed.length || gaveUp.length) {
+    // Bez tego arkusz PROJEKT i kryterium 0.6 pokazują liczbę luk sprzed
+    // OSTATNIEGO PEŁNEGO AUDYTU — łatanie zmienia _AUDYT_DECYZJE co ~10 minut,
+    // ale nikt dotąd nie kazał przeliczyć podsumowania (L21-podobny rozjazd,
+    // wykryty 2026-09-26: arkusz pokazywał 104 nowe luki, naprawdę było 40).
+    const p = projLoad_();
+    projRender_(p);
+    projSave_(p);
+  }
   return parts.join(' · ');
 }
 
@@ -473,8 +491,8 @@ function patchGapsIfIdle_(ctx) {
  *
  * Dzienny budżet: VOLFILL_DAILY_WRITES dokumentów. Po jego wyczerpaniu proces
  * milknie do następnego dnia, żeby limit Firestore został dla bieżących świec.
- * Przy 3000 zapisach dziennie całość (~37 000 dokumentów) zajmie ok. 2 tygodni
- * i nie wymaga od nikogo uwagi.
+ * Przy 10 000 zapisach dziennie reszta historii (~29 000 dokumentów, stan na
+ * 2026-09-26) zajmie ok. 3 dni i nie wymaga od nikogo uwagi.
  */
 function volfillIfIdle_(ctx) {
   if (!CONFIG.VOLFILL_ENABLED || !CONFIG.FIRESTORE_ENABLED) return '';
