@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 0.26
+**Wersja:** 0.27
 **Data:** 26 września 2026
 **Aktualny etap:** 🟨 Etap 0 — 0A wdrożone; trwa pełne pobieranie historii po naprawie L13, przegląd 53 luk i budowa środowiska Pythona (0B)
 
@@ -89,11 +89,15 @@ Zeby nie tracic czasu: nie szukamy prognozy ceny, nie budujemy portfela optymaln
 | `Project.gs` | arkusz PROJEKT, skarbiec, audyt danych, sprzątanie | od Etapu 0 |
 | `Telemetry.gs` | stan systemu → Firestore i GitHub | od wersji 0.12 |
 | `Investor.gs` | arkusz `Transaction LOG` — wspólny log transakcji wszystkich inwestorów | od wersji 0.13 |
+| `Catalog.gs` | arkusz S1 — widok pliku `s1/catalog.json` pobieranego z GitHub (D20) | od wersji 0.27 |
 | `Strategies.gs`, `Backtest.gs`, `Combo.gs`, `Benchmark.gs` | stary katalog i analizy | usuwane w Etapie 0 (ręcznie w edytorze) |
 | `appsscript.json` | uprawnienia | zostaje |
 | `ia4-dashboard.html` | podgląd wykresów | zostaje |
 | `IA4_INSTRUKCJA.md` | ten plik | aktualizowany co etap |
 | `S1_KATALOG_BAZOWY.md` | 84 sygnały bazowe z definicjami i parametrami | punkt wyjścia Etapu 1 |
+| `s1/catalog.json` | **katalog S1 — źródło prawdy (D20)**, generowany, nie edytowany ręcznie | od wersji 0.27 |
+| `ia4-research/ia4/catalog.py` | definicje wszystkich rodzin S1; z parametrów generuje opisy, lustra i `s1/catalog.json` | od wersji 0.27 |
+| `ia4-research/tests/` | testy; `test_catalog.py` pilnuje zgodności katalogu z bazowym, z instrukcją i z zapisanym plikiem | od wersji 0.27 |
 | `ia4-research/ia4/config.py` | klucz serwisowy, granice skarbca i listy instrumentów czytane z Firestore | od Etapu 0B |
 | `ia4-research/ia4/sync.py` | Firestore → parquet, tylko przyrosty | od Etapu 0B |
 | `ia4-research/ia4/data.py` | wczytywanie danych z wymuszoną granicą skarbca | od Etapu 0B |
@@ -360,6 +364,7 @@ Każdy wskaźnik jest liczony dokładnie tak samo w obu językach, bo w Etapie 4
 - **Przecięcie w górę** na świecy t: A[t] > B[t] i A[t−1] ≤ B[t−1]. W dół symetrycznie.
 - **Nowe rodziny są zdarzeniami:** odpalają na świecy, w której warunek *staje się* prawdziwy, a nie na każdej, w której trwa. Sygnały bazowe zostają zdefiniowane tak jak w `S1_KATALOG_BAZOWY.md` (część jest poziomowa; pkt 8 kontraktu i tak ignoruje sygnały w trakcie pozycji).
 - **Rozgrzewka:** sygnał jest ważny dopiero przy pełnej historii najdłuższego okna, którego używa (kontrakt, pkt 10). **Najdłuższe okno w S1 to 350 świec (50 sesji).** Klasyczny dzienny „złoty krzyż” 50/200 sesji (1400 świec) jest świadomie poza katalogiem: okres odkrywania to ok. 250 sesji, więc sama rozgrzewka zjadłaby prawie cały okres i zostałoby po kilka sygnałów na spółkę.
+- **Historia na żywo:** EMA i metoda Wildera pamiętają całą przeszłość — wpływ punktu startu maleje jak (1 − α)^k. Żeby Apps Script w Etapie 4 liczył to samo co Python, musi znać co najmniej **3 × okno** takiego wskaźnika albo przechowywać jego stan między świecami. Każdy sygnał ma w katalogu obie liczby: rozgrzewkę (backtest) i historię na żywo (najwięcej: 600 świec dla EMA(200)).
 - **Splity (D11):** sygnał nie może odpalić na zmianie ceny, która przechodzi przez sesję ze splitem — silnik pomija każde okno obejmujące taką sesję.
 - **Wolumen (D12):** sygnały z kolumną „Wol.” wymagają `v > 0` w całym swoim oknie; bez tego nie odpalają.
 - **Wejście:** po otwarciu następnej świecy (NEXT_OPEN), wyjątki (SESSION_OPEN) wyłącznie tam, gdzie zaznaczono. **Luka z warunkiem wolumenu (GAPV) wchodzi na otwarciu drugiej świecy**, nie sesji — wolumen pierwszej świecy znamy dopiero po jej zamknięciu (5.2).
@@ -392,7 +397,7 @@ Każdy wskaźnik jest liczony dokładnie tak samo w obu językach, bo w Etapie 4
 | Kod | Definicja | Parametry | Zdarzeń |
 |---|---|---|---|
 | `DONCH` | zamknięcie powyżej najwyższego high / poniżej najniższego low z n poprzednich świec | n ∈ {35, 140} | 4 |
-| `NSES` | sesja zamyka się najwyżej / najniżej od n sesji; sygnał na ostatniej świecy sesji | n ∈ {20, 60} | 4 |
+| `NSES` | sesja zamyka się najwyżej / najniżej od n sesji; sygnał na ostatniej świecy sesji | n ∈ {20, 50} | 4 |
 | `PDHL` | pierwsze w sesji zamknięcie powyżej high / poniżej low poprzedniej sesji | — | 2 |
 | `ORB` | wybicie z zakresu otwarcia: zakres = pierwsza świeca sesji (ORB1) albo dwie pierwsze (ORB2); pierwsze zamknięcie świecy 2–5 powyżej / poniżej zakresu | ORB1, ORB2 | 4 |
 | `INSIDE` | sesja w całości w zakresie poprzedniej; w następnej sesji pierwsze zamknięcie powyżej jej high / poniżej low | — | 2 |
@@ -458,8 +463,9 @@ To ponad dwa razy więcej niż ~24 000 zakładane dotąd. Nie psuje metody — k
 
 - **Źródło prawdy: `s1/catalog.json` w repozytorium** (tak jak S2 i model PT, D18). Tworzy go Python z definicji rodzin (`ia4/catalog.py`) — jedna definicja siatek parametrów, z której powstaje i plik, i silnik (D20).
 - **Arkusz S1 w Google Sheets jest widokiem tego pliku.** Apps Script wczytuje `s1/catalog.json` przez GitHub API — tym samym tokenem, którego używa telemetria — z menu IA 4 → Projekt → „Wczytaj katalog S1” i odbudowuje arkusz od zera. Arkusza nie edytujemy ręcznie: zmiana w arkuszu nie trafiłaby do silnika i powstałby rozjazd dokładnie taki jak L12. Jedyna kolumna do ręcznego pisania to „Uwagi” (zachowywana przy odbudowie).
-- **Kolumny S1:** ID (S001–S286) · Kod · Kategoria (H1–H8) · Rodzina · Zdarzenie (spadkowe / wzrostowe / neutralne) · Definicja słownie · Parametry JSON · Wolumen (tak/nie) · SPY/QQQ (tak/nie) · Rozgrzewka (świec) · Wejście (NEXT_OPEN / SESSION_OPEN / 2. świeca) · Pochodzenie (bazowy / lustro Sxxx / nowy) · Częstość w okresie odkrywania: sygnałów i różnych dni (uzupełniane w 1b) · Status (aktywny / za rzadki / kontrolny) · Strategii (2 × 100) · Uwagi.
+- **Kolumny S1:** ID (S001–S286) · Kod · Kategoria (H1–H8) · Rodzina · Zdarzenie (spadkowe / wzrostowe / neutralne) · Definicja słownie · Parametry JSON · Wolumen (tak/nie) · SPY/QQQ (tak/nie) · Rozgrzewka (świec) · Na żywo (świec) · Wejście (NEXT_OPEN / SESSION_OPEN / 2. świeca) · Pochodzenie (bazowy / lustro Sxxx / nowy) · Para (sygnał bazowy lustra albo sygnał H8 bez warunku wolumenu) · Częstość w okresie odkrywania: sygnałów i różnych dni (uzupełniane w 1b) · Status (aktywny / za rzadki / kontrolny) · Strategii (2 × 100) · Uwagi.
 - **Nagłówek S1:** wersja katalogu, hash commitu, data zamrożenia, liczba sygnałów aktywnych, liczba strategii. Pod tabelą sygnałów: siatka SL/TP 10×10 i zasada wyznaczania H (D10) — cały przepis na strategię w jednym miejscu.
+- **Uruchomienie:** `python -m ia4.catalog` (w klonie całego repozytorium) zapisuje `s1/catalog.json`; `python tests/test_catalog.py` sprawdza katalog; w arkuszu: IA 4 → Projekt → „Wczytaj katalog S1 z GitHub”.
 - **Wiersz na strategię pojawia się w S2, nie w S1.** Strategia to iloczyn sygnał × kierunek × SL × TP, a jej nazwa wynika z nazwy sygnału (`DROP_N3_X2__L__SL1_TP1.5_H35`), więc 57 200 pustych wierszy w S1 nie wnosiłoby nic poza objętością. W S2 każda strategia ma swój wiersz razem z wynikiem.
 
 #### 1.7 Silnik (Python, `ia4-research`)
@@ -665,6 +671,8 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | L24 | Stała siatka SL/TP (D4, maks. 5%) krzywdzi rodziny trendowe H2 i H3 — w praktyce jeździ się na nich ruchomym stopem, a duży ruch trendu jest ucinany celem 5% | wynik H2/H3 w Etapie 2 może być zaniżony względem ich realnej wartości | nie zmieniamy przed Etapem 2 (D4); przy interpretacji wyników pamiętać. Ruchomy stop to osobna decyzja po Etapie 2 i nowe próby w liczniku 5.7 |
 | L25 | Arkusz S2 przy 57 200 strategiach × ~30 kolumn to ok. 1,7 mln komórek | Google Sheets to udźwignie (limit 10 mln), ale arkusz będzie wolny i ciężki do przeglądania | rozstrzygnąć przed Etapem 2: np. w arkuszu tylko strategie po wstępnym filtrze D16, pełna tabela w repozytorium obok `s2/strategies.json` |
 
+| L26 | Stary silnik (`Strategies.gs`, `Backtest.gs`) nigdy nie trafił do repozytorium i został usunięty z edytora w Etapie 0 | kryterium ukończenia Etapu 1 nr 3 („strategie bazowe dają te same transakcje co dotychczasowy silnik”) nie ma z czym porównać; część definicji bazowych była niejednoznaczna (np. „spadek w 5 świecach” — do której świecy) i w 0.27 zostały doprecyzowane w `ia4/catalog.py` bez wglądu w starą implementację | sprawdzić Historię wersji projektu Apps Script (Plik → Historia wersji / Zarządzaj wersjami) — jeśli stary kod tam jest, dołączyć go do repozytorium jako archiwum; jeśli nie, kryterium 3 zastąpić rozszerzonymi testami przypadków ręcznych (decyzja użytkownika) |
+
 ---
 
 ## 9. Otwarte decyzje
@@ -723,6 +731,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 0.16 | 2026-09-24 | Decyzja D18: strategie S2 i model PT trafiają do repozytorium (`s2/strategies.json`, `pt/model.json`, `pt/history/`) zamiast Firestore — nowa sekcja 3.1 tłumaczy podział (świece na żywo potrzebują nasłuchu, którego Git nie ma; strategie/PT zmieniają się rzadko i chcą wersjonowania, którego nie ma Firestore). Dashboard: lista S2 czytana z GitHub (`fetch` raz na godzinę) zamiast z kolekcji Firestore. |
 | 0.17 | 2026-09-24 | Naprawa nieskończonej pętli w łataniu luk (L20): `patchOneGap_` teraz sprawdza, czy zwrócone świece faktycznie wypełniają brak, zamiast uznawać za sukces każdy niepusty wynik z Yahoo. Po `PATCH_MAX_RETRIES` (3) próbach bez postępu luka jest automatycznie zapisywana jako zaakceptowana, z komentarzem, i znika z kolejki łatania — bez udziału człowieka. Naprawdę załatane luki są od razu usuwane z arkusza `_AUDYT`, nie czekają do następnego audytu. |
 | 0.18 | 2026-09-24 | Przegląd fundamentów. **Blokada po wyczerpaniu limitu Firestore** — pierwszy 429 wstrzymuje zadania w tle do resetu i loguje raz zamiast w kółko (to samo co L20, ale dla limitu zamiast łatania). **Uzupełniona lista kluczy czyszczonych przy „Wyzeruj stan"** — brakowało siedmiu stanów dodanych w 0.10–0.18, więc po wyczyszczeniu bazy system wierzyłby w nieistniejący postęp. **Wycofana luka L17** — sesje skrócone są liczone poprawnie przez `slotsInSession_()`; zgłoszenie wynikało z błędu w mojej symulacji, nie z kodu. Sprawdzona zgodność nazw pól między Apps Script, Pythonem i dashboardem oraz kompletność handlerów triggerów i pozycji menu. |
+| 0.27 | 2026-09-26 | **Etap 1a: katalog S1 zbudowany (szkic, niezamrożony).** Nowe: `ia4-research/ia4/catalog.py` — wszystkie 286 sygnałów w jednym miejscu; opis słowny każdego sygnału generowany z jego parametrów (tekst i JSON nie mogą się rozjechać), lustra S085–S168 generowane mechanicznie z bazowych; dla każdego sygnału rozgrzewka i historia potrzebna na żywo. `s1/catalog.json` wygenerowany (hash `5fbcb2d9a92c`). `ia4-research/tests/test_catalog.py` (9 testów: zgodność z `S1_KATALOG_BAZOWY.md`, liczby z 1.4, lustra, pary H8, zasady wejścia, limity okien, zgodność zapisanego pliku z kodem). `Catalog.gs` + pozycja menu — arkusz S1 budowany z pliku z GitHub, kolumna „Uwagi” zachowywana przy odbudowie. Doprecyzowania: definicje bazowe zapisane jako wzory (np. `REVCONF`: C[t−1] ≤ C[t−6] × (1 − x%)); `NSES` n = 60 → 50, bo 60 sesji (420 świec) łamało własną regułę najdłuższego okna 350 z 1.3 — błąd wersji 0.25; w 1.3 dopisana historia na żywo dla EMA/Wildera; w 1.6 kolumny „Na żywo” i „Para”. Nowa luka L26 (brak starego silnika do kryterium 3). |
 | 0.26 | 2026-09-26 | Użytkownik przyjął D19 (rozmiar S1: 286 sygnałów, limit 300), D20 (źródło prawdy katalogu: `s1/catalog.json`, arkusz S1 jako widok) i D21 (katalog na ślepo i zamrożenie). `DECISIONS` w `Project.gs` zaktualizowane. |
 | 0.25 | 2026-09-26 | **Etap 1 uszczegółowiony.** Katalog S1 rozszerzony z ~120–150 do 286 sygnałów w ośmiu kategoriach hipotez (H1 powrót do średniej, H2 trend: średnie, ich przecięcia, MACD, VWAP; H3 wybicia; H4 zmienność; H5 oscylatory; H6 sesja i kalendarz; H7 kontekst rynku; H8 wolumen), z pełnymi definicjami rodzin i siatkami parametrów. Nowe: wspólne definicje wskaźników identyczne w Pythonie i Apps Script (1.3), w tym RVOL względem tej samej świecy dnia; zasada katalogu „na ślepo” i jego zamrożenia (1.1); arkusz S1 jako widok pliku `s1/catalog.json` (1.6); struktura silnika i kryteria ukończenia (1.7). Etap 2 dostaje porównanie sygnałów H8 z ich wersjami bez warunku wolumenu. Propozycje do potwierdzenia: D19 (rozmiar S1), D20 (źródło prawdy katalogu), D21 (katalog na ślepo i zamrożenie). Nowe luki: L24 (stała siatka wyjść a rodziny trendowe), L25 (rozmiar arkusza S2). |
 | 0.24 | 2026-09-26 | **Naprawa regresji wprowadzonej w 0.23 (luka L23).** Fix z 0.23 (odświeżanie arkusza po łataniu) miał efekt uboczny gorszy niż problem, który naprawiał: `projComputeGaps_` daje pierwszeństwo migawce z WIDOCZNEGO arkusza nad `_AUDYT_DECYZJE`, żeby ręczna zmiana dropdowna przetrwała render — ale ta migawka jest zawsze sprzed BIEŻĄCEGO renderu. Wołanie `projRender_` zaraz po `patchAutoAccept_` czytało więc arkusz sprzed własnej, świeżo zapisanej decyzji i nadpisywało ją z powrotem na „nowa”. Skutek w logu: te same ~37 spółek „akceptowane” w kółko co ~6 godzin (AAPL zaakceptowane 06:30, wciąż aktywne i złatane naprawdę dopiero 12:18), zamiast raz na zawsze. Naprawione: `projComputeGaps_`/`projRender_` przyjmują `applyManual` (domyślnie true — pozostałe wywołania bez zmian); wywołanie z `patchGapsIfIdle_` jawnie przekazuje `applyManual: false` — czyta i renderuje świeże decyzje, nic nie nadpisuje. Przetestowane na symulacji dokładnej sekwencji z logu. |
@@ -766,3 +775,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-26 13:10 | `f83bb60` | `Code.gs`, `Project.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.24: naprawa regresji z 0.23 (L23) — `projComputeGaps_`/`projRender_` z `applyManual: false` dla wywołań w tle, żeby nie kasować świeżych auto-akceptacji migawką arkusza sprzed renderu. |
 | 2026-09-26 15:00 | `c200da3` | `IA4_INSTRUKCJA.md`, `Project.gs` (STAGES Etapu 1, DECISIONS D8–D21), `S1_KATALOG_BAZOWY.md`, `telemetry/README.md` + wersje | Wersja 0.25: szczegółowy plan Etapu 1 — 286 sygnałów w 8 kategoriach, wspólne definicje wskaźników, arkusz S1, silnik i kryteria; D19–D21 do potwierdzenia; L24, L25. |
 | 2026-09-26 15:30 | `33f3389` | `IA4_INSTRUKCJA.md`, `Project.gs` + wersje | Wersja 0.26: D19–D21 przyjęte. |
+| 2026-09-26 16:00 | `(uzupełnić)` | `ia4-research/ia4/catalog.py`, `ia4-research/tests/test_catalog.py`, `s1/catalog.json`, `Catalog.gs`, `Code.gs` (menu), `IA4_INSTRUKCJA.md` + wersje | Wersja 0.27: Etap 1a — katalog S1 (286 sygnałów), testy, arkusz S1 z GitHub; L26. |
