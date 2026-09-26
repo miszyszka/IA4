@@ -1,8 +1,8 @@
 {
   "meta": {
     "version": "0.25",
-    "generatedAt": "2026-09-26T14:46:56.040Z",
-    "generatedAtPL": "2026-09-26 16:46",
+    "generatedAt": "2026-09-26T15:46:56.689Z",
+    "generatedAtPL": "2026-09-26 17:46",
     "spreadsheet": "IA 4",
     "note": "Pełny stan systemu IA 4. Zapisywany przez Telemetry.gs, czytany przez Claude z repozytorium."
   },
@@ -94,7 +94,7 @@
         "text": "Każda luka naprawiona albo zaakceptowana",
         "mode": "automatycznie",
         "ok": false,
-        "detail": "nowych luk: 96"
+        "detail": "nowych luk: 90"
       },
       {
         "id": "0.7",
@@ -134,16 +134,15 @@
       "nightlyAt": "2026-09-25T21:15:08.774Z"
     },
     "gaps": {
-      "total": 108,
-      "new": 96,
-      "accepted": 12,
+      "total": 104,
+      "new": 90,
+      "accepted": 14,
       "byType": {
-        "BRAK_SWIEC": 96,
-        "SKOK_CENY": 12
+        "SKOK_CENY": 12,
+        "BRAK_SWIEC": 92
       },
       "bySymbol": {
-        "DELL": 3,
-        "AMAT": 2,
+        "DELL": 1,
         "PLTR": 5,
         "ORCL": 3,
         "V": 2,
@@ -194,47 +193,11 @@
       "items": [
         {
           "symbol": "DELL",
-          "type": "BRAK_SWIEC",
-          "date": "2026-01-30",
-          "desc": "brak świec nr 2, 3, 4, 5, 6, 7 z 7",
-          "detectedAt": "2026-09-25T10:53:11.443Z",
-          "status": "nowa",
-          "comment": ""
-        },
-        {
-          "symbol": "DELL",
-          "type": "BRAK_SWIEC",
-          "date": "2026-02-02",
-          "desc": "brak świec nr 1, 2, 3, 4 z 7",
-          "detectedAt": "2026-09-25T10:53:11.443Z",
-          "status": "nowa",
-          "comment": ""
-        },
-        {
-          "symbol": "DELL",
           "type": "SKOK_CENY",
           "date": "2026-05-29",
           "desc": "świeca nr 1: 317.89 → 418 (31.5%) — możliwy split",
           "detectedAt": "2026-09-25T10:53:11.447Z",
           "status": "zaakceptowana",
-          "comment": ""
-        },
-        {
-          "symbol": "AMAT",
-          "type": "BRAK_SWIEC",
-          "date": "2026-01-30",
-          "desc": "brak świec nr 3, 4, 5, 6, 7 z 7",
-          "detectedAt": "2026-09-25T10:53:12.395Z",
-          "status": "nowa",
-          "comment": ""
-        },
-        {
-          "symbol": "AMAT",
-          "type": "BRAK_SWIEC",
-          "date": "2026-02-02",
-          "desc": "brak świec nr 1, 2, 3, 4 z 7",
-          "detectedAt": "2026-09-25T10:53:12.395Z",
-          "status": "nowa",
           "comment": ""
         },
         {
@@ -315,8 +278,8 @@
           "date": "2026-01-30",
           "desc": "brak świec nr 2, 3, 4, 5, 6, 7 z 7",
           "detectedAt": "2026-09-25T10:53:16.500Z",
-          "status": "nowa",
-          "comment": ""
+          "status": "zaakceptowana",
+          "comment": "Automatycznie zaakceptowana po 3 próbach bez postępu — Yahoo zwraca te same, już posiadane świece (prawdopodobnie trwały przestój, L3)."
         },
         {
           "symbol": "V",
@@ -324,8 +287,8 @@
           "date": "2026-02-02",
           "desc": "brak świec nr 1, 2, 3, 4 z 7",
           "detectedAt": "2026-09-25T10:53:16.500Z",
-          "status": "nowa",
-          "comment": ""
+          "status": "zaakceptowana",
+          "comment": "Automatycznie zaakceptowana po 3 próbach bez postępu — Yahoo zwraca te same, już posiadane świece (prawdopodobnie trwały przestój, L3)."
         },
         {
           "symbol": "WMT",
@@ -1562,7 +1525,7 @@
     }
   },
   "collector": {
-    "lastRunAt": "2026-09-26T14:46:24.666Z",
+    "lastRunAt": "2026-09-26T15:46:24.200Z",
     "symbols": [
       {
         "symbol": "AAPL",
@@ -1986,12 +1949,12 @@
     },
     "volumeBackfill": {
       "done": false,
-      "index": 8,
+      "index": 9,
       "total": 55,
-      "current": "V",
-      "cursor": "2026-05-27",
-      "written": 13149,
-      "spentToday": 8499,
+      "current": "WMT",
+      "cursor": "2025-09-25",
+      "written": 13847,
+      "spentToday": 9197,
       "spentDay": "2026-09-26"
     },
     "fullAudit": {
@@ -2012,6 +1975,48 @@
     ]
   },
   "log": [
+    {
+      "at": "Sat Sep 26 2026 17:43:29 GMT+0200 (Central European Summer Time)",
+      "level": "INFO",
+      "source": "ŁATANIE",
+      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): V 2026-01-30, V 2026-02-02."
+    },
+    {
+      "at": "Sat Sep 26 2026 17:32:30 GMT+0200 (Central European Summer Time)",
+      "level": "INFO",
+      "source": "ŁATANIE",
+      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): JPM 2026-01-30, JPM 2026-02-02."
+    },
+    {
+      "at": "Sat Sep 26 2026 17:22:29 GMT+0200 (Central European Summer Time)",
+      "level": "ZAPIS",
+      "source": "WOLUMEN",
+      "message": "V: gotowe. Następny: WMT (10/55)."
+    },
+    {
+      "at": "Sat Sep 26 2026 17:21:37 GMT+0200 (Central European Summer Time)",
+      "level": "ZAPIS",
+      "source": "ŁATANIE",
+      "message": "Uzupełniono z luk: AMAT 2026-01-30, AMAT 2026-02-02."
+    },
+    {
+      "at": "Sat Sep 26 2026 17:11:29 GMT+0200 (Central European Summer Time)",
+      "level": "ZAPIS",
+      "source": "ŁATANIE",
+      "message": "Uzupełniono z luk: DELL 2026-01-30, DELL 2026-02-02."
+    },
+    {
+      "at": "Sat Sep 26 2026 17:00:36 GMT+0200 (Central European Summer Time)",
+      "level": "INFO",
+      "source": "ŁATANIE",
+      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): PLTR 2026-01-30, PLTR 2026-02-02."
+    },
+    {
+      "at": "Sat Sep 26 2026 16:49:28 GMT+0200 (Central European Summer Time)",
+      "level": "INFO",
+      "source": "ŁATANIE",
+      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): DELL 2026-01-30, DELL 2026-02-02."
+    },
     {
       "at": "Sat Sep 26 2026 16:39:28 GMT+0200 (Central European Summer Time)",
       "level": "INFO",
@@ -2449,48 +2454,6 @@
       "level": "INFO",
       "source": "ŁATANIE",
       "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): MCD 2026-01-30, MCD 2026-02-02."
-    },
-    {
-      "at": "Sat Sep 26 2026 04:53:33 GMT+0200 (Central European Summer Time)",
-      "level": "INFO",
-      "source": "ŁATANIE",
-      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): AMZN 2026-01-30, AMZN 2026-02-02."
-    },
-    {
-      "at": "Sat Sep 26 2026 04:43:27 GMT+0200 (Central European Summer Time)",
-      "level": "INFO",
-      "source": "ŁATANIE",
-      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): RTX 2026-01-30, RTX 2026-02-02."
-    },
-    {
-      "at": "Sat Sep 26 2026 04:33:26 GMT+0200 (Central European Summer Time)",
-      "level": "INFO",
-      "source": "ŁATANIE",
-      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): UNP 2026-01-30, UNP 2026-02-02."
-    },
-    {
-      "at": "Sat Sep 26 2026 04:22:37 GMT+0200 (Central European Summer Time)",
-      "level": "INFO",
-      "source": "ŁATANIE",
-      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): HON 2026-01-30, HON 2026-02-02."
-    },
-    {
-      "at": "Sat Sep 26 2026 04:11:30 GMT+0200 (Central European Summer Time)",
-      "level": "ZAPIS",
-      "source": "ŁATANIE",
-      "message": "Uzupełniono z luk: CAT 2026-01-30, CAT 2026-02-02."
-    },
-    {
-      "at": "Sat Sep 26 2026 04:00:27 GMT+0200 (Central European Summer Time)",
-      "level": "INFO",
-      "source": "ŁATANIE",
-      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): CRM 2026-01-30, CRM 2026-02-02."
-    },
-    {
-      "at": "Sat Sep 26 2026 03:50:32 GMT+0200 (Central European Summer Time)",
-      "level": "INFO",
-      "source": "ŁATANIE",
-      "message": "Zaakceptowano jako trwałe (bez postępu po 3 próbach): WFC 2026-01-30, WFC 2026-02-02."
     }
   ]
 }
