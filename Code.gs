@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.27 (2026-09-26) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.28 (2026-09-27) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
@@ -96,8 +96,20 @@ const CONFIG = {
   // nie grozi wspólną blokadą, więc można przepisywać szybciej.
   // 10 000/dzień + reszta ruchu (~2500-3000) to 65% limitu zapisu (20 000/dzień,
   // Spark) — kończy resztę historii (~29 000 dokumentów) w ok. 3 dni.
+  //
+  // Wąskim gardłem NIE jest ten budżet ani VOLFILL_MIN_GAP_MIN — to tempo, w
+  // jakim jeden instrument w ogóle SCHODZI do granicy Yahoo (YAHOO_MAX_AGE_DAYS
+  // ≈ 729 dni). Każde uruchomienie cofa się tylko o VOLFILL_CHUNK_DAYS, więc
+  // przy 60 dniach trzeba ok. 13 uruchomień na instrument — a każde czeka na
+  // swój VOLFILL_MIN_GAP_MIN. Efekt: ok. 40 minut na jeden instrument, nawet
+  // gdy zapisuje tylko kilka dokumentów. Podniesione do 120 w wersji 0.28
+  // (obserwacja z dziennika zdarzeń: odstępy ~43 min między kolejnymi „gotowe”
+  // przy 60) — to i tak JEDNO zapytanie do Yahoo (Proof.gs dzieli je wewnątrz
+  // po PROOF.CHUNK_DAYS = 120), więc nie dokłada żadnego nowego ryzyka: ~7
+  // uruchomień na instrument zamiast 13, czyli ok. dwa razy szybciej, przy tym
+  // samym dziennym budżecie zapisów.
   VOLFILL_DAILY_WRITES: 10000, // ile dokumentów dziennie wolno przepisać
-  VOLFILL_CHUNK_DAYS: 60,      // ile dni historii bierzemy na jedno uruchomienie
+  VOLFILL_CHUNK_DAYS: 120,     // ile dni historii bierzemy na jedno uruchomienie
   VOLFILL_MIN_GAP_MIN: 3,      // minimalny odstęp między przebiegami
   LIVE_RANGE: '5d',          // zakres pobierania w trybie automatycznym
   CATCHUP_RANGE: '1mo',      // zakres przy konfiguracji i „Uzupełnij braki”
