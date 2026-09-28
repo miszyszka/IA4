@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.33 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.34 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
@@ -74,9 +74,23 @@ const CONFIG = {
 
   // SAMOCZYNNE ŁATANIE LUK — w przebiegach, gdy nie ma nic do zebrania
   // (weekend, noc, po sesji) system dociąga braki wykryte przez audyt.
+  //
+  // PATCH_PER_RUN 2→20, PATCH_MIN_GAP_MIN 10→2 w wersji 0.34 (2026-09-28, na
+  // życzenie użytkownika, ten sam wzorzec co VOLFILL_DAILY_WRITES w 0.30):
+  // nocny audyt tego dnia znalazł sporo nowych ZERO_WOLUMEN (L32), a przy
+  // 2 lukach/10 min kolejka schodziłaby się dniami. Bez nowego PATCH_DAILY_WRITES
+  // to podniesienie samo w sobie byłoby niebezpieczne — 20 luk co 2 minuty to
+  // do 600/h, a łatanie nie miało dotąd ŻADNEGO własnego dziennego sufitu
+  // zapisów (w przeciwieństwie do VOLFILL_DAILY_WRITES), więc przy dużej
+  // kolejce mogłoby samo wyczerpać resztę dziennego limitu Firestore (20 000
+  // zapisów, Spark) kosztem dopisywania wolumenu i bieżącego zbierania.
+  // PATCH_DAILY_WRITES: 5000 dokumentów, licząc tak samo jak VOLFILL (spent/
+  // spentDay w Script Properties, przez patchGapsIfIdle_) — dziś to wciąż
+  // bezpiecznie poniżej 20 000 nawet zsumowane z VOLFILL_DAILY_WRITES (15000).
   PATCH_ENABLED: true,
-  PATCH_PER_RUN: 2,          // ile luk łatamy w jednym wolnym przebiegu
-  PATCH_MIN_GAP_MIN: 10,     // minimalny odstęp między przebiegami łatania
+  PATCH_PER_RUN: 20,         // ile luk łatamy w jednym wolnym przebiegu
+  PATCH_MIN_GAP_MIN: 2,      // minimalny odstęp między przebiegami łatania
+  PATCH_DAILY_WRITES: 5000,  // ile dokumentów dziennie wolno zapisać przy łataniu
   PATCH_MAX_RETRIES: 3,      // po tylu próbach bez postępu luka jest uznawana za trwałą
 
   // DOPISYWANIE WOLUMENU DO STAREJ HISTORII (decyzja D12)
@@ -420,17 +434,31 @@ function minutesSinceLastClose_(ctx, closeMin) {
  * powodu limitu Firestore (HTTP 429) albo chwilowej awarii Yahoo — zasklepia
  * się sama, bez pamiętania o niej.
  *
- * Ograniczenia celowe: PATCH_PER_RUN luk na przebieg i odstęp PATCH_MIN_GAP_MIN
- * między przebiegami, żeby łatanie nigdy nie zjadło limitu potrzebnego bieżącym
- * świecom. Luki starsze niż granica Yahoo (~730 dni) są pomijane — tych danych
- * już nie da się odzyskać.
+ * Ograniczenia celowe: PATCH_PER_RUN luk na przebieg, odstęp PATCH_MIN_GAP_MIN
+ * między przebiegami i (od 0.34) własny dzienny sufit zapisów PATCH_DAILY_WRITES
+ * — żeby łatanie nigdy nie zjadło limitu potrzebnego bieżącym świecom ani
+ * dopisywaniu wolumenu (VOLFILL_DAILY_WRITES), z którym dzieli ten sam,
+ * twardy dzienny limit Firestore (20 000 zapisów, Spark). Luki starsze niż
+ * granica Yahoo (~730 dni) są pomijane — tych danych już nie da się odzyskać.
  */
+/** Dzienny licznik zapisów łatania — ten sam wzorzec co VOLFILL (spent/spentDay). */
+function patchSpendLoad_() {
+  const raw = PropertiesService.getScriptProperties().getProperty('PATCH_SPEND');
+  return raw ? JSON.parse(raw) : { spent: 0, spentDay: '' };
+}
+function patchSpendSave_(st) {
+  PropertiesService.getScriptProperties().setProperty('PATCH_SPEND', JSON.stringify(st));
+}
+
 function patchGapsIfIdle_(ctx) {
   if (!CONFIG.PATCH_ENABLED || !CONFIG.FIRESTORE_ENABLED) return '';
   if (fsQuotaBlocked_()) return '';   // limit wyczerpany — wrócimy jutro
   const props = PropertiesService.getScriptProperties();
   const last = props.getProperty('PATCH_LAST_AT');
   if (last && Date.now() - Number(last) < CONFIG.PATCH_MIN_GAP_MIN * 60000) return '';
+
+  const spend = patchSpendLoad_();
+  if (spend.spentDay === ctx.etDate && spend.spent >= CONFIG.PATCH_DAILY_WRITES) return '';
 
   let gaps;
   try {
@@ -443,8 +471,10 @@ function patchGapsIfIdle_(ctx) {
   props.setProperty('PATCH_LAST_AT', String(Date.now()));
   const attempts = JSON.parse(props.getProperty('PATCH_ATTEMPTS') || '{}');
   const fixed = [], gaveUp = [];
+  if (spend.spentDay !== ctx.etDate) { spend.spent = 0; spend.spentDay = ctx.etDate; }
 
-  for (let i = 0; i < gaps.length && fixed.length + gaveUp.length < CONFIG.PATCH_PER_RUN; i++) {
+  for (let i = 0; i < gaps.length && fixed.length + gaveUp.length < CONFIG.PATCH_PER_RUN
+       && spend.spent < CONFIG.PATCH_DAILY_WRITES; i++) {
     const g = gaps[i];
     let r;
     try {
@@ -453,6 +483,7 @@ function patchGapsIfIdle_(ctx) {
       log_('UWAGA', 'ŁATANIE', `${g.symbol} ${g.date}: ${e.message}`);
       break;   // najczęściej limit Firestore — nie ma sensu próbować dalej
     }
+    spend.spent += r.written || 0;
 
     if (r.gained) {
       // Naprawdę wypełniło brakującą świecę — luka znika z arkusza od razu,
@@ -477,6 +508,7 @@ function patchGapsIfIdle_(ctx) {
     }
   }
   props.setProperty('PATCH_ATTEMPTS', JSON.stringify(attempts));
+  patchSpendSave_(spend);
 
   const parts = [];
   if (fixed.length) {
@@ -698,10 +730,14 @@ function patchExpectedSlots_(g) {
 }
 
 /**
- * Dociąga jedną sesję. Zwraca { wrote, gained }:
- *   wrote  — Yahoo zwróciło cokolwiek (nawet jeśli to tylko to, co już mieliśmy),
- *   gained — realny postęp względem tego, co konkretny typ luki zgłasza jako brak.
- * Bez rozróżnienia tych dwóch stanów luka bez rozwiązania (np. trwała przerwa
+ * Dociąga jedną sesję. Zwraca { wrote, gained, written }:
+ *   wrote   — Yahoo zwróciło cokolwiek (nawet jeśli to tylko to, co już mieliśmy),
+ *   gained  — realny postęp względem tego, co konkretny typ luki zgłasza jako brak,
+ *   written — ile dokumentów Firestore ten wpis faktycznie zapisał (dla
+ *             PATCH_DAILY_WRITES w patchGapsIfIdle_ — ten sam licznik, co przy
+ *             VOLFILL_DAILY_WRITES, żeby oba razem nie przekroczyły dziennego
+ *             limitu Firestore).
+ * Bez rozróżnienia wrote/gained luka bez rozwiązania (np. trwała przerwa
  * Yahoo) byłaby "łatana" w kółko, bo te same istniejące świece zawsze wracają.
  *
  * Dla BRAK_SWIEC/BRAK_SESJI/NADMIAR "brak" = świecy nie było, więc gained =
@@ -714,7 +750,7 @@ function patchExpectedSlots_(g) {
 function patchOneGap_(g) {
   const sessions = proofFetchRange_(g.symbol, g.date, g.date);
   const bySlot = sessions[g.date];
-  if (!bySlot || !Object.keys(bySlot).length) return { wrote: false, gained: false };
+  if (!bySlot || !Object.keys(bySlot).length) return { wrote: false, gained: false, written: 0 };
 
   const expected = patchExpectedSlots_(g);
   let gained;
@@ -728,14 +764,16 @@ function patchOneGap_(g) {
     gained = fetched1based.some(s => expected.indexOf(s) >= 0);
   }
 
+  let written;
   if (isMain_(g.symbol)) {
     const bars = Object.keys(bySlot).map(Number).sort((a, b) => a - b).map(s => bySlot[s]);
     bars.forEach(b => { b.symbol = g.symbol; });   // candleFields_ tego wymaga
     fsWriteMainCandles_(g.symbol, bars);
+    written = bars.length + 1;   // + dokument podsumowania spółki (stocks/{symbol})
   } else {
-    proofSaveSessions_(g.symbol, sessions, [g.date]);
+    written = proofSaveSessions_(g.symbol, sessions, [g.date]);   // sesja + podsumowanie
   }
-  return { wrote: true, gained };
+  return { wrote: true, gained, written };
 }
 
 
