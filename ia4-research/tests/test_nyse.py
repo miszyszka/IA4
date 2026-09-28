@@ -1,5 +1,5 @@
 """
-Kalendarz NYSE w Pythonie = ten sam co w Apps Script (Etap 1b). Wersja projektu: 0.39 (2026-09-28).
+Kalendarz NYSE w Pythonie = ten sam co w Apps Script (Etap 1b). Wersja projektu: 0.40 (2026-09-28).
 
 Silnik rozpoznaje dziury w danych (D27) po kalendarzu. Gdyby lista świąt albo
 sesji skróconych w Pythonie rozjechała się z Apps Script, audyt i silnik

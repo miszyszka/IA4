@@ -1,6 +1,6 @@
 """
 IA 4 — backtest S1 (Etap 2, instrukcja 2.1–2.3).
-Wersja projektu: 0.39 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.40 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Liczy każdą strategię z zamrożonego katalogu S1 (sygnał × kierunek × SL × TP)
 na okresie ODKRYWANIA (5.1 — poletko zostaje na jedno sprawdzenie listy S2,

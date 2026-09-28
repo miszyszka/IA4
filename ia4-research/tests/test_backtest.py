@@ -1,5 +1,5 @@
 """
-Testy backtestu Etapu 2 (portfel, metryki 2.2, D10, bootstrap, FDR). Wersja projektu: 0.39 (2026-09-28).
+Testy backtestu Etapu 2 (portfel, metryki 2.2, D10, bootstrap, FDR). Wersja projektu: 0.40 (2026-09-28).
 
 Wyłącznie sztuczne świece — ten test nigdy nie widzi prawdziwych danych.
 
