@@ -1,5 +1,5 @@
 """
-Testy potoku danych Etapu 0B: sync.py, data.py, verify.py. Wersja projektu: 0.31 (2026-09-28).
+Testy potoku danych Etapu 0B: sync.py, data.py, verify.py. Wersja projektu: 0.32 (2026-09-28).
 
 Bez Firestore i bez sieci: klient Firestore jest podmieniony na atrapę w pamięci,
 granice skarbca na stałe z instrukcji 5.1, katalog danych na folder tymczasowy.

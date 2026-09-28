@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — KATALOG S1  (s1/catalog.json z GitHub → arkusz S1)
  *
- *  Wersja projektu: 0.31 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.32 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  PO CO TO JEST
  *  Źródłem prawdy katalogu jest plik s1/catalog.json w repozytorium (D20),

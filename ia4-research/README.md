@@ -1,6 +1,6 @@
 # IA 4 — środowisko badawcze (Python, Mac)
 
-**Wersja projektu: 0.31 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 0.32 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Etap 0B. Ten folder robi jedną rzecz: ściąga świece z Firestore na dysk i daje
 do nich dostęp tak, żeby nie dało się przypadkiem zajrzeć do skarbca.
@@ -141,7 +141,7 @@ jaki ma ten projekt, i nikt tego potem nie wykryje po samym wyniku.
 
 | Etap | Co powstaje w tym folderze |
 |---|---|
-| 1 | `ia4/catalog.py` — katalog S1 (gotowe, 1a); `ia4/indicators.py`, `ia4/signals.py`, `ia4/engine.py` — silnik (1b, instrukcja 1.7) |
+| 1 | `ia4/catalog.py` — katalog S1 (gotowe, 1a); `ia4/indicators.py` — wskaźniki (gotowe, 0.32); `ia4/signals.py`, `ia4/engine.py` — reszta silnika (1b, instrukcja 1.7) |
 | 2 | symulacja portfela 57 200 strategii (2.1), eksport do `s1-backtest/results.csv` → arkusz S1-BACKTEST (2.3) |
 | 3 | `ia4/features.py` — ~1000 parametrów, `ia4/model.py` — PT, eksport drzew do JSON |
 
@@ -159,9 +159,11 @@ ia4-research/
 │   ├── config.py        klucz, granice skarbca i listy instrumentów z Firestore
 │   ├── sync.py          Firestore → parquet, tylko przyrosty (także przepisane wstecz)
 │   ├── data.py          wczytywanie z wymuszoną granicą skarbca i licznikiem poletka
-│   └── catalog.py       katalog S1 → s1/catalog.json (Etap 1a)
+│   ├── catalog.py       katalog S1 → s1/catalog.json (Etap 1a)
+│   └── indicators.py    wskaźniki z 1.3 — nie czyta danych (Etap 1b, D25)
 ├── tests/
 │   ├── test_catalog.py        katalog S1
+│   ├── test_indicators.py     wskaźniki, na ręcznie policzonych przykładach
 │   └── test_data_pipeline.py  sync, data, verify na atrapie Firestore
 └── data/                pamięć podręczna (poza gitem)
     ├── _manifest.json
