@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — S1-BACKTEST  (s1-backtest/results.csv z GitHub → arkusz S1-BACKTEST)
  *
- *  Wersja projektu: 0.30 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.31 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  PO CO TO JEST
  *  Etap 2 liczy w Pythonie (na Macu) wszystkie 57 200 strategii S1, osobno

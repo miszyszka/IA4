@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.30 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.31 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
@@ -94,8 +94,15 @@ const CONFIG = {
   // wypadek. Odtąd pełny audyt jest czynnością jednorazową z Etapu 0, a na
   // stałe zostaje tylko lekki audyt nocny (14 dni, znikomy odczyt) — nic już
   // nie grozi wspólną blokadą, więc można przepisywać szybciej.
-  // 10 000/dzień + reszta ruchu (~2500-3000) to 65% limitu zapisu (20 000/dzień,
-  // Spark) — kończy resztę historii (~29 000 dokumentów) w ok. 3 dni.
+  // Podniesione 10000 → 15000 w wersji 0.30 (2026-09-28, na życzenie
+  // użytkownika): zostało tylko 5 instrumentów (AXP, KO, PEP, SPY, QQQ,
+  // ~520 zapisów każdy = ~2600), a budżet 10000 już się dziś wyczerpał
+  // (spentToday 10069 wg telemetrii z 14:46) — bez podniesienia dopisywanie
+  // zatrzymałoby się do resetu limitu Firestore (północ pacyficzna, ok. 9:00
+  // w Polsce) i skończyło dopiero jutro. 15000 + reszta ruchu (~500) to
+  // wciąż tylko ok. 78% dziennego limitu zapisu (20 000/dzień, Spark), z
+  // zapasem. To przyspieszenie ostatniego dnia D12, nie stała potrzeba —
+  // wolno to obniżyć z powrotem po zamknięciu kryterium 1.4.
   //
   // Wąskim gardłem NIE jest ten budżet ani VOLFILL_MIN_GAP_MIN — to tempo, w
   // jakim jeden instrument w ogóle SCHODZI do granicy Yahoo (YAHOO_MAX_AGE_DAYS
@@ -108,7 +115,7 @@ const CONFIG = {
   // po PROOF.CHUNK_DAYS = 120), więc nie dokłada żadnego nowego ryzyka: ~7
   // uruchomień na instrument zamiast 13, czyli ok. dwa razy szybciej, przy tym
   // samym dziennym budżecie zapisów.
-  VOLFILL_DAILY_WRITES: 10000, // ile dokumentów dziennie wolno przepisać
+  VOLFILL_DAILY_WRITES: 15000, // ile dokumentów dziennie wolno przepisać
   VOLFILL_CHUNK_DAYS: 120,     // ile dni historii bierzemy na jedno uruchomienie
   VOLFILL_MIN_GAP_MIN: 3,      // minimalny odstęp między przebiegami
   LIVE_RANGE: '5d',          // zakres pobierania w trybie automatycznym

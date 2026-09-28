@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.30 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.31 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.30',
+  INSTRUCTION_VERSION: '0.31',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -83,7 +83,7 @@ const STAGES = [
     { id: '1.1', text: 's1/catalog.json i arkusz S1: wszystkie rodziny, definicje i parametry JSON' },
     { id: '1.2', text: 'Silnik w Pythonie przechodzi testy na ręcznie policzonych przypadkach (jedyny sprawdzian silnika)' },
     { id: '1.3', text: 'Częstość policzona dla każdego sygnału na okresie odkrywania, za rzadkie oznaczone' },
-    { id: '1.4', text: 'Pełny wolumen w okresie odkrywania dla sygnałów z kolumną „Wol.” (dopisywanie D12 zakończone)' },
+    { id: '1.4', text: 'Wolumen bez dziur od pierwszej sesji z wolumenem, ≤20 sesji bez niego na początku historii (D26); D12 zakończone' },
     { id: '1.5', text: 'Katalog zamrożony: commit i hash w PROJEKT, licznik prób uzupełniony' },
     { id: '1.6', text: 'Żaden wynik transakcji nie został policzony w tym etapie' },
   ] },

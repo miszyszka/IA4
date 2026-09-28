@@ -1,6 +1,6 @@
 # IA 4 — katalog bazowy sygnałów (84)
 
-**Wersja projektu: 0.30 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 0.31 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Katalog przeniesiony z arkusza `STRATEGIE_LEGENDA` starego projektu. To **punkt
 wyjścia dla Etapu 1**, a nie gotowy katalog S1: wszystkie 84 sygnały są wyłącznie
@@ -37,6 +37,10 @@ profile podaję tutaj tylko jako zapis tego, co było liczone wcześniej.
 11. Świeca 21:30–22:00 (ostatnie 30 min sesji) jest traktowana jak każda inna świeca.
 
 12. Koszty: wynik główny bez kosztów, obok ekspektancja przy koszcie **0,05% za całą transakcję (tam i z powrotem)** — instrukcja 5.5 i D6. Koszt jest parametrem silnika. *(Do wersji 0.29: „0,05% na stronę”, czyli dwa razy więcej niż 5.5 — poprawione w 0.30 do instrukcji.)*
+
+13. **Dziury w danych (D27, L30):** sygnał nie odpala, jeśli jego okno — łącznie z rozgrzewką wskaźnika (1.3) — obejmuje brakującą świecę sesji albo niepełną sesję spoza listy sesji skróconych (np. dziura 2026-01-30 – 2026-02-02 w 39 instrumentach). Otwarta pozycja **trwa dalej** mimo dziury: SL/TP sprawdzane na następnej dostępnej świecy, limit czasu H liczony w faktycznych świecach, nie w czasie kalendarzowym. Silnik tylko odrzuca sygnały i pomija brakujące świece przy liczeniu — nigdy nie uzupełnia ani nie interpoluje cen.
+
+14. **Splity (D11, D24):** sygnał nie odpala, jeśli jego okno (z rozgrzewką) obejmuje sesję z `s1/splits.json`. Lista jest ręczna, nie automatyczna — audyt (próg 15%, Etap 0) tylko sygnalizuje kandydatów; o wpisaniu na listę decyduje sprawdzenie, że to faktycznie split (nie wynik kwartalny czy wiadomość o spółce).
 
 
 ## Stare profile wyjścia (12) — zastąpione siatką 10×10 w Etapie 1
