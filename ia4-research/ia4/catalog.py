@@ -1,7 +1,7 @@
 """
 IA 4 — katalog sygnałów S1 (Etap 1a).
 
-Wersja projektu: 0.28 (2026-09-27) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.29 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Jedno miejsce, w którym zdefiniowany jest cały katalog S1 (D20). Z tych
 definicji powstaje plik `s1/catalog.json`, a z niego arkusz S1 (Apps Script)

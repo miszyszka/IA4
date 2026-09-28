@@ -1,8 +1,8 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 0.28
-**Data:** 27 września 2026
-**Aktualny etap:** 🟨 Etap 0 — 0A wdrożone; trwa pełne pobieranie historii po naprawie L13, przegląd 53 luk i budowa środowiska Pythona (0B)
+**Wersja:** 0.29
+**Data:** 28 września 2026
+**Aktualny etap:** 🟨 Etap 0 — 0A wdrożone, 0B w toku: dopisywanie wolumenu (D12) kończy kryterium 0.9. Etap 1a (katalog S1, 286 sygnałów) już zamknięty; czeka 1b (silnik) i Etap 2 (backtest), których metodologia jest dopracowana w tej wersji
 
 Ten plik jest jedynym źródłem prawdy o tym, jak pracujemy nad projektem. Stan bieżący (który etap, co zrobione, jakie luki) jest widoczny na żywo w arkuszu **PROJEKT** i w podsumowaniu w **STATS**. Jeśli plik i arkusz się rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba zapisać jako lukę.
 
@@ -90,7 +90,8 @@ Zeby nie tracic czasu: nie szukamy prognozy ceny, nie budujemy portfela optymaln
 | `Telemetry.gs` | stan systemu → Firestore i GitHub | od wersji 0.12 |
 | `Investor.gs` | arkusz `Transaction LOG` — wspólny log transakcji wszystkich inwestorów | od wersji 0.13 |
 | `Catalog.gs` | arkusz S1 — widok pliku `s1/catalog.json` pobieranego z GitHub (D20) | od wersji 0.27 |
-| `Strategies.gs`, `Backtest.gs`, `Combo.gs`, `Benchmark.gs` | stary katalog i analizy | usuwane w Etapie 0 (ręcznie w edytorze) |
+| `Backtest.gs` | arkusz **S1-BACKTEST** — jednorazowe wczytanie `s1-backtest/results.csv` z GitHub (Etap 2, D22); dokleja kolumnę „Wybrana” do ręcznej selekcji S2 | od wersji 0.29 |
+| `Strategies.gs`, `Combo.gs`, `Benchmark.gs` | stary katalog i analizy sprzed przebudowy | usunięte w Etapie 0 (ręcznie w edytorze), nie wracają (L26) |
 | `appsscript.json` | uprawnienia | zostaje |
 | `ia4-dashboard.html` | podgląd wykresów | zostaje |
 | `IA4_INSTRUKCJA.md` | ten plik | aktualizowany co etap |
@@ -110,8 +111,8 @@ Zeby nie tracic czasu: nie szukamy prognozy ceny, nie budujemy portfela optymaln
 
 | | Firestore | GitHub |
 |---|---|---|
-| Co | świece 1h, stan systemu, telemetria, inwestorzy (D17) | strategie S2, model PT, historia jego wersji |
-| Jak się zmienia | co godzinę, bez przerwy, przez cały dzień handlowy | skokowo — raz na zamknięcie Etapu 2, potem przy każdym udoskonaleniu modelu PT |
+| Co | świece 1h, stan systemu, telemetria, inwestorzy (D17) | wyniki S1-BACKTEST, strategie S2, model PT, historia jego wersji |
+| Jak się zmienia | co godzinę, bez przerwy, przez cały dzień handlowy | skokowo — `s1-backtest/results.csv` raz (albo po każdym przeliczeniu Etapu 2), `s2/strategies.json` raz na zamknięcie Etapu 2, potem przy każdym udoskonaleniu modelu PT |
 | Czy potrzebny nasłuch na żywo | tak — zamknięcie świecy ma być sygnałem (Etap 4), dashboard i przyszły silnik inwestora (D17) muszą wiedzieć **natychmiast** | nie — Apps Script sprawdza raz na godzinę, czy jest nowsza wersja |
 | Czy potrzebne wersjonowanie | nie — nikogo nie interesuje „poprzednia" świeca | tak — które strategie przeszły do S2, jaka wersja modelu PT dała jaki wynik |
 | Limit dzienny | 50 000 odczytów / 20 000 zapisów (Spark) | 5000 zapytań/h (REST API), brak limitu na rozmiar repo w praktyce |
@@ -121,8 +122,12 @@ GitHub nie ma odpowiednika `onSnapshot` — sprawdzenie „czy coś się zmieni�
 **Pliki w repozytorium (`ia4-research/` commituje je z Maca, w miarę postępu Etapów 2–3):**
 
 ```
-s2/strategies.json      lista S2 zamknięta na koniec Etapu 2: id, parametry, wynik backtestu,
-                         wynik na skarbcu (po jego otwarciu), ocena, czy wybrana
+s1-backtest/results.csv lista PEŁNA (D22): wszystkie 57 200 strategii × grupa główna i kontrolna,
+                         jeden wiersz = jedna strategia. Jednorazowy zrzut z Pythona po Etapie 2;
+                         Apps Script go tylko wczytuje (Backtest.gs), nie edytuje ani nie dopisuje
+s2/strategies.json      lista S2 — 10-50 strategii WYBRANYCH RĘCZNIE z S1-BACKTEST, zamyka Etap 2:
+                         id, parametry, wynik backtestu (z S1-BACKTEST), wynik na skarbcu
+                         (po jego otwarciu), ocena, komentarz
 pt/model.json           aktualne drzewa modelu PT (eksport z Etapu 3, zgodnie z D2):
                          wersja, data, próg PT, lista ~50 użytych parametrów, drzewa jako JSON
 pt/history/RRRR-MM-DD_wersja.json
@@ -479,36 +484,64 @@ To ponad dwa razy więcej niż ~24 000 zakładane dotąd. Nie psuje metody — k
 
 **Kryteria ukończenia:**
 1. `s1/catalog.json` i arkusz S1 zawierają wszystkie rodziny z 1.4; każdy sygnał ma definicję słowną i parametry JSON.
-2. Silnik przechodzi wszystkie testy przypadków policzonych ręcznie.
-3. Kilka strategii bazowych daje te same transakcje co dotychczasowy silnik z Apps Script.
-4. Częstość policzona dla każdego sygnału na okresie odkrywania; sygnały za rzadkie oznaczone (1.1).
-5. Pełny wolumen w okresie odkrywania dla każdego sygnału z kolumną „Wol.” (dopisywanie wolumenu D12 zakończone).
-6. Katalog zamrożony: commit, hash i data w PROJEKT; liczba sygnałów i strategii wpisana do licznika prób (5.7).
-7. W tym etapie nie policzono żadnego wyniku transakcji (1.1).
+2. Silnik przechodzi wszystkie testy przypadków policzonych ręcznie **(jedyny sprawdzian silnika — nie ma już starego backtestu Apps Script do porównania, L26 usunięte).**
+3. Częstość policzona dla każdego sygnału na okresie odkrywania; sygnały za rzadkie oznaczone (1.1).
+4. Pełny wolumen w okresie odkrywania dla każdego sygnału z kolumną „Wol.” (dopisywanie wolumenu D12 zakończone).
+5. Katalog zamrożony: commit, hash i data w PROJEKT; liczba sygnałów i strategii wpisana do licznika prób (5.7).
+6. W tym etapie nie policzono żadnego wyniku transakcji (1.1).
 
 ### Etap 2 — Backtest S1 i wybór S2 ⬜
 
-**Cel:** policzyć wszystkie strategie S1 na okresie badawczym i wybrać najwartościowsze.
+**Cel:** policzyć wszystkie strategie S1 na okresie badawczym i wybrać najwartościowsze do S2.
 
-Kolumny wyniku dla każdej strategii, osobno dla grupy głównej i kontrolnej:
-- transakcji, skuteczność, ekspektancja, profit factor, śr. zysk, śr. strata, obsunięcie,
-- **mediana trzymania pozycji (w świecach) osobno dla wyjść na stopie, na celu i z limitu czasu,**
+#### 2.1 Symulacja portfela, nie pojedynczych sygnałów
+
+Dotychczas każde wystąpienie sygnału było liczone niezależnie od pozostałych. Etap 2 liczy to samo, ale **chronologicznie i portfelowo**: dla każdej strategii (sygnał × kierunek × SL × TP) silnik przechodzi po czasie przez wszystkie instrumenty grupy naraz i otwiera pozycję za każdym razem, gdy sygnał odpali na którymkolwiek z nich — dokładnie tak, jakby to był jeden realny portfel tej strategii.
+
+- **Bez limitu liczby instrumentów na razie (D23).** Nie ograniczamy, ile pozycji tej samej strategii może być otwartych jednocześnie — to decyzja odłożona (np. do Etapu 5, gdy pojawi się realny kapitał i wielkość pozycji, czego celowo tu nie liczymy, sekcja 1). Na tym etapie tylko **mierzymy**, jak duża byłaby taka jednoczesna ekspozycja.
+- **Jeden instrument = nadal jedna pozycja naraz** (bez zmian, kontrakt silnika pkt 8): dopóki AAPL ma otwartą pozycję tej strategii, kolejne sygnały na AAPL są ignorowane. Portfelowość dotyczy tego, że **różne instrumenty tej samej strategii mogą mieć pozycje otwarte równocześnie** — ta jednoczesność jest teraz mierzona i raportowana, a nie tylko milcząco zakładana.
+- Wynik pojedynczej transakcji (SL/TP/H) liczy się tak jak dotąd, niezależnie od innych otwartych pozycji — nie ma wspólnej puli kapitału ani wielkości pozycji (sekcja 1: nie liczymy portfela optymalnego, nie zajmujemy się wielkością pozycji ani dźwignią). „Portfel" tu znaczy: **chronologia i jednoczesność pozycji**, nie zarządzanie kapitałem.
+- Z symulacji wynikają dwie obowiązkowe kolumny na strategię, osobno na grupę (2.2): **maksymalna liczba jednocześnie otwartych pozycji** i (już znana) **mediana czasu trzymania pozycji**.
+
+Symulacja jest liczona **osobno dla grupy głównej (3 spółki) i osobno dla grupy kontrolnej (50 spółek)** — dwa różne portfele tej samej strategii, nie jeden portfel na 53 instrumentach (5.6: zależność musi wystąpić w obu grupach osobno, więc i mierzymy ją osobno).
+
+#### 2.2 Kolumny wyniku
+
+Dla każdej strategii, **osobno dla grupy głównej i osobno dla grupy kontrolnej** (te same metryki dwa razy, jedna obok drugiej w tym samym wierszu, żeby porównanie było natychmiastowe):
+
+- transakcji, różnych dni (5.10), skuteczność, ekspektancja, profit factor, śr. zysk, śr. strata, obsunięcie,
+- **maksymalna liczba jednocześnie otwartych pozycji (2.1, nowość)**,
+- **mediana trzymania pozycji (w świecach), osobno dla wyjść na stopie, na celu i z limitu czasu**,
 - % wyjść na stopie / celu / limicie,
 - % transakcji wieloznacznych (5.4),
 - ekspektancja po kosztach (5.5),
 - wejście losowe i przewaga nad nim (5.3),
-- spolek kontrolnych na plusie z 50,
-- **wynik osobno dla spolek rosnacych i spadajacych w okresie badawczym (D13)** - jesli przewaga jest tylko u rosnacych, to nie jest przewaga sygnalu, tylko dryfu,
+- wynik osobno dla spółek rosnących i spadających w okresie badawczym (D13),
+- wskaźnik istotności z uwzględnieniem liczby testów (5.7) — liczony blokowym bootstrapem w każdej grupie osobno; kontrola FDR (10%) stosowana na całym zestawie 57 200 strategii na wyniku grupy kontrolnej (tam próba jest liczniejsza, min. 300 wg D16), grupa główna potwierdza zgodność kierunku przewagi.
+
+Plus kolumny wspólne dla całej strategii, niezależne od grupy:
+- kategoria hipotezy (H1–H8, 1.2),
+- **porównanie grupa główna vs kontrolna: różnica ekspektancji i czy przewaga jest dodatnia w obu naraz** (D16, warunek b) — jedna kolumna odpowiadająca wprost na pytanie „czy to działa wszędzie, czy tylko tam, gdzie szukaliśmy",
 - porównanie z wariantem przeciwnego kierunku,
-- **dla rodzin H8: porównanie z tym samym sygnałem bez warunku wolumenu** (`CAP` ↔ `DROP_N3_X2`, `VBRK` ↔ `DONCH` itd., 1.4) — odpowiedź na pytanie, czy wolumen jako twardy filtr cokolwiek dodaje,
-- kategoria hipotezy (H1–H8, 1.2), żeby dało się zobaczyć, które mechanizmy w ogóle mają przewagę,
-- wskaźnik istotności z uwzględnieniem liczby testów (5.7).
+- dla rodzin H8: porównanie z tym samym sygnałem bez warunku wolumenu (`CAP` ↔ `DROP_N3_X2`, `VBRK` ↔ `DONCH` itd., 1.4).
 
-Wynik trafia do arkusza **S2**. Użytkownik wybiera strategie do dalszej pracy, zaznaczając je w arkuszu. Claude proponuje filtry i ranking, ale nie wybiera za użytkownika.
+Zero limitów i progów na tym etapie — **wszystkie 57 200 strategii trafiają do wyniku, nawet te, które wyglądają bezwartościowo.** Filtrowanie robi użytkownik w arkuszu (2.4), nie silnik.
 
-**Czym jest arkusz S2.** Jeden wiersz = jedna strategia. Kolumny: `id_strategii`, parametry (sygnał, kierunek, SL, TP, H), wynik backtestu na okresie badawczym, wynik na skarbcu (wypełniany dopiero po jego otwarciu w Etapie 3), ocena Claude i pole wyboru „bierzemy". Strategie zaznaczone tu i tylko one przechodzą dalej. **Zamknięcie Etapu 2 zamyka listę S2** — po tym momencie jej skład się nie zmienia, bo inaczej Etap 3 liczyłby transakcje strategii, które dopiero co dołożyliśmy po obejrzeniu wyników. Zamknięta lista trafia do repozytorium jako `s2/strategies.json` (D18) — to ona, nie arkusz, jest wersją, z której korzysta Etap 3 i Apps Script.
+#### 2.3 Arkusz S1-BACKTEST — pełny wynik, jednorazowy (L25)
 
-**Kryteria ukonczenia:** wszystkie strategie policzone; **lista S2 sprawdzona raz na poletku** (5.1) - strategie, ktore tam traca przewage, wypadaja przed zamknieciem listy; lista zatwierdzona przez uzytkownika i zapisana (arkusz + `s2/strategies.json` w repozytorium, D18); w tym pliku zapisane kryteria, ktorymi sie kierowano, razem z liczba policzonych konfiguracji (5.7).
+**Wynik trafia do pliku `s1-backtest/results.csv` w repozytorium** (Python, po przebiegu Etapu 2) **i do arkusza Google `S1-BACKTEST`** — jeden wiersz = jedna strategia, wszystkie 57 200 wierszy, ok. 50 kolumn (2.2). To jest ten ogromny arkusz z L25 (ok. 2,9 mln komórek — 57 200 × ~50 kolumn) — **i ma taki być, to nie problem do rozwiązania (D22).** Nie dzielimy go ani nie okrajamy przed wczytaniem: to jedyne miejsce, gdzie widać wszystkie policzone strategie naraz, i to właśnie z niego użytkownik filtruje i wybiera.
+
+- **Wczytanie jest jednorazowe** (menu IA 4 → Projekt → „Wczytaj wyniki S1-BACKTEST z GitHub"; `Backtest.gs`). W przeciwieństwie do arkusza S1 (`Catalog.gs`), to nie jest widok odświeżany co godzinę — to zrzut jednego przebiegu Pythona. Ponowne uruchomienie tej samej pozycji menu nadpisuje arkusz od zera, jeśli Python policzy poprawkę.
+- Arkusz S1-BACKTEST ma jedną kolumnę do ręcznego zaznaczania: **„Wybrana"** (checkbox, doklejana przez `Backtest.gs`, nie wchodzi do CSV z Pythona). To w niej użytkownik zaznacza strategie, które przechodzą do S2 (2.4).
+- Format pliku to **CSV, nie JSON** — przy ~50 kolumnach × 57 200 wierszach jest kilkukrotnie mniejszy i szybszy do sparsowania w Apps Script (`Utilities.parseCsv`) niż JSON z powtarzanymi kluczami w każdym wierszu.
+
+#### 2.4 Wybór S2 — zamyka Etap 2
+
+Użytkownik przegląda arkusz S1-BACKTEST (sortowanie, filtry, własne progi), zaznacza checkboxy „Wybrana" przy strategiach, które chce wziąć dalej — w praktyce **10–50 strategii** z 57 200. Claude proponuje filtry i ranking (np. wg D16, wg kategorii H1–H8, wg zgodności grupa główna/kontrolna), ale nie wybiera za użytkownika.
+
+Po zaznaczeniu: menu IA 4 → Projekt → „Przygotuj wybrane strategie do S2 (podgląd)" (`backtestPreviewSelection`, `Backtest.gs`) zbiera zaznaczone wiersze i pokazuje je jako CSV do skopiowania — **nic sam nie zapisuje do GitHub** (D18: do repo piszą tylko Python i Claude, nie Apps Script). Użytkownik wkleja ten CSV Claude z prośbą o zapisanie `s2/strategies.json` — krótkiej, ręcznie zatwierdzonej listy (id, parametry, wynik backtestu z S1-BACKTEST, ocena, komentarz); Claude commituje plik do repozytorium. **Zamknięcie Etapu 2 zamyka listę S2** — po tym momencie jej skład się nie zmienia, bo inaczej Etap 3 liczyłby transakcje strategii dołożonych po obejrzeniu wyników. `s2/strategies.json`, nie arkusz S1-BACKTEST, jest wersją, z której korzysta Etap 3 i Apps Script.
+
+**Kryteria ukończenia:** wszystkie 57 200 strategii policzone i wczytane do S1-BACKTEST (obie grupy, 2.1–2.2); **lista S2 sprawdzona raz na poletku** (5.1) — strategie, które tam tracą przewagę, wypadają przed zamknięciem listy; lista zatwierdzona przez użytkownika i zapisana (`s2/strategies.json` w repozytorium, D18); w tym pliku zapisane kryteria, którymi się kierowano, razem z liczbą policzonych konfiguracji (5.7).
 
 ### Etap 3 — Parametry towarzyszące i rating PT → S3 ⬜
 
@@ -669,9 +702,8 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | L23 | `projComputeGaps_` daje pierwszeństwo migawce Statusu z WIDOCZNEGO arkusza nad `_AUDYT_DECYZJE` (żeby ręczna edycja dropdowna przetrwała render) — bezpieczne przy rzadkich, ręcznych renderach, ale przy wywołaniu zaraz po background-zapisie (`patchAutoAccept_`) migawka jest o krok stara i kasuje właśnie zapisaną decyzję z powrotem na „nowa”. Spowodowało to regresję w 0.23 (naprawione w 0.24 flagą `applyManual`) | każde PRZYSZŁE częste, automatyczne wywołanie `projRender_` musi jawnie przekazać `applyManual: false`, inaczej ten sam błąd wróci w nowej postaci | `patchGapsIfIdle_` już to robi (0.24); pozostałe wywołania (audyt, ręczne odświeżenie) zostają przy domyślnym `true`, bo są rzadkie i tam ta funkcja ma sens — pamiętać o tym przy każdym nowym background jobie, który miałby wołać `projRender_` |
 
 | L24 | Stała siatka SL/TP (D4, maks. 5%) krzywdzi rodziny trendowe H2 i H3 — w praktyce jeździ się na nich ruchomym stopem, a duży ruch trendu jest ucinany celem 5% | wynik H2/H3 w Etapie 2 może być zaniżony względem ich realnej wartości | nie zmieniamy przed Etapem 2 (D4); przy interpretacji wyników pamiętać. Ruchomy stop to osobna decyzja po Etapie 2 i nowe próby w liczniku 5.7 |
-| L25 | Arkusz S2 przy 57 200 strategiach × ~30 kolumn to ok. 1,7 mln komórek | Google Sheets to udźwignie (limit 10 mln), ale arkusz będzie wolny i ciężki do przeglądania | rozstrzygnąć przed Etapem 2: np. w arkuszu tylko strategie po wstępnym filtrze D16, pełna tabela w repozytorium obok `s2/strategies.json` |
-
-| L26 | Stary silnik (`Strategies.gs`, `Backtest.gs`) nigdy nie trafił do repozytorium i został usunięty z edytora w Etapie 0 | kryterium ukończenia Etapu 1 nr 3 („strategie bazowe dają te same transakcje co dotychczasowy silnik”) nie ma z czym porównać; część definicji bazowych była niejednoznaczna (np. „spadek w 5 świecach” — do której świecy) i w 0.27 zostały doprecyzowane w `ia4/catalog.py` bez wglądu w starą implementację | sprawdzić Historię wersji projektu Apps Script (Plik → Historia wersji / Zarządzaj wersjami) — jeśli stary kod tam jest, dołączyć go do repozytorium jako archiwum; jeśli nie, kryterium 3 zastąpić rozszerzonymi testami przypadków ręcznych (decyzja użytkownika) |
+| L25 | Arkusz wyniku Etapu 2 przy 57 200 strategiach × ~50 kolumn (2 grupy) to ok. 2,9 mln komórek | Google Sheets to udźwignie (limit 10 mln), arkusz będzie ciężki do przeglądania | **rozwiązane w 0.29 (D22):** to świadomie arkusz **S1-BACKTEST**, nie S2 — S2 zostaje małą, ręcznie wybraną listą (10–50 strategii). S1-BACKTEST jest duży, bo ma taki być: to jedyne miejsce z pełnym wynikiem, z którego wybiera się S2 (2.3–2.4) |
+| L26 | Stary silnik (`Strategies.gs`, `Backtest.gs`) nigdy nie trafił do repozytorium i został usunięty z edytora w Etapie 0 | kryterium ukończenia Etapu 1 nr 3 („strategie bazowe dają te same transakcje co dotychczasowy silnik”) nie miało z czym porównać | **rozwiązane w 0.29:** zdecydowano nie odtwarzać starego silnika ani go szukać w historii wersji Apps Script — kryterium 3 usunięte z Etapu 1 (teraz: silnik sprawdzają wyłącznie testy przypadków ręcznych, punkt 2). Nazwa `Backtest.gs` wraca w Etapie 2, ale do zupełnie innego zadania (2.3) |
 
 ---
 
@@ -705,6 +737,8 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | D19 | Rozmiar katalogu S1 | 286 sygnałów w 8 kategoriach hipotez (Etap 1, 1.4) → 57 200 strategii; twardy limit 300 sygnałów. Przy potrzebie cięcia najpierw najgęstsze siatki H1 (DROP, RED i ich lustra) | ✅ przyjęta 2026-09-26 |
 | D20 | Źródło prawdy katalogu S1 | `s1/catalog.json` w repozytorium, generowany przez `ia4/catalog.py`; arkusz S1 to widok odbudowywany z pliku przez Apps Script (GitHub API, token telemetrii). Ręcznie tylko kolumna „Uwagi” | ✅ przyjęta 2026-09-26 |
 | D21 | Katalog na ślepo i zamrożenie | W Etapie 1 zero wyników transakcji; jedyny dozwolony przesiew to częstość (< 30 różnych dni w grupie głównej → „za rzadki”). Koniec Etapu 1 = commit katalogu z hashem w PROJEKT; każdy sygnał dodany później to nowa próba w liczniku 5.7 | ✅ przyjęta 2026-09-26 |
+| D22 | S1-BACKTEST i S2 to dwie różne rzeczy | Etap 2 produkuje **S1-BACKTEST**: pełny wynik wszystkich 57 200 strategii, plik `s1-backtest/results.csv`, arkusz wczytywany jednorazowo (`Backtest.gs`, 2.3). **S2** to osobna, mała lista 10–50 strategii wybranych ręcznie z S1-BACKTEST, zapisana jako `s2/strategies.json` (2.4) — dopiero ona zamyka Etap 2 i karmi Etap 3. Rozwiązuje L25: arkusz S1-BACKTEST ma być ogromny, to nie usterka | ✅ przyjęta 2026-09-28 |
+| D23 | Symulacja portfela w Etapie 2, bez limitu instrumentów | Backtest liczy się chronologicznie jako portfel danej strategii na instrumentach grupy (2.1): różne instrumenty tej samej strategii mogą mieć pozycje otwarte równocześnie, bez sztucznego ograniczenia liczby jednoczesnych pozycji ani wielkości pozycji/kapitału (to zostaje poza zakresem, sekcja 1). Mierzymy tylko **maksymalną liczbę jednocześnie otwartych pozycji** jako nową kolumnę wyniku. Limit instrumentów, jeśli będzie potrzebny, to decyzja na później (np. Etap 5) | ✅ przyjęta 2026-09-28 |
 
 ---
 
@@ -731,6 +765,7 @@ Stan projektu jest też w `system/project` w Firestore, żeby Python czytał dok
 | 0.16 | 2026-09-24 | Decyzja D18: strategie S2 i model PT trafiają do repozytorium (`s2/strategies.json`, `pt/model.json`, `pt/history/`) zamiast Firestore — nowa sekcja 3.1 tłumaczy podział (świece na żywo potrzebują nasłuchu, którego Git nie ma; strategie/PT zmieniają się rzadko i chcą wersjonowania, którego nie ma Firestore). Dashboard: lista S2 czytana z GitHub (`fetch` raz na godzinę) zamiast z kolekcji Firestore. |
 | 0.17 | 2026-09-24 | Naprawa nieskończonej pętli w łataniu luk (L20): `patchOneGap_` teraz sprawdza, czy zwrócone świece faktycznie wypełniają brak, zamiast uznawać za sukces każdy niepusty wynik z Yahoo. Po `PATCH_MAX_RETRIES` (3) próbach bez postępu luka jest automatycznie zapisywana jako zaakceptowana, z komentarzem, i znika z kolejki łatania — bez udziału człowieka. Naprawdę załatane luki są od razu usuwane z arkusza `_AUDYT`, nie czekają do następnego audytu. |
 | 0.18 | 2026-09-24 | Przegląd fundamentów. **Blokada po wyczerpaniu limitu Firestore** — pierwszy 429 wstrzymuje zadania w tle do resetu i loguje raz zamiast w kółko (to samo co L20, ale dla limitu zamiast łatania). **Uzupełniona lista kluczy czyszczonych przy „Wyzeruj stan"** — brakowało siedmiu stanów dodanych w 0.10–0.18, więc po wyczyszczeniu bazy system wierzyłby w nieistniejący postęp. **Wycofana luka L17** — sesje skrócone są liczone poprawnie przez `slotsInSession_()`; zgłoszenie wynikało z błędu w mojej symulacji, nie z kodu. Sprawdzona zgodność nazw pól między Apps Script, Pythonem i dashboardem oraz kompletność handlerów triggerów i pozycji menu. |
+| 0.29 | 2026-09-28 | **Etap 2 dopracowany na życzenie użytkownika, przed startem 1b/2.** Backtest liczy się teraz jako **symulacja portfela** (2.1): różne instrumenty tej samej strategii mogą mieć pozycje otwarte równocześnie, bez limitu ich liczby na razie (D23) — nowa kolumna „maksymalna liczba jednocześnie otwartych pozycji”, obok już istniejącej mediany czasu trzymania. **D22: S1-BACKTEST i S2 rozdzielone** — Etap 2 produkuje pełny wynik (57 200 strategii × grupa główna i kontrolna, ~50 kolumn) do pliku `s1-backtest/results.csv` i arkusza **S1-BACKTEST** (nowy `Backtest.gs`, wczytanie jednorazowe z GitHub, nie odświeżany widok jak S1); S2 zostaje małą listą 10–50 strategii wybieraną ręcznie z S1-BACKTEST (kolumna „Wybrana”), co dopiero zamyka Etap 2 (2.4). Rozwiązuje L25 (arkusz ma być ogromny, to celowe) i L26 (kryterium 3 Etapu 1 — porównanie ze starym silnikiem — usunięte, nie odtwarzamy starego kodu). |
 | 0.28 | 2026-09-27 | **Przyspieszenie dopisywania wolumenu (D12).** Diagnoza po pytaniu użytkownika „czemu tak wolno się zapisuje": `VOLFILL_MIN_GAP_MIN` (3 min) i dzienny budżet (10000/dzień) już były w porządku — prawdziwym wąskim gardłem było `VOLFILL_CHUNK_DAYS = 60`. Każdy instrument cofa się do granicy Yahoo (~729 dni) oknami po tyle dni, więc przy 60 trzeba było ok. 13 uruchomień na instrument, każde czekające na swój odstęp — ok. 40 minut na jeden instrument, niezależnie od tego, ile faktycznie zapisywał (potwierdzone w dzienniku zdarzeń: odstępy ~43 min między kolejnymi „gotowe"). `VOLFILL_CHUNK_DAYS`: 60 → 120 — to i tak jedno zapytanie do Yahoo (`Proof.gs` dzieli je wewnątrz po 120 dniach), więc bez nowego ryzyka: ok. 7 uruchomień na instrument zamiast 13, dwa razy szybciej, ten sam dzienny budżet zapisów. |
 | 0.27 | 2026-09-26 | **Etap 1a: katalog S1 zbudowany (szkic, niezamrożony).** Nowe: `ia4-research/ia4/catalog.py` — wszystkie 286 sygnałów w jednym miejscu; opis słowny każdego sygnału generowany z jego parametrów (tekst i JSON nie mogą się rozjechać), lustra S085–S168 generowane mechanicznie z bazowych; dla każdego sygnału rozgrzewka i historia potrzebna na żywo. `s1/catalog.json` wygenerowany (hash `5fbcb2d9a92c`). `ia4-research/tests/test_catalog.py` (9 testów: zgodność z `S1_KATALOG_BAZOWY.md`, liczby z 1.4, lustra, pary H8, zasady wejścia, limity okien, zgodność zapisanego pliku z kodem). `Catalog.gs` + pozycja menu — arkusz S1 budowany z pliku z GitHub, kolumna „Uwagi” zachowywana przy odbudowie. Doprecyzowania: definicje bazowe zapisane jako wzory (np. `REVCONF`: C[t−1] ≤ C[t−6] × (1 − x%)); `NSES` n = 60 → 50, bo 60 sesji (420 świec) łamało własną regułę najdłuższego okna 350 z 1.3 — błąd wersji 0.25; w 1.3 dopisana historia na żywo dla EMA/Wildera; w 1.6 kolumny „Na żywo” i „Para”. Nowa luka L26 (brak starego silnika do kryterium 3). |
 | 0.26 | 2026-09-26 | Użytkownik przyjął D19 (rozmiar S1: 286 sygnałów, limit 300), D20 (źródło prawdy katalogu: `s1/catalog.json`, arkusz S1 jako widok) i D21 (katalog na ślepo i zamrożenie). `DECISIONS` w `Project.gs` zaktualizowane. |
@@ -778,3 +813,4 @@ Każdy push Claude do `main` zostawia tu wiersz (zasada 2.7). Godziny w czasie p
 | 2026-09-26 15:30 | `33f3389` | `IA4_INSTRUKCJA.md`, `Project.gs` + wersje | Wersja 0.26: D19–D21 przyjęte. |
 | 2026-09-26 16:00 | `50efe97` | `ia4-research/ia4/catalog.py`, `ia4-research/tests/test_catalog.py`, `s1/catalog.json`, `Catalog.gs`, `Code.gs` (menu), `IA4_INSTRUKCJA.md` + wersje | Wersja 0.27: Etap 1a — katalog S1 (286 sygnałów), testy, arkusz S1 z GitHub; L26. |
 | 2026-09-27 10:30 | `65d5c2f` | `Code.gs`, `IA4_INSTRUKCJA.md` + wersje | Wersja 0.28: `VOLFILL_CHUNK_DAYS` 60→120 — prawdziwym wąskim gardłem dopisywania wolumenu było 13 uruchomień na instrument (po 60 dni do granicy Yahoo ~729 dni), nie odstęp między przebiegami ani dzienny budżet; teraz 7 uruchomień na instrument, bez dodatkowego ryzyka (nadal jedno zapytanie do Yahoo). |
+| 2026-09-28 10:xx | *(uzupełni się przy najbliższym pushu)* | `IA4_INSTRUKCJA.md`, `Backtest.gs` (nowy), `Code.gs` (menu) + wersje | Wersja 0.29: Etap 2 dopracowany na życzenie użytkownika — symulacja portfela bez limitu instrumentów (D23, maks. jednoczesnych pozycji jako nowa kolumna), rozdzielenie pełnego wyniku (arkusz/plik **S1-BACKTEST**, jednorazowe wczytanie z GitHub) od skróconej, ręcznie wybieranej listy **S2** (D22). L25 i L26 rozwiązane — kryterium 3 Etapu 1 (porównanie ze starym silnikiem) usunięte. |
