@@ -1,6 +1,6 @@
 # IA 4 — środowisko badawcze (Python, Mac)
 
-**Wersja projektu: 0.38 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 0.39 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Etap 0B. Ten folder robi jedną rzecz: ściąga świece z Firestore na dysk i daje
 do nich dostęp tak, żeby nie dało się przypadkiem zajrzeć do skarbca.
@@ -167,7 +167,20 @@ python3 -m ia4.catalog           # dołącza częstość, nadaje status „za rz
 Potem oba pliki do repozytorium i w arkuszu: IA 4 → Projekt → „Wczytaj katalog S1
 z GitHub”. Kolejność zamknięcia całego etapu: instrukcja 1.7, „Zamknięcie Etapu 1”.
 
-## 7. Co dalej
+## 7. Etap 2 — backtest S1
+
+Dopiero po potwierdzeniu D29 (instrukcja, sekcja 9):
+
+```bash
+python3 -m ia4.backtest --limit 3   # próba na 3 sygnałach, nic nie zapisuje
+python3 -m ia4.backtest             # całość: 41 000 strategii, ok. 15–25 min
+cd .. && git add s1-backtest && git commit -m "Backtest S1" && git push
+```
+
+Potem w arkuszu: IA 4 → Projekt → „Wczytaj wyniki S1-BACKTEST z GitHub”.
+Liczone tylko na okresie odkrywania — poletko raz, na gotowej liście S2 (2.4).
+
+## 8. Co dalej
 
 | Etap | Co powstaje w tym folderze |
 |---|---|
@@ -195,7 +208,8 @@ ia4-research/
 │   ├── bars.py          świece instrumentu: dziury (D27), odcinki między splitami (D24), SPY
 │   ├── signals.py       286 sygnałów S1 + warunki ważności z kontraktu silnika
 │   ├── engine.py        transakcje: SL/TP/H, luki, wieloznaczność, koszty, LONG/SHORT
-│   └── frequency.py     częstość sygnałów na okresie odkrywania (1.3) → s1/frequency.json
+│   ├── frequency.py     częstość sygnałów na okresie odkrywania (1.3) → s1/frequency.json
+│   └── backtest.py      Etap 2: wszystkie strategie S1, obie grupy → s1-backtest/results.csv
 ├── tests/
 │   ├── _bars.py               sztuczne świece dla testów
 │   ├── test_catalog.py        katalog S1
@@ -204,6 +218,7 @@ ia4-research/
 │   ├── test_engine.py         silnik transakcji
 │   ├── test_nyse.py           kalendarz zgodny z Apps Script
 │   ├── test_frequency.py      częstość i jej dołączanie do katalogu
+│   ├── test_backtest.py       portfel, metryki 2.2, D10, bootstrap, FDR
 │   └── test_data_pipeline.py  sync, data, verify na atrapie Firestore
 └── data/                pamięć podręczna (poza gitem)
     ├── _manifest.json

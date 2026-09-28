@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.38 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.39 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.38',
+  INSTRUCTION_VERSION: '0.39',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -151,6 +151,7 @@ const DECISIONS = [
   ['D26', 'Kryterium 1.4 (wolumen)', 'bez dziur od pierwszej sesji z wolumenem; ≤ 20 sesji bez wolumenu na początku', '✅ przyjęta 2026-09-28'],
   ['D27', 'Dziury w danych (L30)', 'sygnał nie odpala, gdy okno obejmuje brakującą świecę; pozycja trwa dalej', '✅ przyjęta 2026-09-28'],
   ['D28', 'Doprecyzowania kontraktu silnika', 'split = cięcie szeregu; dziura przypisana do świecy po niej; NEXT_OPEN wymaga świecy wejścia; END; SQZ/ACC doprecyzowane', '✅ przyjęta 2026-09-28'],
+  ['D29', 'Sposób liczenia backtestu S1', 'odkrywanie; H z D10 na grupie kontrolnej; END usuwane; bootstrap tygodniowy B=2000; FDR 10% na 57 200; 41 000 wierszy', '🔸 do potwierdzenia przed przebiegiem'],
 ];
 
 const PJ_WIDTH = 7;

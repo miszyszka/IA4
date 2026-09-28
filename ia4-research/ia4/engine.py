@@ -1,6 +1,6 @@
 """
 IA 4 — silnik transakcji (Etap 1b, instrukcja 1.7; liczy wyniki dopiero w Etapie 2).
-Wersja projektu: 0.38 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.39 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kontrakt silnika (`S1_KATALOG_BAZOWY.md`) punkt po punkcie:
   2–3. Wejście po otwarciu świecy wejścia: t+1 (NEXT_OPEN) albo t (SESSION_OPEN,
@@ -172,6 +172,73 @@ class Engine:
         ret = price / E - 1.0 if direction == "L" else 1.0 - price / E
         return Resolved(entry=e, exit=xi, entry_price=E, exit_price=price, reason=reason,
                         ambiguous=amb, ret=ret)
+
+
+@dataclass
+class GridResolved:
+    """Jak `Resolved`, ale dla całej siatki naraz: tablice [wejście, SL, TP]."""
+    entry: np.ndarray        # (n,)
+    exit: np.ndarray         # (n, S, T)
+    reason: np.ndarray       # (n, S, T) 0 SL, 1 TP, 2 TIME, 3 END
+    ambiguous: np.ndarray    # (n, S, T)
+    ret: np.ndarray          # (n, S, T)
+
+
+def resolve_grid(engine: "Engine", entries: np.ndarray, direction: str, H: np.ndarray) -> GridResolved:
+    """
+    Te same zasady co `Engine.resolve`, dla wszystkich par (SL, TP) siatki w jednym
+    przebiegu (Etap 2). `H` — macierz [S × T] limitów czasu (D5 albo D10 per strategia).
+    Test `test_grid_matches_single` sprawdza zgodność z `resolve` dla każdej pary.
+    """
+    B = engine.B
+    e = np.asarray(entries, dtype=np.int64)
+    H = np.asarray(H, dtype=np.int64)
+    if H.max(initial=0) > engine.hmax:
+        raise ValueError(f"H = {H.max()} > hmax = {engine.hmax}")
+    sl = np.asarray(engine.sl_grid, dtype=float)[None, :, None]
+    tp = np.asarray(engine.tp_grid, dtype=float)[None, None, :]
+    s_hit = engine.table(direction, "sl")[e][:, :, None]
+    p_hit = engine.table(direction, "tp")[e][:, None, :]
+    full = e[:, None, None] + H[None, :, :] - 1
+    lim = np.minimum(full, B.seg_end[e][:, None, None])
+    s_at = np.where(s_hit <= lim, s_hit, NEVER)
+    p_at = np.where(p_hit <= lim, p_hit, NEVER)
+    x = np.minimum(s_at, p_at)
+    hit = x < NEVER
+    xi = np.where(hit, x, lim)
+
+    Ent = B.o[e][:, None, None]
+    if direction == "L":
+        slv, tpv = Ent * (1 - sl / 100.0), Ent * (1 + tp / 100.0)
+    else:
+        slv, tpv = Ent * (1 + sl / 100.0), Ent * (1 - tp / 100.0)
+    slv, tpv = np.broadcast_to(slv, xi.shape), np.broadcast_to(tpv, xi.shape)
+    Ox = B.o[xi]
+    later = xi > e[:, None, None]
+    if direction == "L":
+        gap_sl, gap_tp = later & (Ox <= slv), later & (Ox >= tpv)
+    else:
+        gap_sl, gap_tp = later & (Ox >= slv), later & (Ox <= tpv)
+    both = hit & (s_at == p_at)
+    sl_first = hit & (s_at < p_at)
+    tp_first = hit & (p_at < s_at)
+
+    reason = np.full(xi.shape, 2, dtype=np.int8)
+    price = B.c[xi]
+    reason[sl_first] = 0
+    price = np.where(sl_first, np.where(gap_sl, Ox, slv), price)
+    reason[tp_first] = 1
+    price = np.where(tp_first, np.where(gap_tp, Ox, tpv), price)
+    b_gsl = both & gap_sl
+    b_gtp = both & ~gap_sl & gap_tp
+    amb = both & ~gap_sl & ~gap_tp
+    reason[b_gsl | amb] = 0
+    reason[b_gtp] = 1
+    price = np.where(b_gsl | b_gtp, Ox, price)
+    price = np.where(amb, slv, price)
+    reason[~hit & (lim < full)] = 3
+    ret = price / Ent - 1.0 if direction == "L" else 1.0 - price / Ent
+    return GridResolved(entry=e, exit=xi, reason=reason, ambiguous=amb, ret=ret)
 
 
 def one_position(entries: np.ndarray, exits: np.ndarray) -> np.ndarray:

@@ -1,5 +1,5 @@
 """
-Testy silnika transakcji (Etap 1b, kryterium 1.2). Wersja projektu: 0.38 (2026-09-28).
+Testy silnika transakcji (Etap 1b, kryterium 1.2). Wersja projektu: 0.39 (2026-09-28).
 
 Wyłącznie sztuczne świce (1.1, D25): każdy przypadek sprawdza jeden punkt
 kontraktu silnika na liczbach policzonych ręcznie, a na koniec wektorowy
@@ -176,6 +176,29 @@ def test_vectorized_engine_matches_literal_contract():
                     assert E.REASONS[r.reason[k]] == why and bool(r.ambiguous[k]) == amb, (d, sl, tp, e)
                     checked += 1
     assert checked == 2 * 16 * B.n
+
+
+def test_grid_matches_single():
+    """resolve_grid (cała siatka naraz, Etap 2) = resolve dla każdej pary SL/TP, oba kierunki."""
+    rng = np.random.default_rng(11)
+    rows, p = [], 100.0
+    for _ in range(7 * 30):
+        o = p * (1 + rng.normal(0, 0.006))
+        c = o * (1 + rng.normal(0, 0.009))
+        rows.append((o, max(o, c) * (1 + abs(rng.normal(0, 0.004))), min(o, c) * (1 - abs(rng.normal(0, 0.004))), c))
+        p = c
+    B = mk(rows)
+    grid = [0.5, 1, 2, 4]
+    en = E.Engine(B, sl_grid=grid, tp_grid=grid, hmax=70)
+    Hm = np.array([[E.h_default(tp) - k for tp in grid] for k in range(len(grid))])
+    ent = np.arange(B.n)
+    for d in ("L", "S"):
+        g = E.resolve_grid(en, ent, d, Hm)
+        for i, sl in enumerate(grid):
+            for j, tp in enumerate(grid):
+                r = en.resolve(ent, d, sl, tp, int(Hm[i, j]))
+                assert (g.exit[:, i, j] == r.exit).all() and (g.reason[:, i, j] == r.reason).all(), (d, sl, tp)
+                assert (g.ambiguous[:, i, j] == r.ambiguous).all() and np.allclose(g.ret[:, i, j], r.ret), (d, sl, tp)
 
 
 if __name__ == "__main__":
