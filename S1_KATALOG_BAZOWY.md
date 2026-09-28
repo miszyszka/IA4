@@ -1,6 +1,6 @@
 # IA 4 — katalog bazowy sygnałów (84)
 
-**Wersja projektu: 0.35 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 0.36 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Katalog przeniesiony z arkusza `STRATEGIE_LEGENDA` starego projektu. To **punkt
 wyjścia dla Etapu 1**, a nie gotowy katalog S1: wszystkie 84 sygnały są wyłącznie
@@ -42,6 +42,8 @@ profile podaję tutaj tylko jako zapis tego, co było liczone wcześniej.
 
 14. **Splity (D11, D24):** sygnał nie odpala, jeśli jego okno (z rozgrzewką) obejmuje sesję z `s1/splits.json`. Lista jest ręczna, nie automatyczna — audyt (próg 15%, Etap 0) tylko sygnalizuje kandydatów; o wpisaniu na listę decyduje sprawdzenie, że to faktycznie split (nie wynik kwartalny czy wiadomość o spółce).
 
+
+**Wykonanie w silniku (0.36, D28 — do potwierdzenia przed zamrożeniem):** split = szereg cięty na odcinki (wskaźniki od nowa, pozycja kończy się przed splitem z powodem END); dziura przypisana do świecy po niej; wejście NEXT_OPEN wymaga istniejącej następnej świecy bez dziury przed nią; kolejne wejście tylko na świecy późniejszej niż świeca wyjścia (pkt 8); pierwsza/ostatnia świeca sesji z kalendarza. Szczegóły: `IA4_INSTRUKCJA.md`, sekcja 9, D28; kod: `ia4-research/ia4/signals.py`, `engine.py`, `bars.py`.
 
 ## Stare profile wyjścia (12) — zastąpione siatką 10×10 w Etapie 1
 

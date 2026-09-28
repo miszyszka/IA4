@@ -1,7 +1,7 @@
 """
 IA 4 — katalog sygnałów S1 (Etap 1a).
 
-Wersja projektu: 0.35 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.36 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Jedno miejsce, w którym zdefiniowany jest cały katalog S1 (D20). Z tych
 definicji powstaje plik `s1/catalog.json`, a z niego arkusz S1 (Apps Script)
@@ -39,8 +39,12 @@ import json
 import sys
 from pathlib import Path
 
-PROJECT_VERSION = "0.35"
+PROJECT_VERSION = "0.36"
 CATALOG_VERSION = "S1-szkic-1"     # zmienia się przy każdej zmianie definicji
+# Zamrożenie (1.1, 1.5, D21): data ustawiana RAZ, na końcu Etapu 1, po policzeniu
+# częstości. Od tej chwili każdy nowy sygnał to nowa próba w liczniku 5.7.
+FROZEN_AT: str | None = None
+FREQUENCY_PATH = Path(__file__).resolve().parents[2] / "s1" / "frequency.json"
 MAX_SIGNALS = 300                   # D19
 MAX_WINDOW_BARS = 350               # instrukcja 1.3: najdłuższe okno w S1
 BARS_PER_SESSION = 7
@@ -415,7 +419,7 @@ def _warmup(p: dict) -> int:
         "DRY": lambda: max(_warmup(p["pull"]), rv),
         "OBVD": lambda: 2 * p["lookback"] + 1,
         "GAPV": lambda: max(S + 1, rv),
-        "ACC": lambda: p["n"] + 1,
+        "ACC": lambda: p["n"] + 2,          # zdarzenie: warunek na t−1 też musi być policzalny
     }[t]()
     if "filter" in p and p["filter"] in ("TREND140", "DOWN140"):
         w = max(w, 140)
@@ -608,9 +612,9 @@ def _new_signals() -> list[dict]:
         for d in (UP, DN):
             add("H4", "Ściśnięcie wstęgi", f"SQZ{lb}_{SUF[d]}",
                 {"type": "SQZ", "len": 20, "k": 2, "lookback": lb, "recent": 7, "dir": d},
-                f"Ściśnięcie i wybicie: w ciągu ostatnich 7 świec szerokość wstęgi Bollingera(20, 2) była najniższa "
-                f"od {lb} świec; teraz zamknięcie {'powyżej górnej' if d == UP else 'poniżej dolnej'} wstęgi, "
-                f"a na t−1 jeszcze nie.", EV[d])
+                f"Ściśnięcie i wybicie: w co najmniej jednej z 7 poprzednich świec (t−7…t−1) szerokość wstęgi "
+                f"Bollingera(20, 2) była najniższa od {lb} świec (równa minimum z {lb} świec kończących się na niej); "
+                f"teraz zamknięcie {'powyżej górnej' if d == UP else 'poniżej dolnej'} wstęgi, a na t−1 jeszcze nie.", EV[d])
     for d in (UP, DN):
         add("H4", "Najwęższy zakres", f"NR7S_{SUF[d]}", {"type": "NR", "unit": "session", "n": 7, "dir": d},
             f"Poprzednia sesja miała najwęższy zakres (high − low) z ostatnich 7 sesji (NR7); w bieżącej "
@@ -768,9 +772,10 @@ def _new_signals() -> list[dict]:
     for side, ratio, d in (("acc", 2, UP), ("dist", 0.5, DN)):
         add("H8", "Akumulacja / dystrybucja", "ACC" if side == "acc" else "DIST",
             {"type": "ACC", "n": 35, "ratio": ratio, "flat": 2, "side": side},
-            f"{'Akumulacja' if side == 'acc' else 'Dystrybucja'}: suma wolumenu świec wzrostowych / suma wolumenu "
-            f"świec spadkowych z 35 świec {'≥ 2' if side == 'acc' else '≤ 0,5'}, przy zmianie ceny z 35 świec "
-            f"poniżej 2% co do wartości. Pierwsza świeca, w której warunek jest spełniony.", EV[d], volume=True)
+            f"{'Akumulacja' if side == 'acc' else 'Dystrybucja'}: suma wolumenu świec wzrostowych (C[i] > C[i−1]) / "
+            f"suma wolumenu świec spadkowych (C[i] < C[i−1]) z 35 świec t−34…t {'≥ 2' if side == 'acc' else '≤ 0,5'}, "
+            f"przy zmianie ceny |C[t] / C[t−35] − 1| poniżej 2%. Pierwsza świeca, w której warunek jest spełniony.",
+            EV[d], volume=True)
     return S
 
 
@@ -781,7 +786,28 @@ def _uses_volume(p: dict) -> bool:
     return p["type"] in ("VWAPX", "VWAPDEV", "VWMAX", "CAP", "CLX", "VBRK", "VMAX", "DRY", "OBVD", "GAPV", "ACC")
 
 
-def build() -> dict:
+def _digest(obj) -> str:
+    return hashlib.sha256(json.dumps(obj, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:12]
+
+
+def load_frequency(definitions_hash: str, path: Path | None = None) -> dict | None:
+    """
+    Częstość z `s1/frequency.json` (Etap 1, 1.3) — tylko jeśli policzona dla TYCH
+    definicji. Inny hash = częstość dla innego katalogu: nie dołączamy jej po cichu.
+    """
+    path = path or FREQUENCY_PATH
+    if not path.exists():
+        return None
+    f = json.loads(path.read_text(encoding="utf-8"))
+    if f.get("meta", {}).get("definitions_hash") != definitions_hash:
+        print(f"UWAGA: {path.name} policzony dla innych definicji "
+              f"({f.get('meta', {}).get('definitions_hash')} ≠ {definitions_hash}) — pomijam; "
+              "uruchom python -m ia4.frequency")
+        return None
+    return f
+
+
+def build(with_frequency: bool = True) -> dict:
     signals: list[dict] = []
 
     def entry_of(p):
@@ -814,26 +840,47 @@ def build() -> dict:
                  "status", "strategies"]
     signals = [{k: s[k] for k in key_order} for s in signals]
 
-    by_cat = {c: sum(1 for s in signals if s["category"] == c) for c in CATEGORIES}
-    body = {
-        "signals": signals,
-        "exits": {
-            "sl_pct": SL_TP_GRID, "tp_pct": SL_TP_GRID, "directions": DIRECTIONS,
-            "h_default": H_DEFAULT,
-            "h_rule": "D10: H nie jest przeszukiwany; po backteście H = 90. percentyl czasu do TP, "
-                      "strategia liczona ponownie z tą jedną wartością.",
-        },
+    exits = {
+        "sl_pct": SL_TP_GRID, "tp_pct": SL_TP_GRID, "directions": DIRECTIONS,
+        "h_default": H_DEFAULT,
+        "h_rule": "D10: H nie jest przeszukiwany; po backteście H = 90. percentyl czasu do TP, "
+                  "strategia liczona ponownie z tą jedną wartością.",
     }
-    digest = hashlib.sha256(json.dumps(body, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:12]
+    # Hash samych definicji (bez częstości i statusu z niej) — po nim frequency.json
+    # wie, dla którego katalogu był liczony.
+    definitions_hash = _digest({"signals": signals, "exits": exits})
+    freq = load_frequency(definitions_hash) if with_frequency else None
+    for s in signals:
+        f = freq["signals"].get(s["id"]) if freq else None
+        s["frequency"] = None if f is None else {
+            "signals": f["main"]["signals"], "days": f["main"]["days"],
+            "control_signals": f["control"]["signals"], "control_days": f["control"]["days"],
+        }
+        if f is not None:
+            s["status"] = f["status"]
+
+    by_cat = {c: sum(1 for s in signals if s["category"] == c) for c in CATEGORIES}
+    body = {"signals": signals, "exits": exits}
+    digest = _digest(body)
+    status = (f"zamrożony {FROZEN_AT} (D21, 1.5) — każdy nowy sygnał to nowa próba (5.7)" if FROZEN_AT
+              else "szkic — niezamrożony (D21: zamrożenie na końcu Etapu 1)")
     meta = {
         "catalog_version": CATALOG_VERSION,
         "project_version": PROJECT_VERSION,
-        "status": "szkic — niezamrożony (D21: zamrożenie na końcu Etapu 1)",
+        "status": status,
+        "frozen_at": FROZEN_AT,
         "content_hash": digest,
+        "definitions_hash": definitions_hash,
+        "frequency": None if not freq else {
+            "period": freq["meta"]["period"], "period_end_exclusive": freq["meta"]["period_end_exclusive"],
+            "computed_at": freq["meta"]["computed_at"], "min_days_main": freq["meta"]["min_days_main"],
+        },
         "signals": len(signals),
         "signals_active": sum(1 for s in signals if s["status"] == "aktywny"),
         "signals_control": sum(1 for s in signals if s["status"] == "kontrolny"),
+        "signals_rare": sum(1 for s in signals if s["status"] == "za rzadki"),
         "strategies": sum(s["strategies"] for s in signals),
+        "strategies_active": sum(s["strategies"] for s in signals if s["status"] == "aktywny"),
         "by_category": by_cat,
         "categories": CATEGORIES,
         "max_warmup_bars": max(s["warmup_bars"] for s in signals),
@@ -883,6 +930,8 @@ def validate(cat: dict) -> list[str]:
             err.append(f"{s['id']}: definicja bez kropki")
         if s["paired_with"] and s["paired_with"] not in codes:
             err.append(f"{s['id']}: paired_with {s['paired_with']} nie istnieje w katalogu")
+    if cat["meta"].get("frozen_at") and not cat["meta"].get("frequency"):
+        err.append("katalog zamrożony bez policzonej częstości (1.3 przed 1.5)")
     return err
 
 
@@ -899,7 +948,11 @@ def main(argv=None) -> int:
     errors = validate(cat)
     m = cat["meta"]
     print(f"Katalog {m['catalog_version']}: {m['signals']} sygnałów ({m['signals_active']} aktywnych, "
-          f"{m['signals_control']} kontrolnych), {m['strategies']} strategii, hash {m['content_hash']}")
+          f"{m['signals_control']} kontrolnych, {m['signals_rare']} za rzadkich), {m['strategies']} strategii "
+          f"({m['strategies_active']} aktywnych), hash {m['content_hash']}")
+    fq = m["frequency"]
+    print(f"  częstość (1.3): {'policzona ' + fq['computed_at'] if fq else 'jeszcze nie — python -m ia4.frequency'}"
+          f"; status: {m['status']}")
     print("  " + ", ".join(f"{k}: {v}" for k, v in m["by_category"].items()))
     print(f"  najdłuższa rozgrzewka: {m['max_warmup_bars']} świec; na żywo: {m['max_live_lookback_bars']} świec")
     if errors:

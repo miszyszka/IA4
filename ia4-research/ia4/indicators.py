@@ -1,6 +1,6 @@
 """
 IA 4 — wskaźniki (Etap 1b).
-Wersja projektu: 0.35 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.36 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Każdy wskaźnik z instrukcji 1.3, policzony dokładnie tak samo, jak go tam
 opisano — bo w Etapie 4 te same wzory liczy Apps Script (D2), a drobna różnica
@@ -14,8 +14,8 @@ z kolumnami symbol, date, slot (1–7), o, h, l, c, v — dokładnie to, co zwra
 silnika, S1_KATALOG_BAZOWY.md pkt 9): nie znają kalendarza sesji i nie widzą
 przerw w danych. Wykrywanie prawdziwych dziur (brakująca świeca, niepełna
 sesja) i odrzucanie sygnałów, których okno je obejmuje, to osobna warstwa —
-`ia4.calendar` / `ia4.engine` (D27, S1_KATALOG_BAZOWY.md pkt 13) — bo wymaga
-kalendarza sesji NYSE, którego indikatory same z siebie nie mają.
+`ia4.bars` / `ia4.signals` (D27, S1_KATALOG_BAZOWY.md pkt 13, od 0.36) — bo
+wymaga kalendarza sesji NYSE (`ia4.nyse`), którego wskaźniki same z siebie nie mają.
 
 ROZGRZEWKA: każda funkcja zwraca serię tej samej długości co wejście, z NaN
 tam, gdzie wskaźnik nie ma jeszcze pełnej historii (instrukcja 1.3, „sygnał

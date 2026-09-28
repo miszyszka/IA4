@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — KATALOG S1  (s1/catalog.json z GitHub → arkusz S1)
  *
- *  Wersja projektu: 0.35 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.36 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  PO CO TO JEST
  *  Źródłem prawdy katalogu jest plik s1/catalog.json w repozytorium (D20),
@@ -21,7 +21,7 @@ const CATALOG = {
   SHEET: 'S1',
   PATH: 's1/catalog.json',
   PROP: 'S1_CATALOG',          // Script Properties: wersja i hash ostatnio wczytanego katalogu
-  HEADER_ROWS: 7,              // wiersze nagłówka nad tabelą
+  HEADER_ROWS: 8,              // wiersze nagłówka nad tabelą (8 od 0.36: wiersz „Częstość”)
 };
 
 const CATALOG_COLUMNS = [
@@ -40,7 +40,11 @@ const CATALOG_COLUMNS = [
   ['Wejście', s => s.entry, 105],
   ['Pochodzenie', s => s.origin, 95],
   ['Para', s => s.paired_with || '', 170],
-  ['Częstość: sygnałów / dni', s => (s.frequency ? `${s.frequency.signals} / ${s.frequency.days}` : ''), 95],
+  // Częstość na okresie odkrywania (1.3, 0.36): grupa główna — od niej zależy status „za rzadki”
+  // (< 30 dni, 1.1) — i obok grupa kontrolna.
+  ['Częstość gł.: sygnałów / dni', s => (s.frequency ? `${s.frequency.signals} / ${s.frequency.days}` : ''), 95],
+  ['Częstość kontr.: sygnałów / dni', s => (s.frequency && s.frequency.control_signals != null
+    ? `${s.frequency.control_signals} / ${s.frequency.control_days}` : ''), 105],
   ['Status', s => s.status, 80],
   ['Strategii', s => s.strategies, 65],
   ['Uwagi', null, 260],
@@ -103,7 +107,10 @@ function catalogRender_(cat) {
     pad(['KATALOG SYGNAŁÓW S1']),
     pad(['Wersja katalogu', m.catalog_version, '', `hash ${m.content_hash}`, `projekt v${m.project_version}`]),
     pad(['Status', m.status]),
-    pad(['Sygnałów', `${m.signals} (aktywnych ${m.signals_active}, kontrolnych ${m.signals_control})`, '', byCat]),
+    pad(['Sygnałów', `${m.signals} (aktywnych ${m.signals_active}, kontrolnych ${m.signals_control}`
+      + (m.signals_rare != null ? `, za rzadkich ${m.signals_rare})` : ')'), '', byCat]),
+    pad(['Częstość (1.3)', m.frequency ? `okres odkrywania do ${m.frequency.period_end_exclusive}, policzona ${m.frequency.computed_at}`
+      : 'jeszcze nie policzona (python -m ia4.frequency)']),
     pad(['Strategii', `${m.strategies} = sygnały × ${cat.exits.directions.length} kierunki × ${cat.exits.sl_pct.length}×${cat.exits.tp_pct.length} wyjść`]),
     pad(['Wczytano', Utilities.formatDate(new Date(), 'Europe/Warsaw', 'yyyy-MM-dd HH:mm'), '',
       'Widok pliku s1/catalog.json (D20) — nie edytuj ręcznie. Wolno pisać tylko w kolumnie „Uwagi”.']),
@@ -125,9 +132,9 @@ function catalogRender_(cat) {
   sh.getRange(1, 1, all.length, W).setValues(all);
 
   // --- wygląd --------------------------------------------------------------
-  const top = CATALOG.HEADER_ROWS + 1;
+  const top = head.length + 1;          // = CATALOG.HEADER_ROWS + 1
   sh.getRange(1, 1).setFontSize(14).setFontWeight('bold');
-  sh.getRange(2, 1, CATALOG.HEADER_ROWS - 2, 1).setFontWeight('bold').setFontColor('#5f6368');
+  sh.getRange(2, 1, head.length - 2, 1).setFontWeight('bold').setFontColor('#5f6368');
   sh.getRange(top, 1, 1, W).setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff')
     .setWrap(true).setVerticalAlignment('middle');
   sh.setFrozenRows(top);

@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.35 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.36 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.35',
+  INSTRUCTION_VERSION: '0.36',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -146,10 +146,11 @@ const DECISIONS = [
   ['D21', 'Katalog na ślepo', 'zero wyników w Etapie 1, przesiew tylko po częstości, zamrożenie z hashem', '✅ przyjęta'],
   ['D22', 'S1-BACKTEST i S2', 'pełny wynik 57 200 strategii w S1-BACKTEST; S2 = 10–50 wybranych ręcznie, s2/strategies.json', '✅ przyjęta'],
   ['D23', 'Portfel w Etapie 2', 'symulacja chronologiczna bez limitu instrumentów; kolumna maks. jednoczesnych pozycji', '✅ przyjęta'],
-  ['D24', 'Lista splitów', 's1/splits.json; NFLX ok. 2025-09-23 (L29); 11 pozostałych skoków = wyniki kwartalne', '🔸 do decyzji'],
-  ['D25', '1b przed końcem Etapu 0', 'kod silnika i testy na sztucznych świecach teraz; dane dopiero po 0.9', '🔸 do decyzji'],
-  ['D26', 'Kryterium 1.4 (wolumen)', 'bez dziur od pierwszej sesji z wolumenem; ≤ 20 sesji bez wolumenu na początku', '🔸 do decyzji'],
-  ['D27', 'Dziury w danych (L30)', 'sygnał nie odpala, gdy okno obejmuje brakującą świecę; pozycja trwa dalej', '🔸 do decyzji'],
+  ['D24', 'Lista splitów', 's1/splits.json; NFLX 2025-10-01 (L29, data potwierdzona w 0.35); pozostałe skoki = wyniki kwartalne', '✅ przyjęta 2026-09-28'],
+  ['D25', '1b przed końcem Etapu 0', 'kod silnika i testy na sztucznych świecach teraz; dane dopiero po 0.9', '✅ przyjęta 2026-09-28'],
+  ['D26', 'Kryterium 1.4 (wolumen)', 'bez dziur od pierwszej sesji z wolumenem; ≤ 20 sesji bez wolumenu na początku', '✅ przyjęta 2026-09-28'],
+  ['D27', 'Dziury w danych (L30)', 'sygnał nie odpala, gdy okno obejmuje brakującą świecę; pozycja trwa dalej', '✅ przyjęta 2026-09-28'],
+  ['D28', 'Doprecyzowania kontraktu silnika', 'split = cięcie szeregu; dziura przypisana do świecy po niej; NEXT_OPEN wymaga świecy wejścia; END; SQZ/ACC doprecyzowane', '🔸 do potwierdzenia przed 1.5'],
 ];
 
 const PJ_WIDTH = 7;
