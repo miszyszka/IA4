@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — TELEMETRIA  (stan systemu → Firestore → GitHub)
  *
- *  Wersja projektu: 0.29 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.30 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  PO CO TO JEST
  *  Claude nie ma dostępu do arkusza ani do edytora Apps Script — widzi wyłącznie
@@ -15,7 +15,7 @@
  *  Pierwszy pomysł był taki, żeby automat w repozytorium co 10 minut sprawdzał
  *  Firestore. Ma trzy wady, których to rozwiązanie nie ma:
  *    1. GitHub Actions musiałby mieć klucz serwisowy Firebase jako sekret —
- *       drugą kopię poświadczenia, które zgodnie z 6.5 trzymamy w jednym miejscu.
+ *       drugą kopię poświadczenia, które zgodnie z instrukcją (Etap 0, pkt 5) trzymamy w jednym miejscu.
  *    2. Zadania cykliczne na GitHubie potrafią spóźniać się kilkanaście minut
  *       albo zostać pominięte przy obciążeniu — „co 10 minut” nie jest pewne.
  *    3. Odpytywanie zużywałoby odczyty Firestore także wtedy, gdy nic się nie
@@ -247,7 +247,7 @@ function telemetryProject_(st) {
       liveFrom: PROJECT.LIVE_FROM,
       opened: !!st.vaultOpened,
       openedAt: st.vaultOpenedAt || '',
-      writtenAt: (st.firestore || {}).at || '',
+      writtenAt: st.vaultWrittenAt || '',   // to samo pole co kryterium 0.7 (było: st.firestore.at — zawsze puste)
     },
   };
 }

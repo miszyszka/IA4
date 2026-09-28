@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.29 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.30 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.29',
+  INSTRUCTION_VERSION: '0.30',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -79,18 +79,20 @@ const STAGES = [
     { id: '0.9', text: 'Python wczytuje dane wszystkich spółek, liczby zgadzają się z audytem (Etap 0B)' },
   ] },
   { n: 1, name: 'Katalog strategii S1', criteria: [
+    // Kryteria = instrukcja 1.7 (od 0.29 bez porównania ze starym silnikiem — L26).
     { id: '1.1', text: 's1/catalog.json i arkusz S1: wszystkie rodziny, definicje i parametry JSON' },
-    { id: '1.2', text: 'Silnik w Pythonie przechodzi testy na ręcznie policzonych przypadkach' },
-    { id: '1.3', text: 'Strategie bazowe dają te same transakcje co dotychczasowy silnik' },
-    { id: '1.4', text: 'Częstość policzona dla każdego sygnału, za rzadkie oznaczone' },
-    { id: '1.5', text: 'Pełny wolumen w okresie odkrywania dla sygnałów H8/VWAP' },
-    { id: '1.6', text: 'Katalog zamrożony: commit i hash w PROJEKT, licznik prób uzupełniony' },
-    { id: '1.7', text: 'Żaden wynik transakcji nie został policzony w tym etapie' },
+    { id: '1.2', text: 'Silnik w Pythonie przechodzi testy na ręcznie policzonych przypadkach (jedyny sprawdzian silnika)' },
+    { id: '1.3', text: 'Częstość policzona dla każdego sygnału na okresie odkrywania, za rzadkie oznaczone' },
+    { id: '1.4', text: 'Pełny wolumen w okresie odkrywania dla sygnałów z kolumną „Wol.” (dopisywanie D12 zakończone)' },
+    { id: '1.5', text: 'Katalog zamrożony: commit i hash w PROJEKT, licznik prób uzupełniony' },
+    { id: '1.6', text: 'Żaden wynik transakcji nie został policzony w tym etapie' },
   ] },
   { n: 2, name: 'Backtest S1 i wybór S2', criteria: [
-    { id: '2.1', text: 'Wszystkie strategie S1 policzone na okresie badawczym' },
-    { id: '2.2', text: 'Lista S2 zatwierdzona i zapisana (arkusz + Firestore)' },
-    { id: '2.3', text: 'Kryteria wyboru S2 zapisane w instrukcji' },
+    // Kryteria = instrukcja 2.4 (D18, D22: S2 w repozytorium, nie w Firestore).
+    { id: '2.1', text: 'Wszystkie 57 200 strategii policzone (obie grupy) i wczytane do S1-BACKTEST' },
+    { id: '2.2', text: 'Lista S2 sprawdzona raz na poletku — strategie bez przewagi wypadły' },
+    { id: '2.3', text: 'Lista S2 zatwierdzona i zapisana jako s2/strategies.json w repozytorium' },
+    { id: '2.4', text: 'Kryteria wyboru S2 i liczba policzonych konfiguracji (5.7) zapisane w instrukcji' },
   ] },
   { n: 3, name: 'Parametry towarzyszące i rating PT', criteria: [
     { id: '3.1', text: 'Raport najsilniejszych zależności' },
@@ -131,6 +133,12 @@ const DECISIONS = [
   ['D19', 'Rozmiar S1', '286 sygnałów w 8 kategoriach → 57 200 strategii; limit 300', '✅ przyjęta'],
   ['D20', 'Źródło katalogu S1', 's1/catalog.json w repo; arkusz S1 to widok z pliku', '✅ przyjęta'],
   ['D21', 'Katalog na ślepo', 'zero wyników w Etapie 1, przesiew tylko po częstości, zamrożenie z hashem', '✅ przyjęta'],
+  ['D22', 'S1-BACKTEST i S2', 'pełny wynik 57 200 strategii w S1-BACKTEST; S2 = 10–50 wybranych ręcznie, s2/strategies.json', '✅ przyjęta'],
+  ['D23', 'Portfel w Etapie 2', 'symulacja chronologiczna bez limitu instrumentów; kolumna maks. jednoczesnych pozycji', '✅ przyjęta'],
+  ['D24', 'Lista splitów', 's1/splits.json; NFLX ok. 2025-09-23 (L29); 11 pozostałych skoków = wyniki kwartalne', '🔸 do decyzji'],
+  ['D25', '1b przed końcem Etapu 0', 'kod silnika i testy na sztucznych świecach teraz; dane dopiero po 0.9', '🔸 do decyzji'],
+  ['D26', 'Kryterium 1.4 (wolumen)', 'bez dziur od pierwszej sesji z wolumenem; ≤ 20 sesji bez wolumenu na początku', '🔸 do decyzji'],
+  ['D27', 'Dziury w danych (L30)', 'sygnał nie odpala, gdy okno obejmuje brakującą świecę; pozycja trwa dalej', '🔸 do decyzji'],
 ];
 
 const PJ_WIDTH = 7;

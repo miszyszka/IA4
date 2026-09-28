@@ -1,10 +1,10 @@
 """
 IA 4 — konfiguracja środowiska badawczego.
-Wersja projektu: 0.29 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.30 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Dwie rzeczy, które ten moduł załatwia raz dla całego projektu:
 
-1. KLUCZ SERWISOWY nigdy nie leży w repozytorium (zasada 2.6 i 6.5).
+1. KLUCZ SERWISOWY nigdy nie leży w repozytorium (zasada 2.6 i Etap 0, pkt 5).
    Domyślna ścieżka to ~/.ia4/serviceAccount.json, czyli poza folderem
    ia4-research/. Można ją nadpisać zmienną IA4_FIREBASE_KEY.
 
@@ -38,7 +38,7 @@ def key_path() -> Path:
     if RESEARCH_DIR in p.resolve().parents:
         raise RuntimeError(
             f"Klucz serwisowy leży wewnątrz repozytorium ({p}).\n"
-            "Przenieś go poza ia4-research/ — zasada 2.6 i 6.5 instrukcji."
+            "Przenieś go poza ia4-research/ — zasada 2.6 i Etap 0, pkt 5 instrukcji."
         )
     if not p.exists():
         raise FileNotFoundError(

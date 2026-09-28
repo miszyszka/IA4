@@ -1,6 +1,6 @@
 # IA 4 — środowisko badawcze (Python, Mac)
 
-**Wersja projektu: 0.29 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 0.30 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Etap 0B. Ten folder robi jedną rzecz: ściąga świece z Firestore na dysk i daje
 do nich dostęp tak, żeby nie dało się przypadkiem zajrzeć do skarbca.
@@ -26,7 +26,7 @@ Przy każdej kolejnej sesji wystarczy `source .venv/bin/activate`.
 
 ## 2. Klucz serwisowy Firebase (raz)
 
-Klucz **nigdy nie trafia do repozytorium** (zasada 2.6 i 6.5) — `config.py`
+Klucz **nigdy nie trafia do repozytorium** (zasada 2.6 i Etap 0, pkt 5) — `config.py`
 sprawdza to i odmawia startu, gdyby leżał w środku folderu.
 
 1. Konsola Firebase → projekt `ia-4-ff7af` → ⚙ Ustawienia projektu → **Konta usługi**
@@ -48,9 +48,18 @@ Inna lokalizacja: ustaw `export IA4_FIREBASE_KEY=/ścieżka/do/klucza.json`
 python -m ia4.sync
 ```
 
-Pierwsze uruchomienie ściąga wszystko (~30 tys. świec przy komplecie
-instrumentów, kilka minut). Kolejne pobierają **tylko przyrosty** — manifest
-w `data/_manifest.json` pamięta ostatnią datę każdego instrumentu.
+Pierwsze uruchomienie ściąga wszystko (~190 tys. świec, ok. **37 000 odczytów
+Firestore** — trzy czwarte dziennego darmowego limitu 50 000, więc **najwyżej
+raz dziennie**). Kolejne pobierają **tylko przyrosty**: nowe sesje z ostatnich
+14 dni oraz każdy dokument, który Apps Script przepisał od poprzedniej
+synchronizacji (pole `updatedAt`) — także sesje sprzed roku, do których
+dopisano wolumen albo załatano lukę. Manifest w `data/_manifest.json` pamięta
+datę synchronizacji każdego instrumentu; manifest sprzed wersji 0.30 (bez tej
+daty) wymusza jednorazowo pełne pobranie.
+
+**Kiedy pierwsze pobranie:** dopiero gdy menu IA 4 → Projekt → „Postęp
+dopisywania wolumenu” pokaże koniec (D12). Wcześniej kopia miałaby dziury
+w wolumenie, a pełne pobranie trzeba by powtórzyć.
 
 ```bash
 python -m ia4.sync              # przyrostowo (codzienne użycie)
@@ -64,15 +73,31 @@ python -m ia4.sync --full       # od nowa, z pominięciem manifestu
 python verify.py
 ```
 
-Wypisze tabelę instrumentów w układzie takim jak w arkuszu PROJEKT plus
-kontrole spójności. Żeby porównać automatycznie: skopiuj tabelę instrumentów
-z arkusza PROJEKT do pliku `audyt.tsv` i uruchom
+Wypisze tabelę instrumentów w układzie takim jak w arkuszu PROJEKT i sam
+sprawdzi:
+
+- **zgodność z pełnym audytem** — tabelę instrumentów z audytu bierze
+  z `telemetry/state.json` (w klonie repozytorium, a gdy go nie ma — z GitHub);
+  porównuje tylko zakres dat, który widział audyt, więc sesje dopisane później
+  nie są rozbieżnością. Nie trzeba niczego kopiować z arkusza (stary sposób
+  `python verify.py --audit audyt.tsv` nadal działa),
+- **wolumen (D12)** — sesje bez wolumenu w okresie badawczym; kilka sesji na
+  samym początku historii (poza zasięgiem Yahoo, ~730 dni) jest wypisanych
+  informacyjnie, dziura w środku historii blokuje kryterium,
+- **skoki ceny > 15% (D11)** — do oceny „split czy wynik kwartalny”; skok
+  ≥ 40% blokuje kryterium, dopóki sesja nie trafi na listę splitów,
+- instrumenty bez danych, z historią zaczynającą się w skarbcu, poniżej
+  100 sesji, oznaczone przez `Proof.gs` jako niepełne lub nieudane.
+
+Skrypt czyta pliki parquet bezpośrednio, więc nie liczy się jako zajrzenie
+na poletko. Kod wyjścia 0 = wszystko się zgadza, 1 = są rozbieżności do
+wyjaśnienia.
+
+Testy potoku danych (bez Firestore, na atrapie):
 
 ```bash
-python verify.py --audit audyt.tsv
+python tests/test_data_pipeline.py
 ```
-
-Kod wyjścia 0 = wszystko się zgadza, 1 = są rozbieżności do wyjaśnienia.
 
 ## 5. Wczytywanie danych do badań
 
@@ -86,13 +111,14 @@ df = data.load()                          # wszystkie instrumenty
 
 Kolumny: `symbol, date, slot (1–7), o, h, l, c, v`.
 
-`v` to wolumen (decyzja D12). Świece zebrane przed wersją 0.8 mają tam 0 —
-przy liczeniu parametrów opartych na wolumenie trzeba te sesje pominąć albo
-dociągnąć historię ponownie.
+`v` to wolumen (decyzja D12). Automat dopisał go do całej historii, do
+której Yahoo jeszcze sięga; najstarsze sesje (poza ~730 dniami) zostają z 0 —
+sygnały z warunkiem wolumenu ich nie używają (instrukcja 1.3).
 
-**Okresy (5.1):** `discovery` (domyslny, uczenie), `plot` (poletko - sprawdzian raz
-na etap, wymaga podania powodu i jest logowany), `vault` (skarbiec, raz w projekcie),
-`live`, `research` (odkrywanie + poletko lacznie).
+**Okresy (5.1):** `discovery` (domyślny, uczenie), `plot` (poletko — sprawdzian
+raz na etap, wymaga podania powodu i jest logowany), `research` (odkrywanie +
+poletko łącznie — **od 0.30 też wymaga powodu i też jest liczony jako zajrzenie
+na poletko**), `vault` (skarbiec, raz w projekcie), `live`.
 
 ```python
 data.load("AAPL", period="plot", plot_reason="Etap 2: lista S2 po filtrach")
@@ -115,8 +141,8 @@ jaki ma ten projekt, i nikt tego potem nie wykryje po samym wyniku.
 
 | Etap | Co powstaje w tym folderze |
 |---|---|
-| 1 | `ia4/signals.py` — katalog S1, `ia4/engine.py` — silnik backtestu |
-| 2 | `ia4/backtest.py` — liczenie 24 000 strategii, eksport do S1_WYNIKI |
+| 1 | `ia4/catalog.py` — katalog S1 (gotowe, 1a); `ia4/indicators.py`, `ia4/signals.py`, `ia4/engine.py` — silnik (1b, instrukcja 1.7) |
+| 2 | symulacja portfela 57 200 strategii (2.1), eksport do `s1-backtest/results.csv` → arkusz S1-BACKTEST (2.3) |
 | 3 | `ia4/features.py` — ~1000 parametrów, `ia4/model.py` — PT, eksport drzew do JSON |
 
 ---
@@ -127,12 +153,16 @@ jaki ma ten projekt, i nikt tego potem nie wykryje po samym wyniku.
 ia4-research/
 ├── README.md            ten plik
 ├── requirements.txt     zależności
-├── verify.py            sprawdzian kryterium 0.9
+├── verify.py            sprawdzian kryterium 0.9 (audyt, wolumen, skoki ceny)
 ├── .gitignore           data/ i klucze nigdy do repo
 ├── ia4/
 │   ├── config.py        klucz, granice skarbca i listy instrumentów z Firestore
-│   ├── sync.py          Firestore → parquet, tylko przyrosty
-│   └── data.py          wczytywanie z wymuszoną granicą skarbca
+│   ├── sync.py          Firestore → parquet, tylko przyrosty (także przepisane wstecz)
+│   ├── data.py          wczytywanie z wymuszoną granicą skarbca i licznikiem poletka
+│   └── catalog.py       katalog S1 → s1/catalog.json (Etap 1a)
+├── tests/
+│   ├── test_catalog.py        katalog S1
+│   └── test_data_pipeline.py  sync, data, verify na atrapie Firestore
 └── data/                pamięć podręczna (poza gitem)
     ├── _manifest.json
     └── {SYMBOL}.parquet

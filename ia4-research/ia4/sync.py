@@ -1,22 +1,30 @@
 """
 IA 4 — synchronizacja Firestore → lokalny parquet.
-Wersja projektu: 0.29 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.30 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Po co w ogóle kopia lokalna: backtest w Etapie 2 czyta te same świece dziesiątki
-tysięcy razy (24 000 strategii). Czytanie ich za każdym razem z Firestore
+tysięcy razy (57 200 strategii, 1.5). Czytanie ich za każdym razem z Firestore
 przekroczyłoby dzienny darmowy limit odczytów po kilku minutach pracy i byłoby
 setki razy wolniejsze niż plik na dysku. Firestore zostaje jedynym źródłem
 prawdy (sekcja 3 instrukcji) — parquet to tylko jego pamięć podręczna.
 
-JAK TO DZIAŁA: pierwsze uruchomienie ściąga CAŁOŚĆ. Każde kolejne pyta tylko
-o ostatnie RECHECK_DAYS (14) dni — nie o całą historię. Manifest pamięta
-ostatnią datę każdego instrumentu, więc codzienna synchronizacja to kilkanaście
-do kilkudziesięciu świec na instrument zamiast 30 tysięcy.
+JAK TO DZIAŁA: pierwsze uruchomienie ściąga CAŁOŚĆ. Każde kolejne zadaje dwa
+tanie pytania na instrument i skleja odpowiedzi:
+  1. sesje z ostatnich RECHECK_DAYS (14) dni — nowe świece,
+  2. dokumenty z `updatedAt` późniejszym niż poprzednia synchronizacja — wszystko,
+     co Apps Script przepisał WSTECZ, choćby sprzed roku (łatanie luk,
+     dopisywanie wolumenu D12).
+Manifest pamięta datę ostatniej synchronizacji każdego instrumentu.
 
-Dlaczego 14 dni, a nie „tylko nowsze niż ostatnia": Apps Script dopisuje świece
-także WSTECZ (łatanie luk, dopisywanie wolumenu D12). Zapytanie „tylko nowsze"
-nigdy by tego nie zobaczyło i zostawiłoby w kopii lokalnej dziurę nie do
-zamknięcia. Pełne odświeżenie: python -m ia4.sync --full
+Dlaczego oba pytania (0.30): do wersji 0.29 było tylko pierwsze. Dopisywanie
+wolumenu przepisuje sesje sprzed wielu miesięcy — okno 14 dni ich nie widzi,
+więc kopia zsynchronizowana przed końcem D12 zostałaby bez wolumenu na zawsze.
+Manifest bez daty synchronizacji (sprzed 0.30) wymusza jednorazowo pełne
+pobranie. Pełne odświeżenie ręcznie: python -m ia4.sync --full
+
+KOSZT: pełne pobranie wszystkich 55 instrumentów to ok. 37 000 odczytów
+Firestore, czyli ~3/4 dziennego darmowego limitu (50 000). Rób to najwyżej raz
+dziennie. Synchronizacja przyrostowa kosztuje kilkaset odczytów.
 
 DWA FORMATY W FIRESTORE (sekcja 4 instrukcji):
   stocks/{SYMBOL}/candles/{data}_{nr}   spółki główne — dokument na świecę
@@ -61,6 +69,9 @@ GROUP_COLLECTION = {"main": "stocks", "proof": "proof", "context": "context"}
 # splitu), służy do tego „python -m ia4.sync --full".
 RECHECK_DAYS = 14
 
+# Zapas na rozjazd zegarów Apps Script / Mac przy pytaniu o updatedAt.
+UPDATED_MARGIN_MIN = 30
+
 
 def _since_for(last_date: str | None) -> str | None:
     """Od której daty (wyłącznie) pytać Firestore: cofka o RECHECK_DAYS."""
@@ -96,16 +107,42 @@ def parquet_path(symbol: str) -> Path:
 # ---------------------------------------------------------------------------
 #  Odczyt z Firestore
 # ---------------------------------------------------------------------------
-def _fetch_sessions(symbol: str, since: str | None) -> pd.DataFrame:
+def _where(query, field: str, op: str, value):
+    """`where` w składni nowszego klienta Firestore, ze zgodnością wstecz."""
+    try:
+        from google.cloud.firestore_v1.base_query import FieldFilter
+        return query.where(filter=FieldFilter(field, op, value))
+    except ImportError:      # starszy google-cloud-firestore
+        return query.where(field, op, value)
+
+
+def _stream(ref, since: str | None, updated_since):
+    """
+    Dokumenty do pobrania. Bez `since` — cała kolekcja. Z `since` — sesje nowsze
+    niż `since` ORAZ dokumenty zmienione po `updated_since` (przepisane wstecz).
+    Drugie pytanie celowo bez order_by: nierówność na updatedAt razem
+    z sortowaniem po dacie wymagałaby indeksu złożonego w Firestore.
+    """
+    if not since:
+        yield from ref.order_by("date").stream()
+        return
+    seen = set()
+    for doc in _where(ref, "date", ">", since).stream():
+        seen.add(doc.id)
+        yield doc
+    if updated_since is not None:
+        for doc in _where(ref, "updatedAt", ">", updated_since).stream():
+            if doc.id not in seen:
+                yield doc
+
+
+def _fetch_sessions(symbol: str, since: str | None, updated_since=None) -> pd.DataFrame:
     """Format sesyjny: jeden dokument = jedna sesja z tablicami slots/o/h/l/c."""
     coll = GROUP_COLLECTION[config.group_of(symbol)]
     ref = config.client().collection(f"{coll}/{config.fs_id(symbol)}/sessions")
-    query = ref.order_by("date")
-    if since:
-        query = query.where("date", ">", since)
 
     rows = []
-    for doc in query.stream():
+    for doc in _stream(ref, since, updated_since):
         d = doc.to_dict()
         slots = d.get("slots") or []
         o, h, l, c = d.get("o") or [], d.get("h") or [], d.get("l") or [], d.get("c") or []
@@ -123,15 +160,12 @@ def _fetch_sessions(symbol: str, since: str | None) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=COLUMNS)
 
 
-def _fetch_candles(symbol: str, since: str | None) -> pd.DataFrame:
+def _fetch_candles(symbol: str, since: str | None, updated_since=None) -> pd.DataFrame:
     """Format świecowy (spółki główne): jeden dokument = jedna świeca."""
     ref = config.client().collection(f"stocks/{config.fs_id(symbol)}/candles")
-    query = ref.order_by("date")
-    if since:
-        query = query.where("date", ">", since)
 
     rows = []
-    for doc in query.stream():
+    for doc in _stream(ref, since, updated_since):
         d = doc.to_dict()
         rows.append((symbol, d.get("date"), int(d.get("slot")),
                      d.get("open"), d.get("high"), d.get("low"), d.get("close"),
@@ -139,21 +173,43 @@ def _fetch_candles(symbol: str, since: str | None) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=COLUMNS)
 
 
-def fetch(symbol: str, since: str | None) -> pd.DataFrame:
+def fetch(symbol: str, since: str | None, updated_since=None) -> pd.DataFrame:
     if config.group_of(symbol) == "main":
-        return _fetch_candles(symbol, since)
-    return _fetch_sessions(symbol, since)
+        return _fetch_candles(symbol, since, updated_since)
+    return _fetch_sessions(symbol, since, updated_since)
+
+
+def _updated_since(entry: dict):
+    """Chwila poprzedniej synchronizacji minus zapas; None = brak (wymusza całość)."""
+    from datetime import datetime, timedelta
+
+    raw = entry.get("synced_at")
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(raw) - timedelta(minutes=UPDATED_MARGIN_MIN)
+    except ValueError:
+        return None
 
 
 # ---------------------------------------------------------------------------
 #  Synchronizacja
 # ---------------------------------------------------------------------------
 def sync_symbol(symbol: str, manifest: dict, full: bool = False) -> dict:
-    path = parquet_path(symbol)
-    last_date = None if full else manifest.get(symbol, {}).get("last_date")
-    since = _since_for(last_date)
+    from datetime import datetime, timezone
 
-    new = fetch(symbol, since)
+    path = parquet_path(symbol)
+    entry = manifest.get(symbol, {})
+    updated_since = None if full else _updated_since(entry)
+    # Bez daty poprzedniej synchronizacji (manifest sprzed 0.30 albo brak pliku
+    # parquet) nie wiemy, co Apps Script przepisał wstecz — bierzemy całość.
+    if updated_since is None or not path.exists():
+        full = True
+    last_date = None if full else entry.get("last_date")
+    since = _since_for(last_date)
+    started = datetime.now(timezone.utc)      # PRZED pobraniem — nic nie umknie między pytaniami
+
+    new = fetch(symbol, since, updated_since)
 
     had = 0
     if path.exists() and not full:
@@ -191,7 +247,8 @@ def sync_symbol(symbol: str, manifest: dict, full: bool = False) -> dict:
         "added": int(len(df)) - had,
         "refreshed": int(len(new)) - (int(len(df)) - had),
     }
-    manifest[symbol] = {"last_date": stats["last"], **stats}
+    manifest[symbol] = {"last_date": stats["last"], "synced_at": started.isoformat(),
+                        "full": bool(full), **stats}
     extra = f", duplikatów usuniętych: {dups}" if dups else ""
     seen = f", sprawdzono ponownie {stats['refreshed']}" if stats["refreshed"] > 0 else ""
     print(f"  {symbol}: +{stats['added']} świec → {stats['candles']} w {stats['sessions']} sesjach "
@@ -208,6 +265,17 @@ def sync(symbols: list[str] | None = None, full: bool = False) -> dict:
 
     symbols = symbols or config.all_symbols()
     manifest = load_manifest()
+
+    # Ostrzeżenie o koszcie: pełne pobranie to ~3500 odczytów na spółkę główną
+    # i ~500 na pozostałe instrumenty (dokument na świecę vs dokument na sesję).
+    def needs_full(s: str) -> bool:
+        return full or not manifest.get(s, {}).get("synced_at") or not parquet_path(s).exists()
+    fulls = [s for s in symbols if needs_full(s)]
+    if fulls:
+        est = sum(3600 if config.group_of(s) == "main" else 520 for s in fulls)
+        print(f"Pełne pobranie dla {len(fulls)} instrumentów: ok. {est:,} odczytów Firestore "
+              f"(dzienny limit 50 000 — nie powtarzaj tego tego samego dnia).".replace(",", " "))
+        print()
     for s in symbols:
         try:
             sync_symbol(s, manifest, full=full)

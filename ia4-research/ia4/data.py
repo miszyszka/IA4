@@ -1,6 +1,6 @@
 """
 IA 4 — wczytywanie danych do badań.
-Wersja projektu: 0.29 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.30 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Ten moduł jest jedyną drogą, którą dane trafiają do backtestu — i celowo
 utrudnia złamanie zasady 5.1.
@@ -12,7 +12,7 @@ cokolwiek znaczyć — a nikt tego potem nie wykryje, bo wynik będzie wygląda�
 normalnie. Dlatego domyślnie zwracamy WYŁĄCZNIE okres badawczy, a po dane ze
 skarbca trzeba sięgnąć jawnie i świadomie:
 
-    load("AAPL")                        # okres badawczy — domyślnie
+    load("AAPL")                        # okres odkrywania — domyślnie
     load("AAPL", period="vault")        # rzuci błąd, dopóki skarbiec zamknięty
     load("AAPL", period="live")         # dane po granicy (Etapy 4–5)
 
@@ -85,6 +85,8 @@ def load(
     symbols      pojedynczy symbol, lista, albo None = wszystkie
     period       discovery (domyslnie) | plot | research | vault | live | all
     unlock_vault świadome potwierdzenie dostępu do skarbca (Etap 3, jeden raz)
+    plot_reason  wymagany dla plot i research (oba zawierają poletko); każde
+                 takie wczytanie jest liczone w poletko_zajrzenia.jsonl (5.1)
 
     Zwraca: symbol, date, slot, o, h, l, c, v — posortowane po dacie i świecy.
     """
@@ -93,16 +95,20 @@ def load(
 
     v = config.vault()
 
-    if period == "plot":
+    # "research" = odkrywanie + poletko, czyli TEŻ zajrzenie na poletko. Do 0.29
+    # przechodziło bez powodu i bez wpisu w dzienniku — dziura w zasadzie 5.1
+    # („raz na etap”), bo tą samą drogą dało się oglądać poletko bez śladu.
+    if period in ("plot", "research"):
         if not plot_reason:
             raise PlotError(
                 f"Proba odczytu poletka ({v.plot_start} - {v.plot_end}) bez podania powodu.\n"
+                f"(okres {period!r} zawiera poletko). "
                 "Poletko sluzy do sprawdzenia gotowego wyniku etapu, RAZ na etap (5.1),\n"
                 "a nie do strojenia. Podaj, co sprawdzasz:\n"
                 '    load(..., period="plot", plot_reason="Etap 2: lista S2 po filtrach")\n'
                 f"Dotychczasowe zajrzenia: {PLOT_LOG if PLOT_LOG.exists() else 'brak'}"
             )
-        n = _log_plot_peek(plot_reason)
+        n = _log_plot_peek(f"[{period}] {plot_reason}")
         print(f"POLETKO: zajrzenie nr {n} ({plot_reason}). Zapisane w {PLOT_LOG.name}.")
         if n > 4:
             print("UWAGA: to juz wiecej niz jedno zajrzenie na etap. Poletko traci wartosc "

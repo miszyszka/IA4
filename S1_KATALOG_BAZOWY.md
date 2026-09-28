@@ -1,6 +1,6 @@
 # IA 4 — katalog bazowy sygnałów (84)
 
-**Wersja projektu: 0.29 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 0.30 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Katalog przeniesiony z arkusza `STRATEGIE_LEGENDA` starego projektu. To **punkt
 wyjścia dla Etapu 1**, a nie gotowy katalog S1: wszystkie 84 sygnały są wyłącznie
@@ -14,7 +14,7 @@ profile podaję tutaj tylko jako zapis tego, co było liczone wcześniej.
 
 ## Kontrakt silnika (zasady wspólne)
 
-1. Wszystkie strategie otwierają wyłącznie pozycje LONG. Każda jest testowana osobno dla AAPL, TSLA i NVDA.
+1. Każdy sygnał jest testowany w obu kierunkach, LONG i SHORT (D9), osobno na grupie głównej (AAPL, TSLA, NVDA) i kontrolnej (50 spółek) — instrukcja 5.6 i 2.1. *(Do wersji 0.29 ten punkt mówił „wyłącznie LONG, tylko 3 spółki” — zapis sprzed D9; poprawione w 0.30 do instrukcji.)*
 
 2. Sygnał jest liczony na zamkniętej świecy t. Wejście następuje po cenie otwarcia świecy t+1 (NEXT_OPEN), więc nie ma zaglądania w przyszłość.
 
@@ -36,7 +36,7 @@ profile podaję tutaj tylko jako zapis tego, co było liczone wcześniej.
 
 11. Świeca 21:30–22:00 (ostatnie 30 min sesji) jest traktowana jak każda inna świeca.
 
-12. Koszty transakcyjne i poślizg to parametry silnika (proponowane 0,05% na stronę transakcji).
+12. Koszty: wynik główny bez kosztów, obok ekspektancja przy koszcie **0,05% za całą transakcję (tam i z powrotem)** — instrukcja 5.5 i D6. Koszt jest parametrem silnika. *(Do wersji 0.29: „0,05% na stronę”, czyli dwa razy więcej niż 5.5 — poprawione w 0.30 do instrukcji.)*
 
 
 ## Stare profile wyjścia (12) — zastąpione siatką 10×10 w Etapie 1
