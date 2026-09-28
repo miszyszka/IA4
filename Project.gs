@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.32 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.33 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.32',
+  INSTRUCTION_VERSION: '0.33',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -39,6 +39,17 @@ const PROJECT = {
 
   NIGHTLY_HOUR: 23,          // nocny audyt (czas polski), po zamknięciu sesji w USA
   NIGHTLY_DAYS: 14,          // ile dni kalendarzowych wstecz sprawdza audyt nocny
+  // Ile dni wstecz audyt sprawdza wolumen = 0 na istniejącej, poprawnej cenowo
+  // świecy (0.33). Yahoo czasem nie zwraca wolumenu dla świecy zebranej na
+  // żywo tuż po zamknięciu (zwłaszcza świeca 7, 30 min) — parseBars_ wtedy
+  // zapisuje 0, i bez tego okna nikt już tego nie sprawdza: dopisywanie
+  // wolumenu (D12) jest JEDNORAZOWE i po ukończeniu (`volfillLoad_().done`)
+  // nie wraca do już przerobionych instrumentów, więc każda nowa "zerowa"
+  // świeca zebrana na żywo PO tym momencie zostałaby zerowa na zawsze.
+  // 20 dni z zapasem pokrywa NIGHTLY_DAYS (14) — nocny audyt złapie to samo,
+  // co pełny. Starsze zera (przed D12 albo w kolejce backfillu) to nie
+  // usterka, tylko znany, osobno śledzony stan — stąd okno, nie cała historia.
+  ZERO_VOL_WINDOW_DAYS: 20,
   JUMP_PCT: 15,              // skok ceny podejrzany o split (D11 — 30% przepuszczało split 3:2 i 5:4)
   JUMP_PCT_BY_SYMBOL: {},    // progi wyjątkowe per instrument (obecnie brak)
   MAX_GAP_ROWS: 300,         // ile luk pokazywać w arkuszu PROJEKT
@@ -568,6 +579,9 @@ function auditSymbol_(symbol, since, ctx, budget) {
   if (last < end) add('NIEAKTUALNE', end, '', `ostatnie dane z ${last}, oczekiwane do ${end}`);
 
   const jump = (PROJECT.JUMP_PCT_BY_SYMBOL[symbol] || PROJECT.JUMP_PCT);
+  // Wolumen = 0 sprawdzamy tylko w oknie ostatnich dni (patrz komentarz przy
+  // PROJECT.ZERO_VOL_WINDOW_DAYS) — starsze zera to znany stan (D12), nie luka.
+  const zeroVolSince = addDays_(end, -PROJECT.ZERO_VOL_WINDOW_DAYS);
   let candles = 0;
   let prev = null;
   dates.forEach(d => {
@@ -583,17 +597,23 @@ function auditSymbol_(symbol, since, ctx, budget) {
       const extra = keys.filter(s => s >= expected);
       if (extra.length) add('NADMIAR', d, '', `świece ponad ${expected}: nr ${extra.map(s => s + 1).join(', ')} — sprawdź, czy to sesja skrócona`);
     }
+    const zeroVol = [];
     keys.forEach(s => {
       const b = slots[s];
       const bad = !(b.o > 0 && b.h > 0 && b.l > 0 && b.c > 0) ||
         b.h < Math.max(b.o, b.c) - 1e-9 || b.l > Math.min(b.o, b.c) + 1e-9;
       if (bad) add('BLEDNE_OHLC', d, s + 1, `świeca nr ${s + 1}: O ${b.o} H ${b.h} L ${b.l} C ${b.c}`);
+      if (!bad && d >= zeroVolSince && b.vol === 0) zeroVol.push(s + 1);
       if (prev && prev.c > 0) {
         const j = Math.abs(b.o / prev.c - 1) * 100;
         if (j > jump) add('SKOK_CENY', d, s + 1, `świeca nr ${s + 1}: ${prev.c} → ${b.o} (${j.toFixed(1)}%) — możliwy split`);
       }
       prev = b;
     });
+    if (zeroVol.length) {
+      add('ZERO_WOLUMEN', d, '',
+        `świeca nr ${zeroVol.join(', ')}: wolumen 0 — Yahoo go nie podał przy zbieraniu na żywo`);
+    }
   });
   data.dups.forEach(d => add('DUPLIKAT', d, '', 'ten sam numer świecy występuje w sesji więcej niż raz'));
 
@@ -630,7 +650,7 @@ function auditRead_(symbol, since, budget) {
   const id = fsId_(symbol);
   const main = coll === 'stocks';
   const sub = main ? 'candles' : 'sessions';
-  const fields = main ? ['date', 'slot', 'open', 'high', 'low', 'close'] : ['date', 'slots', 'o', 'h', 'l', 'c'];
+  const fields = main ? ['date', 'slot', 'open', 'high', 'low', 'close', 'volume'] : ['date', 'slots', 'o', 'h', 'l', 'c', 'v'];
   const byDate = {};
   const dups = [];
   const num = (v) => v ? Number(v.doubleValue !== undefined ? v.doubleValue : v.integerValue) : NaN;
@@ -661,16 +681,18 @@ function auditRead_(symbol, since, budget) {
       cursor = { date, name: r.document.name };
       const day = byDate[date] || (byDate[date] = {});
       if (main) {
-        day[Number(f.slot.integerValue) - 1] = { o: num(f.open), h: num(f.high), l: num(f.low), c: num(f.close) };
+        day[Number(f.slot.integerValue) - 1] = {
+          o: num(f.open), h: num(f.high), l: num(f.low), c: num(f.close), vol: num(f.volume),
+        };
       } else {
         const arr = (k) => (f[k] && f[k].arrayValue && f[k].arrayValue.values) || [];
-        const sl = arr('slots'), o = arr('o'), h = arr('h'), l = arr('l'), c = arr('c');
+        const sl = arr('slots'), o = arr('o'), h = arr('h'), l = arr('l'), c = arr('c'), vv = arr('v');
         const seen = {};
         sl.forEach((v, i) => {
           const s = Number(v.integerValue) - 1;
           if (seen[s]) dups.push(date);
           seen[s] = 1;
-          day[s] = { o: num(o[i]), h: num(h[i]), l: num(l[i]), c: num(c[i]) };
+          day[s] = { o: num(o[i]), h: num(h[i]), l: num(l[i]), c: num(c[i]), vol: num(vv[i]) };
         });
       }
     });

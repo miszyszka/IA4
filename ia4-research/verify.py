@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 IA 4 — sprawdzian kryterium 0.9.
-Wersja projektu: 0.32 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.33 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kryterium 0.9 brzmi: „Python wczytuje dane wszystkich instrumentów, liczby
 zgadzają się z audytem". Ten skrypt wypisuje tabelę w tym samym układzie,
@@ -29,6 +29,14 @@ Dodatkowo (0.30) dwie kontrole, bez których nie da się zacząć Etapu 1b:
 Skrypt czyta pliki parquet bezpośrednio — nie przez data.load — więc nie
 liczy się jako zajrzenie na poletko ani do skarbca: liczy tylko kompletność
 danych, żadnego wyniku (5.1, 1.1).
+
+„PRZED PRACĄ" (0.33): sekcja na początku wyjścia, zanim cokolwiek innego —
+czy kopia lokalna (manifest `ia4.sync`) jest nowsza niż ostatni audyt Apps
+Script z telemetrii, i co telemetria pokazuje jako otwarte luki (w tym
+ZERO_WOLUMEN, L32). Celowo BEZ ŻADNEGO zapytania do Firestore — telemetria
+przychodzi z pliku w repo (albo, gdy go nie ma lokalnie, z jego surowej
+kopii na GitHubie — nadal nie z Firestore) — dokładnie po to, żeby dało się
+to sprawdzać często bez zużywania dziennego limitu odczytów/zapisów.
 
 Format pliku --audit: skopiowana z arkusza PROJEKT tabela instrumentów
 (kolumny: Spółka, Grupa, Sesji, Świec, Zakres, Luk), rozdzielona tabulatorami.
@@ -185,6 +193,50 @@ def consistency_checks(cov: pd.DataFrame) -> list[str]:
     return problems
 
 
+def preflight_freshness(tel: dict) -> list[str]:
+    """
+    Sprawdzian „przed pracą" (0.33) — bez żadnego zapytania do Firestore:
+    tylko manifest lokalnej synchronizacji (`ia4.sync`) i telemetria już
+    ściągnięta z GitHuba (`load_telemetry` — plik z repo albo, w ostateczności,
+    jego surowa kopia na GitHubie; nigdy Firestore).
+
+    Odpowiada na dwa pytania z 0.33: czy kopia lokalna jest z ostatniej
+    synchronizacji nowsza niż ostatni pełny/nocny audyt (czyli „nie
+    przegapiłem nic nowego w Firebase"), i czy telemetria pokazuje świeże
+    luki typu ZERO_WOLUMEN/BRAK_SWIEC (czyli „coś czeka na złatanie, zanim
+    zaufam tym danym"). Zwraca listę linii do wypisania — nic nie pobiera.
+    """
+    out = []
+    manifest = sync.load_manifest()
+    synced_ats = [e.get("synced_at") for e in manifest.values() if e.get("synced_at")]
+    last_sync = max(synced_ats) if synced_ats else None
+    audit = (tel.get("data") or {}).get("audit") or {}
+    full_at, nightly_at = audit.get("fullAt"), audit.get("nightlyAt")
+    last_audit = max([x for x in (full_at, nightly_at) if x], default=None)
+
+    if last_sync is None:
+        out.append("Brak lokalnej synchronizacji (manifest pusty) — uruchom python -m ia4.sync.")
+    elif last_audit and last_sync < last_audit:
+        out.append(f"Kopia lokalna zsynchronizowana {last_sync}, ostatni audyt Apps Script "
+                    f"{last_audit} — jest nowszy. Odśwież: python -m ia4.sync.")
+    else:
+        out.append(f"Kopia lokalna zsynchronizowana {last_sync or '?'} "
+                    f"(ostatni audyt: {last_audit or '?'}) — aktualna, nic nie trzeba pobierać.")
+
+    gaps = (tel.get("data") or {}).get("gaps") or {}
+    by_type = gaps.get("byType") or {}
+    if by_type:
+        parts = ", ".join(f"{k}: {v}" for k, v in sorted(by_type.items()))
+        out.append(f"Luki wg telemetrii (razem {gaps.get('total', '?')}, "
+                    f"nowych {gaps.get('new', '?')}): {parts}.")
+        zero_vol = by_type.get("ZERO_WOLUMEN")
+        if zero_vol:
+            out.append(f"  → ZERO_WOLUMEN: {zero_vol} — automat w tle (Code.gs) już próbuje je "
+                       f"załatać (L32); jeśli po python -m ia4.sync nadal widać v=0 w świeżych "
+                       f"sesjach, to normalne, dopóki telemetria nie pokaże ich jako zaakceptowanych.")
+    return out
+
+
 def compare_with_audit(cov: pd.DataFrame, path: str) -> list[str]:
     """Porównanie z tabelą instrumentów wklejoną z arkusza PROJEKT."""
     try:
@@ -234,6 +286,10 @@ def main() -> int:
     if not a.no_telemetry:
         tel = load_telemetry(Path(a.telemetry) if a.telemetry else TELEMETRY_PATH)
         if tel:
+            print("PRZED PRACĄ (0.33 — bez odczytów Firestore):")
+            for line in preflight_freshness(tel):
+                print(f"  · {line}")
+            print()
             diffs, at = compare_with_telemetry(symbols, tel)
             print(f"Porównanie z pełnym audytem z {at}: "
                   f"{'zgodne' if not diffs else f'{len(diffs)} rozbieżności'}")

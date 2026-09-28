@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.32 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.33 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
  *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
@@ -643,7 +643,10 @@ function patchReadGaps_() {
     const desc = String(r[4] || '').trim();
     if (!key || !symbol || !date || known.indexOf(symbol) < 0) return;
     if (accepted[key]) return;   // decyzja („zaakceptowana") już podjęta — nie ruszamy
-    if (type !== 'BRAK_SWIEC' && type !== 'BRAK_SESJI') return;
+    // ZERO_WOLUMEN (0.33) dołącza do automatycznego łatania na tych samych
+    // zasadach co braki świec — patchOneGap_ i patchExpectedSlots_ mają dla
+    // niej osobną gałąź (inna definicja "postępu": wolumen > 0, nie obecność).
+    if (type !== 'BRAK_SWIEC' && type !== 'BRAK_SESJI' && type !== 'ZERO_WOLUMEN') return;
     if (date < oldest || date >= today) return;   // poza zasięgiem Yahoo albo dzisiejsza sesja
     out.push({ key, symbol, type, date, desc });
   });
@@ -685,6 +688,10 @@ function patchRemoveGapRow_(key) {
 /** Numery brakujących świec (1–7) wynikające z opisu luki. Cała sesja = wszystkie. */
 function patchExpectedSlots_(g) {
   if (g.type === 'BRAK_SESJI') return [1, 2, 3, 4, 5, 6, 7];
+  // ZERO_WOLUMEN ma inny format opisu (bez " z N") niż BRAK_SWIEC/NADMIAR —
+  // "świeca nr 3, 7: wolumen 0 — ..." — stąd osobne dopasowanie przed ogólnym.
+  const mZero = /nr ([\d, ]+): wolumen 0/.exec(g.desc || '');
+  if (mZero) return mZero[1].split(',').map(s => Number(s.trim())).filter(n => n > 0);
   const m = /nr ([\d, ]+) z/.exec(g.desc || '');
   if (!m) return [1, 2, 3, 4, 5, 6, 7];   // opis w nietypowym formacie — bezpieczniej sprawdzić wszystko
   return m[1].split(',').map(s => Number(s.trim())).filter(n => n > 0);
@@ -693,18 +700,33 @@ function patchExpectedSlots_(g) {
 /**
  * Dociąga jedną sesję. Zwraca { wrote, gained }:
  *   wrote  — Yahoo zwróciło cokolwiek (nawet jeśli to tylko to, co już mieliśmy),
- *   gained — wśród zwróconych świec jest choć jedna z brakujących — realny postęp.
+ *   gained — realny postęp względem tego, co konkretny typ luki zgłasza jako brak.
  * Bez rozróżnienia tych dwóch stanów luka bez rozwiązania (np. trwała przerwa
  * Yahoo) byłaby "łatana" w kółko, bo te same istniejące świece zawsze wracają.
+ *
+ * Dla BRAK_SWIEC/BRAK_SESJI/NADMIAR "brak" = świecy nie było, więc gained =
+ * któraś z oczekiwanych świec się pojawiła. Dla ZERO_WOLUMEN świeca już
+ * istnieje (0.33) — "brak" = wolumen równy 0, więc gained musi sprawdzać
+ * `.volume > 0` na tych samych slotach, nie samą obecność świecy, inaczej
+ * każda próba wyglądałaby na postęp i auto-akceptacja (3 próby) nigdy by
+ * nie zadziałała, mimo że Yahoo wciąż zwraca ten sam zerowy wolumen.
  */
 function patchOneGap_(g) {
   const sessions = proofFetchRange_(g.symbol, g.date, g.date);
   const bySlot = sessions[g.date];
   if (!bySlot || !Object.keys(bySlot).length) return { wrote: false, gained: false };
 
-  const fetched1based = Object.keys(bySlot).map(Number).map(s => s + 1);
   const expected = patchExpectedSlots_(g);
-  const gained = fetched1based.some(s => expected.indexOf(s) >= 0);
+  let gained;
+  if (g.type === 'ZERO_WOLUMEN') {
+    gained = expected.some(s => {
+      const b = bySlot[s - 1];
+      return b && typeof b.volume === 'number' && b.volume > 0;
+    });
+  } else {
+    const fetched1based = Object.keys(bySlot).map(Number).map(s => s + 1);
+    gained = fetched1based.some(s => expected.indexOf(s) >= 0);
+  }
 
   if (isMain_(g.symbol)) {
     const bars = Object.keys(bySlot).map(Number).sort((a, b) => a - b).map(s => bySlot[s]);

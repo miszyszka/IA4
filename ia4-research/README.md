@@ -1,6 +1,6 @@
 # IA 4 — środowisko badawcze (Python, Mac)
 
-**Wersja projektu: 0.32 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 0.33 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Etap 0B. Ten folder robi jedną rzecz: ściąga świece z Firestore na dysk i daje
 do nich dostęp tak, żeby nie dało się przypadkiem zajrzeć do skarbca.
@@ -76,6 +76,14 @@ python verify.py
 Wypisze tabelę instrumentów w układzie takim jak w arkuszu PROJEKT i sam
 sprawdzi:
 
+- **„PRZED PRACĄ" (0.33)** — pierwsza sekcja wyjścia, zanim cokolwiek innego:
+  czy kopia lokalna (manifest `ia4.sync`) jest nowsza niż ostatni audyt Apps
+  Script z telemetrii (czyli czy w Firebase mogło pojawić się coś nowego,
+  czego jeszcze nie ma lokalnie), i co telemetria pokazuje jako otwarte luki
+  (w tym `ZERO_WOLUMEN`, L32 — świece z wolumenem 0, których automat w tle
+  jeszcze nie złatał). **Bez żadnego zapytania do Firestore** — tylko lokalny
+  manifest i telemetria już ściągnięta z GitHuba — więc można to sprawdzać
+  dowolnie często bez zużywania dziennego limitu,
 - **zgodność z pełnym audytem** — tabelę instrumentów z audytu bierze
   z `telemetry/state.json` (w klonie repozytorium, a gdy go nie ma — z GitHub);
   porównuje tylko zakres dat, który widział audyt, więc sesje dopisane później

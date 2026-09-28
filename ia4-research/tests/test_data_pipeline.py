@@ -1,5 +1,5 @@
 """
-Testy potoku danych Etapu 0B: sync.py, data.py, verify.py. Wersja projektu: 0.32 (2026-09-28).
+Testy potoku danych Etapu 0B: sync.py, data.py, verify.py. Wersja projektu: 0.33 (2026-09-28).
 
 Bez Firestore i bez sieci: klient Firestore jest podmieniony na atrapę w pamięci,
 granice skarbca na stałe z instrukcji 5.1, katalog danych na folder tymczasowy.
@@ -228,6 +228,33 @@ def test_verify_telemetry_compare_only_audited_range():
         tel["data"]["instruments"]["items"][0]["candles"] += 1
         diffs, _ = verify.compare_with_telemetry(["KO"], tel)
         assert len(diffs) == 1
+
+
+def test_preflight_freshness_flags_stale_and_zero_volume():
+    """0.33 — L32: preflight_freshness nie woła Firestore (tylko manifest + telemetria)."""
+    with tempfile.TemporaryDirectory() as t:
+        fc = setup(Path(t))
+        fill(fc)
+        m = sync.load_manifest()
+        sync.sync_symbol("KO", m)
+        sync.save_manifest(m)
+        reads_before = fc.reads[0]
+
+        # Audyt "w przyszłości" względem synced_at lokalnego — kopia ma być stara.
+        future_audit = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+        tel_stale = {"data": {"audit": {"fullAt": future_audit, "nightlyAt": future_audit},
+                               "gaps": {"total": 1, "new": 1, "byType": {"ZERO_WOLUMEN": 1}}}}
+        out = verify.preflight_freshness(tel_stale)
+        assert any("nowszy" in line or "Odśwież" in line for line in out)
+        assert any("ZERO_WOLUMEN" in line for line in out)
+
+        # Audyt "w przeszłości" — kopia lokalna ma być aktualna.
+        past_audit = "2020-01-01T00:00:00Z"
+        tel_fresh = {"data": {"audit": {"fullAt": past_audit, "nightlyAt": past_audit}, "gaps": {}}}
+        out2 = verify.preflight_freshness(tel_fresh)
+        assert any("aktualna" in line for line in out2)
+
+        assert fc.reads[0] == reads_before   # żadnego dodatkowego odczytu Firestore
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 """
-Testy katalogu S1 (Etap 1a). Wersja projektu: 0.32 (2026-09-28).
+Testy katalogu S1 (Etap 1a). Wersja projektu: 0.33 (2026-09-28).
 
 Uruchomienie z katalogu ia4-research:
     python -m pytest tests          # jeśli jest pytest
