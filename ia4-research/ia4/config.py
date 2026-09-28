@@ -1,6 +1,6 @@
 """
 IA 4 — konfiguracja środowiska badawczego.
-Wersja projektu: 0.37 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.38 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Dwie rzeczy, które ten moduł załatwia raz dla całego projektu:
 

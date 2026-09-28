@@ -1,6 +1,6 @@
 """
 IA 4 — świece jednego instrumentu przygotowane dla sygnałów i silnika (Etap 1b).
-Wersja projektu: 0.37 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.38 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 `prepare()` zamienia ramkę z `data.load()` (jeden instrument) na tablice numpy
 plus to, czego wskaźniki same nie wiedzą (indicators.py liczy na ciągłym

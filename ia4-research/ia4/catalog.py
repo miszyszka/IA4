@@ -1,7 +1,7 @@
 """
 IA 4 — katalog sygnałów S1 (Etap 1a).
 
-Wersja projektu: 0.37 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.38 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Jedno miejsce, w którym zdefiniowany jest cały katalog S1 (D20). Z tych
 definicji powstaje plik `s1/catalog.json`, a z niego arkusz S1 (Apps Script)
@@ -39,11 +39,11 @@ import json
 import sys
 from pathlib import Path
 
-PROJECT_VERSION = "0.37"
-CATALOG_VERSION = "S1-szkic-1"     # zmienia się przy każdej zmianie definicji
+PROJECT_VERSION = "0.38"
+CATALOG_VERSION = "S1-v1"          # zamrożony 2026-09-28 (1.5); każda zmiana definicji = nowa wersja i nowe próby (5.7)
 # Zamrożenie (1.1, 1.5, D21): data ustawiana RAZ, na końcu Etapu 1, po policzeniu
 # częstości. Od tej chwili każdy nowy sygnał to nowa próba w liczniku 5.7.
-FROZEN_AT: str | None = None
+FROZEN_AT: str | None = "2026-09-28"
 FREQUENCY_PATH = Path(__file__).resolve().parents[2] / "s1" / "frequency.json"
 MAX_SIGNALS = 300                   # D19
 MAX_WINDOW_BARS = 350               # instrukcja 1.3: najdłuższe okno w S1
