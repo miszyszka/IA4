@@ -1,5 +1,5 @@
 """
-Testy potoku danych Etapu 0B: sync.py, data.py, verify.py. Wersja projektu: 0.34 (2026-09-28).
+Testy potoku danych Etapu 0B: sync.py, data.py, verify.py. Wersja projektu: 0.35 (2026-09-28).
 
 Bez Firestore i bez sieci: klient Firestore jest podmieniony na atrapę w pamięci,
 granice skarbca na stałe z instrukcji 5.1, katalog danych na folder tymczasowy.
@@ -10,6 +10,7 @@ Uruchomienie z katalogu ia4-research:
 """
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
@@ -223,11 +224,44 @@ def test_verify_telemetry_compare_only_audited_range():
         tel = {"data": {"instruments": {"countedAt": "x", "items": [
             {"symbol": "KO", "first": "2025-01-02", "last": "2025-12-01",
              "sessions": int(seen["date"].nunique()), "candles": int(len(seen))}]}}}
-        diffs, _ = verify.compare_with_telemetry(["KO"], tel)
-        assert diffs == [], diffs                       # sesje po audycie nie są rozbieżnością
+        diffs, info, _ = verify.compare_with_telemetry(["KO"], tel)
+        assert diffs == [] and info == [], (diffs, info)   # sesje po audycie nie są rozbieżnością
         tel["data"]["instruments"]["items"][0]["candles"] += 1
-        diffs, _ = verify.compare_with_telemetry(["KO"], tel)
-        assert len(diffs) == 1
+        diffs, info, _ = verify.compare_with_telemetry(["KO"], tel)
+        assert len(diffs) == 1 and info == []               # Python ma MNIEJ niż audyt — prawdziwy problem
+        tel["data"]["instruments"]["items"][0]["candles"] -= 2   # teraz audyt ma MNIEJ niż Python
+        diffs, info, _ = verify.compare_with_telemetry(["KO"], tel)
+        assert diffs == [] and len(info) == 1               # Python ma WIĘCEJ — łatanie po audycie, nieblokujące
+
+
+def test_split_unlisted_jumps_excludes_confirmed_splits():
+    """0.34 — L29/D24: split już wpisany do s1/splits.json nie blokuje kryterium 0.9."""
+    big = pd.DataFrame([
+        {"symbol": "NFLX", "date": "2025-10-01", "slot": 0, "z": 1199.0, "na": 117.5, "pct": -90.2, "gdzie": "o"},
+        {"symbol": "DELL", "date": "2026-05-29", "slot": 0, "z": 317.9, "na": 418.0, "pct": 31.5, "gdzie": "o"},
+    ])
+    splits = {("NFLX", "2025-10-01")}
+    unlisted, listed = verify.split_unlisted_jumps(big, splits)
+    assert listed == 1
+    assert list(unlisted["symbol"]) == ["DELL"]
+
+    empty = verify.split_unlisted_jumps(pd.DataFrame(columns=big.columns), splits)
+    assert empty[0].empty and empty[1] == 0
+
+
+def test_load_splits_reads_symbol_date_pairs():
+    with tempfile.TemporaryDirectory() as t:
+        f = Path(t) / "splits.json"
+        f.write_text(json.dumps({"splits": [{"symbol": "NFLX", "date": "2025-10-01", "note": "x"}]}),
+                    encoding="utf-8")
+        original = verify.SPLITS_PATH
+        try:
+            verify.SPLITS_PATH = f
+            assert verify.load_splits() == {("NFLX", "2025-10-01")}
+            verify.SPLITS_PATH = Path(t) / "missing.json"
+            assert verify.load_splits() == set()
+        finally:
+            verify.SPLITS_PATH = original
 
 
 def test_preflight_freshness_flags_stale_and_zero_volume():

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 IA 4 — sprawdzian kryterium 0.9.
-Wersja projektu: 0.34 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.35 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kryterium 0.9 brzmi: „Python wczytuje dane wszystkich instrumentów, liczby
 zgadzają się z audytem". Ten skrypt wypisuje tabelę w tym samym układzie,
@@ -58,6 +58,30 @@ SPLIT_LIKE_PCT = 40.0    # powyżej: prawie na pewno split/artefakt, nie ruch ry
 MAX_LEAD_NO_VOLUME = 20  # sesji bez wolumenu na początku historii, które tłumaczy horyzont Yahoo
 TELEMETRY_PATH = config.RESEARCH_DIR.parent / "telemetry" / "state.json"
 TELEMETRY_URL = "https://raw.githubusercontent.com/miszyszka/IA4/main/telemetry/state.json"
+SPLITS_PATH = config.RESEARCH_DIR.parent / "s1" / "splits.json"
+
+
+def load_splits() -> set[tuple[str, str]]:
+    """
+    Sesje już potwierdzone jako split i wpisane do s1/splits.json (D24).
+    Zwraca zbiór (symbol, date) — do wykluczenia z blokady ≥40% w main():
+    bez tego kryterium 0.9 nigdy by się nie domknęło, bo KAŻDY prawdziwy
+    split (nawet już rozpoznany i wpisany na listę) dalej wygląda jak skok
+    ceny ≥40% w surowych danych Yahoo (0.34 — wykryte przy pierwszym pełnym
+    przebiegu 0.9, gdzie NFLX z listy splits.json i tak blokował).
+    """
+    if not SPLITS_PATH.exists():
+        return set()
+    d = json.loads(SPLITS_PATH.read_text(encoding="utf-8"))
+    return {(s["symbol"], s["date"]) for s in d.get("splits", [])}
+
+
+def split_unlisted_jumps(big: pd.DataFrame, splits: set[tuple[str, str]]) -> tuple[pd.DataFrame, int]:
+    """Rozdziela skoki ≥ SPLIT_LIKE_PCT na (nierozpoznane, ile już na liście splitów)."""
+    if big.empty:
+        return big, 0
+    unlisted = big[~big.apply(lambda r: (r["symbol"], r["date"]) in splits, axis=1)]
+    return unlisted, len(big) - len(unlisted)
 
 
 # ---------------------------------------------------------------------------
@@ -137,16 +161,27 @@ def load_telemetry(path: Path = TELEMETRY_PATH) -> dict | None:
         return None
 
 
-def compare_with_telemetry(symbols: list[str], tel: dict) -> tuple[list[str], str]:
-    """Sesje i świece w zakresie dat, który widział ostatni pełny audyt."""
+def compare_with_telemetry(symbols: list[str], tel: dict) -> tuple[list[str], list[str], str]:
+    """
+    Sesje i świece w zakresie dat, który widział ostatni pełny audyt.
+    Zwraca (problems, info, at):
+      problems — Python ma MNIEJ niż audyt widział wtedy — prawdziwa rozbieżność
+                 (utrata danych), blokuje kryterium 0.9.
+      info     — Python ma WIĘCEJ niż audyt — oczekiwane, gdy automat łatania
+                 (BRAK_SWIEC/ZERO_WOLUMEN) uzupełnił luki PO tym audycie, zanim
+                 zrobiono tę synchronizację (0.34, zaobserwowane przy pierwszym
+                 pełnym przebiegu 0.9: 9 instrumentów miało więcej świec niż
+                 audyt z 2026-09-26, bo łatanie w międzyczasie je dograło) —
+                 nie blokuje, tylko informuje.
+    """
     inst = ((tel.get("data") or {}).get("instruments") or {})
     items = {r["symbol"]: r for r in inst.get("items", [])}
     at = inst.get("countedAt", "?")
-    out = []
+    problems, info = [], []
     for s in symbols:
         a = items.get(s)
         if not a:
-            out.append(f"{s}: brak w tabeli audytu (telemetria z {at})")
+            problems.append(f"{s}: brak w tabeli audytu (telemetria z {at})")
             continue
         p = sync.parquet_path(s)
         if not p.exists():
@@ -154,10 +189,13 @@ def compare_with_telemetry(symbols: list[str], tel: dict) -> tuple[list[str], st
         d = pd.read_parquet(p)
         d = d[(d["date"] >= a["first"]) & (d["date"] <= a["last"])]
         ses, cand = int(d["date"].nunique()), int(len(d))
-        if ses != int(a["sessions"]) or cand != int(a["candles"]):
-            out.append(f"{s}: {a['first']} – {a['last']}: Python {ses} sesji / {cand} świec, "
-                       f"audyt {a['sessions']} / {a['candles']}")
-    return out, at
+        if ses < int(a["sessions"]) or cand < int(a["candles"]):
+            problems.append(f"{s}: {a['first']} – {a['last']}: Python {ses} sesji / {cand} świec, "
+                            f"audyt {a['sessions']} / {a['candles']} — Python ma MNIEJ niż audyt")
+        elif ses > int(a["sessions"]) or cand > int(a["candles"]):
+            info.append(f"{s}: Python {ses} sesji / {cand} świec, audyt {a['sessions']} / {a['candles']} "
+                        f"— łatanie uzupełniło luki po audycie z {at}")
+    return problems, info, at
 
 
 def consistency_checks(cov: pd.DataFrame) -> list[str]:
@@ -290,10 +328,14 @@ def main() -> int:
             for line in preflight_freshness(tel):
                 print(f"  · {line}")
             print()
-            diffs, at = compare_with_telemetry(symbols, tel)
+            diffs, more_info, at = compare_with_telemetry(symbols, tel)
             print(f"Porównanie z pełnym audytem z {at}: "
                   f"{'zgodne' if not diffs else f'{len(diffs)} rozbieżności'}")
             problems += diffs
+            if more_info:
+                notes.append(f"{len(more_info)} instrument(ów) ma więcej sesji/świec niż audyt z {at} — "
+                             "łatanie luk uzupełniło je w międzyczasie (nieblokujące):")
+                notes.extend(f"  {line}" for line in more_info)
 
     # --- wolumen (D12) ---
     vol = volume_report(symbols, v.vault_start)
@@ -332,10 +374,18 @@ def main() -> int:
         print(f"\nSkoki ceny > {JUMP_PCT:.0f}% (D11): {len(jumps)}")
         print(jumps.to_string(index=False))
         big = jumps[jumps["pct"].abs() >= SPLIT_LIKE_PCT]
-        if len(big):
+        # Sesja już wpisana do s1/splits.json (D24) jest ROZPOZNANYM splitem —
+        # nadal wygląda jak skok ≥40% w surowych danych Yahoo (to nie usuwa
+        # samej ceny), więc bez tego wykluczenia kryterium 0.9 nigdy by się
+        # nie domknęło: każdy potwierdzony split blokowałby się sam na zawsze.
+        unlisted, listed = split_unlisted_jumps(big, load_splits())
+        if listed:
+            notes.append(f"{listed} skok(ów) ≥{SPLIT_LIKE_PCT:.0f}% już na liście splitów "
+                         f"(s1/splits.json, D24) — nie blokuje.")
+        if len(unlisted):
             problems.append("Skoki ≥ {:.0f}% — prawie na pewno split albo artefakt Yahoo, sesja musi trafić "
                             "na listę splitów przed Etapem 1b (D11): {}".format(
-                                SPLIT_LIKE_PCT, ", ".join(f"{r.symbol} {r.date}" for r in big.itertuples())))
+                                SPLIT_LIKE_PCT, ", ".join(f"{r.symbol} {r.date}" for r in unlisted.itertuples())))
         notes.append("Każdy skok z listy trzeba ocenić (split czy wynik kwartalny) — D11.")
 
     total_sessions = int(cov["sesji"].sum())
