@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.36 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.37 (2026-09-28) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.36',
+  INSTRUCTION_VERSION: '0.37',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -150,7 +150,7 @@ const DECISIONS = [
   ['D25', '1b przed końcem Etapu 0', 'kod silnika i testy na sztucznych świecach teraz; dane dopiero po 0.9', '✅ przyjęta 2026-09-28'],
   ['D26', 'Kryterium 1.4 (wolumen)', 'bez dziur od pierwszej sesji z wolumenem; ≤ 20 sesji bez wolumenu na początku', '✅ przyjęta 2026-09-28'],
   ['D27', 'Dziury w danych (L30)', 'sygnał nie odpala, gdy okno obejmuje brakującą świecę; pozycja trwa dalej', '✅ przyjęta 2026-09-28'],
-  ['D28', 'Doprecyzowania kontraktu silnika', 'split = cięcie szeregu; dziura przypisana do świecy po niej; NEXT_OPEN wymaga świecy wejścia; END; SQZ/ACC doprecyzowane', '🔸 do potwierdzenia przed 1.5'],
+  ['D28', 'Doprecyzowania kontraktu silnika', 'split = cięcie szeregu; dziura przypisana do świecy po niej; NEXT_OPEN wymaga świecy wejścia; END; SQZ/ACC doprecyzowane', '✅ przyjęta 2026-09-28'],
 ];
 
 const PJ_WIDTH = 7;
@@ -891,6 +891,10 @@ function projOldCodeLeft_() {
 //  ARKUSZ PROJEKT
 // ============================================================================
 /** Odczyt tego, co użytkownik wpisał w arkuszu: ręczne kryteria i decyzje o lukach. */
+function projIsTicked_(v) {
+  return v === true || /^(v|x|tak|true|ok|✓|✔|☑)$/i.test(String(v == null ? '' : v).trim());
+}
+
 function projReadInputs_() {
   const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PROJECT.SHEET);
   const st = projLoad_();
@@ -898,7 +902,9 @@ function projReadInputs_() {
   if (!sh || sh.getLastRow() < 1) return inputs;
   sh.getRange(1, 1, sh.getLastRow(), PJ_WIDTH).getValues().forEach(r => {
     const id = String(r[0] || '');
-    if (id.indexOf('K') === 0) inputs.manual[id.slice(1)] = r[4] === true;
+    // Pole wyboru daje true. Od 0.37 przyjmujemy też wpisane ręcznie „v”, „x”, „tak”, „✓” —
+    // wpisanie znaku kasuje pole wyboru i do tej pory kryterium po cichu zostawało niespełnione.
+    if (id.indexOf('K') === 0) inputs.manual[id.slice(1)] = projIsTicked_(r[4]);
     if (id.indexOf('L|') === 0) inputs.gaps[id.slice(2)] = { status: r[5] || 'nowa', comment: r[6] || '' };
   });
   return inputs;

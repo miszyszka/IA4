@@ -1,5 +1,5 @@
 """
-Testy silnika transakcji (Etap 1b, kryterium 1.2). Wersja projektu: 0.36 (2026-09-28).
+Testy silnika transakcji (Etap 1b, kryterium 1.2). Wersja projektu: 0.37 (2026-09-28).
 
 Wyłącznie sztuczne świce (1.1, D25): każdy przypadek sprawdza jeden punkt
 kontraktu silnika na liczbach policzonych ręcznie, a na koniec wektorowy
