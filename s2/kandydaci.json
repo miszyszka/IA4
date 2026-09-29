@@ -1,0 +1,1032 @@
+{
+ "meta": {
+  "opis": "Lista kandydatów do S2 zamrożona PRZED sprawdzianem poletka (D33). Po zapisaniu w repozytorium nie wolno jej zmieniać — ia4.poletko odmówi pracy, jeśli plik ma niezatwierdzone zmiany.",
+  "decyzja": "D33",
+  "zatwierdzona": "2026-09-29",
+  "zrodlo": {
+   "przebieg": "3 (D32)",
+   "computed_at": "2026-09-29T11:46:25+00:00",
+   "catalog_hash": "e0c06a185914",
+   "licznik_prob": 92870
+  },
+  "kryteria_wyboru": [
+   "przewaga > 0 w obu grupach (5.6)",
+   "ekspektancja >= 0,10% bez kosztów w obu grupach (= 0,05% po kosztach, 5.11)",
+   "kontr_transakcji >= 150, gl_transakcji >= 30",
+   "stabilność: >= 50% sąsiednich par SL/TP i >= 50% trybów tego sygnału też ma przewagę w obu grupach",
+   "jedna konfiguracja na sygnał, <= 3 sygnały z rodziny, H1 <= 30, bez sygnałów kontrolnych BASE",
+   "ranking: 0,5·min(z_gl, z_kontr) + 0,5·z_kontr, pomnożone przez (0,5 + 0,5·stabilność sąsiadów)"
+  ],
+  "kryterium_poletka": {
+   "okres": "poletko 2025-10-01 – 2026-03-22, wejścia tylko na poletku; wskaźniki rozgrzewają się na odkrywaniu; transakcje otwarte na końcu zamykane po ostatniej świecy poletka",
+   "sposob_liczenia": "ten sam co przebieg 3 (D30–D32): bez kosztów, 10 $ na transakcję, wejście losowe (5.3) na świecach poletka, te same SL/TP/H/tryb",
+   "strategia_zostaje": "gl_przewaga > 0 i kontr_przewaga > 0 i gl_ekspektancja >= 0,10 i kontr_ekspektancja >= 0,10; brak transakcji w grupie = nie zostaje",
+   "lista_cos_znaczy": "co najmniej 20 z 50 strategii zostaje (przypadkiem średnio ok. 13; P(>= 20) ≈ 2% przy 26% szansy na przewagę w obu grupach)",
+   "ponizej_progu": "S1 bez przewagi — decyzja według 5.12 (opisać i zamknąć, nowy projekt, filtr negatywny)",
+   "jednorazowo": "poletko liczone raz (5.1); ia4.poletko odmawia, gdy s2/poletko_meta.json już istnieje"
+  },
+  "sha256_ids": "66ad474341f856f987a3a2561b6383fdec6b0203630ef708e8386bd81dd15248"
+ },
+ "strategie": [
+  {
+   "nr": 1,
+   "id": "ATRRISE_N14_K4__L__SL2_TP2_H35__10",
+   "sygnal": "ATRRISE_N14_K4",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 2,
+   "tp": 2,
+   "h": 35,
+   "tryb": "10",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 599,
+    "kontr_transakcji": 7372,
+    "gl_ekspektancja": 0.5588,
+    "kontr_ekspektancja": 0.2754,
+    "gl_przewaga": 0.3484,
+    "kontr_przewaga": 0.1656
+   }
+  },
+  {
+   "nr": 2,
+   "id": "ATRRISE_N7_K3__L__SL3_TP2_H35__10",
+   "sygnal": "ATRRISE_N7_K3",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 2,
+   "h": 35,
+   "tryb": "10",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 470,
+    "kontr_transakcji": 5916,
+    "gl_ekspektancja": 0.6133,
+    "kontr_ekspektancja": 0.3156,
+    "gl_przewaga": 0.431,
+    "kontr_przewaga": 0.1762
+   }
+  },
+  {
+   "nr": 3,
+   "id": "MADEV_SMA20_X2@TREND140__S__SL1_TP3_H70__10",
+   "sygnal": "MADEV_SMA20_X2@TREND140",
+   "kategoria": "H1",
+   "kierunek": "S",
+   "sl": 1,
+   "tp": 3,
+   "h": 70,
+   "tryb": "10",
+   "motyw": "B kontynuacja spadku (SHORT)",
+   "odkrywanie": {
+    "gl_transakcji": 202,
+    "kontr_transakcji": 1071,
+    "gl_ekspektancja": 0.4095,
+    "kontr_ekspektancja": 0.2002,
+    "gl_przewaga": 0.5565,
+    "kontr_przewaga": 0.2887
+   }
+  },
+  {
+   "nr": 4,
+   "id": "HHDD_L140_X20__L__SL3_TP2_H35__10",
+   "sygnal": "HHDD_L140_X20",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 2,
+   "h": 35,
+   "tryb": "10",
+   "motyw": "C kupno po spadku (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 302,
+    "kontr_transakcji": 1264,
+    "gl_ekspektancja": 0.7294,
+    "kontr_ekspektancja": 0.4333,
+    "gl_przewaga": 0.547,
+    "kontr_przewaga": 0.2939
+   }
+  },
+  {
+   "nr": 5,
+   "id": "RISE_N7_X3__L__SL3_TP1_H14__10",
+   "sygnal": "RISE_N7_X3",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 1,
+   "h": 14,
+   "tryb": "10",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 784,
+    "kontr_transakcji": 4187,
+    "gl_ekspektancja": 0.3713,
+    "kontr_ekspektancja": 0.1848,
+    "gl_przewaga": 0.2592,
+    "kontr_przewaga": 0.1164
+   }
+  },
+  {
+   "nr": 6,
+   "id": "DROP_N7_X5__S__SL3_TP3_H70__10",
+   "sygnal": "DROP_N7_X5",
+   "kategoria": "H1",
+   "kierunek": "S",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "10",
+   "motyw": "B kontynuacja spadku (SHORT)",
+   "odkrywanie": {
+    "gl_transakcji": 234,
+    "kontr_transakcji": 1356,
+    "gl_ekspektancja": 0.3069,
+    "kontr_ekspektancja": 0.2242,
+    "gl_przewaga": 0.517,
+    "kontr_przewaga": 0.4487
+   }
+  },
+  {
+   "nr": 7,
+   "id": "DROP_N2_X4__S__SL3_TP3_H70__5",
+   "sygnal": "DROP_N2_X4",
+   "kategoria": "H1",
+   "kierunek": "S",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "5",
+   "motyw": "B kontynuacja spadku (SHORT)",
+   "odkrywanie": {
+    "gl_transakcji": 103,
+    "kontr_transakcji": 495,
+    "gl_ekspektancja": 0.6998,
+    "kontr_ekspektancja": 0.3581,
+    "gl_przewaga": 0.91,
+    "kontr_przewaga": 0.5826
+   }
+  },
+  {
+   "nr": 8,
+   "id": "MADEV_SMA140_X5__L__SL1_TP3_H70__10",
+   "sygnal": "MADEV_SMA140_X5",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 1,
+   "tp": 3,
+   "h": 70,
+   "tryb": "10",
+   "motyw": "C kupno po spadku (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 820,
+    "kontr_transakcji": 7936,
+    "gl_ekspektancja": 0.2693,
+    "kontr_ekspektancja": 0.2129,
+    "gl_przewaga": 0.1099,
+    "kontr_przewaga": 0.1161
+   }
+  },
+  {
+   "nr": 9,
+   "id": "IDIO_X2_DN__S__SL2_TP2_H35__5",
+   "sygnal": "IDIO_X2_DN",
+   "kategoria": "H7",
+   "kierunek": "S",
+   "sl": 2,
+   "tp": 2,
+   "h": 35,
+   "tryb": "5",
+   "motyw": "B kontynuacja spadku (SHORT)",
+   "odkrywanie": {
+    "gl_transakcji": 130,
+    "kontr_transakcji": 1166,
+    "gl_ekspektancja": 0.2556,
+    "kontr_ekspektancja": 0.1268,
+    "gl_przewaga": 0.4917,
+    "kontr_przewaga": 0.2433
+   }
+  },
+  {
+   "nr": 10,
+   "id": "HHDD_L140_X12__L__SL1_TP3_H70__10",
+   "sygnal": "HHDD_L140_X12",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 1,
+   "tp": 3,
+   "h": 70,
+   "tryb": "10",
+   "motyw": "C kupno po spadku (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 1100,
+    "kontr_transakcji": 7645,
+    "gl_ekspektancja": 0.1981,
+    "kontr_ekspektancja": 0.2279,
+    "gl_przewaga": 0.0387,
+    "kontr_przewaga": 0.1312
+   }
+  },
+  {
+   "nr": 11,
+   "id": "BIGGREEN_X2.5__L__SL5_TP2_H35__nowy",
+   "sygnal": "BIGGREEN_X2.5",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 5,
+   "tp": 2,
+   "h": 35,
+   "tryb": "nowy",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 66,
+    "kontr_transakcji": 304,
+    "gl_ekspektancja": 0.8547,
+    "kontr_ekspektancja": 0.9297,
+    "gl_przewaga": 0.6558,
+    "kontr_przewaga": 0.7519
+   }
+  },
+  {
+   "nr": 12,
+   "id": "RED_K4_X2.5__S__SL2_TP2_H35__5",
+   "sygnal": "RED_K4_X2.5",
+   "kategoria": "H1",
+   "kierunek": "S",
+   "sl": 2,
+   "tp": 2,
+   "h": 35,
+   "tryb": "5",
+   "motyw": "B kontynuacja spadku (SHORT)",
+   "odkrywanie": {
+    "gl_transakcji": 76,
+    "kontr_transakcji": 744,
+    "gl_ekspektancja": 0.544,
+    "kontr_ekspektancja": 0.1126,
+    "gl_przewaga": 0.7801,
+    "kontr_przewaga": 0.2291
+   }
+  },
+  {
+   "nr": 13,
+   "id": "RISE_N5_X2.5__L__SL3_TP1_H14__5",
+   "sygnal": "RISE_N5_X2.5",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 1,
+   "h": 14,
+   "tryb": "5",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 718,
+    "kontr_transakcji": 4183,
+    "gl_ekspektancja": 0.3613,
+    "kontr_ekspektancja": 0.1545,
+    "gl_przewaga": 0.2492,
+    "kontr_przewaga": 0.0862
+   }
+  },
+  {
+   "nr": 14,
+   "id": "MAUP_SMA20_X2__L__SL1_TP2_H35__10",
+   "sygnal": "MAUP_SMA20_X2",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 1,
+   "tp": 2,
+   "h": 35,
+   "tryb": "10",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 1098,
+    "kontr_transakcji": 8284,
+    "gl_ekspektancja": 0.3604,
+    "kontr_ekspektancja": 0.1127,
+    "gl_przewaga": 0.2383,
+    "kontr_przewaga": 0.0456
+   }
+  },
+  {
+   "nr": 15,
+   "id": "BIGGREEN_X1.5__L__SL5_TP2_H35__nowy",
+   "sygnal": "BIGGREEN_X1.5",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 5,
+   "tp": 2,
+   "h": 35,
+   "tryb": "nowy",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 199,
+    "kontr_transakcji": 1169,
+    "gl_ekspektancja": 0.7807,
+    "kontr_ekspektancja": 0.4343,
+    "gl_przewaga": 0.5818,
+    "kontr_przewaga": 0.2565
+   }
+  },
+  {
+   "nr": 16,
+   "id": "SORU_X2.5__L__SL4_TP3_H70__1",
+   "sygnal": "SORU_X2.5",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 4,
+   "tp": 3,
+   "h": 70,
+   "tryb": "1",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 109,
+    "kontr_transakcji": 690,
+    "gl_ekspektancja": 1.3466,
+    "kontr_ekspektancja": 0.6135,
+    "gl_przewaga": 1.0772,
+    "kontr_przewaga": 0.3539
+   }
+  },
+  {
+   "nr": 17,
+   "id": "WRB_K3_DN__S__SL1_TP3_H70__1",
+   "sygnal": "WRB_K3_DN",
+   "kategoria": "H4",
+   "kierunek": "S",
+   "sl": 1,
+   "tp": 3,
+   "h": 70,
+   "tryb": "1",
+   "motyw": "B kontynuacja spadku (SHORT)",
+   "odkrywanie": {
+    "gl_transakcji": 42,
+    "kontr_transakcji": 625,
+    "gl_ekspektancja": 0.2566,
+    "kontr_ekspektancja": 0.2026,
+    "gl_przewaga": 0.4035,
+    "kontr_przewaga": 0.291
+   }
+  },
+  {
+   "nr": 18,
+   "id": "GAPUP_X2__S__SL4_TP1_H14__1",
+   "sygnal": "GAPUP_X2",
+   "kategoria": "H1",
+   "kierunek": "S",
+   "sl": 4,
+   "tp": 1,
+   "h": 14,
+   "tryb": "1",
+   "motyw": "D zwrot trendu",
+   "odkrywanie": {
+    "gl_transakcji": 79,
+    "kontr_transakcji": 436,
+    "gl_ekspektancja": 0.3476,
+    "kontr_ekspektancja": 0.1848,
+    "gl_przewaga": 0.5371,
+    "kontr_przewaga": 0.2762
+   }
+  },
+  {
+   "nr": 19,
+   "id": "MAUP_SMA140_X5__L__SL3_TP2_H35__10",
+   "sygnal": "MAUP_SMA140_X5",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 2,
+   "h": 35,
+   "tryb": "10",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 1121,
+    "kontr_transakcji": 8353,
+    "gl_ekspektancja": 0.3577,
+    "kontr_ekspektancja": 0.2092,
+    "gl_przewaga": 0.1753,
+    "kontr_przewaga": 0.0698
+   }
+  },
+  {
+   "nr": 20,
+   "id": "MKT_DN__L__SL4_TP2_H35__5",
+   "sygnal": "MKT_DN",
+   "kategoria": "H7",
+   "kierunek": "L",
+   "sl": 4,
+   "tp": 2,
+   "h": 35,
+   "tryb": "5",
+   "motyw": "C kupno po spadku (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 108,
+    "kontr_transakcji": 1139,
+    "gl_ekspektancja": 0.3593,
+    "kontr_ekspektancja": 0.496,
+    "gl_przewaga": 0.1937,
+    "kontr_przewaga": 0.3385
+   }
+  },
+  {
+   "nr": 21,
+   "id": "PXMA_SMA50_UP__L__SL3_TP3_H70__nowy",
+   "sygnal": "PXMA_SMA50_UP",
+   "kategoria": "H2",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "nowy",
+   "motyw": "D zwrot trendu",
+   "odkrywanie": {
+    "gl_transakcji": 145,
+    "kontr_transakcji": 2691,
+    "gl_ekspektancja": 0.5402,
+    "kontr_ekspektancja": 0.4409,
+    "gl_przewaga": 0.3378,
+    "kontr_przewaga": 0.219
+   }
+  },
+  {
+   "nr": 22,
+   "id": "LLRU_L140_X20__L__SL5_TP3_H70__10",
+   "sygnal": "LLRU_L140_X20",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 5,
+   "tp": 3,
+   "h": 70,
+   "tryb": "10",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 710,
+    "kontr_transakcji": 2849,
+    "gl_ekspektancja": 0.4778,
+    "kontr_ekspektancja": 0.5693,
+    "gl_przewaga": 0.1074,
+    "kontr_przewaga": 0.2678
+   }
+  },
+  {
+   "nr": 23,
+   "id": "REVDN_U3__L__SL5_TP1_H14__nowy",
+   "sygnal": "REVDN_U3",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 5,
+   "tp": 1,
+   "h": 14,
+   "tryb": "nowy",
+   "motyw": "C kupno po spadku (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 82,
+    "kontr_transakcji": 464,
+    "gl_ekspektancja": 0.2933,
+    "kontr_ekspektancja": 0.4775,
+    "gl_przewaga": 0.176,
+    "kontr_przewaga": 0.4023
+   }
+  },
+  {
+   "nr": 24,
+   "id": "SORU_X1.5__L__SL3_TP2_H35__1",
+   "sygnal": "SORU_X1.5",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 2,
+   "h": 35,
+   "tryb": "1",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 207,
+    "kontr_transakcji": 1930,
+    "gl_ekspektancja": 0.5177,
+    "kontr_ekspektancja": 0.2704,
+    "gl_przewaga": 0.3354,
+    "kontr_przewaga": 0.131
+   }
+  },
+  {
+   "nr": 25,
+   "id": "LLRU_L35_X5__L__SL3_TP3_H70__nowy",
+   "sygnal": "LLRU_L35_X5",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "nowy",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 158,
+    "kontr_transakcji": 1561,
+    "gl_ekspektancja": 0.5899,
+    "kontr_ekspektancja": 0.429,
+    "gl_przewaga": 0.3874,
+    "kontr_przewaga": 0.2071
+   }
+  },
+  {
+   "nr": 26,
+   "id": "GAPGREEN_X1__L__SL5_TP3_H70__5",
+   "sygnal": "GAPGREEN_X1",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 5,
+   "tp": 3,
+   "h": 70,
+   "tryb": "5",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 87,
+    "kontr_transakcji": 607,
+    "gl_ekspektancja": 1.1715,
+    "kontr_ekspektancja": 0.6387,
+    "gl_przewaga": 0.8011,
+    "kontr_przewaga": 0.3372
+   }
+  },
+  {
+   "nr": 27,
+   "id": "MAX_EMA14_35_UP__L__SL3_TP3_H70__1",
+   "sygnal": "MAX_EMA14_35_UP",
+   "kategoria": "H2",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "1",
+   "motyw": "D zwrot trendu",
+   "odkrywanie": {
+    "gl_transakcji": 60,
+    "kontr_transakcji": 880,
+    "gl_ekspektancja": 0.8804,
+    "kontr_ekspektancja": 0.467,
+    "gl_przewaga": 0.6779,
+    "kontr_przewaga": 0.2451
+   }
+  },
+  {
+   "nr": 28,
+   "id": "VWAP_DEV2_BELOW__S__SL3_TP3_H70__1",
+   "sygnal": "VWAP_DEV2_BELOW",
+   "kategoria": "H2",
+   "kierunek": "S",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "1",
+   "motyw": "B kontynuacja spadku (SHORT)",
+   "odkrywanie": {
+    "gl_transakcji": 59,
+    "kontr_transakcji": 244,
+    "gl_ekspektancja": 0.5992,
+    "kontr_ekspektancja": 0.4016,
+    "gl_przewaga": 0.8094,
+    "kontr_przewaga": 0.6261
+   }
+  },
+  {
+   "nr": 29,
+   "id": "MACD_ZERO_UP__L__SL3_TP3_H70__5",
+   "sygnal": "MACD_ZERO_UP",
+   "kategoria": "H2",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "5",
+   "motyw": "D zwrot trendu",
+   "odkrywanie": {
+    "gl_transakcji": 83,
+    "kontr_transakcji": 1449,
+    "gl_ekspektancja": 0.9781,
+    "kontr_ekspektancja": 0.3829,
+    "gl_przewaga": 0.7757,
+    "kontr_przewaga": 0.161
+   }
+  },
+  {
+   "nr": 30,
+   "id": "OBVD_UP__S__SL1_TP3_H70__1",
+   "sygnal": "OBVD_UP",
+   "kategoria": "H8",
+   "kierunek": "S",
+   "sl": 1,
+   "tp": 3,
+   "h": 70,
+   "tryb": "1",
+   "motyw": "B kontynuacja spadku (SHORT)",
+   "odkrywanie": {
+    "gl_transakcji": 36,
+    "kontr_transakcji": 570,
+    "gl_ekspektancja": 0.1509,
+    "kontr_ekspektancja": 0.1254,
+    "gl_przewaga": 0.2979,
+    "kontr_przewaga": 0.2138
+   }
+  },
+  {
+   "nr": 31,
+   "id": "MASLOPE_SMA35_UP__L__SL3_TP3_H70__5",
+   "sygnal": "MASLOPE_SMA35_UP",
+   "kategoria": "H2",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "5",
+   "motyw": "D zwrot trendu",
+   "odkrywanie": {
+    "gl_transakcji": 69,
+    "kontr_transakcji": 1185,
+    "gl_ekspektancja": 0.6307,
+    "kontr_ekspektancja": 0.4369,
+    "gl_przewaga": 0.4282,
+    "kontr_przewaga": 0.215
+   }
+  },
+  {
+   "nr": 32,
+   "id": "PULLMA_EMA20_DN__L__SL4_TP3_H70__5",
+   "sygnal": "PULLMA_EMA20_DN",
+   "kategoria": "H2",
+   "kierunek": "L",
+   "sl": 4,
+   "tp": 3,
+   "h": 70,
+   "tryb": "5",
+   "motyw": "C kupno po spadku (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 69,
+    "kontr_transakcji": 1492,
+    "gl_ekspektancja": 1.5641,
+    "kontr_ekspektancja": 0.4231,
+    "gl_przewaga": 1.2947,
+    "kontr_przewaga": 0.1635
+   }
+  },
+  {
+   "nr": 33,
+   "id": "DDAYS_K3__L__SL4_TP3_H70__1",
+   "sygnal": "DDAYS_K3",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 4,
+   "tp": 3,
+   "h": 70,
+   "tryb": "1",
+   "motyw": "C kupno po spadku (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 56,
+    "kontr_transakcji": 742,
+    "gl_ekspektancja": 0.5021,
+    "kontr_ekspektancja": 0.6407,
+    "gl_przewaga": 0.2328,
+    "kontr_przewaga": 0.3811
+   }
+  },
+  {
+   "nr": 34,
+   "id": "SODD_X4__S__SL3_TP3_H70__nowy",
+   "sygnal": "SODD_X4",
+   "kategoria": "H1",
+   "kierunek": "S",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "nowy",
+   "motyw": "B kontynuacja spadku (SHORT)",
+   "odkrywanie": {
+    "gl_transakcji": 54,
+    "kontr_transakcji": 269,
+    "gl_ekspektancja": 0.6785,
+    "kontr_ekspektancja": 0.1148,
+    "gl_przewaga": 0.8886,
+    "kontr_przewaga": 0.3393
+   }
+  },
+  {
+   "nr": 35,
+   "id": "RSX_UP__L__SL3_TP2_H35__10",
+   "sygnal": "RSX_UP",
+   "kategoria": "H7",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 2,
+   "h": 35,
+   "tryb": "10",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 207,
+    "kontr_transakcji": 3304,
+    "gl_ekspektancja": 0.4177,
+    "kontr_ekspektancja": 0.2253,
+    "gl_przewaga": 0.2354,
+    "kontr_przewaga": 0.086
+   }
+  },
+  {
+   "nr": 36,
+   "id": "IDIO_X3_UP__L__SL4_TP1_H14__5",
+   "sygnal": "IDIO_X3_UP",
+   "kategoria": "H7",
+   "kierunek": "L",
+   "sl": 4,
+   "tp": 1,
+   "h": 14,
+   "tryb": "5",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 87,
+    "kontr_transakcji": 488,
+    "gl_ekspektancja": 0.5458,
+    "kontr_ekspektancja": 0.2254,
+    "gl_przewaga": 0.4316,
+    "kontr_przewaga": 0.1542
+   }
+  },
+  {
+   "nr": 37,
+   "id": "VWAP_DEV2_ABOVE__L__SL1_TP3_H70__1",
+   "sygnal": "VWAP_DEV2_ABOVE",
+   "kategoria": "H2",
+   "kierunek": "L",
+   "sl": 1,
+   "tp": 3,
+   "h": 70,
+   "tryb": "1",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 51,
+    "kontr_transakcji": 190,
+    "gl_ekspektancja": 0.1901,
+    "kontr_ekspektancja": 0.5091,
+    "gl_przewaga": 0.0308,
+    "kontr_przewaga": 0.4123
+   }
+  },
+  {
+   "nr": 38,
+   "id": "VWMA35_X_UP__L__SL4_TP3_H70__10",
+   "sygnal": "VWMA35_X_UP",
+   "kategoria": "H2",
+   "kierunek": "L",
+   "sl": 4,
+   "tp": 3,
+   "h": 70,
+   "tryb": "10",
+   "motyw": "D zwrot trendu",
+   "odkrywanie": {
+    "gl_transakcji": 173,
+    "kontr_transakcji": 3088,
+    "gl_ekspektancja": 0.3561,
+    "kontr_ekspektancja": 0.4146,
+    "gl_przewaga": 0.0868,
+    "kontr_przewaga": 0.155
+   }
+  },
+  {
+   "nr": 39,
+   "id": "MACD_SIGB0_UP__L__SL3_TP3_H70__1",
+   "sygnal": "MACD_SIGB0_UP",
+   "kategoria": "H2",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "1",
+   "motyw": "D zwrot trendu",
+   "odkrywanie": {
+    "gl_transakcji": 84,
+    "kontr_transakcji": 1270,
+    "gl_ekspektancja": 0.7046,
+    "kontr_ekspektancja": 0.3388,
+    "gl_przewaga": 0.5021,
+    "kontr_przewaga": 0.1169
+   }
+  },
+  {
+   "nr": 40,
+   "id": "NR14B_UP__L__SL1_TP3_H70__1",
+   "sygnal": "NR14B_UP",
+   "kategoria": "H4",
+   "kierunek": "L",
+   "sl": 1,
+   "tp": 3,
+   "h": 70,
+   "tryb": "1",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 121,
+    "kontr_transakcji": 1841,
+    "gl_ekspektancja": 0.3537,
+    "kontr_ekspektancja": 0.1529,
+    "gl_przewaga": 0.1944,
+    "kontr_przewaga": 0.0561
+   }
+  },
+  {
+   "nr": 41,
+   "id": "WRB_K3_UP__L__SL4_TP3_H70__1",
+   "sygnal": "WRB_K3_UP",
+   "kategoria": "H4",
+   "kierunek": "L",
+   "sl": 4,
+   "tp": 3,
+   "h": 70,
+   "tryb": "1",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 32,
+    "kontr_transakcji": 573,
+    "gl_ekspektancja": 1.5137,
+    "kontr_ekspektancja": 0.4047,
+    "gl_przewaga": 1.2444,
+    "kontr_przewaga": 0.1451
+   }
+  },
+  {
+   "nr": 42,
+   "id": "RIBBON_DN__L__SL2_TP3_H70__5",
+   "sygnal": "RIBBON_DN",
+   "kategoria": "H2",
+   "kierunek": "L",
+   "sl": 2,
+   "tp": 3,
+   "h": 70,
+   "tryb": "5",
+   "motyw": "C kupno po spadku (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 52,
+    "kontr_transakcji": 937,
+    "gl_ekspektancja": 0.6441,
+    "kontr_ekspektancja": 0.2515,
+    "gl_przewaga": 0.3622,
+    "kontr_przewaga": 0.0876
+   }
+  },
+  {
+   "nr": 43,
+   "id": "MASLOPE_SMA35_DN__L__SL3_TP3_H70__5",
+   "sygnal": "MASLOPE_SMA35_DN",
+   "kategoria": "H2",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "5",
+   "motyw": "C kupno po spadku (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 71,
+    "kontr_transakcji": 1281,
+    "gl_ekspektancja": 0.6265,
+    "kontr_ekspektancja": 0.3055,
+    "gl_przewaga": 0.424,
+    "kontr_przewaga": 0.0836
+   }
+  },
+  {
+   "nr": 44,
+   "id": "PXMA_SMA20_DN__L__SL3_TP3_H70__nowy",
+   "sygnal": "PXMA_SMA20_DN",
+   "kategoria": "H2",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "nowy",
+   "motyw": "C kupno po spadku (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 261,
+    "kontr_transakcji": 4650,
+    "gl_ekspektancja": 0.2711,
+    "kontr_ekspektancja": 0.2671,
+    "gl_przewaga": 0.0686,
+    "kontr_przewaga": 0.0452
+   }
+  },
+  {
+   "nr": 45,
+   "id": "ATRRISE_N14_K6__L__SL1_TP1_H14__10",
+   "sygnal": "ATRRISE_N14_K6",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 1,
+   "tp": 1,
+   "h": 14,
+   "tryb": "10",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 168,
+    "kontr_transakcji": 1673,
+    "gl_ekspektancja": 0.2966,
+    "kontr_ekspektancja": 0.1352,
+    "gl_przewaga": 0.2529,
+    "kontr_przewaga": 0.1057
+   }
+  },
+  {
+   "nr": 46,
+   "id": "MADEV_SMA7_X3__S__SL3_TP3_H70__5",
+   "sygnal": "MADEV_SMA7_X3",
+   "kategoria": "H1",
+   "kierunek": "S",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "5",
+   "motyw": "B kontynuacja spadku (SHORT)",
+   "odkrywanie": {
+    "gl_transakcji": 177,
+    "kontr_transakcji": 959,
+    "gl_ekspektancja": 0.2934,
+    "kontr_ekspektancja": 0.1883,
+    "gl_przewaga": 0.5036,
+    "kontr_przewaga": 0.4128
+   }
+  },
+  {
+   "nr": 47,
+   "id": "DROP_N3_X5__S__SL3_TP3_H70__5",
+   "sygnal": "DROP_N3_X5",
+   "kategoria": "H1",
+   "kierunek": "S",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "5",
+   "motyw": "B kontynuacja spadku (SHORT)",
+   "odkrywanie": {
+    "gl_transakcji": 102,
+    "kontr_transakcji": 485,
+    "gl_ekspektancja": 0.3341,
+    "kontr_ekspektancja": 0.4043,
+    "gl_przewaga": 0.5443,
+    "kontr_przewaga": 0.6288
+   }
+  },
+  {
+   "nr": 48,
+   "id": "RISE_N3_X3__L__SL3_TP3_H70__nowy",
+   "sygnal": "RISE_N3_X3",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "nowy",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 153,
+    "kontr_transakcji": 757,
+    "gl_ekspektancja": 0.711,
+    "kontr_ekspektancja": 0.6438,
+    "gl_przewaga": 0.5086,
+    "kontr_przewaga": 0.4219
+   }
+  },
+  {
+   "nr": 49,
+   "id": "MAUP_SMA7_X1.5__L__SL4_TP3_H70__nowy",
+   "sygnal": "MAUP_SMA7_X1.5",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 4,
+   "tp": 3,
+   "h": 70,
+   "tryb": "nowy",
+   "motyw": "A kontynuacja wzrostu (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 229,
+    "kontr_transakcji": 1725,
+    "gl_ekspektancja": 0.7856,
+    "kontr_ekspektancja": 0.4402,
+    "gl_przewaga": 0.5162,
+    "kontr_przewaga": 0.1806
+   }
+  },
+  {
+   "nr": 50,
+   "id": "HHDD_L35_X12__L__SL3_TP3_H70__5",
+   "sygnal": "HHDD_L35_X12",
+   "kategoria": "H1",
+   "kierunek": "L",
+   "sl": 3,
+   "tp": 3,
+   "h": 70,
+   "tryb": "5",
+   "motyw": "C kupno po spadku (LONG)",
+   "odkrywanie": {
+    "gl_transakcji": 292,
+    "kontr_transakcji": 1204,
+    "gl_ekspektancja": 0.2365,
+    "kontr_ekspektancja": 0.5132,
+    "gl_przewaga": 0.0341,
+    "kontr_przewaga": 0.2913
+   }
+  }
+ ]
+}
