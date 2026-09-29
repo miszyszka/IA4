@@ -1,6 +1,6 @@
 """
 IA 4 — wskaźniki (Etap 1b).
-Wersja projektu: 0.41 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.42 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Każdy wskaźnik z instrukcji 1.3, policzony dokładnie tak samo, jak go tam
 opisano — bo w Etapie 4 te same wzory liczy Apps Script (D2), a drobna różnica

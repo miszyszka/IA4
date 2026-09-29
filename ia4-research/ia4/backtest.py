@@ -1,10 +1,18 @@
 """
-IA 4 — backtest S1 (Etap 2, instrukcja 2.1–2.3; sposób liczenia: D29 → D30, D31).
-Wersja projektu: 0.41 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+IA 4 — backtest S1 (Etap 2, instrukcja 2.1–2.3; sposób liczenia: D29 → D30, D31 → D32).
+Wersja projektu: 0.42 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Liczy strategie z zamrożonego katalogu S1 na okresie ODKRYWANIA (5.1 — poletko
 i skarbiec nietknięte), osobno dla grupy głównej i kontrolnej (5.6), i zapisuje
 `s1-backtest/results.csv` — jeden wiersz na strategię, dla arkusza S1-BACKTEST.
+
+D32 (2026-09-29, trzeci przebieg — zmienia w D31 tylko trzy rzeczy):
+  - siatka SL: 1, 2, 3, 4, 5%; siatka TP bez zmian: 1, 2, 3% (15 par);
+  - czwarty tryb pozycji: "10" — najwyżej 10 pozycji naraz na jednej spółce;
+  - bez kosztów transakcyjnych (5.5: wynik główny bez kosztów). Przewaga i p
+    się od tego nie zmieniają — koszt odejmowano tak samo od strategii i od
+    wejścia losowego — przesuwają się tylko ekspektancja, skuteczność i wynik $.
+    Próg 5.11 (ekspektancja PO kosztach ≥ 0,05%) sprawdza się przy wyborze S2.
 
 D31 (2026-09-29, drugi przebieg — uproszczenie na życzenie użytkownika):
   - siatka SL i TP: 1%, 2%, 3% (9 par), H stałe z D5: TP 1% → 14 świec,
@@ -47,18 +55,20 @@ import numpy as np
 import pandas as pd
 
 from . import bars, catalog, nyse, signals
-from .engine import COST_PCT, Engine, h_default, one_position, resolve_grid
+from .engine import Engine, h_default, one_position, resolve_grid
 
 OUT_DIR = catalog.repo_root() / "s1-backtest"
-GRID = [1, 2, 3]                     # D31
-MODES = ["1", "5", "nowy"]           # D31
-MAX_PER_SYMBOL = 5                   # tryb "5"
+SL_GRID = [1, 2, 3, 4, 5]            # D32
+TP_GRID = [1, 2, 3]                  # D31
+MODES = ["1", "5", "10", "nowy"]     # D32
+LIMITS = {"5": 5, "10": 10}          # tryby z limitem pozycji naraz na jednej spółce
+COST = 0.0                           # D32: bez kosztów (5.5); przebieg 2 liczył 0,05
 START_CAPITAL = 100_000.0            # D31: tylko informacyjnie — brak limitu gotówki
 STAKE = 10.0                         # D31: $ na transakcję
 BOOT_B = 2000
 SEED = 20260928
 FDR_Q = 0.10
-PRIOR_TRIALS = 57_200                # licznik 5.7 przed tym przebiegiem (przebieg 1, D29)
+PRIOR_TRIALS = 68_270                # licznik 5.7 przed tym przebiegiem (57 200 + 11 070 z przebiegu 2)
 GROUPS = {"main": "gl", "control": "kontr"}
 
 
@@ -83,17 +93,17 @@ def prepare(frames: dict, spy, groups: dict) -> tuple[list[Inst], int]:
             B = bars.prepare(frames[s], market=spy)
             tord = np.array([nyse.ordinal(d) for d in B.date]) * 8 + B.slot
             week = np.array([widx[date.fromisoformat(d).isocalendar()[:2]] for d in B.date])
-            out.append(Inst(s, g, B, Engine(B, sl_grid=GRID, tp_grid=GRID), tord, week))
+            out.append(Inst(s, g, B, Engine(B, sl_grid=SL_GRID, tp_grid=TP_GRID), tord, week))
     return out, len(weeks)
 
 
 def h_matrix() -> np.ndarray:
-    """D5 (D31): H zależy tylko od TP."""
-    return np.array([[h_default(tp) for tp in GRID] for _ in GRID], dtype=np.int64)
+    """D5 (D31): H zależy tylko od TP. Wiersze = SL, kolumny = TP."""
+    return np.array([[h_default(tp) for tp in TP_GRID] for _ in SL_GRID], dtype=np.int64)
 
 
 def random_baseline(insts: list[Inst], H: np.ndarray) -> dict:
-    """5.3: średni wynik netto [%] wejścia w każdą świecę, per (grupa, kierunek) → macierz SL × TP."""
+    """5.3: średni wynik [%] (minus COST) wejścia w każdą świecę, per (grupa, kierunek) → macierz SL × TP."""
     out = {}
     for g in GROUPS:
         for d in ("L", "S"):
@@ -105,7 +115,7 @@ def random_baseline(insts: list[Inst], H: np.ndarray) -> dict:
                 r = resolve_grid(it.eng, np.arange(it.B.n), d, H)
                 tot += r.ret.sum(axis=0)
                 cnt += r.ret.shape[0]
-            out[(g, d)] = (tot / max(cnt, 1)) * 100.0 - COST_PCT
+            out[(g, d)] = (tot / max(cnt, 1)) * 100.0 - COST
     return out
 
 
@@ -140,7 +150,8 @@ def _collect(sig: dict, insts: list[Inst], H: np.ndarray) -> dict:
     for it in insts:
         m = signals.mask(sig, it.B)
         ent = {"1": _entries(m, sig, it.B.n), "nowy": _entries(new_signal_only(m), sig, it.B.n)}
-        ent["5"] = ent["1"]
+        for mode in LIMITS:
+            ent[mode] = ent["1"]
         for d in ("L", "S"):
             res = {}
             for key in ("1", "nowy"):
@@ -151,17 +162,17 @@ def _collect(sig: dict, insts: list[Inst], H: np.ndarray) -> dict:
                 if src not in res:
                     continue
                 r, e = res[src], ent[src]
-                for i in range(len(GRID)):
-                    for j in range(len(GRID)):
+                for i in range(len(SL_GRID)):
+                    for j in range(len(TP_GRID)):
                         x = r.exit[:, i, j]
                         if mode == "1":
                             k = one_position(e, x)
-                        elif mode == "5":
-                            k = limit_positions(e, x, MAX_PER_SYMBOL)
+                        elif mode in LIMITS:
+                            k = limit_positions(e, x, LIMITS[mode])
                         else:
                             k = np.arange(len(e))
                         acc.setdefault((it.group, mode, d, i, j), []).append({
-                            "ret": r.ret[k, i, j] * 100.0 - COST_PCT,
+                            "ret": r.ret[k, i, j] * 100.0 - COST,
                             "reason": r.reason[k, i, j],
                             "e_ord": it.tord[e[k]], "x_ord": it.tord[x[k]], "week": it.week[e[k]],
                         })
@@ -179,7 +190,7 @@ def max_concurrent(e_ord: np.ndarray, x_ord: np.ndarray) -> int:
 
 
 def metrics(tr: dict | None, rnd: float, n_weeks: int) -> tuple[dict, np.ndarray, np.ndarray]:
-    """Kolumny D31 dla jednej strategii w jednej grupie (wszystko po kosztach)."""
+    """Kolumny D31 dla jednej strategii w jednej grupie (wyniki minus COST — w D32 zero)."""
     S, N = np.zeros(n_weeks), np.zeros(n_weeks)
     if tr is None or len(tr["ret"]) == 0:
         return {"transakcji": 0, "skutecznosc": None, "ekspektancja": None, "pct_czas": None,
@@ -262,8 +273,8 @@ def run(cat: dict, frames: dict, spy, groups: dict, boot: int = BOOT_B, seed: in
         tr = _collect(sig, insts, H)
         for mode in MODES:
             for d in ("L", "S"):
-                for i, sl in enumerate(GRID):
-                    for j, tp in enumerate(GRID):
+                for i, sl in enumerate(SL_GRID):
+                    for j, tp in enumerate(TP_GRID):
                         h = int(H[i, j])
                         row = {"id": strategy_id(sig["code"], d, sl, tp, h, mode), "sygnal": sig["code"],
                                "kategoria": sig["category"], "kierunek": d, "sl": sl, "tp": tp, "h": h,
@@ -286,10 +297,11 @@ def run(cat: dict, frames: dict, spy, groups: dict, boot: int = BOOT_B, seed: in
     df = df[COLUMNS]
     meta = {
         "catalog_version": cat["meta"]["catalog_version"], "catalog_hash": cat["meta"]["content_hash"],
-        "period": "discovery", "decisions": ["D30", "D31"],
+        "period": "discovery", "decisions": ["D30", "D31", "D32"],
         "groups": {g: [it.symbol for it in insts if it.group == g] for g in GROUPS},
-        "grid_pct": GRID, "h_rule": "D5: TP 1% → 14, 2% → 35, 3% → 70 świec", "modes": MODES,
-        "start_capital_usd": START_CAPITAL, "stake_usd": STAKE, "cost_pct": COST_PCT,
+        "sl_grid_pct": SL_GRID, "tp_grid_pct": TP_GRID, "h_rule": "D5: TP 1% → 14, 2% → 35, 3% → 70 świec",
+        "modes": MODES, "mode_limits": LIMITS,
+        "start_capital_usd": START_CAPITAL, "stake_usd": STAKE, "cost_pct": COST,
         "strategies_computed": int(len(df)), "trials_counter_after": m_total,
         "bootstrap": {"B": boot, "seed": seed, "block": "tydzień ISO wejścia", "weeks": W,
                       "p": "D30: przybliżenie normalne, z = przewaga / SE z bootstrapu"},
@@ -312,7 +324,7 @@ def write(df: pd.DataFrame, meta: dict, out_dir: Path = OUT_DIR) -> None:
 
 def main(argv=None) -> int:
     from . import config, data
-    ap = argparse.ArgumentParser(description="Etap 2: backtest strategii S1 (okres odkrywania, D31).")
+    ap = argparse.ArgumentParser(description="Etap 2: backtest strategii S1 (okres odkrywania, D32).")
     ap.add_argument("--limit", type=int, default=None, help="tylko N pierwszych sygnałów (próba, bez zapisu)")
     ap.add_argument("--boot", type=int, default=BOOT_B)
     a = ap.parse_args(argv)
@@ -325,7 +337,7 @@ def main(argv=None) -> int:
         return 1
     u = config.universe()
     groups = {"main": list(u["main"]), "control": list(u["proof"])}
-    print(f"Etap 2 (D31): katalog {cat['meta']['catalog_version']} ({cat['meta']['content_hash']}), "
+    print(f"Etap 2 (D32): katalog {cat['meta']['catalog_version']} ({cat['meta']['content_hash']}), "
           f"okres odkrywania, {len(groups['main'])} + {len(groups['control'])} spółek")
     frames = {s: data.load(s) for s in groups["main"] + groups["control"]}    # tylko odkrywanie (5.1)
     spy = data.load("SPY")
@@ -338,7 +350,7 @@ def main(argv=None) -> int:
     write(df, meta)
     print(f"Zapisano {OUT_DIR / 'results.csv'}: {len(df)} strategii, {meta['runtime_min']} min; "
           f"FDR 10%: {meta['fdr_pass']}")
-    print("Teraz: cd .. && git add s1-backtest && git commit -m 'Backtest S1 D31' && git push, "
+    print("Teraz: cd .. && git add s1-backtest && git commit -m 'Backtest S1 D32' && git push, "
           "potem w arkuszu: Wczytaj wyniki S1-BACKTEST.")
     return 0
 

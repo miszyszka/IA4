@@ -1,5 +1,5 @@
 """
-Testy sygnałów S1 (Etap 1b, kryterium 1.2). Wersja projektu: 0.41 (2026-09-29).
+Testy sygnałów S1 (Etap 1b, kryterium 1.2). Wersja projektu: 0.42 (2026-09-29).
 
 Każdy przypadek policzony ręcznie — rachunek w komentarzu obok. Co najmniej
 jeden test na każdą rodzinę z katalogu (test_every_catalog_type_has_a_family

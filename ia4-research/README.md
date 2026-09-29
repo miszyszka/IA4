@@ -1,6 +1,6 @@
 # IA 4 — środowisko badawcze (Python, Mac)
 
-**Wersja projektu: 0.41 (2026-09-29) — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 0.42 (2026-09-29) — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Etap 0B. Ten folder robi jedną rzecz: ściąga świece z Firestore na dysk i daje
 do nich dostęp tak, żeby nie dało się przypadkiem zajrzeć do skarbca.
@@ -167,12 +167,14 @@ python3 -m ia4.catalog           # dołącza częstość, nadaje status „za rz
 Potem oba pliki do repozytorium i w arkuszu: IA 4 → Projekt → „Wczytaj katalog S1
 z GitHub”. Kolejność zamknięcia całego etapu: instrukcja 1.7, „Zamknięcie Etapu 1”.
 
-## 7. Etap 2 — backtest S1 (przebieg 2: D30, D31)
+## 7. Etap 2 — backtest S1 (przebieg 3: D30, D31, D32)
+
+SL 1–5% × TP 1–3%, tryby pozycji 1 / 5 / 10 / nowy, bez kosztów (5.5).
 
 ```bash
 python3 -m ia4.backtest --limit 3   # próba na 3 sygnałach, nic nie zapisuje
-python3 -m ia4.backtest             # całość: ok. 11 000 strategii, kilka minut
-cd .. && git add s1-backtest && git commit -m "Backtest S1 D31" && git push
+python3 -m ia4.backtest             # całość: 24 600 strategii, 1–3 min
+cd .. && git add s1-backtest && git commit -m "Backtest S1 D32" && git push
 ```
 
 Potem w arkuszu: IA 4 → Projekt → „Wczytaj wyniki S1-BACKTEST z GitHub”.
@@ -183,7 +185,7 @@ Liczone tylko na okresie odkrywania — poletko raz, na gotowej liście S2 (2.4)
 | Etap | Co powstaje w tym folderze |
 |---|---|
 | 1 | `ia4/catalog.py` — katalog S1 (gotowe, 1a); `ia4/indicators.py` — wskaźniki (0.32); `ia4/signals.py`, `ia4/engine.py`, `ia4/bars.py`, `ia4/nyse.py` — silnik (gotowe, 0.36); `ia4/frequency.py` — częstość (1.3) |
-| 2 | symulacja portfela 57 200 strategii (2.1), eksport do `s1-backtest/results.csv` → arkusz S1-BACKTEST (2.3) |
+| 2 | symulacja portfela strategii S1 (2.1; przebieg 3: 24 600, D32), eksport do `s1-backtest/results.csv` → arkusz S1-BACKTEST (2.3) |
 | 3 | `ia4/features.py` — ~1000 parametrów, `ia4/model.py` — PT, eksport drzew do JSON |
 
 ---

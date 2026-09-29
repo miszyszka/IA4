@@ -1,5 +1,5 @@
 """
-Testy backtestu Etapu 2 (D30, D31). Wersja projektu: 0.41 (2026-09-29).
+Testy backtestu Etapu 2 (D30, D31, D32). Wersja projektu: 0.42 (2026-09-29).
 
 Wyłącznie sztuczne świece — ten test nigdy nie widzi prawdziwych danych.
 
@@ -82,21 +82,30 @@ def test_run_modes_columns_and_csv():
     frames = {s: _rising(s) for s in ("M1", "C1", "C2")}
     df, meta = BT.run(mini, frames, None, {"main": ["M1"], "control": ["C1", "C2"]}, boot=99,
                       progress=lambda *_: None)
-    assert len(df) == 3 * 2 * 9 and list(df.columns) == BT.COLUMNS
+    assert len(df) == 4 * 2 * 15 and list(df.columns) == BT.COLUMNS          # D32: 4 tryby × 2 × SL 5 × TP 3
+    assert sorted(df.sl.unique().tolist()) == [1, 2, 3, 4, 5] and sorted(df.tp.unique().tolist()) == [1, 2, 3]
+    assert set(df.tryb) == {"1", "5", "10", "nowy"} and meta["cost_pct"] == 0.0
     r = df[(df.kierunek == "L") & (df.sl == 1) & (df.tp == 1) & (df.tryb == "1")].iloc[0]
-    # LONG TP 1% zawsze na 4. świecy: +1% − 0,05% = 0,95% na transakcję, 10 $ × 0,95% = 0,095 $
+    # LONG TP 1% zawsze na 4. świecy: +1% bez kosztów (D32), 10 $ × 1% = 0,10 $
     assert r.h == 14 and bool(r.sl_rowne_tp) and r.id == "BASE_OPEN__L__SL1_TP1_H14__1"
-    assert abs(r.kontr_ekspektancja - 0.95) < 1e-9 and r.kontr_skutecznosc == 100
-    assert abs(r.kontr_wynik_portfela - r.kontr_transakcji * 0.095) < 1e-9
+    assert abs(r.kontr_ekspektancja - 1.0) < 1e-9 and r.kontr_skutecznosc == 100
+    assert abs(r.kontr_wynik_portfela - r.kontr_transakcji * 0.1) < 1e-9
+    # SL 5% / TP 1%: ta sama transakcja (TP pierwszy), sl_rowne_tp = False
+    r5 = df[(df.kierunek == "L") & (df.sl == 5) & (df.tp == 1) & (df.tryb == "1")].iloc[0]
+    assert r5.id == "BASE_OPEN__L__SL5_TP1_H14__1" and not bool(r5.sl_rowne_tp) and r5.h == 14
+    assert r5.kontr_transakcji == r.kontr_transakcji and abs(r5.kontr_ekspektancja - 1.0) < 1e-9
     # 70 świec limitu przy TP 3% i jednej pozycji naraz: tryb "5" pozwala na więcej naraz
     one = df[(df.kierunek == "L") & (df.sl == 1) & (df.tp == 3) & (df.tryb == "1")].iloc[0]
     five = df[(df.kierunek == "L") & (df.sl == 1) & (df.tp == 3) & (df.tryb == "5")].iloc[0]
+    ten = df[(df.kierunek == "L") & (df.sl == 1) & (df.tp == 3) & (df.tryb == "10")].iloc[0]
     assert five.kontr_transakcji >= one.kontr_transakcji and five.kontr_max_otwartych >= one.kontr_max_otwartych
-    assert meta["trials_counter_after"] == BT.PRIOR_TRIALS + 54
+    assert ten.kontr_transakcji >= five.kontr_transakcji and ten.kontr_max_otwartych >= five.kontr_max_otwartych
+    assert ten.kontr_max_otwartych <= 2 * 10                         # 2 spółki kontrolne × najwyżej 10
+    assert meta["trials_counter_after"] == BT.PRIOR_TRIALS + 120 == 68_270 + 120
     with tempfile.TemporaryDirectory() as t:
         BT.write(df, meta, Path(t))
         txt = (Path(t) / "results.csv").read_text(encoding="utf-8")
-        assert txt.startswith("id,sygnal,kategoria,kierunek,sl,tp,h,sl_rowne_tp,tryb,") and len(txt.splitlines()) == 55
+        assert txt.startswith("id,sygnal,kategoria,kierunek,sl,tp,h,sl_rowne_tp,tryb,") and len(txt.splitlines()) == 121
 
 
 if __name__ == "__main__":
