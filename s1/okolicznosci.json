@@ -1,0 +1,1178 @@
+{
+ "meta": {
+  "okolicznosci_version": "OK-v1",
+  "liczba": 231,
+  "grupy": {
+   "T": "Trend średnich — nachylenie, ułożenie, położenie ceny względem średniej",
+   "O": "Odchylenie ceny od średniej — jak daleko cena odbiegła",
+   "P": "Położenie w zakresie — jak blisko szczytu albo dołka z ostatnich N świec",
+   "R": "Tempo — o ile procent cena zmieniła się w N świecach",
+   "Z": "Zmienność — ATR, szerokość wstęgi, zakres świecy",
+   "W": "Wolumen — natężenie, kierunek, OBV",
+   "S": "Wskaźniki — RSI, stochastyk, MACD, %B",
+   "K": "Kształt świecy — korpus, cienie, serie świec",
+   "C": "Czas — która świeca sesji, dzień tygodnia, koniec okresu",
+   "M": "Rynek (SPY) — trend rynku, odchylenie, siła względna spółki",
+   "L": "Luka na otwarciu sesji"
+  },
+  "zasada": "TAK/NIE na świecy sygnału (t), wejście na t+1 — żadna nie zagląda w przyszłość",
+  "brak_danych": "gdy okoliczności nie da się policzyć (za krótka historia, dziura, brak SPY), transakcja nie jest liczona do ratingu tej okoliczności"
+ },
+ "okolicznosci": [
+  {
+   "id": "T_SMA7_ROSNIE",
+   "grupa": "T",
+   "opis": "SMA(7) rośnie: średnia na tej świecy jest wyżej niż na poprzedniej."
+  },
+  {
+   "id": "T_SMA7_ROSNIE_3",
+   "grupa": "T",
+   "opis": "SMA(7) rośnie nieprzerwanie od 3 świec."
+  },
+  {
+   "id": "T_SMA7_CENA_POWYZEJ",
+   "grupa": "T",
+   "opis": "Zamknięcie jest powyżej SMA(7)."
+  },
+  {
+   "id": "T_SMA20_ROSNIE",
+   "grupa": "T",
+   "opis": "SMA(20) rośnie: średnia na tej świecy jest wyżej niż na poprzedniej."
+  },
+  {
+   "id": "T_SMA20_ROSNIE_3",
+   "grupa": "T",
+   "opis": "SMA(20) rośnie nieprzerwanie od 3 świec."
+  },
+  {
+   "id": "T_SMA20_CENA_POWYZEJ",
+   "grupa": "T",
+   "opis": "Zamknięcie jest powyżej SMA(20)."
+  },
+  {
+   "id": "T_SMA35_ROSNIE",
+   "grupa": "T",
+   "opis": "SMA(35) rośnie: średnia na tej świecy jest wyżej niż na poprzedniej."
+  },
+  {
+   "id": "T_SMA35_ROSNIE_3",
+   "grupa": "T",
+   "opis": "SMA(35) rośnie nieprzerwanie od 3 świec."
+  },
+  {
+   "id": "T_SMA35_CENA_POWYZEJ",
+   "grupa": "T",
+   "opis": "Zamknięcie jest powyżej SMA(35)."
+  },
+  {
+   "id": "T_SMA50_ROSNIE",
+   "grupa": "T",
+   "opis": "SMA(50) rośnie: średnia na tej świecy jest wyżej niż na poprzedniej."
+  },
+  {
+   "id": "T_SMA50_ROSNIE_3",
+   "grupa": "T",
+   "opis": "SMA(50) rośnie nieprzerwanie od 3 świec."
+  },
+  {
+   "id": "T_SMA50_CENA_POWYZEJ",
+   "grupa": "T",
+   "opis": "Zamknięcie jest powyżej SMA(50)."
+  },
+  {
+   "id": "T_SMA140_ROSNIE",
+   "grupa": "T",
+   "opis": "SMA(140) rośnie: średnia na tej świecy jest wyżej niż na poprzedniej."
+  },
+  {
+   "id": "T_SMA140_ROSNIE_3",
+   "grupa": "T",
+   "opis": "SMA(140) rośnie nieprzerwanie od 3 świec."
+  },
+  {
+   "id": "T_SMA140_CENA_POWYZEJ",
+   "grupa": "T",
+   "opis": "Zamknięcie jest powyżej SMA(140)."
+  },
+  {
+   "id": "T_EMA7_ROSNIE",
+   "grupa": "T",
+   "opis": "EMA(7) rośnie: średnia na tej świecy jest wyżej niż na poprzedniej."
+  },
+  {
+   "id": "T_EMA20_ROSNIE",
+   "grupa": "T",
+   "opis": "EMA(20) rośnie: średnia na tej świecy jest wyżej niż na poprzedniej."
+  },
+  {
+   "id": "T_EMA35_ROSNIE",
+   "grupa": "T",
+   "opis": "EMA(35) rośnie: średnia na tej świecy jest wyżej niż na poprzedniej."
+  },
+  {
+   "id": "T_EMA50_ROSNIE",
+   "grupa": "T",
+   "opis": "EMA(50) rośnie: średnia na tej świecy jest wyżej niż na poprzedniej."
+  },
+  {
+   "id": "T_EMA140_ROSNIE",
+   "grupa": "T",
+   "opis": "EMA(140) rośnie: średnia na tej świecy jest wyżej niż na poprzedniej."
+  },
+  {
+   "id": "T_SMA7_NAD_SMA20",
+   "grupa": "T",
+   "opis": "SMA(7) jest powyżej SMA(20) — układ wzrostowy tych dwóch średnich."
+  },
+  {
+   "id": "T_SMA7_NAD_SMA50",
+   "grupa": "T",
+   "opis": "SMA(7) jest powyżej SMA(50) — układ wzrostowy tych dwóch średnich."
+  },
+  {
+   "id": "T_SMA20_NAD_SMA50",
+   "grupa": "T",
+   "opis": "SMA(20) jest powyżej SMA(50) — układ wzrostowy tych dwóch średnich."
+  },
+  {
+   "id": "T_SMA20_NAD_SMA140",
+   "grupa": "T",
+   "opis": "SMA(20) jest powyżej SMA(140) — układ wzrostowy tych dwóch średnich."
+  },
+  {
+   "id": "T_SMA50_NAD_SMA140",
+   "grupa": "T",
+   "opis": "SMA(50) jest powyżej SMA(140) — układ wzrostowy tych dwóch średnich."
+  },
+  {
+   "id": "T_WACHLARZ_WZROSTOWY",
+   "grupa": "T",
+   "opis": "Pełny układ wzrostowy: EMA(7) > EMA(20) > EMA(50) > SMA(140)."
+  },
+  {
+   "id": "T_WACHLARZ_SPADKOWY",
+   "grupa": "T",
+   "opis": "Pełny układ spadkowy: EMA(7) < EMA(20) < EMA(50) < SMA(140)."
+  },
+  {
+   "id": "T_CENA_NAD_WSZYSTKIMI",
+   "grupa": "T",
+   "opis": "Zamknięcie powyżej wszystkich pięciu SMA (7, 20, 35, 50, 140)."
+  },
+  {
+   "id": "T_CENA_POD_WSZYSTKIMI",
+   "grupa": "T",
+   "opis": "Zamknięcie poniżej wszystkich pięciu SMA (7, 20, 35, 50, 140)."
+  },
+  {
+   "id": "O_SMA7_NAD_0p5",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 0.5% powyżej SMA(7)."
+  },
+  {
+   "id": "O_SMA7_POD_0p5",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 0.5% poniżej SMA(7)."
+  },
+  {
+   "id": "O_SMA7_NAD_1",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 1% powyżej SMA(7)."
+  },
+  {
+   "id": "O_SMA7_POD_1",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 1% poniżej SMA(7)."
+  },
+  {
+   "id": "O_SMA7_NAD_2",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 2% powyżej SMA(7)."
+  },
+  {
+   "id": "O_SMA7_POD_2",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 2% poniżej SMA(7)."
+  },
+  {
+   "id": "O_SMA20_NAD_1",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 1% powyżej SMA(20)."
+  },
+  {
+   "id": "O_SMA20_POD_1",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 1% poniżej SMA(20)."
+  },
+  {
+   "id": "O_SMA20_NAD_2",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 2% powyżej SMA(20)."
+  },
+  {
+   "id": "O_SMA20_POD_2",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 2% poniżej SMA(20)."
+  },
+  {
+   "id": "O_SMA20_NAD_5",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 5% powyżej SMA(20)."
+  },
+  {
+   "id": "O_SMA20_POD_5",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 5% poniżej SMA(20)."
+  },
+  {
+   "id": "O_SMA50_NAD_1",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 1% powyżej SMA(50)."
+  },
+  {
+   "id": "O_SMA50_POD_1",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 1% poniżej SMA(50)."
+  },
+  {
+   "id": "O_SMA50_NAD_3",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 3% powyżej SMA(50)."
+  },
+  {
+   "id": "O_SMA50_POD_3",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 3% poniżej SMA(50)."
+  },
+  {
+   "id": "O_SMA50_NAD_7",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 7% powyżej SMA(50)."
+  },
+  {
+   "id": "O_SMA50_POD_7",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 7% poniżej SMA(50)."
+  },
+  {
+   "id": "O_SMA140_NAD_2",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 2% powyżej SMA(140)."
+  },
+  {
+   "id": "O_SMA140_POD_2",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 2% poniżej SMA(140)."
+  },
+  {
+   "id": "O_SMA140_NAD_5",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 5% powyżej SMA(140)."
+  },
+  {
+   "id": "O_SMA140_POD_5",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 5% poniżej SMA(140)."
+  },
+  {
+   "id": "O_SMA140_NAD_12",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 12% powyżej SMA(140)."
+  },
+  {
+   "id": "O_SMA140_POD_12",
+   "grupa": "O",
+   "opis": "Zamknięcie co najmniej 12% poniżej SMA(140)."
+  },
+  {
+   "id": "O_SMA20_ODCHYL_ROSNIE",
+   "grupa": "O",
+   "opis": "Odchylenie od SMA(20) powiększa się: co do wartości bezwzględnej większe niż 3 świece temu."
+  },
+  {
+   "id": "O_SMA50_ODCHYL_ROSNIE",
+   "grupa": "O",
+   "opis": "Odchylenie od SMA(50) powiększa się: co do wartości bezwzględnej większe niż 3 świece temu."
+  },
+  {
+   "id": "P_POD_SZCZYTEM_7_1",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 1% poniżej najwyższego high z ostatnich 7 świec."
+  },
+  {
+   "id": "P_NAD_DOLKIEM_7_1",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 1% powyżej najniższego low z ostatnich 7 świec."
+  },
+  {
+   "id": "P_POD_SZCZYTEM_7_2",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 2% poniżej najwyższego high z ostatnich 7 świec."
+  },
+  {
+   "id": "P_NAD_DOLKIEM_7_2",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 2% powyżej najniższego low z ostatnich 7 świec."
+  },
+  {
+   "id": "P_POD_SZCZYTEM_7_5",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 5% poniżej najwyższego high z ostatnich 7 świec."
+  },
+  {
+   "id": "P_NAD_DOLKIEM_7_5",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 5% powyżej najniższego low z ostatnich 7 świec."
+  },
+  {
+   "id": "P_NOWY_SZCZYT_7",
+   "grupa": "P",
+   "opis": "Zamknięcie jest najwyższe z ostatnich 7 świec."
+  },
+  {
+   "id": "P_NOWY_DOLEK_7",
+   "grupa": "P",
+   "opis": "Zamknięcie jest najniższe z ostatnich 7 świec."
+  },
+  {
+   "id": "P_GORNA_POLOWA_7",
+   "grupa": "P",
+   "opis": "Zamknięcie w górnej połowie zakresu z ostatnich 7 świec (high–low)."
+  },
+  {
+   "id": "P_POD_SZCZYTEM_35_2",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 2% poniżej najwyższego high z ostatnich 35 świec."
+  },
+  {
+   "id": "P_NAD_DOLKIEM_35_2",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 2% powyżej najniższego low z ostatnich 35 świec."
+  },
+  {
+   "id": "P_POD_SZCZYTEM_35_5",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 5% poniżej najwyższego high z ostatnich 35 świec."
+  },
+  {
+   "id": "P_NAD_DOLKIEM_35_5",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 5% powyżej najniższego low z ostatnich 35 świec."
+  },
+  {
+   "id": "P_POD_SZCZYTEM_35_12",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 12% poniżej najwyższego high z ostatnich 35 świec."
+  },
+  {
+   "id": "P_NAD_DOLKIEM_35_12",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 12% powyżej najniższego low z ostatnich 35 świec."
+  },
+  {
+   "id": "P_NOWY_SZCZYT_35",
+   "grupa": "P",
+   "opis": "Zamknięcie jest najwyższe z ostatnich 35 świec."
+  },
+  {
+   "id": "P_NOWY_DOLEK_35",
+   "grupa": "P",
+   "opis": "Zamknięcie jest najniższe z ostatnich 35 świec."
+  },
+  {
+   "id": "P_GORNA_POLOWA_35",
+   "grupa": "P",
+   "opis": "Zamknięcie w górnej połowie zakresu z ostatnich 35 świec (high–low)."
+  },
+  {
+   "id": "P_POD_SZCZYTEM_140_5",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 5% poniżej najwyższego high z ostatnich 140 świec."
+  },
+  {
+   "id": "P_NAD_DOLKIEM_140_5",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 5% powyżej najniższego low z ostatnich 140 świec."
+  },
+  {
+   "id": "P_POD_SZCZYTEM_140_12",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 12% poniżej najwyższego high z ostatnich 140 świec."
+  },
+  {
+   "id": "P_NAD_DOLKIEM_140_12",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 12% powyżej najniższego low z ostatnich 140 świec."
+  },
+  {
+   "id": "P_POD_SZCZYTEM_140_20",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 20% poniżej najwyższego high z ostatnich 140 świec."
+  },
+  {
+   "id": "P_NAD_DOLKIEM_140_20",
+   "grupa": "P",
+   "opis": "Zamknięcie co najmniej 20% powyżej najniższego low z ostatnich 140 świec."
+  },
+  {
+   "id": "P_NOWY_SZCZYT_140",
+   "grupa": "P",
+   "opis": "Zamknięcie jest najwyższe z ostatnich 140 świec."
+  },
+  {
+   "id": "P_NOWY_DOLEK_140",
+   "grupa": "P",
+   "opis": "Zamknięcie jest najniższe z ostatnich 140 świec."
+  },
+  {
+   "id": "P_GORNA_POLOWA_140",
+   "grupa": "P",
+   "opis": "Zamknięcie w górnej połowie zakresu z ostatnich 140 świec (high–low)."
+  },
+  {
+   "id": "R_WZROST_7_0p5",
+   "grupa": "R",
+   "opis": "Zamknięcie wyższe o co najmniej 0.5% niż 7 świec temu."
+  },
+  {
+   "id": "R_SPADEK_7_0p5",
+   "grupa": "R",
+   "opis": "Zamknięcie niższe o co najmniej 0.5% niż 7 świec temu."
+  },
+  {
+   "id": "R_WZROST_7_1",
+   "grupa": "R",
+   "opis": "Zamknięcie wyższe o co najmniej 1% niż 7 świec temu."
+  },
+  {
+   "id": "R_SPADEK_7_1",
+   "grupa": "R",
+   "opis": "Zamknięcie niższe o co najmniej 1% niż 7 świec temu."
+  },
+  {
+   "id": "R_WZROST_7_2",
+   "grupa": "R",
+   "opis": "Zamknięcie wyższe o co najmniej 2% niż 7 świec temu."
+  },
+  {
+   "id": "R_SPADEK_7_2",
+   "grupa": "R",
+   "opis": "Zamknięcie niższe o co najmniej 2% niż 7 świec temu."
+  },
+  {
+   "id": "R_WZROST_35_1",
+   "grupa": "R",
+   "opis": "Zamknięcie wyższe o co najmniej 1% niż 35 świec temu."
+  },
+  {
+   "id": "R_SPADEK_35_1",
+   "grupa": "R",
+   "opis": "Zamknięcie niższe o co najmniej 1% niż 35 świec temu."
+  },
+  {
+   "id": "R_WZROST_35_3",
+   "grupa": "R",
+   "opis": "Zamknięcie wyższe o co najmniej 3% niż 35 świec temu."
+  },
+  {
+   "id": "R_SPADEK_35_3",
+   "grupa": "R",
+   "opis": "Zamknięcie niższe o co najmniej 3% niż 35 świec temu."
+  },
+  {
+   "id": "R_WZROST_35_5",
+   "grupa": "R",
+   "opis": "Zamknięcie wyższe o co najmniej 5% niż 35 świec temu."
+  },
+  {
+   "id": "R_SPADEK_35_5",
+   "grupa": "R",
+   "opis": "Zamknięcie niższe o co najmniej 5% niż 35 świec temu."
+  },
+  {
+   "id": "R_WZROST_140_2",
+   "grupa": "R",
+   "opis": "Zamknięcie wyższe o co najmniej 2% niż 140 świec temu."
+  },
+  {
+   "id": "R_SPADEK_140_2",
+   "grupa": "R",
+   "opis": "Zamknięcie niższe o co najmniej 2% niż 140 świec temu."
+  },
+  {
+   "id": "R_WZROST_140_5",
+   "grupa": "R",
+   "opis": "Zamknięcie wyższe o co najmniej 5% niż 140 świec temu."
+  },
+  {
+   "id": "R_SPADEK_140_5",
+   "grupa": "R",
+   "opis": "Zamknięcie niższe o co najmniej 5% niż 140 świec temu."
+  },
+  {
+   "id": "R_WZROST_140_10",
+   "grupa": "R",
+   "opis": "Zamknięcie wyższe o co najmniej 10% niż 140 świec temu."
+  },
+  {
+   "id": "R_SPADEK_140_10",
+   "grupa": "R",
+   "opis": "Zamknięcie niższe o co najmniej 10% niż 140 świec temu."
+  },
+  {
+   "id": "R_PRZYSPIESZA_W_GORE",
+   "grupa": "R",
+   "opis": "Wzrost przyspiesza: ostatnie 7 świec dało większy wzrost niż 7 świec przed nimi."
+  },
+  {
+   "id": "R_PRZYSPIESZA_W_DOL",
+   "grupa": "R",
+   "opis": "Spadek przyspiesza: ostatnie 7 świec dało większy spadek niż 7 świec przed nimi."
+  },
+  {
+   "id": "R_ZWROT_PO_SPADKU",
+   "grupa": "R",
+   "opis": "Zwrot w górę: spadek o ≥ 2% w 35 świecach, ale wzrost w ostatnich 7."
+  },
+  {
+   "id": "R_ZWROT_PO_WZROSCIE",
+   "grupa": "R",
+   "opis": "Zwrot w dół: wzrost o ≥ 2% w 35 świecach, ale spadek w ostatnich 7."
+  },
+  {
+   "id": "Z_ATR14_POWYZEJ_0p5",
+   "grupa": "Z",
+   "opis": "ATR(14) to co najmniej 0.5% ceny — rynek ruchliwy."
+  },
+  {
+   "id": "Z_ATR14_POWYZEJ_1p0",
+   "grupa": "Z",
+   "opis": "ATR(14) to co najmniej 1.0% ceny — rynek ruchliwy."
+  },
+  {
+   "id": "Z_ATR14_POWYZEJ_1p5",
+   "grupa": "Z",
+   "opis": "ATR(14) to co najmniej 1.5% ceny — rynek ruchliwy."
+  },
+  {
+   "id": "Z_ATR14_POWYZEJ_2p5",
+   "grupa": "Z",
+   "opis": "ATR(14) to co najmniej 2.5% ceny — rynek ruchliwy."
+  },
+  {
+   "id": "Z_ATR_ROSNIE",
+   "grupa": "Z",
+   "opis": "ATR(14) wyższy niż 7 świec temu — zmienność rośnie."
+  },
+  {
+   "id": "Z_ATR_ROSNIE_MOCNO",
+   "grupa": "Z",
+   "opis": "ATR(14) co najmniej o połowę wyższy niż 35 świec temu."
+  },
+  {
+   "id": "Z_ATR_MALEJE",
+   "grupa": "Z",
+   "opis": "ATR(14) niższy niż 7 świec temu — zmienność spada."
+  },
+  {
+   "id": "Z_SWIECA_SZEROKA_1p0",
+   "grupa": "Z",
+   "opis": "Zakres świecy (high−low) to co najmniej 1.0 × ATR(14) z poprzedniej świecy."
+  },
+  {
+   "id": "Z_SWIECA_SZEROKA_1p5",
+   "grupa": "Z",
+   "opis": "Zakres świecy (high−low) to co najmniej 1.5 × ATR(14) z poprzedniej świecy."
+  },
+  {
+   "id": "Z_SWIECA_SZEROKA_2p5",
+   "grupa": "Z",
+   "opis": "Zakres świecy (high−low) to co najmniej 2.5 × ATR(14) z poprzedniej świecy."
+  },
+  {
+   "id": "Z_SWIECA_WASKA",
+   "grupa": "Z",
+   "opis": "Zakres świecy poniżej połowy ATR(14) z poprzedniej świecy — spokój."
+  },
+  {
+   "id": "Z_NAJWEZSZA_14",
+   "grupa": "Z",
+   "opis": "Najwęższy zakres świecy z ostatnich 14 świec."
+  },
+  {
+   "id": "Z_NAJSZERSZA_14",
+   "grupa": "Z",
+   "opis": "Najszerszy zakres świecy z ostatnich 14 świec."
+  },
+  {
+   "id": "Z_WSTEGA20_SZEROKA",
+   "grupa": "Z",
+   "opis": "Szerokość wstęgi Bollingera(20, 2) powyżej mediany z ostatnich 140 świec."
+  },
+  {
+   "id": "Z_WSTEGA20_SCISK",
+   "grupa": "Z",
+   "opis": "Ścisk wstęgi Bollingera(20, 2): szerokość najmniejsza z ostatnich 70 świec."
+  },
+  {
+   "id": "Z_WSTEGA50_SZEROKA",
+   "grupa": "Z",
+   "opis": "Szerokość wstęgi Bollingera(50, 2) powyżej mediany z ostatnich 140 świec."
+  },
+  {
+   "id": "Z_WSTEGA50_SCISK",
+   "grupa": "Z",
+   "opis": "Ścisk wstęgi Bollingera(50, 2): szerokość najmniejsza z ostatnich 70 świec."
+  },
+  {
+   "id": "W_RVOL_POWYZEJ_0p7",
+   "grupa": "W",
+   "opis": "Wolumen świecy to co najmniej 0.7 × średnia dla tej godziny z 20 sesji (RVOL)."
+  },
+  {
+   "id": "W_RVOL_POWYZEJ_1p0",
+   "grupa": "W",
+   "opis": "Wolumen świecy to co najmniej 1.0 × średnia dla tej godziny z 20 sesji (RVOL)."
+  },
+  {
+   "id": "W_RVOL_POWYZEJ_1p5",
+   "grupa": "W",
+   "opis": "Wolumen świecy to co najmniej 1.5 × średnia dla tej godziny z 20 sesji (RVOL)."
+  },
+  {
+   "id": "W_RVOL_POWYZEJ_2p0",
+   "grupa": "W",
+   "opis": "Wolumen świecy to co najmniej 2.0 × średnia dla tej godziny z 20 sesji (RVOL)."
+  },
+  {
+   "id": "W_RVOL_POWYZEJ_3p0",
+   "grupa": "W",
+   "opis": "Wolumen świecy to co najmniej 3.0 × średnia dla tej godziny z 20 sesji (RVOL)."
+  },
+  {
+   "id": "W_WOLUMEN_ROSNIE",
+   "grupa": "W",
+   "opis": "Wolumen wyższy niż na poprzedniej świecy."
+  },
+  {
+   "id": "W_WOLUMEN_ROSNIE_3",
+   "grupa": "W",
+   "opis": "Wolumen rośnie trzecią świecę z rzędu."
+  },
+  {
+   "id": "W_WZROST_NA_WOLUMENIE",
+   "grupa": "W",
+   "opis": "Świeca zielona przy RVOL ≥ 1,5 — wzrost poparty wolumenem."
+  },
+  {
+   "id": "W_SPADEK_NA_WOLUMENIE",
+   "grupa": "W",
+   "opis": "Świeca czerwona przy RVOL ≥ 1,5 — spadek poparty wolumenem."
+  },
+  {
+   "id": "W_WZROST_BEZ_WOLUMENU",
+   "grupa": "W",
+   "opis": "Świeca zielona przy RVOL < 0,7 — wzrost bez wolumenu."
+  },
+  {
+   "id": "W_SPADEK_BEZ_WOLUMENU",
+   "grupa": "W",
+   "opis": "Świeca czerwona przy RVOL < 0,7 — spadek bez wolumenu."
+  },
+  {
+   "id": "W_WOLUMEN_7_ROSNACY",
+   "grupa": "W",
+   "opis": "Średni wolumen z ostatnich 7 świec wyższy niż z 7 świec przed nimi."
+  },
+  {
+   "id": "W_OBV_7_ROSNIE",
+   "grupa": "W",
+   "opis": "OBV wyższe niż 7 świec temu — przewaga kupujących w tym oknie."
+  },
+  {
+   "id": "W_WOLUMEN_35_ROSNACY",
+   "grupa": "W",
+   "opis": "Średni wolumen z ostatnich 35 świec wyższy niż z 35 świec przed nimi."
+  },
+  {
+   "id": "W_OBV_35_ROSNIE",
+   "grupa": "W",
+   "opis": "OBV wyższe niż 35 świec temu — przewaga kupujących w tym oknie."
+  },
+  {
+   "id": "W_OBV_ROZJAZD_GORA",
+   "grupa": "W",
+   "opis": "Rozjazd w górę: cena niższa niż 35 świec temu, a OBV wyższe."
+  },
+  {
+   "id": "W_OBV_ROZJAZD_DOL",
+   "grupa": "W",
+   "opis": "Rozjazd w dół: cena wyższa niż 35 świec temu, a OBV niższe."
+  },
+  {
+   "id": "W_NAJWYZSZY_WOLUMEN_35",
+   "grupa": "W",
+   "opis": "Najwyższy wolumen z ostatnich 35 świec."
+  },
+  {
+   "id": "W_CENA_NAD_VWMA35",
+   "grupa": "W",
+   "opis": "Zamknięcie powyżej VWMA(35) — średniej ważonej wolumenem."
+  },
+  {
+   "id": "S_RSI14_PONIZEJ_20",
+   "grupa": "S",
+   "opis": "RSI(14) poniżej 20 — kurs wyprzedany w skali 14 świec (2 sesje)."
+  },
+  {
+   "id": "S_RSI14_PONIZEJ_30",
+   "grupa": "S",
+   "opis": "RSI(14) poniżej 30 — kurs wyprzedany w skali 14 świec (2 sesje)."
+  },
+  {
+   "id": "S_RSI14_PONIZEJ_50",
+   "grupa": "S",
+   "opis": "RSI(14) poniżej 50 — kurs wyprzedany w skali 14 świec (2 sesje)."
+  },
+  {
+   "id": "S_RSI14_POWYZEJ_50",
+   "grupa": "S",
+   "opis": "RSI(14) powyżej 50 — kurs wykupiony w skali 14 świec (2 sesje)."
+  },
+  {
+   "id": "S_RSI14_POWYZEJ_70",
+   "grupa": "S",
+   "opis": "RSI(14) powyżej 70 — kurs wykupiony w skali 14 świec (2 sesje)."
+  },
+  {
+   "id": "S_RSI14_POWYZEJ_80",
+   "grupa": "S",
+   "opis": "RSI(14) powyżej 80 — kurs wykupiony w skali 14 świec (2 sesje)."
+  },
+  {
+   "id": "S_RSI14_ROSNIE",
+   "grupa": "S",
+   "opis": "RSI(14) wyższe niż 3 świece temu."
+  },
+  {
+   "id": "S_RSI2_SKRAJNIE_NISKO",
+   "grupa": "S",
+   "opis": "RSI(2) poniżej 10 — bardzo krótkoterminowe wyprzedanie."
+  },
+  {
+   "id": "S_RSI2_SKRAJNIE_WYSOKO",
+   "grupa": "S",
+   "opis": "RSI(2) powyżej 90 — bardzo krótkoterminowe wykupienie."
+  },
+  {
+   "id": "S_STOCH_PONIZEJ_20",
+   "grupa": "S",
+   "opis": "Stochastyk %K(14, 3) poniżej 20."
+  },
+  {
+   "id": "S_STOCH_PONIZEJ_50",
+   "grupa": "S",
+   "opis": "Stochastyk %K(14, 3) poniżej 50."
+  },
+  {
+   "id": "S_STOCH_PONIZEJ_80",
+   "grupa": "S",
+   "opis": "Stochastyk %K(14, 3) poniżej 80."
+  },
+  {
+   "id": "S_STOCH_K_NAD_D",
+   "grupa": "S",
+   "opis": "Stochastyk: %K powyżej %D."
+  },
+  {
+   "id": "S_MACD_NAD_ZEREM",
+   "grupa": "S",
+   "opis": "Linia MACD(12, 26, 9) powyżej zera."
+  },
+  {
+   "id": "S_MACD_NAD_SYGNALEM",
+   "grupa": "S",
+   "opis": "Linia MACD powyżej linii sygnału."
+  },
+  {
+   "id": "S_MACD_HIST_ROSNIE",
+   "grupa": "S",
+   "opis": "Histogram MACD wyższy niż na poprzedniej świecy."
+  },
+  {
+   "id": "S_BB20_NAD_GORNA",
+   "grupa": "S",
+   "opis": "Zamknięcie powyżej górnej wstęgi Bollingera(20, 2)."
+  },
+  {
+   "id": "S_BB20_POD_DOLNA",
+   "grupa": "S",
+   "opis": "Zamknięcie poniżej dolnej wstęgi Bollingera(20, 2)."
+  },
+  {
+   "id": "S_BB20_GORNA_POLOWA",
+   "grupa": "S",
+   "opis": "Zamknięcie w górnej połowie wstęgi Bollingera(20, 2)."
+  },
+  {
+   "id": "S_BB50_NAD_GORNA",
+   "grupa": "S",
+   "opis": "Zamknięcie powyżej górnej wstęgi Bollingera(50, 2)."
+  },
+  {
+   "id": "S_BB50_POD_DOLNA",
+   "grupa": "S",
+   "opis": "Zamknięcie poniżej dolnej wstęgi Bollingera(50, 2)."
+  },
+  {
+   "id": "S_BB50_GORNA_POLOWA",
+   "grupa": "S",
+   "opis": "Zamknięcie w górnej połowie wstęgi Bollingera(50, 2)."
+  },
+  {
+   "id": "S_NAD_VWAP",
+   "grupa": "S",
+   "opis": "Zamknięcie powyżej VWAP bieżącej sesji."
+  },
+  {
+   "id": "S_VWAP_NAD_1",
+   "grupa": "S",
+   "opis": "Zamknięcie co najmniej 1% powyżej VWAP sesji."
+  },
+  {
+   "id": "S_VWAP_POD_1",
+   "grupa": "S",
+   "opis": "Zamknięcie co najmniej 1% poniżej VWAP sesji."
+  },
+  {
+   "id": "S_VWAP_NAD_2",
+   "grupa": "S",
+   "opis": "Zamknięcie co najmniej 2% powyżej VWAP sesji."
+  },
+  {
+   "id": "S_VWAP_POD_2",
+   "grupa": "S",
+   "opis": "Zamknięcie co najmniej 2% poniżej VWAP sesji."
+  },
+  {
+   "id": "K_ZIELONA",
+   "grupa": "K",
+   "opis": "Świeca zielona: zamknięcie powyżej otwarcia."
+  },
+  {
+   "id": "K_CZERWONA",
+   "grupa": "K",
+   "opis": "Świeca czerwona: zamknięcie poniżej otwarcia."
+  },
+  {
+   "id": "K_ZIELONE_2",
+   "grupa": "K",
+   "opis": "2 zielone świece z rzędu."
+  },
+  {
+   "id": "K_CZERWONE_2",
+   "grupa": "K",
+   "opis": "2 czerwone świece z rzędu."
+  },
+  {
+   "id": "K_ZIELONE_3",
+   "grupa": "K",
+   "opis": "3 zielone świece z rzędu."
+  },
+  {
+   "id": "K_CZERWONE_3",
+   "grupa": "K",
+   "opis": "3 czerwone świece z rzędu."
+  },
+  {
+   "id": "K_ZIELONE_4",
+   "grupa": "K",
+   "opis": "4 zielone świece z rzędu."
+  },
+  {
+   "id": "K_CZERWONE_4",
+   "grupa": "K",
+   "opis": "4 czerwone świece z rzędu."
+  },
+  {
+   "id": "K_KORPUS_WZROST_0p5",
+   "grupa": "K",
+   "opis": "Korpus wzrostowy co najmniej 0.5%: zamknięcie tyle powyżej otwarcia tej świecy."
+  },
+  {
+   "id": "K_KORPUS_SPADEK_0p5",
+   "grupa": "K",
+   "opis": "Korpus spadkowy co najmniej 0.5%: zamknięcie tyle poniżej otwarcia tej świecy."
+  },
+  {
+   "id": "K_KORPUS_WZROST_2p0",
+   "grupa": "K",
+   "opis": "Korpus wzrostowy co najmniej 2.0%: zamknięcie tyle powyżej otwarcia tej świecy."
+  },
+  {
+   "id": "K_KORPUS_SPADEK_2p0",
+   "grupa": "K",
+   "opis": "Korpus spadkowy co najmniej 2.0%: zamknięcie tyle poniżej otwarcia tej świecy."
+  },
+  {
+   "id": "K_ZAMKNIECIE_GORNA_CWIARTKA",
+   "grupa": "K",
+   "opis": "Zamknięcie w górnej ćwiartce zakresu świecy."
+  },
+  {
+   "id": "K_ZAMKNIECIE_DOLNA_CWIARTKA",
+   "grupa": "K",
+   "opis": "Zamknięcie w dolnej ćwiartce zakresu świecy."
+  },
+  {
+   "id": "K_DLUGI_DOLNY_CIEN",
+   "grupa": "K",
+   "opis": "Dolny cień dłuższy niż połowa zakresu świecy — odrzucenie niższych cen."
+  },
+  {
+   "id": "K_DLUGI_GORNY_CIEN",
+   "grupa": "K",
+   "opis": "Górny cień dłuższy niż połowa zakresu świecy — odrzucenie wyższych cen."
+  },
+  {
+   "id": "K_DOJI",
+   "grupa": "K",
+   "opis": "Doji: korpus mniejszy niż 10% zakresu świecy."
+  },
+  {
+   "id": "K_POCHLANIA_W_GORE",
+   "grupa": "K",
+   "opis": "Objęcie wzrostowe: zielona świeca z korpusem obejmującym czerwony korpus poprzedniej."
+  },
+  {
+   "id": "K_POCHLANIA_W_DOL",
+   "grupa": "K",
+   "opis": "Objęcie spadkowe: czerwona świeca z korpusem obejmującym zielony korpus poprzedniej."
+  },
+  {
+   "id": "K_WYZSZY_SZCZYT_I_DOLEK",
+   "grupa": "K",
+   "opis": "Wyższy szczyt i wyższy dołek niż na poprzedniej świecy."
+  },
+  {
+   "id": "K_NIZSZY_SZCZYT_I_DOLEK",
+   "grupa": "K",
+   "opis": "Niższy szczyt i niższy dołek niż na poprzedniej świecy."
+  },
+  {
+   "id": "K_WEWNETRZNA",
+   "grupa": "K",
+   "opis": "Świeca wewnętrzna: cały zakres mieści się w zakresie poprzedniej."
+  },
+  {
+   "id": "C_SWIECA_1",
+   "grupa": "C",
+   "opis": "To 1. świeca sesji (godzina 9:30–10:30 ET)."
+  },
+  {
+   "id": "C_SWIECA_2",
+   "grupa": "C",
+   "opis": "To 2. świeca sesji (godzina 10:30–11:30 ET)."
+  },
+  {
+   "id": "C_SWIECA_3",
+   "grupa": "C",
+   "opis": "To 3. świeca sesji (godzina 11:30–12:30 ET)."
+  },
+  {
+   "id": "C_SWIECA_4",
+   "grupa": "C",
+   "opis": "To 4. świeca sesji (godzina 12:30–13:30 ET)."
+  },
+  {
+   "id": "C_SWIECA_5",
+   "grupa": "C",
+   "opis": "To 5. świeca sesji (godzina 13:30–14:30 ET)."
+  },
+  {
+   "id": "C_SWIECA_6",
+   "grupa": "C",
+   "opis": "To 6. świeca sesji (godzina 14:30–15:30 ET)."
+  },
+  {
+   "id": "C_SWIECA_7",
+   "grupa": "C",
+   "opis": "To 7. świeca sesji (godzina 15:30–16:30 ET) — ostatnia, 30 minut."
+  },
+  {
+   "id": "C_OSTATNIA_GODZINA",
+   "grupa": "C",
+   "opis": "Jedna z dwóch ostatnich świec sesji."
+  },
+  {
+   "id": "C_SESJA_SKROCONA",
+   "grupa": "C",
+   "opis": "Sesja skrócona (4 świece zamiast 7)."
+  },
+  {
+   "id": "C_PONIEDZIALEK",
+   "grupa": "C",
+   "opis": "Sesja przypada na poniedzialek."
+  },
+  {
+   "id": "C_WTOREK",
+   "grupa": "C",
+   "opis": "Sesja przypada na wtorek."
+  },
+  {
+   "id": "C_SRODA",
+   "grupa": "C",
+   "opis": "Sesja przypada na sroda."
+  },
+  {
+   "id": "C_CZWARTEK",
+   "grupa": "C",
+   "opis": "Sesja przypada na czwartek."
+  },
+  {
+   "id": "C_PIATEK",
+   "grupa": "C",
+   "opis": "Sesja przypada na piatek."
+  },
+  {
+   "id": "C_OSTATNIA_SESJA_TYGODNIA",
+   "grupa": "C",
+   "opis": "Ostatnia sesja tygodnia."
+  },
+  {
+   "id": "C_OSTATNIA_SESJA_MIESIACA",
+   "grupa": "C",
+   "opis": "Ostatnia sesja miesiąca."
+  },
+  {
+   "id": "M_SPY_WZROST_7_1",
+   "grupa": "M",
+   "opis": "SPY wyżej o co najmniej 1% niż 7 świec temu."
+  },
+  {
+   "id": "M_SPY_SPADEK_7_1",
+   "grupa": "M",
+   "opis": "SPY niżej o co najmniej 1% niż 7 świec temu."
+  },
+  {
+   "id": "M_SPY_WZROST_7_2",
+   "grupa": "M",
+   "opis": "SPY wyżej o co najmniej 2% niż 7 świec temu."
+  },
+  {
+   "id": "M_SPY_SPADEK_7_2",
+   "grupa": "M",
+   "opis": "SPY niżej o co najmniej 2% niż 7 świec temu."
+  },
+  {
+   "id": "M_SPY_WZROST_35_1",
+   "grupa": "M",
+   "opis": "SPY wyżej o co najmniej 1% niż 35 świec temu."
+  },
+  {
+   "id": "M_SPY_SPADEK_35_1",
+   "grupa": "M",
+   "opis": "SPY niżej o co najmniej 1% niż 35 świec temu."
+  },
+  {
+   "id": "M_SPY_WZROST_35_2",
+   "grupa": "M",
+   "opis": "SPY wyżej o co najmniej 2% niż 35 świec temu."
+  },
+  {
+   "id": "M_SPY_SPADEK_35_2",
+   "grupa": "M",
+   "opis": "SPY niżej o co najmniej 2% niż 35 świec temu."
+  },
+  {
+   "id": "M_SPY_NAD_SMA140",
+   "grupa": "M",
+   "opis": "SPY powyżej swojej SMA(140) — rynek w trendzie wzrostowym."
+  },
+  {
+   "id": "M_SPY_NAD_SMA35",
+   "grupa": "M",
+   "opis": "SPY powyżej swojej SMA(35)."
+  },
+  {
+   "id": "M_MOCNIEJ_NIZ_RYNEK_7",
+   "grupa": "M",
+   "opis": "Spółka urosła w 7 świecach więcej niż SPY."
+  },
+  {
+   "id": "M_SLABIEJ_NIZ_RYNEK_7",
+   "grupa": "M",
+   "opis": "Spółka urosła w 7 świecach mniej niż SPY."
+  },
+  {
+   "id": "M_MOCNIEJ_NIZ_RYNEK_35",
+   "grupa": "M",
+   "opis": "Spółka urosła w 35 świecach więcej niż SPY."
+  },
+  {
+   "id": "M_SLABIEJ_NIZ_RYNEK_35",
+   "grupa": "M",
+   "opis": "Spółka urosła w 35 świecach mniej niż SPY."
+  },
+  {
+   "id": "M_RUCH_WLASNY_GORA",
+   "grupa": "M",
+   "opis": "Ruch własny w górę: spółka +2% w 7 świecach, SPY nie więcej niż +0,3%."
+  },
+  {
+   "id": "M_RUCH_WLASNY_DOL",
+   "grupa": "M",
+   "opis": "Ruch własny w dół: spółka −2% w 7 świecach, SPY nie mniej niż −0,3%."
+  },
+  {
+   "id": "M_RYNEK_ZMIENNY",
+   "grupa": "M",
+   "opis": "Rynek ruchliwy: |zmiana SPY| w 7 świecach co najmniej 1%."
+  },
+  {
+   "id": "L_LUKA_GORA_0p5",
+   "grupa": "L",
+   "opis": "Luka wzrostowa co najmniej 0.5% na otwarciu tej sesji (tylko pierwsza świeca)."
+  },
+  {
+   "id": "L_LUKA_DOL_0p5",
+   "grupa": "L",
+   "opis": "Luka spadkowa co najmniej 0.5% na otwarciu tej sesji (tylko pierwsza świeca)."
+  },
+  {
+   "id": "L_LUKA_GORA_1p0",
+   "grupa": "L",
+   "opis": "Luka wzrostowa co najmniej 1.0% na otwarciu tej sesji (tylko pierwsza świeca)."
+  },
+  {
+   "id": "L_LUKA_DOL_1p0",
+   "grupa": "L",
+   "opis": "Luka spadkowa co najmniej 1.0% na otwarciu tej sesji (tylko pierwsza świeca)."
+  },
+  {
+   "id": "L_LUKA_GORA_2p0",
+   "grupa": "L",
+   "opis": "Luka wzrostowa co najmniej 2.0% na otwarciu tej sesji (tylko pierwsza świeca)."
+  },
+  {
+   "id": "L_LUKA_DOL_2p0",
+   "grupa": "L",
+   "opis": "Luka spadkowa co najmniej 2.0% na otwarciu tej sesji (tylko pierwsza świeca)."
+  },
+  {
+   "id": "L_BRAK_LUKI",
+   "grupa": "L",
+   "opis": "Otwarcie sesji bez luki: |luka| poniżej 0,2% (tylko pierwsza świeca)."
+  },
+  {
+   "id": "L_SESJA_PO_LUCE_GORA",
+   "grupa": "L",
+   "opis": "W tej sesji była luka wzrostowa ≥ 1% (dotyczy każdej świecy sesji)."
+  },
+  {
+   "id": "L_SESJA_PO_LUCE_DOL",
+   "grupa": "L",
+   "opis": "W tej sesji była luka spadkowa ≥ 1% (dotyczy każdej świecy sesji)."
+  }
+ ]
+}
