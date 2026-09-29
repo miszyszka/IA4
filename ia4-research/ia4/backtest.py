@@ -1,6 +1,6 @@
 """
 IA 4 — backtest S1 (Etap 2, instrukcja 2.1–2.3; sposób liczenia: D29 → D30, D31 → D32).
-Wersja projektu: 0.43 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.44 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Liczy strategie z zamrożonego katalogu S1 na okresie ODKRYWANIA (5.1 — poletko
 i skarbiec nietknięte), osobno dla grupy głównej i kontrolnej (5.6), i zapisuje
@@ -80,7 +80,6 @@ class Inst:
     eng: Engine
     tord: np.ndarray          # wspólny porządek czasowy świec
     week: np.ndarray          # numer tygodnia ISO w okresie
-    start: int = 0            # D33: pierwsza świeca, na której wolno WEJŚĆ (poletko: 2025-10-01)
 
 
 def prepare(frames: dict, spy, groups: dict) -> tuple[list[Inst], int]:
@@ -113,9 +112,7 @@ def random_baseline(insts: list[Inst], H: np.ndarray) -> dict:
             for it in insts:
                 if it.group != g:
                     continue
-                if it.start >= it.B.n:
-                    continue
-                r = resolve_grid(it.eng, np.arange(it.start, it.B.n), d, H)
+                r = resolve_grid(it.eng, np.arange(it.B.n), d, H)
                 tot += r.ret.sum(axis=0)
                 cnt += r.ret.shape[0]
             out[(g, d)] = (tot / max(cnt, 1)) * 100.0 - COST
@@ -142,9 +139,9 @@ def new_signal_only(mask: np.ndarray) -> np.ndarray:
     return mask & ~prev
 
 
-def _entries(mask: np.ndarray, sig: dict, n: int, start: int = 0) -> np.ndarray:
+def _entries(mask: np.ndarray, sig: dict, n: int) -> np.ndarray:
     e = signals.entry_index(sig, np.flatnonzero(mask))
-    return e[(e < n) & (e >= start)]
+    return e[e < n]
 
 
 def _collect(sig: dict, insts: list[Inst], H: np.ndarray) -> dict:
@@ -152,7 +149,7 @@ def _collect(sig: dict, insts: list[Inst], H: np.ndarray) -> dict:
     acc: dict = {}
     for it in insts:
         m = signals.mask(sig, it.B)
-        ent = {"1": _entries(m, sig, it.B.n, it.start), "nowy": _entries(new_signal_only(m), sig, it.B.n, it.start)}
+        ent = {"1": _entries(m, sig, it.B.n), "nowy": _entries(new_signal_only(m), sig, it.B.n)}
         for mode in LIMITS:
             ent[mode] = ent["1"]
         for d in ("L", "S"):

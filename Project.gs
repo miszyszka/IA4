@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.43 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.44 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.43',
+  INSTRUCTION_VERSION: '0.44',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -155,7 +155,7 @@ const DECISIONS = [
   ['D30', 'p-wartość backtestu (L36)', 'przybliżenie normalne z bootstrapu tygodniowego; FDR 10% na całym liczniku prób', '✅ przyjęta 2026-09-29'],
   ['D31', 'Uproszczony backtest (przebieg 2)', 'SL/TP 1–3%, H z D5, tryby 1 / 5 / nowy, portfel 100 000 $ po 10 $, koszty, 24 kolumny', '✅ przyjęta 2026-09-29'],
   ['D32', 'Backtest S1 — przebieg 3', 'SL 1–5% × TP 1–3%, tryby 1 / 5 / 10 / nowy, bez kosztów (5.5), 24 600 strategii, licznik prób 92 870', '✅ przyjęta 2026-09-29'],
-  ['D33', 'Lista 50 kandydatów S2 i kryterium poletka', 's2/kandydaci.json zamrożony przed poletkiem; zostaje: przewaga > 0 i ekspektancja ≥ 0,10% w obu grupach; lista coś znaczy przy ≥ 20 z 50', '✅ przyjęta 2026-09-29'],
+  ['D33', 'Lista 50 kandydatów S2 i kryterium poletka', 'WYCOFANA 2026-09-29 (0.44) — wracamy do listy S1-BACKTEST i kolejnego przebiegu; poletko Etapu 2 zostało zużyte (L37)', '⛔ wycofana 2026-09-29'],
 ];
 
 const PJ_WIDTH = 7;

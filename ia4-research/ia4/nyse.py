@@ -1,6 +1,6 @@
 """
 IA 4 — kalendarz sesji NYSE (Etap 1b, kontrakt silnika pkt 13).
-Wersja projektu: 0.43 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.44 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kopia dwóch list z Apps Script, bez których silnik nie rozpozna dziury w danych
 (D27): świąt (`US_MARKET_HOLIDAYS` w `History.gs`) i sesji skróconych
