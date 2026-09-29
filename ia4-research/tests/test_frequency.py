@@ -1,5 +1,5 @@
 """
-Częstość sygnałów (kryterium 1.3) i jej dołączanie do katalogu. Wersja projektu: 0.40 (2026-09-28).
+Częstość sygnałów (kryterium 1.3) i jej dołączanie do katalogu. Wersja projektu: 0.41 (2026-09-29).
 
     python tests/test_frequency.py
 """

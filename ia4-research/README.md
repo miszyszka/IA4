@@ -1,6 +1,6 @@
 # IA 4 — środowisko badawcze (Python, Mac)
 
-**Wersja projektu: 0.40 (2026-09-28) — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 0.41 (2026-09-29) — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Etap 0B. Ten folder robi jedną rzecz: ściąga świece z Firestore na dysk i daje
 do nich dostęp tak, żeby nie dało się przypadkiem zajrzeć do skarbca.
@@ -167,14 +167,12 @@ python3 -m ia4.catalog           # dołącza częstość, nadaje status „za rz
 Potem oba pliki do repozytorium i w arkuszu: IA 4 → Projekt → „Wczytaj katalog S1
 z GitHub”. Kolejność zamknięcia całego etapu: instrukcja 1.7, „Zamknięcie Etapu 1”.
 
-## 7. Etap 2 — backtest S1
-
-Dopiero po potwierdzeniu D29 (instrukcja, sekcja 9):
+## 7. Etap 2 — backtest S1 (przebieg 2: D30, D31)
 
 ```bash
 python3 -m ia4.backtest --limit 3   # próba na 3 sygnałach, nic nie zapisuje
-python3 -m ia4.backtest             # całość: 41 000 strategii, ok. 15–25 min
-cd .. && git add s1-backtest && git commit -m "Backtest S1" && git push
+python3 -m ia4.backtest             # całość: ok. 11 000 strategii, kilka minut
+cd .. && git add s1-backtest && git commit -m "Backtest S1 D31" && git push
 ```
 
 Potem w arkuszu: IA 4 → Projekt → „Wczytaj wyniki S1-BACKTEST z GitHub”.
