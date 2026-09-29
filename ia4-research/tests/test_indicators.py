@@ -1,5 +1,5 @@
 """
-Testy wskaźników (Etap 1b, instrukcja 1.3). Wersja projektu: 0.45 (2026-09-29).
+Testy wskaźników (Etap 1b, instrukcja 1.3). Wersja projektu: 0.46 (2026-09-29).
 
 Każda wartość jest policzona ręcznie (nie przez wywołanie tej samej funkcji
 z innymi parametrami) — patrz uzasadnienie liczb w komentarzach. Bez

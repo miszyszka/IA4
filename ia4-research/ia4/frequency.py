@@ -1,6 +1,6 @@
 """
 IA 4 — częstość sygnałów S1 na okresie odkrywania (Etap 1, kryterium 1.3).
-Wersja projektu: 0.45 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.46 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Dla każdego z 286 sygnałów: ile razy odpala i w ilu różnych dniach, osobno w
 grupie głównej (AAPL, TSLA, NVDA) i kontrolnej (50 spółek). SPY i QQQ to tło

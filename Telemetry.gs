@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — TELEMETRIA  (stan systemu → Firestore → GitHub)
  *
- *  Wersja projektu: 0.45 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.46 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  PO CO TO JEST
  *  Claude nie ma dostępu do arkusza ani do edytora Apps Script — widzi wyłącznie

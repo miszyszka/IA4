@@ -1,5 +1,5 @@
 """
-Katalog okoliczności towarzyszących (D34). Wersja projektu: 0.45 (2026-09-29).
+Katalog okoliczności towarzyszących (D34). Wersja projektu: 0.46 (2026-09-29).
 
 Wyłącznie sztuczne świece. Najważniejszy jest test „nie zagląda w przyszłość":
 okoliczność policzona na świecy t musi mieć tę samą wartość, gdy obetniemy

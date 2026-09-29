@@ -1,6 +1,6 @@
 """
 IA 4 — backtest S1 (Etap 2, instrukcja 2.1–2.3; sposób liczenia: D29 → D30, D31 → D32).
-Wersja projektu: 0.45 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.46 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Liczy strategie z zamrożonego katalogu S1 na okresie ODKRYWANIA (5.1 — poletko
 i skarbiec nietknięte), osobno dla grupy głównej i kontrolnej (5.6), i zapisuje
@@ -230,7 +230,8 @@ def bootstrap_p(S: np.ndarray, N: np.ndarray, rnd: np.ndarray, B: int = BOOT_B, 
             warnings.simplefilter("ignore", RuntimeWarning)          # strategie bez transakcji
             mstar = (C @ S[a:b].T) / (C @ N[a:b].T)
             se[a:b] = np.nanstd(mstar, axis=0, ddof=1)
-    z = (mhat - rnd) / se
+    with np.errstate(invalid="ignore", divide="ignore"):
+        z = (mhat - rnd) / se
     p = np.array([0.5 * math.erfc(v / math.sqrt(2)) if np.isfinite(v) else 1.0 for v in z])
     p[~(ntot > 0)] = 1.0
     return p
