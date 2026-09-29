@@ -1,6 +1,6 @@
 """
 IA 4 — silnik transakcji (Etap 1b, instrukcja 1.7; liczy wyniki dopiero w Etapie 2).
-Wersja projektu: 0.46 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.47 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kontrakt silnika (`S1_KATALOG_BAZOWY.md`) punkt po punkcie:
   2–3. Wejście po otwarciu świecy wejścia: t+1 (NEXT_OPEN) albo t (SESSION_OPEN,

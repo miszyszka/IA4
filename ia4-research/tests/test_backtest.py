@@ -1,5 +1,5 @@
 """
-Testy backtestu Etapu 2 (D30, D31, D32). Wersja projektu: 0.46 (2026-09-29).
+Testy backtestu Etapu 2 (D30, D31, D32). Wersja projektu: 0.47 (2026-09-29).
 
 Wyłącznie sztuczne świece — ten test nigdy nie widzi prawdziwych danych.
 

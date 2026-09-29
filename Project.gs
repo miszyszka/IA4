@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STAN PROJEKTU, SKARBIEC I AUDYT DANYCH
  *
- *  Wersja projektu: 0.46 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 0.47 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Realizuje zasady z pliku IA4_INSTRUKCJA.md:
  *   • arkusz PROJEKT — etapy, kryteria ukończenia, skarbiec, luki, decyzje,
@@ -19,7 +19,7 @@
  */
 
 const PROJECT = {
-  INSTRUCTION_VERSION: '0.46',
+  INSTRUCTION_VERSION: '0.47',
   SHEET: 'PROJEKT',
   AUDIT_SHEET: '_AUDYT',
   DECISION_SHEET: '_AUDYT_DECYZJE',
@@ -157,6 +157,7 @@ const DECISIONS = [
   ['D32', 'Backtest S1 — przebieg 3', 'SL 1–5% × TP 1–3%, tryby 1 / 5 / 10 / nowy, bez kosztów (5.5), 24 600 strategii, licznik prób 92 870', '✅ przyjęta 2026-09-29'],
   ['D33', 'Lista 50 kandydatów S2 i kryterium poletka', 'WYCOFANA 2026-09-29 (0.44) — wracamy do listy S1-BACKTEST i kolejnego przebiegu; poletko Etapu 2 zostało zużyte (L37)', '⛔ wycofana 2026-09-29'],
   ['D34', 'Przebieg 4: okoliczności towarzyszące', '231 okoliczności TAK/NIE, rating 0-100, wejście w lepszą połowę sygnałów, stawka 10-100 $, wszystkie spółki razem; rating z tych samych transakcji (L38) — przyjęte świadomie', '✅ przyjęta 2026-09-29'],
+  ['D35', 'Sprawdzian przebiegu 4 na poletku', 'Cztery wersje: U odkrywanie, A poletko bez filtra, B rating z odkrywania (sprawdzian), C rating z poletka (podziałka); purging 5.9; drugie zajrzenie na poletko (L37)', '🔸 do potwierdzenia'],
 ];
 
 const PJ_WIDTH = 7;

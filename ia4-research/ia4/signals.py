@@ -1,6 +1,6 @@
 """
 IA 4 — sygnały katalogu S1 (Etap 1b, instrukcja 1.7).
-Wersja projektu: 0.46 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.47 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Jedna funkcja na typ z `params["type"]` w `s1/catalog.json`. Każda dostaje
 świece jednego odcinka (`bars.Bars`) i zwraca maskę bool: czy sygnał odpala

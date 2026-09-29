@@ -1,6 +1,6 @@
 """
 IA 4 — backtest S1 (Etap 2, instrukcja 2.1–2.3; sposób liczenia: D29 → D30, D31 → D32).
-Wersja projektu: 0.46 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.47 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Liczy strategie z zamrożonego katalogu S1 na okresie ODKRYWANIA (5.1 — poletko
 i skarbiec nietknięte), osobno dla grupy głównej i kontrolnej (5.6), i zapisuje

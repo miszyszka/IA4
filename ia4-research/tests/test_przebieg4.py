@@ -1,6 +1,6 @@
 """
 Przebieg 4: okoliczności, rating, lepsza połowa, zmienna stawka (D34).
-Wersja projektu: 0.46 (2026-09-29).
+Wersja projektu: 0.47 (2026-09-29).
 
 Wyłącznie sztuczne świece.
 

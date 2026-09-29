@@ -1,6 +1,6 @@
 """
 IA 4 — katalog okoliczności towarzyszących (Etap 2, przebieg 4; decyzja D34).
-Wersja projektu: 0.46 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.47 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Okoliczność = prosty warunek TAK/NIE opisujący stan rynku na świecy sygnału.
 Nie jest sygnałem wejścia — jest opisem tła, w jakim sygnał odpalił. Każda

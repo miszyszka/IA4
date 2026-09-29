@@ -1,6 +1,6 @@
 """
 IA 4 — backtest S1, przebieg 4: okoliczności, rating, lepsza połowa, zmienna stawka (D34).
-Wersja projektu: 0.46 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 0.47 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Dla każdej strategii (sygnał × kierunek × SL × TP × tryb):
 
@@ -59,7 +59,7 @@ PRIOR_TRIALS = 92_870        # licznik 5.7 po przebiegu 3
 
 
 class Inst:
-    __slots__ = ("symbol", "grupa", "B", "eng", "tord", "week", "off")
+    __slots__ = ("symbol", "grupa", "B", "eng", "tord", "week", "off", "poletko")
 
     def __init__(self, symbol, grupa, B, eng, tord, week, off):
         self.symbol, self.grupa, self.B, self.eng = symbol, grupa, B, eng
