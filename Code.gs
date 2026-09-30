@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — zbieranie świec 1h  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 1.0 (2026-09-30) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.1 (2026-09-30) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Jedyne zadanie tego pliku: żeby baza świec w Firestore była kompletna
  *  i rosła każdego dnia. Zasady i format bazy: IA4_INSTRUKCJA.md.
@@ -15,7 +15,8 @@
  *    Zaraz potem liczy, ile świec ma w bazie każdy instrument.
  *  • Arkusz STATS pokazuje tylko stan automatu. Dane są wyłącznie w Firestore.
  *
- *  Plik współpracuje z Telemetry.gs (stan → telemetry/state.json w GitHub).
+ *  Plik współpracuje z Telemetry.gs (stan → telemetry/state.json w GitHub)
+ *  i Research.gs (wyniki poszukiwania z brancha `research` → arkusz RESEARCH).
  * ============================================================================
  */
 
@@ -23,7 +24,7 @@
 //  KONFIGURACJA
 // ============================================================================
 const CONFIG = {
-  VERSION: '1.0',
+  VERSION: '1.1',
 
   // Trzy grupy instrumentów — nazwy kolekcji w Firestore są historyczne
   // i zostają bez zmian (instrukcja, sekcja 4).
@@ -132,8 +133,8 @@ function onOpen() {
     .addSeparator()
     .addItem('📡 Wyślij stan do GitHub teraz', 'telemetryPublishNow')
     .addItem('🔑 Ustaw token GitHub', 'telemetrySetToken')
+    .addItem('🔬 Odśwież RESEARCH teraz', 'researchSyncNow')
     .addSeparator()
-    .addItem('🧹 Sprzątanie po wersji 1.0 (raz)', 'cleanupLegacy')
     .addItem('⏹ Zatrzymaj automat', 'stopCollector')
     .addToUi();
 }
@@ -840,9 +841,10 @@ function clearError_(source) { delete RUN_.errSeen[source]; }
 //  TRIGGERY
 // ============================================================================
 function installTriggers_() {
-  removeTriggers_(['runCollector', 'telemetryHourly']);
+  removeTriggers_(['runCollector', 'telemetryHourly', 'researchSync']);
   ScriptApp.newTrigger('runCollector').timeBased().everyMinutes(CONFIG.TRIGGER_EVERY_MIN).create();
   ScriptApp.newTrigger('telemetryHourly').timeBased().everyHours(1).create();
+  ScriptApp.newTrigger('researchSync').timeBased().everyMinutes(30).create();
 }
 
 function removeTriggers_(handlers) {
@@ -851,56 +853,6 @@ function removeTriggers_(handlers) {
     if (handlers.indexOf(t.getHandlerFunction()) >= 0) { ScriptApp.deleteTrigger(t); n++; }
   });
   return n;
-}
-
-
-// ============================================================================
-//  SPRZĄTANIE PO WERSJI 1.0 — uruchomić raz, po wklejeniu nowego kodu.
-//  Usuwa arkusze, triggery, właściwości skryptu i dokumenty system/* po
-//  strategiach, audycie, historii, inwestorach i telemetrii sprzed 1.0.
-//  NIE dotyka świec (stocks/, proof/, context/).
-// ============================================================================
-const LEGACY = {
-  SHEETS: ['PROJEKT', '_AUDYT', '_AUDYT_DECYZJE', 'S1', 'S1-BACKTEST', 'Transaction LOG'],
-  PROPS: ['AUDIT_READ_BUDGET', 'AUDIT_STATE', 'HISTORY_STATE', 'PATCH_ATTEMPTS', 'PATCH_LAST_AT',
-          'PATCH_SPEND', 'PROJECT_STATE', 'PROOF_STATE', 'VOLFILL_LAST_AT', 'VOLFILL_STATE',
-          'FS_QUOTA_DAY', 'FS_STATUS', 'STATS_LAYOUT_SYMS', 'TELEMETRY_HASH', 'TELEMETRY_PUSHED_AT'],
-  DOCS: ['system/project', 'system/history', 'system/telemetry', 'system/test'],
-};
-
-function cleanupLegacy() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const done = [];
-
-  // Triggery: zostają tylko runCollector i telemetryHourly (tworzone od nowa niżej).
-  let nt = 0;
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (['runCollector', 'telemetryHourly'].indexOf(t.getHandlerFunction()) < 0) { ScriptApp.deleteTrigger(t); nt++; }
-  });
-  done.push(`triggery usunięte: ${nt}`);
-
-  const sheets = LEGACY.SHEETS.filter(n => {
-    const sh = ss.getSheetByName(n);
-    if (!sh || ss.getSheets().length <= 1) return false;
-    ss.deleteSheet(sh);
-    return true;
-  });
-  done.push(`arkusze usunięte: ${sheets.length ? sheets.join(', ') : 'brak'}`);
-
-  const props = PropertiesService.getScriptProperties();
-  LEGACY.PROPS.forEach(k => props.deleteProperty(k));
-  done.push(`właściwości skryptu wyczyszczone: ${LEGACY.PROPS.length}`);
-
-  try {
-    firestoreCommit_(LEGACY.DOCS.map(d => ({ delete: `${fsBase_()}/${d}` })));
-    done.push(`Firestore: usunięto ${LEGACY.DOCS.join(', ')}`);
-  } catch (e) {
-    done.push('Firestore: ' + e.message);
-  }
-
-  setup();   // nowy STATS, triggery, system/universe, uzupełnienie miesiąca
-  alert_('Sprzątanie zakończone.\n\n• ' + done.join('\n• ') +
-    '\n\nAutomat działa w wersji ' + CONFIG.VERSION + '. Świece w bazie nie były ruszane.');
 }
 
 

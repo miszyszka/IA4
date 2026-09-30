@@ -1,8 +1,8 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.0
+**Wersja:** 1.1
 **Data:** 30 września 2026
-**Aktualny etap:** 🟨 Etap 1 — Baza danych. System działa od tygodni; zostało wdrożenie wersji 1.0 w Apps Script (sekcja 8) i jedna noc potwierdzająca, że nowy automat działa.
+**Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii. Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca.
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jeśli kod, arkusz albo telemetria się z nim rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -10,47 +10,66 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Je�
 
 ## 1. Cel
 
-**Jedyny cel projektu na dziś: budować i utrzymywać bazę świec 1h w Firestore.** Baza ma być kompletna, rosnąć każdego dnia sesyjnego i mieć stały, prosty format, żeby w Etapie 2 można ją było łatwo przeliczać w Pythonie na Macu.
+1. **Baza świec 1h w Firestore** (Etap 1, działa stale): kompletna, rośnie każdego dnia sesyjnego, ma stały format.
+2. **Poszukiwanie strategii** (Etap 2): program w Pythonie na Macu, uruchamiany w dowolnych momentach, bez końca przelicza kopię lokalną bazy i szuka powtarzalnych sygnałów long i short opartych na średnich kroczących. Liczy się jakość, nie liczba strategii. Każda zapisana strategia jest regułą opisaną na sztywno (sekcja 8), tak żeby inny system mógł ją odtworzyć świeca po świecy.
 
-Wszystko, co nie służy temu celowi (strategie, backtesty, poletko, rating, inwestorzy, dashboard, audyty luk), zostało usunięte w wersji 1.0. Historia tych prac jest w historii gita do wersji 0.47.
+Historia wcześniejszych prac (strategie S1/S2, backtesty, etapy 0–5) jest w historii gita do wersji 0.47.
 
 ---
 
 ## 2. Żelazne zasady
 
-1. **Firestore jest jedynym źródłem danych.** Kopia na Macu (`ia4-research/data/`) to tylko kopia robocza — można ją skasować i odtworzyć.
+1. **Firestore jest jedynym źródłem danych.** Kopia na Macu (`ia4-research/data/`) to tylko kopia robocza — można ją skasować i odtworzyć. Python nigdy nie pobiera świec z Yahoo i nigdy nie pisze do Firestore.
 2. **Baza tylko rośnie.** Zapisujemy wyłącznie zamknięte świece. Niczego nie kasujemy. Wolno przepisać sesję tylko danymi pobranymi ponownie z Yahoo (nocne odświeżenie, „Uzupełnij ostatni miesiąc”).
 3. **Format bazy (sekcja 4) jest stały.** Każda jego zmiana wymaga najpierw zmiany tej instrukcji, zgody człowieka i opisu migracji istniejących danych.
-4. **Skarbiec = najstarsze 800 świec każdego instrumentu** (sekcja 6). W Etapie 2 nie wolno go używać do szukania, strojenia ani oceny czegokolwiek — do czasu jednorazowego sprawdzianu końcowego.
+4. **Skarbiec = najstarsze 800 świec każdego instrumentu** (sekcja 6). Poszukiwanie nigdy nie widzi wyników skarbca. Skarbiec otwiera wyłącznie bramka skarbca, dla strategii, która przeszła wszystkie sita grupy głównej. Każde otwarcie jest liczone i zapisywane.
 5. **Sekrety nigdy nie trafiają do repozytorium:** klucz serwisowy Firebase (`~/.ia4/serviceAccount.json`) i token GitHub (Script Properties → `GITHUB_TOKEN`).
 6. **System jest minimalny.** Nowa funkcja, arkusz, plik czy dziennik pojawia się tylko za zgodą człowieka i najpierw jako zmiana tej instrukcji.
 7. **Współpraca z Claude:**
-   - na początku rozmowy Claude pobiera repozytorium `github.com/miszyszka/IA4.git` (branch `main`), czyta ten plik i `telemetry/state.json`,
-   - każdą zmianę Claude commituje i pushuje w tej samej turze; bez klucza — prosi o niego,
+   - na początku rozmowy Claude pobiera repozytorium `github.com/miszyszka/IA4.git`, czyta ten plik (branch `main`), `telemetry/state.json` (branch `main`) oraz `research/status.json` i `research/log.jsonl` (branch `research`),
+   - Claude przygotowuje zmiany jako commit w pliku `.bundle` i podaje gotowe polecenia terminala do wypchnięcia (sekcja 12); zmiany zapisuje też lokalnie w `~/Desktop/IA4`,
    - pracę wykraczającą poza tę instrukcję albo pomysł na jej zmianę Claude najpierw proponuje i czeka na zgodę,
    - Claude nie ma dostępu do arkusza ani edytora Apps Script: użytkownik ręcznie wkleja zmienione pliki `.gs` do Apps Script i robi `git pull` na Macu.
-8. **Jedna wersja dla całego projektu.** Ten sam numer w nagłówku tej instrukcji, w nagłówku każdego pliku `.gs`, w `CONFIG.VERSION` (`Code.gs`) i w `ia4-research/`. Zmiana znacząca (logika, zasada, format, etap) podbija wersję i dostaje wpis w sekcji 9. Drobne poprawki — tylko opis w commicie. (`appsscript.json` nie nosi wersji — JSON nie ma komentarzy.)
+8. **Jedna wersja dla całego projektu.** Ten sam numer w nagłówku tej instrukcji, w nagłówku każdego pliku `.gs`, w `CONFIG.VERSION` (`Code.gs`) i w `ia4-research/` (`ia4/__init__.py`). Zmiana znacząca (logika, zasada, format, etap) podbija wersję i dostaje wpis w sekcji 13. Drobne poprawki — tylko opis w commicie. (`appsscript.json` nie nosi wersji — JSON nie ma komentarzy.)
+9. **Strategia to reguła, nie kod.** Każda zapisana strategia jest pełną regułą w języku `ia4-rule/1` (sekcja 8): linie, sygnał, filtry, SL, TP, FC, limit czasu — wszystko liczbami, bez parametrów domyślnych. Definicje z sekcji 8 zmienia się tylko razem z nową wersją języka (`ia4-rule/2`); stare strategie zachowują swoją wersję.
+10. **Symulacja jest zawsze pesymistyczna** (sekcja 8.6) i bez kosztów transakcyjnych. Każda reguła jest liczona na wszystkich hipotezach SL × TP naraz.
+11. **Wyniki poszukiwania żyją na branchu `research`** (sekcja 10). Python nie pisze do `main`; `main` to kod, ta instrukcja i telemetria automatu.
 
 ---
 
 ## 3. Architektura
 
 ```
-Yahoo Finance ──(Apps Script, co minutę)──▶ Firestore ──(python -m ia4.sync)──▶ Mac: ia4-research/data/*.parquet
-                        │
-                        ├──▶ arkusz STATS (stan automatu)
-                        └──▶ GitHub: telemetry/state.json (co godzinę, gdy coś się zmieniło)
+Yahoo ──(Apps Script, co minutę)──▶ Firestore ──(ia4.sync)──▶ Mac: ia4-research/data/*.parquet
+                  │                                                     │
+                  ├──▶ arkusz STATS                                     ▼
+                  ├──▶ GitHub main: telemetry/state.json      python -m ia4.lab (bez końca)
+                  │                                                     │
+                  └──◀ arkusz RESEARCH ◀──(Research.gs, co 30 min)──── GitHub research: research/*
 ```
 
 | Plik | Rola |
 |---|---|
-| `Code.gs` | cały automat: listy instrumentów, zbieranie na żywo, nocne odświeżenie, liczenie bazy, zapis do Firestore, arkusz STATS, menu, jednorazowe sprzątanie po 1.0 |
-| `Telemetry.gs` | stan zbierania → `telemetry/state.json` w GitHub |
+| `Code.gs` | automat: listy instrumentów, zbieranie na żywo, nocne odświeżenie, liczenie bazy, zapis do Firestore, arkusz STATS, menu, triggery |
+| `Telemetry.gs` | stan zbierania → `telemetry/state.json` w GitHub (branch `main`) |
+| `Research.gs` | branch `research` (`status.json`, `log.jsonl`) → arkusz RESEARCH |
 | `appsscript.json` | uprawnienia Apps Script |
 | `ia4-research/ia4/sync.py` | Firestore → lokalne pliki parquet, tylko przyrosty |
 | `ia4-research/ia4/config.py` | klucz serwisowy (poza repo), listy instrumentów z Firestore |
-| `ia4-research/README.md` | instalacja i użycie synchronizacji |
-| `telemetry/state.json` | stan systemu, generowany — nie edytować |
+| `ia4-research/ia4/lab/__main__.py` | `python -m ia4.lab` — start: synchronizacja, kontrola bazy, poszukiwanie |
+| `ia4-research/ia4/lab/check.py` | kontrola kompletności kopii lokalnej (kalendarz NYSE) |
+| `ia4-research/ia4/lab/data.py` | kopia lokalna → tablice świec, strefy (skarbiec, okresy), cechy filtrów |
+| `ia4-research/ia4/lab/indicators.py` | średnie kroczące, ATR, RSI (sekcja 8.2) |
+| `ia4-research/ia4/lab/rules.py` | język reguł `ia4-rule/1` — implementacja wzorcowa (sekcja 8) |
+| `ia4-research/ia4/lab/sim.py` | symulacja transakcji, wszystkie SL × TP naraz (sekcja 8.6) |
+| `ia4-research/ia4/lab/space.py` | siatka, losowanie, mutacje, sąsiedzi, opisy słowne reguł |
+| `ia4-research/ia4/lab/search.py` | pętla poszukiwania, sita, bramka skarbca, log co 30 min |
+| `ia4-research/ia4/lab/worker.py` | obliczenia w procesach roboczych; wyniki skarbca tylko przez bramkę |
+| `ia4-research/ia4/lab/store.py` | klon brancha `research` w `ia4-research/research-repo/`, commit + push |
+| `ia4-research/ia4/lab/settings.py` | domyślne ustawienia poszukiwania (nadpisuje je `research/config.json`) |
+| `ia4-research/ia4/lab/selftest.py` | test silnika na danych syntetycznych |
+| `ia4-research/README.md` | instalacja i użycie |
+| `telemetry/state.json` | stan automatu, generowany — nie edytować |
 | `IA4_INSTRUKCJA.md` | ten plik |
 
 ---
@@ -65,7 +84,7 @@ Yahoo Finance ──(Apps Script, co minutę)──▶ Firestore ──(python -
 | kontrolne (50) | `proof` | DELL, AMAT, PLTR, ORCL, XOM, V, WMT, JPM, MU, META, AVGO, MSFT, GOOGL, JNJ, MA, ABBV, BAC, CVX, MRK, PG, HD, PM, WFC, CRM, CAT, HON, UNP, RTX, AMZN, MCD, NKE, SBUX, T, VZ, NFLX, DIS, UNH, LLY, PFE, MDT, PLD, AMT, LIN, FCX, NEE, DUK, GS, AXP, KO, PEP |
 | tło rynku (2) | `context` | SPY, QQQ |
 
-Nazwy grup i kolekcji są historyczne; zostają, żeby nie przenosić danych. Listy są w `Code.gs` (`CONFIG`) i w Firestore (`system/universe`).
+Nazwy grup i kolekcji są historyczne; zostają, żeby nie przenosić danych. Listy są w `Code.gs` (`CONFIG`) i w Firestore (`system/universe`). W Etapie 2 strategie są wspólne dla wszystkich 53 spółek (główne + kontrolne); SPY i QQQ służą tylko jako filtry tła rynku.
 
 ### Świeca
 
@@ -112,7 +131,7 @@ Historia od połowy września 2024 (granica Yahoo: ok. 730 dni wstecz dla świec
 
 Limit Firestore (plan Spark): 20 000 zapisów i 50 000 odczytów dziennie. Normalny dzień to ok. 1200 zapisów.
 
-**Raz w roku (grudzień):** dopisać święta NYSE na kolejny rok do `US_MARKET_HOLIDAYS` w `Code.gs`.
+**Raz w roku (grudzień):** dopisać święta NYSE na kolejny rok do `US_MARKET_HOLIDAYS` w `Code.gs` oraz święta i sesje skrócone do `ia4-research/ia4/lab/check.py`.
 
 ---
 
@@ -130,10 +149,11 @@ Wynik: `data/{SYMBOL}.parquet`, jedna tabela na instrument, kolumny `symbol, dat
 
 ## 6. Skarbiec — najstarsze 800 świec
 
-- **Definicja:** dla każdego instrumentu osobno — jego 800 najwcześniejszych świec w bazie, w kolejności `(date, slot)`. Dla spółek z pełną historią to mniej więcej wrzesień 2024 – luty 2025.
-- **Dlaczego z początku, a nie z końca:** Yahoo nie oddaje danych starszych niż ~730 dni, więc baza nigdy nie urośnie wstecz — najstarsze 800 świec to zbiór stały na zawsze. Wszystko po nim to baza badawcza, która rośnie każdego dnia i z czasem daje coraz szersze pole do badań.
-- **Zasada:** w Etapie 2 skarbiec jest wyłączony z szukania, strojenia i oceny. Otwiera się go raz, do jednego sprawdzianu końcowego. Porażka na skarbcu jest wynikiem, nie błędem do poprawienia.
-- **Egzekwowanie:** kod Etapu 2 wczytujący dane musi sam odcinać skarbiec (zasada wymuszona kodem, nie pamięcią). Baza i synchronizacja przechowują wszystko bez podziału.
+- **Definicja:** dla każdego instrumentu osobno — jego 800 najwcześniejszych świec w bazie, w kolejności `(date, slot)`. Dla spółek z pełną historią to mniej więcej wrzesień 2024 – luty 2025. Wszystko po skarbcu to **grupa główna**.
+- **Dlaczego z początku:** Yahoo nie oddaje danych starszych niż ~730 dni, więc baza nigdy nie urośnie wstecz — skarbiec jest stały na zawsze, a grupa główna rośnie każdego dnia.
+- **Zasada:** poszukiwanie (siatka, adaptacja, wszystkie sita) widzi wyłącznie wyniki grupy głównej. Skarbiec może być otwierany wielokrotnie — każde otwarcie dotyczy innej strategii i zadaje danym inne pytanie — ale tylko przez bramkę skarbca (sekcja 9.4), dla strategii obiecującej na grupie głównej, która nie jest duplikatem strategii już sprawdzonej w skarbcu. Każde otwarcie jest liczone (`vault_peeks`) i zapisywane w `research/vault.jsonl`, także gdy strategia przepadnie.
+- **Egzekwowanie kodem:** procesy robocze zerują wyniki skarbca, zanim oddadzą wynik (`worker.evaluate`). Wyniki skarbca zwraca tylko `worker.open_vault`, wołane wyłącznie przez `Lab._open_vault` w `search.py`.
+- **Przypisanie transakcji:** transakcja należy do strefy świecy wejścia. Wskaźniki liczone są na ciągłej serii instrumentu (także przez granicę skarbca).
 
 ---
 
@@ -141,37 +161,259 @@ Wynik: `data/{SYMBOL}.parquet`, jedna tabela na instrument, kolumny `symbol, dat
 
 Status: ⬜ nie rozpoczęty · 🟨 w toku · ✅ zakończony
 
-### Etap 1 — Baza danych 🟨
+### Etap 1 — Baza danych ✅ (zamknięty 30.09.2026)
 
-Ukończony, gdy:
-- 1.1 wersja 1.0 wklejona do Apps Script i „Sprzątanie po wersji 1.0” wykonane (sekcja 8),
-- 1.2 w Apps Script są tylko `Code.gs`, `Telemetry.gs`, `appsscript.json`; triggery tylko `runCollector` i `telemetryHourly`,
-- 1.3 po pierwszej nocy `telemetry/state.json` pokazuje nocne odświeżenie i liczbę świec każdego instrumentu,
-- 1.4 `python -m ia4.sync` na Macu działa na wersji 1.0.
+Wersja 1.0 wdrożona w Apps Script, triggery `runCollector` i `telemetryHourly`, synchronizacja na Macu działa. Automat pracuje dalej bez końca. Pierwsze nocne odświeżenie i liczba świec w bazie pojawią się w `telemetry/state.json` (pola `nightly`, `base`) — jeśli ich nie ma po nocy sesyjnej, to błąd do naprawy.
 
-Po ukończeniu Etap 1 nie kończy pracy — automat działa dalej bez końca.
+### Etap 2 — Poszukiwanie strategii 🟨
 
-### Etap 2 — Przeliczanie danych na Macu ⬜
+Program `python -m ia4.lab` na Macu (sekcje 8–10), wyniki na branchu `research`, podgląd w arkuszu RESEARCH (sekcja 11). Etap trwa bez końca; Claude okresowo przegląda wyniki i proponuje zmiany ustawień w `research/config.json`.
 
-Zakres do ustalenia. Pracuje na kopii lokalnej z `ia4.sync`, z wyłączonym skarbcem (sekcja 6).
+Etap 2 jest wdrożony, gdy:
+- 2.1 wersja 1.1 wklejona do Apps Script, „Konfiguruj” wykonane, triggery: `runCollector`, `telemetryHourly`, `researchSync` (sekcja 12),
+- 2.2 `python -m ia4.lab.selftest` na Macu kończy się „WYNIK: OK”,
+- 2.3 pierwsze uruchomienie `python -m ia4.lab` utworzyło branch `research` z `status.json` i `log.jsonl`,
+- 2.4 arkusz RESEARCH pokazuje dziennik.
 
----
+### Etap 3 — Użycie strategii ⬜
 
-## 8. Wdrożenie wersji 1.0 (jednorazowo)
-
-1. W edytorze Apps Script **usuń pliki:** `Project.gs`, `Proof.gs`, `History.gs`, `Investor.gs`, `Catalog.gs`, `Backtest.gs`.
-2. **Podmień** treść `Code.gs` i `Telemetry.gs` na wersję z GitHub. Zapisz.
-3. Odśwież arkusz → menu **IA 4 → 🧹 Sprzątanie po wersji 1.0 (raz)**. Usuwa stare arkusze (PROJEKT, _AUDYT, _AUDYT_DECYZJE, S1, S1-BACKTEST, Transaction LOG), stare triggery i właściwości skryptu, dokumenty `system/project`, `system/history`, `system/telemetry`; potem sam robi „Konfiguruj” (nowy STATS, triggery, `system/universe`, uzupełnienie miesiąca). **Świec nie rusza.** Token GitHub zostaje.
-4. Menu IA 4 → **📡 Wyślij stan do GitHub teraz** — `telemetry/state.json` przyjmie nowy, krótki format.
-5. Na Macu: `git pull`. W `ia4-research/` zostaje folder `data/` z dotychczasową kopią — działa dalej bez zmian.
-
-Dokumenty inwestorów z Firestore (jeśli istnieją) i stare pliki w `ia4-research/` spoza repo (np. wyniki backtestów) nie są ruszane — można je usunąć ręcznie. Po zamknięciu Etapu 1 tę sekcję i funkcję `cleanupLegacy` w `Code.gs` można usunąć.
+Zakres do ustalenia (np. wykrywanie sygnałów zapisanych strategii na żywo i śledzenie SL/TP/FC na każdej zamkniętej świecy).
 
 ---
 
-## 9. Dziennik zmian
+## 8. Język reguł `ia4-rule/1`
+
+Implementacja wzorcowa: `ia4-research/ia4/lab/rules.py`, `indicators.py`, `sim.py`. Oznaczenia: `t` — indeks świecy w ciągłej serii jednego instrumentu (świece w kolejności `(date, slot)`, przez noce i weekendy bez przerw); `x[t−k]` — wartość k świec wcześniej; `c, o, h, l, v` — close, open, high, low, wolumen. Wartość, której nie da się policzyć (za krótka historia, brak danych), to **brak**; porównanie z brakiem jest zawsze fałszywe.
+
+### 8.1 Struktura reguły
+
+```json
+{
+  "schema": "ia4-rule/1",
+  "direction": "long",
+  "lines":   {"A": {"ma": "EMA", "n": 21}, "B": {"ma": "SMA", "n": 60}},
+  "signal":  {"kind": "converge", "grow": 3, "shrink": 2},
+  "filters": [{"f": "rsi", "op": "<", "x": 45.0}],
+  "exit":    {"sl": 3, "tp": 5, "max_bars": 35, "fc": [{"kind": "reexpand", "n": 2}]}
+}
+```
+
+- `direction`: `long` albo `short`.
+- `lines`: 1–3 średnie z ceny close: `A` (najkrótsza), `B`, `C`; okres `n` 5–150. W poszukiwaniu okresy rosną A < B < C (dwie linie mogą mieć ten sam okres tylko przy różnych typach).
+- `signal`: rodzaj i parametry sygnału (8.3); sygnał powstaje na zamknięciu świecy `t`.
+- `filters`: 0–2 warunki `cecha op próg`, `op` to `>` albo `<` (8.4); wszystkie muszą być spełnione na świecy `t`.
+- `exit`: `sl` i `tp` w procentach ceny wejścia (liczby całkowite 1–10), `max_bars` — limit czasu w świecach albo `null`, `fc` — lista warunków force close (8.5), może być pusta.
+- Identyfikator strategii: `S-` + pierwsze 10 znaków SHA-1 z kanonicznego JSON reguły (klucze posortowane, bez spacji).
+
+### 8.2 Średnie kroczące i wskaźniki
+
+| Typ | Wzór |
+|---|---|
+| `SMA` | średnia arytmetyczna `c` z ostatnich n świec |
+| `EMA` | `e[t] = e[t−1] + α·(c[t] − e[t−1])`, α = 2/(n+1); start: `e` na n-tej świecy = SMA z pierwszych n |
+| `WMA` | średnia ważona liniowo: najnowsza świeca waga n, najstarsza 1 |
+| `HMA` | `WMA( 2·WMA(c, ⌊n/2⌋) − WMA(c, n), ⌊√n⌋ )` |
+| `DEMA` | `2·E1 − E2`, gdzie E1 = EMA(c, n), E2 = EMA(E1, n) |
+| `TEMA` | `3·E1 − 3·E2 + E3`, E3 = EMA(E2, n) |
+| `KAMA` | Kaufman: ER = \|c[t] − c[t−n]\| / Σ\|c[i] − c[i−1]\| (n kroków; mianownik 0 → ER = 0), sc = (ER·(2/3 − 2/31) + 2/31)², `k[t] = k[t−1] + sc·(c[t] − k[t−1])`; start: `k` na świecy n−1 = c tej świecy, pierwsza wartość na świecy n |
+| `VWMA` | Σ(c·v)/Σv z n świec; wolumen 0 ma wagę 0; Σv = 0 → brak |
+| `ZLEMA` | EMA(n) z serii `2·c[t] − c[t−lag]`, lag = ⌊(n−1)/2⌋ |
+
+EMA liczona z serii, która zaczyna się brakami (E2, E3, ZLEMA), startuje od SMA pierwszych n dostępnych wartości.
+
+- **ATR14** (Wilder): TR[0] = h−l, dalej TR = max(h−l, \|h−c[t−1]\|, \|l−c[t−1]\|); start: średnia TR z pierwszych 14 świec, dalej `ATR = (ATR·13 + TR)/14`.
+- **RSI14** (Wilder): start ze średnich zysków i strat pierwszych 14 zmian, dalej wygładzanie `(x·13 + nowy)/14`; brak strat → 100.
+
+Wszystko liczone osobno dla każdego instrumentu, na ciągłej serii przez noce i weekendy.
+
+### 8.3 Sygnały (dla `long`; `short` — lustrzanie)
+
+`d = A − B`. Sygnał na świecy `t` wymaga co najmniej 3 wcześniejszych świec instrumentu (`converge`: grow + shrink + 2).
+
+| `kind` | Parametry | Sygnał long na świecy t | Sygnał short |
+|---|---|---|---|
+| `cross` | — | `d[t−1] ≤ 0` i `d[t] > 0` (A przecina B w górę) | `d[t−1] ≥ 0` i `d[t] < 0` |
+| `converge` | `grow` G ≥ 1, `shrink` S ≥ 1 | A pod B (`d < 0`) na świecach t−G−S … t; \|d\| rosło przez G kolejnych kroków, a potem malało przez S kolejnych kroków kończących się na t (krok i rośnie, gdy \|d[i]\| > \|d[i−1]\|) — zapowiedź przecięcia w górę | A nad B, to samo dla \|d\| |
+| `turn` | `pos`: `below` / `above` / `any` | A zawraca w górę: `A[t] > A[t−1]` i `A[t−1] ≤ A[t−2]`; `below`: dodatkowo A < B, `above`: A > B | A zawraca w dół: `A[t] < A[t−1]` i `A[t−1] ≥ A[t−2]`; `pos` znaczy to samo |
+| `revert` | `k` > 0 | odchylenie wraca: `z = d / ATR14`, `z[t−1] ≤ −k` i `z[t] > −k` | `z[t−1] ≥ k` i `z[t] < k` |
+| `ribbon` | — (3 linie) | układ `A > B > C` jest na t, a nie było go na t−1 | układ `A < B < C` nowy na t |
+| `pcross` | — (1 linia) | cena przecina A w górę: `c[t−1] ≤ A[t−1]` i `c[t] > A[t]` | `c[t−1] ≥ A[t−1]` i `c[t] < A[t]` |
+
+### 8.4 Cechy filtrów (wartość na świecy t)
+
+| Cecha | Definicja |
+|---|---|
+| `ret7`, `ret35` | `(c[t]/c[t−n] − 1)·100`, n = 7 lub 35 |
+| `vrel` | `v[t]` / średnia dodatnich wolumenów z 35 poprzednich świec; `v[t] = 0` → brak |
+| `atrp` | `ATR14/c·100` |
+| `atrrank` | percentyl `atrp` wśród ostatnich 350 świec (łącznie z bieżącą): odsetek wartości ≤ bieżącej × 100 |
+| `rsi` | RSI14 |
+| `slot` | numer świecy w sesji 1–7 |
+| `dow` | dzień tygodnia 1–5 (1 = poniedziałek) |
+| `gap` | `(open pierwszej świecy sesji / close ostatniej świecy poprzedniej sesji − 1)·100`, ta sama dla całej sesji |
+| `d5`, `d20` | `(c[t] / średnia z close ostatnich świec n poprzednich sesji − 1)·100`, n = 5 lub 20 (trend dzienny) |
+| `spy35`, `spy140`, `qqq35`, `qqq140` | na serii SPY/QQQ: `(c − EMA_n(c)) / ATR14`, wartość ze świecy o tej samej dacie i numerze; brak takiej świecy → brak |
+| `zAB` | `(A − B) / ATR14` (ATR instrumentu) |
+| `slopeA` | `(A[t] − A[t−3]) / ATR14` |
+| `since` | liczba świec od ostatniego przecięcia A i B w dowolną stronę (warunki jak w `cross`); przecięcie na t → 0; nigdy → brak |
+
+`zAB` i `since` wymagają linii B. Progi w poszukiwaniu: percentyle 10–90 cechy w grupie głównej (3 cyfry znaczące), dla `slot`, `dow`, `zAB`, `slopeA`, `since` — stałe listy z `space.py`. W zapisanej regule próg jest zwykłą liczbą.
+
+### 8.5 Force close (FC)
+
+FC to warunek sprawdzany na zamknięciu każdej świecy f ≥ e (e = świeca wejścia). Gdy zajdzie, pozycja jest zamykana po cenie open świecy f+1. Kilka warunków FC w regule — wygrywa najwcześniejszy.
+
+| `kind` | Warunek dla pozycji long (short — lustrzanie) |
+|---|---|
+| `reexpand` (`n` = R ≥ 1) | przecięcie jeszcze nie nastąpiło (od świecy e nie było świecy z `d > 0`), A wciąż pod B na świecach f−R … f, a \|d\| rośnie przez R kolejnych kroków kończących się na f — średnie znów się rozchodzą. Po przecięciu warunek wygasa na stałe. Obowiązkowy dla `converge`. |
+| `cross_back` | A przecina B w dół: `d[f−1] ≥ 0` i `d[f] < 0` |
+| `turn_back` | A zawraca w dół: `A[f] < A[f−1]` i `A[f−1] ≥ A[f−2]` |
+| `pcross_back` | cena przecina A w dół: `c[f−1] ≥ A[f−1]` i `c[f] < A[f]` |
+
+### 8.6 Wykonanie i symulacja (zasady pesymistyczne)
+
+1. **Wejście:** open świecy e = t+1 (następnej po sygnale, tego samego instrumentu). Sygnał na ostatniej świecy danych nie otwiera transakcji.
+2. **Poziomy:** long: SL = P·(1 − sl/100), TP = P·(1 + tp/100); short odwrotnie; P = cena wejścia.
+3. **Kolejność zdarzeń w świecy j ≥ e:**
+   1. (tylko j > e) luka na otwarciu: open za SL → wyjście po **cenie otwarcia**; open za TP → wyjście po **poziomie TP** (bez premii za lukę),
+   2. FC z zamknięcia świecy j−1 → wyjście po open świecy j,
+   3. SL w trakcie świecy (long: low ≤ SL) → wyjście po poziomie SL,
+   4. TP w trakcie świecy (long: high ≥ TP) → wyjście po poziomie TP — **gdy SL i TP w tej samej świecy, zawsze SL**,
+   5. limit czasu: świeca j = e + max_bars − 1 → wyjście po close (transakcja „nierozstrzygnięta”).
+4. **Brak wyjścia do końca danych** → transakcja anulowana (nie liczy się do wyników, jest liczona osobno).
+5. **Jedna pozycja naraz** na instrument i strategię; sygnał na świecy t jest pomijany, jeśli t < świeca wyjścia poprzedniej transakcji.
+6. **Zwrot:** long `(wyjście/P − 1)·100`, short `(P − wyjście)/P·100`. Koszty = 0.
+7. **Wyniki** dla każdej kombinacji SL × TP i każdej strefy (skarbiec, okresy 1–4 grupy głównej): liczba transakcji, zyskownych, suma zysków, suma strat, liczba wyjść SL / TP / FC / limit / anulowanych.
+8. **Profit factor (PF)** = suma zysków % / suma strat %; bez strat i z zyskiem → 99 (sufit).
+9. **Hipotezy SL × TP:** każda reguła jest symulowana zawsze na pełnej siatce SL 1–10% × TP 1–10% (100 hipotez). Zapisana strategia ma jedną parę SL/TP i pełną macierz PF wszystkich 100 hipotez.
+10. **Wejście „na ślepo”** (punkt odniesienia): każda świeca grupy głównej od 150. świecy instrumentu jest sygnałem, ten sam kierunek, SL, TP i limit, bez FC, jedna pozycja naraz. Przewaga strategii = PF strategii / PF wejścia na ślepo przy tym samym SL/TP.
+
+---
+
+## 9. Poszukiwanie strategii (`python -m ia4.lab`)
+
+### 9.1 Start (przy każdym uruchomieniu)
+
+1. `caffeinate` — Mac nie zasypia, dopóki program działa.
+2. Synchronizacja `ia4.sync` (przyrostowo). Bez sieci — praca na kopii lokalnej, z ostrzeżeniem.
+3. Kontrola kompletności (`check.py`): brakujące sesje, sesje niepełne (mniej niż 7 świec, 4 w dni skrócone), instrumenty nieaktualne. Wynik trafia do logu i arkusza. Niczego nie łata — braki uzupełnia automat w Apps Script.
+4. Pobranie brancha `research`: `config.json` i punkt wznowienia `checkpoint.json`.
+5. Poszukiwanie od miejsca, w którym skończył poprzedni przebieg. Ctrl+C albo `--hours N` — zapis stanu, log i push przed końcem.
+
+### 9.2 Kolejność poszukiwania
+
+1. **Siatka** (deterministyczna, raz): 9 typów średnich × okresy zgrubne `5, 7, 10, 13, 17, 21, 26, 32, 40, 50, 60, 75, 90, 110, 130, 150`, oba kierunki, limit czasu brak / 35 świec:
+   - `pcross` (cena × linia), FC: brak / `pcross_back`,
+   - pary A < B, wszystkie pary typów: `cross` (FC brak / `cross_back`), `converge` (G, S) = (3,1), (3,2), (5,2) z `reexpand` 2, `revert` k = 1 i 2 (FC brak / `cross_back`), `turn` pos `below`/`above` (FC brak / `turn_back`),
+   - `ribbon`: trzy linie tego samego typu, FC brak / `cross_back`.
+   Razem ok. 547 tys. reguł, bez filtrów. Postęp (kursor) jest w `checkpoint.json`.
+2. **Adaptacja** (bez końca, po siatce): 80% zadań to mutacje rodziców z puli najlepszych reguł (okresy 5–150 co 1, typ średniej, filtry, FC, limit czasu, parametry sygnału), 20% to reguły losowane od zera z pełnej przestrzeni. Rodzic: najlepszy z 3 losowych z puli. Pula: 400 reguł, najwyżej 25 z jednej rodziny (ten sam rodzaj, kierunek, typy średnich, FC, limit, cechy filtrów). Wynik do puli: najlepsze min(PF, mediana PF sąsiednich SL/TP) wśród hipotez z liczbą transakcji ≥ minimum.
+3. Reguła raz przetestowana (ta sama reguła bez SL/TP) nie jest liczona ponownie (`ia4-research/state/tested.txt`).
+
+### 9.3 Sita i kryteria (wartości domyślne; zmienia je `research/config.json`)
+
+| Krok | Warunek | Ustawienie |
+|---|---|---|
+| 1. Sito grupy główna | dla pary SL/TP: transakcji ≥ 30 **i** PF ≥ 1,5 **i** PF > 1 w ≥ 3 z 4 okresów **i** mediana PF sąsiednich SL/TP (±1 pkt proc.) ≥ 1,2 | `min_trades_main`, `pf_min`, `folds_min_ok`, `pf_sltp_neighbors` |
+| 1a. Przewaga | PF / PF wejścia na ślepo ≥ próg; **domyślnie 0 = tylko mierzone i zapisywane** | `pf_edge_min` |
+| 2. Wybór SL/TP | spośród par, które przeszły sito — najwyższy PF grupy głównej | — |
+| 3. Stabilność parametrów | do 12 reguł różniących się jednym parametrem (okres ±10%, grow/shrink ±1, k ±0,25, sąsiedni próg filtra) przy tym samym SL/TP: mediana PF ≥ 1,2 **i** ≥ 60% z PF ≥ 1 — inaczej „niestabilna” | `pf_param_neighbors`, `param_neighbors_share_ok` |
+| 4. Duplikat | ten sam kierunek i ≥ 50% wspólnych świec wejścia (Jaccard, grupa główna) ze strategią już zapisaną albo już odrzuconą przez skarbiec → bez skarbca | `dup_jaccard` |
+| 5. Skarbiec | transakcji w skarbcu ≥ 10 **i** PF łączny (grupa główna + skarbiec) ≥ 1,5 **i** PF grupy głównej ≥ 1,5 → strategia zapisana | `min_trades_vault`, `pf_min` |
+
+Progi są stałe — nie rosną z liczbą prób. Zapisujemy wszystko, co przejdzie; progi zmieniamy po przejrzeniu wyników.
+
+### 9.4 Bramka skarbca
+
+Jedyne miejsce, które otwiera skarbiec: `Lab._open_vault`. Każde otwarcie: licznik `vault_peeks` +1, wpis w `research/vault.jsonl` (reguła, PF grupy głównej, PF na ślepo, PF skarbca, PF łączny, wynik). Strategia odrzucona przez skarbiec trafia na listę odrzuconych; strategie o tych samych transakcjach nie otwierają skarbca ponownie (sito 4).
+
+### 9.5 Zapis strategii
+
+`research/strategies/S-*.json`: `id`, `version`, `found_at`, `description` (opis słowny), `rule` (8.1, z `sl`/`tp`), `execution` (8.6), `stats` (grupa główna, skarbiec, łącznie, wejście na ślepo, 4 okresy, rozbicie po numerze świecy wejścia i dniu tygodnia, instrumenty, czas trzymania, statystyka czasu między przecięciami A/B), `sltp_hypotheses` (macierze PF i liczby transakcji 10 × 10), `robustness`, `data`, `search`, `criteria`. Plus wiersz w `research/strategies.jsonl`. Commit i push od razu po znalezieniu.
+
+### 9.6 Log co 30 minut
+
+`research/status.json` (stan bieżący) i wiersz w `research/log.jsonl`: czas, komputer, etap (siatka %/adaptacja), reguł przetestowanych i przyrost, tempo, obiecujących, otwarć skarbca, zapisanych strategii (sumy i przyrosty), najlepszy wynik puli, stan bazy. Do tego `checkpoint.json`. Commit i push.
+
+Liczniki: `evals` — reguły zasymulowane (każda na 100 hipotezach SL/TP; wliczają się sąsiedzi ze stabilności), `hypotheses` — reguły × hipotezy, `eligible` — przeszły sito 1, `unstable` — odpadły na stabilności parametrów, `promising` — przeszły stabilność, `duplicates`, `vault_peeks`, `accepted`, `rejected_vault`, `run_minutes`.
+
+### 9.7 Jak Claude dostosowuje poszukiwanie
+
+Claude czyta `research/status.json` (m.in. `best_candidates`), `log.jsonl`, `vault.jsonl` i strategie, po czym proponuje zmiany w `research/config.json` na branchu `research`. Program wczytuje plik przy starcie i co 30 minut (bez restartu). Klucze: wszystkie z `ia4/lab/settings.py` (`DEFAULTS`), m.in. progi z tabeli 9.3, `coarse_periods`, `ma_types`, `max_bars_options`, `paused_kinds` (wyłączone rodzaje sygnałów), `explore_share`, `pool_size`, `workers`. Zmiana ustawień siatki zaczyna siatkę od początku (reguły już przetestowane są pomijane). Zmiana progów działa na nowe wyniki; zapisanych strategii nie cofa.
+
+---
+
+## 10. Branch `research`
+
+Pisze go wyłącznie program z Maca (klon w `ia4-research/research-repo/`, poza gitem głównego repo), ręcznie zmienia się tylko `config.json`.
+
+```
+research/README.md
+research/config.json          nadpisania ustawień
+research/status.json          stan bieżący (co 30 min)
+research/log.jsonl            dziennik (wiersz co 30 min pracy)
+research/checkpoint.json      punkt wznowienia: kursor siatki, pula, liczniki, strategie
+research/vault.jsonl          każde otwarcie skarbca
+research/strategies/S-*.json  zapisane strategie
+research/strategies.jsonl     indeks strategii
+```
+
+Lokalnie (poza gitem): `ia4-research/state/tested.txt` — reguły już przetestowane.
+
+---
+
+## 11. Arkusz RESEARCH (`Research.gs`)
+
+Trigger `researchSync` co 30 min (i menu IA 4 → „🔬 Odśwież RESEARCH teraz”) czyta z GitHub `research/status.json` i `research/log.jsonl` (branch `research`, token `GITHUB_TOKEN`) i przepisuje arkusz RESEARCH:
+- stan: ostatni log, czy program liczy (brak logu > 45 min = nie liczy), komputer, etap i postęp siatki, liczniki z 9.6, tempo, łączny czas pracy, stan bazy na Macu, kryteria,
+- ostatnie 20 zapisanych strategii: id, data, opis, PF grupy głównej, PF na ślepo, PF skarbca, PF łączny, transakcji, skuteczność,
+- dziennik: ostatnie 500 wpisów, najnowsze na górze.
+
+---
+
+## 12. Wdrożenie i uruchamianie
+
+### Wdrożenie wersji 1.1 (jednorazowo)
+
+1. Wypchnięcie zmian z pakietu `.bundle` (polecenia podaje Claude).
+2. Apps Script: **podmień** `Code.gs` i `Telemetry.gs`, **dodaj plik** `Research.gs` (treść z GitHub). Zapisz. Odśwież arkusz → menu **IA 4 → ⚙️ Konfiguruj i włącz automat** (odtwarza STATS, zakłada triggery `runCollector`, `telemetryHourly`, `researchSync`).
+3. Mac:
+   ```bash
+   cd ~/Desktop/IA4 && git pull
+   cd ia4-research && source .venv/bin/activate
+   pip install -r requirements.txt
+   python -m ia4.lab.selftest          # musi być „WYNIK: OK”
+   python -m ia4.lab                   # liczy do Ctrl+C
+   ```
+4. Po pierwszym logu: menu IA 4 → **🔬 Odśwież RESEARCH teraz**.
+
+### Na co dzień
+
+```bash
+cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && python -m ia4.lab
+```
+
+Opcje: `--hours N`, `--workers N`, `--check` (tylko synchronizacja i kontrola bazy), `--no-sync`, `--no-push`. Po zmianie kodu na `main`: `git pull` w `~/Desktop/IA4`.
+
+### Pakiety `.bundle` od Claude
+
+```bash
+cd ~/Desktop
+rm -rf IA4-push
+git clone https://github.com/miszyszka/IA4.git IA4-push
+cd IA4-push
+git fetch ~/Downloads/IA4-vX.Y.bundle vX.Y
+git cherry-pick FETCH_HEAD || { git rm -rq telemetry/history; git -c core.editor=true cherry-pick --continue; }
+git log --oneline -2
+git push
+```
+
+---
+
+## 13. Dziennik zmian
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.1 | 2026-09-30 | Etap 1 zamknięty. Etap 2 — poszukiwanie strategii: program `python -m ia4.lab` (synchronizacja, kontrola kompletności, siatka i adaptacja, sita, bramka skarbca, log co 30 min, wznawianie), język reguł `ia4-rule/1` (9 typów średnich, 6 rodzajów sygnałów, 18 cech filtrów, 4 rodzaje FC, limit czasu), symulacja pesymistyczna na 100 hipotezach SL × TP, kryterium PF zamiast skuteczności, wejście na ślepo jako punkt odniesienia, duplikaty po wspólnych transakcjach. Skarbiec: wielokrotne otwieranie przez bramkę, tylko dla obiecujących strategii, każde otwarcie liczone. Wyniki na branchu `research`; nowy `Research.gs` i arkusz RESEARCH, trigger `researchSync`. Usunięte jednorazowe sprzątanie po 1.0. |
 | 1.0 | 2026-09-30 | Nowe założenia: jedynym celem jest baza danych. Usunięte strategie S1/S2, backtesty, poletko, stary skarbiec, etapy 0–5, audyt i łatanie luk, dopisywanie wolumenu, pobieranie historii, inwestorzy, dashboard i cały Python poza synchronizacją. Zbieranie w jednym pliku `Code.gs` + nocne odświeżenie ostatnich 5 sesji i liczenie bazy. Telemetria skrócona do stanu bazy. Skarbiec = najstarsze 800 świec. Instrukcja przepisana od zera. |
 | ≤ 0.47 | do 2026-09-29 | Poprzedni projekt (strategie, backtesty, etapy 0–5) — w historii gita. |
