@@ -1,30 +1,23 @@
 """
-IA 4 — konfiguracja środowiska badawczego.
-Wersja projektu: 0.47 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+IA 4 — konfiguracja kopii lokalnej.
+Wersja projektu: 1.0 (2026-09-30) — musi zgadzać się z IA4_INSTRUKCJA.md
 
-Dwie rzeczy, które ten moduł załatwia raz dla całego projektu:
-
-1. KLUCZ SERWISOWY nigdy nie leży w repozytorium (zasada 2.6 i Etap 0, pkt 5).
-   Domyślna ścieżka to ~/.ia4/serviceAccount.json, czyli poza folderem
-   ia4-research/. Można ją nadpisać zmienną IA4_FIREBASE_KEY.
-
-2. GRANICE SKARBCA czytamy z Firestore (system/project), nie z kodu
-   (zasada 5.1). Dzięki temu Python i Apps Script zawsze używają tej samej
-   daty — gdy granica zmieni się w Apps Script, Python dowie się o tym sam,
-   bez edycji tego pliku.
+KLUCZ SERWISOWY nigdy nie leży w repozytorium (instrukcja, zasada 5).
+Domyślna ścieżka to ~/.ia4/serviceAccount.json, poza folderem ia4-research/.
+Można ją nadpisać zmienną IA4_FIREBASE_KEY. Listy instrumentów czytamy
+z Firestore (system/universe, pisze je Code.gs), nie z kodu.
 """
 
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
 FIREBASE_PROJECT_ID = "ia-4-ff7af"
 
-# Katalog na dane lokalne (pamięć podręczna parquet). Wewnątrz repo, ale
-# wykluczony przez .gitignore — surowych danych nie trzymamy w gicie.
+# Kopia lokalna (parquet). Wewnątrz repo, ale wykluczona przez .gitignore —
+# surowych danych nie trzymamy w gicie.
 RESEARCH_DIR = Path(__file__).resolve().parent.parent
 CACHE_DIR = RESEARCH_DIR / "data"
 MANIFEST_PATH = CACHE_DIR / "_manifest.json"
@@ -38,7 +31,7 @@ def key_path() -> Path:
     if RESEARCH_DIR in p.resolve().parents:
         raise RuntimeError(
             f"Klucz serwisowy leży wewnątrz repozytorium ({p}).\n"
-            "Przenieś go poza ia4-research/ — zasada 2.6 i Etap 0, pkt 5 instrukcji."
+            "Przenieś go poza ia4-research/ — instrukcja, zasada 5."
         )
     if not p.exists():
         raise FileNotFoundError(
@@ -60,77 +53,20 @@ def client():
     return firestore.Client(project=FIREBASE_PROJECT_ID, credentials=creds)
 
 
-@dataclass(frozen=True)
-class Vault:
-    """Granice okresów z system/project (zasada 5.1)."""
-
-    research_end_exclusive: str  # caly okres badawczy: wszystko PRZED ta data
-    discovery_end_exclusive: str  # odkrywanie: wszystko PRZED ta data (= plot_start)
-    plot_start: str
-    plot_end: str
-    vault_start: str
-    vault_end: str
-    live_from: str
-    vault_opened: bool
-    stage: int
-    instruction_version: str
-
-    @property
-    def research_end(self) -> str:
-        """Ostatni dzień okresu badawczego (włącznie)."""
-        from datetime import date, timedelta
-
-        d = date.fromisoformat(self.research_end_exclusive) - timedelta(days=1)
-        return d.isoformat()
-
-
-@lru_cache(maxsize=1)
-def vault() -> Vault:
-    """Czyta granice skarbca z Firestore. Brak dokumentu = twardy błąd."""
-    doc = client().document("system/project").get()
-    if not doc.exists:
-        raise RuntimeError(
-            "Brak dokumentu system/project w Firestore.\n"
-            "Uruchom w Apps Script: IA 4 → Projekt → Pokaż / odśwież stan projektu."
-        )
-    d = doc.to_dict()
-    missing = [k for k in ("researchEndExclusive", "vaultStart", "vaultEnd", "liveFrom") if k not in d]
-    if missing:
-        raise RuntimeError(f"system/project nie ma pól: {', '.join(missing)}")
-    return Vault(
-        research_end_exclusive=d["researchEndExclusive"],
-        # Poletko doszlo w 0.19; starsze dokumenty go nie maja - wtedy caly
-        # okres badawczy jest odkrywaniem, a poletko puste.
-        discovery_end_exclusive=d.get("plotStart", d["vaultStart"]),
-        plot_start=d.get("plotStart", d["vaultStart"]),
-        plot_end=d.get("plotEnd", d["vaultStart"]),
-        vault_start=d["vaultStart"],
-        vault_end=d["vaultEnd"],
-        live_from=d["liveFrom"],
-        vault_opened=bool(d.get("vaultOpened", False)),
-        stage=int(d.get("stage", 0)),
-        instruction_version=str(d.get("instructionVersion", "?")),
-    )
-
-
 @lru_cache(maxsize=1)
 def universe() -> dict:
-    """Listy instrumentów z system/universe (pisane przez Proof.gs)."""
+    """Listy instrumentów z system/universe (pisze je Code.gs przy „Konfiguruj”)."""
     doc = client().document("system/universe").get()
     if not doc.exists:
         raise RuntimeError(
             "Brak dokumentu system/universe w Firestore.\n"
-            "Uruchom w Apps Script: IA 4 → Spółki kontrolne → Pobierz historię."
+            "Uruchom w Apps Script: IA 4 → Konfiguruj i włącz automat."
         )
     d = doc.to_dict()
     return {
         "main": list(d.get("live", [])),
         "proof": list(d.get("proof", [])),
         "context": list(d.get("context", [])),
-        "proof_ready": list(d.get("proofReady", [])),
-        "context_ready": list(d.get("contextReady", [])),
-        "proof_partial": list(d.get("proofPartial", [])),
-        "proof_failed": list(d.get("proofFailed", [])),
     }
 
 

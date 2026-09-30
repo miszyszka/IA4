@@ -1,30 +1,14 @@
 # telemetry/
 
-**Wersja projektu: 0.47 (2026-09-29)**
+**Wersja projektu: 1.0 (2026-09-30)**
 
-Ten katalog wypełnia się sam — nic tu nie edytuj ręcznie.
-
-| Plik | Co zawiera |
-|---|---|
-| `state.json` | najnowszy stan systemu IA 4 |
-| `history/RRRR-MM-DD.json` | migawka z danego dnia (nadpisywana w ciągu dnia) |
-
-Zapisuje je `Telemetry.gs` z Google Apps Script przez GitHub Contents API —
-tylko wtedy, gdy treść faktycznie się zmieniła, z odstępem minimum 10 minut.
-
-## Co jest w środku
+`state.json` — najnowszy stan zbierania danych. Zapisuje go `Telemetry.gs`
+z Apps Script (co godzinę, tylko gdy coś się zmieniło). Nie edytuj ręcznie.
 
 ```
-meta         wersja instrukcji, czas wygenerowania
-project      etap, statusy etapów 0–5, kryteria ukończenia z wynikami, skarbiec
-data         daty audytów, luki (typ, spółka, data, status, komentarz), instrumenty
-collector    stan każdej spółki w automacie, błędy, status Firestore
-jobs         postęp: historia, spółki kontrolne, dopisywanie wolumenu, triggery
-log          ostatnie 80 wpisów dziennika zdarzeń
+version, stage     wersja projektu i bieżący etap
+collector          triggery, ostatnie uruchomienie, ostatni zapis, liczniki dnia, ostatni błąd
+nightly            ostatnie nocne odświeżenie (data sesji, liczba świec)
+base               łączna liczba świec w Firestore (liczona po nocnym odświeżeniu)
+instruments        dla każdego: grupa, ostatnia świeca, close, liczba świec, pierwsza data, status
 ```
-
-## Po co
-
-Claude widzi wyłącznie to repozytorium — nie ma dostępu do arkusza ani do
-edytora Apps Script. Bez tego pliku każda rozmowa zaczynała się od ręcznego
-wklejania podsumowania. Teraz wystarczy: „zobacz telemetrię".

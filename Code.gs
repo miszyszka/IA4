@@ -1,42 +1,21 @@
 /**
  * ============================================================================
- *  IA 4 — automat bieżący  (Yahoo Finance → Firestore)
+ *  IA 4 — zbieranie świec 1h  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 0.47 (2026-09-29) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.0 (2026-09-30) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
- *  Zbiera na bieżąco świece 1h z sesji regularnej USA dla 30 instrumentów:
- *    • GŁÓWNE    — AAPL, TSLA, NVDA (widoczne w dashboardzie),
- *    • KONTROLNE — 50 spółek „for proof” z listy w Proof.gs,
- *    • TŁO RYNKU — SPY, QQQ (kontekst do Etapu 3, nie handlujemy nimi).
+ *  Jedyne zadanie tego pliku: żeby baza świec w Firestore była kompletna
+ *  i rosła każdego dnia. Zasady i format bazy: IA4_INSTRUKCJA.md.
  *
- *  Dane trafiają wyłącznie do Firestore. Arkusz służy tylko do monitoringu
- *  (STATS) i do analiz (STRATEGIE, BACKTEST, KOMBINACJE, BENCHMARK).
+ *  • Trigger uruchamia runCollector() co minutę, całą dobę.
+ *  • W czasie sesji, zaraz po zamknięciu każdej świecy godzinowej, pobiera
+ *    dane z Yahoo i zapisuje WYŁĄCZNIE zamknięte świece, których jeszcze nie ma.
+ *  • Raz na dobę, po sesji, przepisuje ostatnie 5 sesji wszystkich instrumentów
+ *    (nocne odświeżenie) — dziura z dowolnego dnia łata się sama następnej nocy.
+ *    Zaraz potem liczy, ile świec ma w bazie każdy instrument.
+ *  • Arkusz STATS pokazuje tylko stan automatu. Dane są wyłącznie w Firestore.
  *
- *  FORMAT W FIRESTORE — taki sam jak przy pobieraniu historii:
- *    stocks/{SYMBOL}/candles/{data}_{nr}   – spółki główne, jedna świeca na
- *                                            dokument (dashboard nasłuchuje
- *                                            ich na żywo)
- *    proof/{SYMBOL}/sessions/{data}        – spółki kontrolne, cała sesja
- *                                            w jednym dokumencie (tablice)
- *    context/{ID}/sessions/{data}          – tło rynku, ten sam format;
- *                                            (tło rynku: SPY, QQQ)
- *
- *  JAK TO DZIAŁA
- *  • Trigger uruchamia runCollector() co 5 minut, całą dobę.
- *  • Poza sesją nic nie pobiera, tylko odświeża „heartbeat” w STATS.
- *  • Gdy zamknie się kolejna świeca godzinowa (+5 min zapasu), pobiera dane
- *    z Yahoo i zapisuje WYŁĄCZNIE zamknięte świece, których jeszcze nie ma.
- *  • Pamięć „co już zapisane” trzyma we właściwościach skryptu. Przesuwa ją
- *    dopiero po potwierdzeniu zapisu przez Firestore — nieudany zapis zostanie
- *    powtórzony przy kolejnym uruchomieniu, a nie uznany za wykonany.
- *  • Święta, sesje skrócone i zmiany czasu są obsługiwane automatycznie.
- *
- *  PIERWSZE URUCHOMIENIE PO ZMIANIE: menu IA 4 → Konfiguruj. Konfiguracja
- *  uzupełnia w Firestore ewentualne braki z ostatniego miesiąca i dopiero
- *  wtedy usuwa stare arkusze AAPL, TSLA i NVDA.
- *
- *  Plik wymaga Proof.gs (listy spółek kontrolnych i tła rynku) oraz
- *  Project.gs (stan projektu w STATS). Zasady pracy: IA4_INSTRUKCJA.md.
+ *  Plik współpracuje z Telemetry.gs (stan → telemetry/state.json w GitHub).
  * ============================================================================
  */
 
@@ -44,106 +23,64 @@
 //  KONFIGURACJA
 // ============================================================================
 const CONFIG = {
-  SYMBOLS: ['AAPL', 'TSLA', 'NVDA'],   // spółki główne (dashboard); kontrolne są w Proof.gs
-  STATS_SHEET: 'STATS',
+  VERSION: '1.0',
 
+  // Trzy grupy instrumentów — nazwy kolekcji w Firestore są historyczne
+  // i zostają bez zmian (instrukcja, sekcja 4).
+  SYMBOLS: ['AAPL', 'TSLA', 'NVDA'],                     // → stocks/  (dokument na świecę)
+  PROOF_SYMBOLS: [                                       // → proof/   (dokument na sesję)
+    'DELL', 'AMAT', 'PLTR', 'ORCL', 'XOM', 'V', 'WMT', 'JPM', 'MU', 'META', 'AVGO', 'MSFT',
+    'GOOGL', 'JNJ', 'MA', 'ABBV', 'BAC', 'CVX', 'MRK', 'PG', 'HD', 'PM', 'WFC', 'CRM',
+    'CAT', 'HON', 'UNP', 'RTX', 'AMZN', 'MCD', 'NKE', 'SBUX', 'T', 'VZ', 'NFLX', 'DIS',
+    'UNH', 'LLY', 'PFE', 'MDT', 'PLD', 'AMT', 'LIN', 'FCX', 'NEE', 'DUK', 'GS', 'AXP',
+    'KO', 'PEP',
+  ],
+  CONTEXT_SYMBOLS: ['SPY', 'QQQ'],                       // → context/ (dokument na sesję)
+
+  STATS_SHEET: 'STATS',
   MARKET_TZ: 'America/New_York',
   LOCAL_TZ: 'Europe/Warsaw',
-  SESSION_OPEN_MIN: 9 * 60 + 30, // 9:30 ET
-  SESSION_CLOSE_MIN: 16 * 60,    // 16:00 ET
+  SESSION_OPEN_MIN: 9 * 60 + 30,   // 9:30 ET
+  SESSION_CLOSE_MIN: 16 * 60,      // 16:00 ET
 
   SLOT_LABELS_PL: ['15:30–16:30', '16:30–17:30', '17:30–18:30', '18:30–19:30',
                    '19:30–20:30', '20:30–21:30', '21:30–22:00'],
-  SLOT_LABELS_ET: ['09:30–10:30', '10:30–11:30', '11:30–12:30', '12:30–13:30',
-                   '13:30–14:30', '14:30–15:30', '15:30–16:00'],
 
-  TRIGGER_EVERY_MIN: 1,      // co ile minut działa automat (dozwolone: 1, 5, 10, 15, 30)
-  BUFFER_MIN: 0,             // ile minut po zamknięciu świecy czekamy, zanim pierwszy raz zapytamy
-  POLL_AFTER_CLOSE_MIN: 45,  // jak długo po zamknięciu sesji jeszcze dociągamy braki
+  TRIGGER_EVERY_MIN: 1,        // co ile minut działa automat
+  POLL_AFTER_CLOSE_MIN: 45,    // jak długo po zamknięciu sesji jeszcze dociągamy braki
+  // Yahoo publikuje świecę z opóźnieniem kilkunastu–kilkudziesięciu sekund.
+  // Tuż po zamknięciu świecy jedno uruchomienie ponawia próbę co 30 s.
+  FAST_RETRY_SEC: 30,
+  FAST_MAX_TRIES: 8,
+  FAST_WINDOW_MIN: 5,
+  FAST_MAX_RUN_SEC: 240,       // po tylu sekundach jedno uruchomienie przestaje ponawiać
 
-  // SZYBKIE ŁAPANIE ŚWIECY (zamknięcie świecy ma być sygnałem — Etap 4).
-  // Apps Script nie odpala triggera częściej niż co minutę, więc w oknie tuż
-  // po zamknięciu świecy jedno uruchomienie samo ponawia próbę co FAST_RETRY_SEC
-  // sekund, zamiast czekać na kolejny trigger. Yahoo publikuje świecę z losowym
-  // opóźnieniem kilkunastu–kilkudziesięciu sekund, więc pierwsze pytanie zwykle
-  // wraca puste i dopiero któreś kolejne przynosi dane.
-  FAST_RETRY_SEC: 30,        // odstęp między ponowieniami w jednym uruchomieniu
-  FAST_MAX_TRIES: 8,         // ile prób w jednym uruchomieniu (8 × 30 s ≈ 4 min)
-  FAST_WINDOW_MIN: 5,        // jak długo po zamknięciu świecy trwa tryb szybki
-  VERIFY_AFTER_MIN: 5,       // po tylu minutach sprawdzamy, czy zapisana świeca się nie zmieniła
+  LIVE_RANGE: '5d',            // zakres pobierania na żywo
+  CATCHUP_RANGE: '1mo',        // „Uzupełnij ostatni miesiąc” (ręcznie)
+  NIGHTLY_RANGE: '5d',         // nocne odświeżenie: ostatnie ~5 sesji
+  NIGHTLY_RETRY_MIN: 30,       // odstęp ponowienia, gdy nocne odświeżenie się nie udało
+  FETCH_PAUSE_MS: 700,         // odstęp między zapytaniami do Yahoo
 
-  // SAMOCZYNNE ŁATANIE LUK — w przebiegach, gdy nie ma nic do zebrania
-  // (weekend, noc, po sesji) system dociąga braki wykryte przez audyt.
-  //
-  // PATCH_PER_RUN 2→20, PATCH_MIN_GAP_MIN 10→2 w wersji 0.34 (2026-09-28, na
-  // życzenie użytkownika, ten sam wzorzec co VOLFILL_DAILY_WRITES w 0.30):
-  // nocny audyt tego dnia znalazł sporo nowych ZERO_WOLUMEN (L32), a przy
-  // 2 lukach/10 min kolejka schodziłaby się dniami. Bez nowego PATCH_DAILY_WRITES
-  // to podniesienie samo w sobie byłoby niebezpieczne — 20 luk co 2 minuty to
-  // do 600/h, a łatanie nie miało dotąd ŻADNEGO własnego dziennego sufitu
-  // zapisów (w przeciwieństwie do VOLFILL_DAILY_WRITES), więc przy dużej
-  // kolejce mogłoby samo wyczerpać resztę dziennego limitu Firestore (20 000
-  // zapisów, Spark) kosztem dopisywania wolumenu i bieżącego zbierania.
-  // PATCH_DAILY_WRITES: 5000 dokumentów, licząc tak samo jak VOLFILL (spent/
-  // spentDay w Script Properties, przez patchGapsIfIdle_) — dziś to wciąż
-  // bezpiecznie poniżej 20 000 nawet zsumowane z VOLFILL_DAILY_WRITES (15000).
-  PATCH_ENABLED: true,
-  PATCH_PER_RUN: 20,         // ile luk łatamy w jednym wolnym przebiegu
-  PATCH_MIN_GAP_MIN: 2,      // minimalny odstęp między przebiegami łatania
-  PATCH_DAILY_WRITES: 5000,  // ile dokumentów dziennie wolno zapisać przy łataniu
-  PATCH_MAX_RETRIES: 3,      // po tylu próbach bez postępu luka jest uznawana za trwałą
-
-  // DOPISYWANIE WOLUMENU DO STAREJ HISTORII (decyzja D12)
-  // Świece zebrane przed wersją 0.8 nie mają wolumenu. Zamiast pobierać całą
-  // historię od nowa (~37 000 zapisów, czyli dwa dni ponad limit Firestore),
-  // system dopisuje go sam: w wolnych przebiegach cofa się po historii każdego
-  // instrumentu oknami po VOLFILL_CHUNK_DAYS dni i nadpisuje sesje danymi z
-  // Yahoo — tymi samymi cenami plus wolumenem. Dzienny budżet zapisów pilnuje,
-  // żeby uzupełnianie nigdy nie zabrało limitu bieżącym świecom.
-  VOLFILL_ENABLED: true,
-  // Podniesione z 3000/7 w wersji 0.23: dopóki 0.6 nie było zamknięte, pełny
-  // audyt uruchamiany był ręcznie i wielokrotnie (rozpychał limit odczytów,
-  // a przy błędach 429 uruchamiał WSPÓLNĄ blokadę fsQuotaBlocked_, którą
-  // sprawdza też ta funkcja) — trzymaliśmy tu spory margines na wszelki
-  // wypadek. Odtąd pełny audyt jest czynnością jednorazową z Etapu 0, a na
-  // stałe zostaje tylko lekki audyt nocny (14 dni, znikomy odczyt) — nic już
-  // nie grozi wspólną blokadą, więc można przepisywać szybciej.
-  // Podniesione 10000 → 15000 w wersji 0.30 (2026-09-28, na życzenie
-  // użytkownika): zostało tylko 5 instrumentów (AXP, KO, PEP, SPY, QQQ,
-  // ~520 zapisów każdy = ~2600), a budżet 10000 już się dziś wyczerpał
-  // (spentToday 10069 wg telemetrii z 14:46) — bez podniesienia dopisywanie
-  // zatrzymałoby się do resetu limitu Firestore (północ pacyficzna, ok. 9:00
-  // w Polsce) i skończyło dopiero jutro. 15000 + reszta ruchu (~500) to
-  // wciąż tylko ok. 78% dziennego limitu zapisu (20 000/dzień, Spark), z
-  // zapasem. To przyspieszenie ostatniego dnia D12, nie stała potrzeba —
-  // wolno to obniżyć z powrotem po zamknięciu kryterium 1.4.
-  //
-  // Wąskim gardłem NIE jest ten budżet ani VOLFILL_MIN_GAP_MIN — to tempo, w
-  // jakim jeden instrument w ogóle SCHODZI do granicy Yahoo (YAHOO_MAX_AGE_DAYS
-  // ≈ 729 dni). Każde uruchomienie cofa się tylko o VOLFILL_CHUNK_DAYS, więc
-  // przy 60 dniach trzeba ok. 13 uruchomień na instrument — a każde czeka na
-  // swój VOLFILL_MIN_GAP_MIN. Efekt: ok. 40 minut na jeden instrument, nawet
-  // gdy zapisuje tylko kilka dokumentów. Podniesione do 120 w wersji 0.28
-  // (obserwacja z dziennika zdarzeń: odstępy ~43 min między kolejnymi „gotowe”
-  // przy 60) — to i tak JEDNO zapytanie do Yahoo (Proof.gs dzieli je wewnątrz
-  // po PROOF.CHUNK_DAYS = 120), więc nie dokłada żadnego nowego ryzyka: ~7
-  // uruchomień na instrument zamiast 13, czyli ok. dwa razy szybciej, przy tym
-  // samym dziennym budżecie zapisów.
-  VOLFILL_DAILY_WRITES: 15000, // ile dokumentów dziennie wolno przepisać
-  VOLFILL_CHUNK_DAYS: 120,     // ile dni historii bierzemy na jedno uruchomienie
-  VOLFILL_MIN_GAP_MIN: 3,      // minimalny odstęp między przebiegami
-  LIVE_RANGE: '5d',          // zakres pobierania w trybie automatycznym
-  CATCHUP_RANGE: '1mo',      // zakres przy konfiguracji i „Uzupełnij braki”
-  FETCH_PAUSE_MS: 700,       // odstęp między zapytaniami do Yahoo (27 spółek)
-
-  FIRESTORE_ENABLED: true,
   FIREBASE_PROJECT_ID: 'ia-4-ff7af',
   FIRESTORE_DATABASE: '(default)',
 
-  LOG_MAX_ROWS: 100,
+  LOG_MAX_ROWS: 60,
 };
 
-const SLOTS = CONFIG.SLOT_LABELS_PL.length;          // 7 świec na pełną sesję
+// Dni bez sesji NYSE (poza weekendami). Świece z tych dni nigdy nie trafiają
+// do bazy, cokolwiek zwróci Yahoo. Listę trzeba uzupełnić przed każdym
+// nowym rokiem (instrukcja, sekcja 4).
+const US_MARKET_HOLIDAYS = {
+  '2024-01-01': 1, '2024-01-15': 1, '2024-02-19': 1, '2024-03-29': 1, '2024-05-27': 1,
+  '2024-06-19': 1, '2024-07-04': 1, '2024-09-02': 1, '2024-11-28': 1, '2024-12-25': 1,
+  '2025-01-01': 1, '2025-01-09': 1, '2025-01-20': 1, '2025-02-17': 1, '2025-04-18': 1,
+  '2025-05-26': 1, '2025-06-19': 1, '2025-07-04': 1, '2025-09-01': 1, '2025-11-27': 1,
+  '2025-12-25': 1,
+  '2026-01-01': 1, '2026-01-19': 1, '2026-02-16': 1, '2026-04-03': 1, '2026-05-25': 1,
+  '2026-06-19': 1, '2026-07-03': 1, '2026-09-07': 1, '2026-11-26': 1, '2026-12-25': 1,
+};
+
+const SLOTS = CONFIG.SLOT_LABELS_PL.length;   // 7 świec w pełnej sesji
 const OPEN = CONFIG.SESSION_OPEN_MIN;
 const CLOSE = CONFIG.SESSION_CLOSE_MIN;
 const DAY_NAMES_PL = ['pn', 'wt', 'śr', 'czw', 'pt', 'sob', 'nd'];
@@ -152,124 +89,65 @@ const YAHOO_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
   'Accept': 'application/json',
 };
-
-// Układ arkusza STATS (numery wierszy)
-const STATS = {
-  STATUS: 3, LAST_RUN: 4, LAST_ACTION: 5, LAST_WRITE: 6, ET_NOW: 7, SESSION: 8,
-  SESSION_HOURS: 9, TRIGGER: 10, RUNS: 11, FETCHES: 12, CANDLES: 13, ERRORS: 14,
-  FIRESTORE: 15, LAST_ERROR: 16,
-  PROJ_STAGE: 18, PROJ_GAPS: 19, PROJ_VAULT: 20,
-  SYM_HEADER: 22, SYM_FIRST: 23,
-};
-const SYM_TABLE_COLS = 8;
-
-/** Wszystkie spółki zbierane na bieżąco: najpierw główne, potem kontrolne. */
-function liveSymbols_() {
-  const proof = (typeof PROOF !== 'undefined' && PROOF.SYMBOLS) ? PROOF.SYMBOLS : [];
-  const ctx = (typeof CONTEXT !== 'undefined' && CONTEXT.SYMBOLS) ? CONTEXT.SYMBOLS : [];
-  const out = [];
-  CONFIG.SYMBOLS.concat(proof, ctx).forEach(s => { if (out.indexOf(s) < 0) out.push(s); });
-  return out;
-}
-function isMain_(symbol) { return CONFIG.SYMBOLS.indexOf(symbol) >= 0; }
-
-/** Grupa instrumentu: main (główne), proof (kontrolne), context (tło rynku). */
-function symbolGroup_(symbol) {
-  if (isMain_(symbol)) return 'main';
-  if (typeof CONTEXT !== 'undefined' && CONTEXT.SYMBOLS.indexOf(symbol) >= 0) return 'context';
-  return 'proof';
-}
 const GROUP_LABELS = { main: 'główna', proof: 'kontrolna', context: 'tło rynku' };
 const GROUP_COLLECTION = { main: 'stocks', proof: 'proof', context: 'context' };
-function fsCollection_(symbol) { return GROUP_COLLECTION[symbolGroup_(symbol)]; }
-/** Identyfikator w Firestore: bez „^”, żeby nie kodować znaku w adresach. */
-function fsId_(symbol) { return String(symbol).replace(/^\^/, ''); }
 
-function logTitleRow_() { return STATS.SYM_FIRST + liveSymbols_().length + 1; }
-function logFirstRow_() { return logTitleRow_() + 2; }
+// Układ arkusza STATS: blok statusu od wiersza 3, potem tabela instrumentów, potem dziennik.
+const STATUS_LABELS = [
+  'Status', 'Ostatnie uruchomienie (PL)', 'Ostatnia akcja', 'Ostatni zapis świecy (PL)',
+  'Czas w Nowym Jorku (ET)', 'Sesja USA', 'Automat (trigger)', 'Zapisanych świec dziś',
+  'Błędów dziś', 'Ostatni błąd', 'Nocne odświeżenie', 'Świec w bazie',
+];
+const STATS_FIRST = 3;
+const SYM_HEADER = STATS_FIRST + STATUS_LABELS.length + 1;
+const SYM_FIRST = SYM_HEADER + 1;
+const SYM_COLS = 7;
+
+/** Wszystkie instrumenty: główne, kontrolne, tło rynku. */
+function allSymbols_() {
+  return CONFIG.SYMBOLS.concat(CONFIG.PROOF_SYMBOLS, CONFIG.CONTEXT_SYMBOLS);
+}
+function isMain_(symbol) { return CONFIG.SYMBOLS.indexOf(symbol) >= 0; }
+function symbolGroup_(symbol) {
+  if (isMain_(symbol)) return 'main';
+  return CONFIG.CONTEXT_SYMBOLS.indexOf(symbol) >= 0 ? 'context' : 'proof';
+}
+function fsCollection_(symbol) { return GROUP_COLLECTION[symbolGroup_(symbol)]; }
 
 /** Klucz świecy do porównań „która nowsza”: RRRRMMDD * 10 + numer świecy (1…7). */
 function barKey_(b) { return Number(b.date.replace(/-/g, '')) * 10 + b.slot + 1; }
+
+function logFirstRow_() { return SYM_FIRST + allSymbols_().length + 3; }
 
 
 // ============================================================================
 //  MENU I FUNKCJE PUBLICZNE
 // ============================================================================
 function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-  ui.createMenu('IA 4')
-    .addSubMenu(ui.createMenu('🗂 Projekt')
-      .addItem('📋 Pokaż / odśwież stan projektu', 'projectRefresh')
-      .addItem('📤 Przygotuj podsumowanie do wklejenia', 'projectExportBriefing')
-      .addItem('🔍 Pełny audyt danych', 'runFullAudit')
-      .addItem('📚 Wczytaj katalog S1 z GitHub', 'catalogLoadS1')
-      .addItem('📊 Wczytaj wyniki S1-BACKTEST z GitHub (jednorazowo)', 'backtestLoadS1')
-      .addItem('🧾 Przygotuj wybrane strategie do S2 (podgląd)', 'backtestPreviewSelection')
-      .addItem('✅ Zamknij bieżący etap', 'closeCurrentStage')
-      .addSeparator()
-      .addItem('🧹 Etap 0: usuń stare analizy', 'etap0Cleanup')
-      .addItem('🧽 Posprzątaj po usuniętych instrumentach', 'cleanupRemovedSymbols')
-      .addItem('⚠️ Wyzeruj stan po wyczyszczeniu bazy', 'resetAfterWipe')
-      .addSeparator()
-      .addItem('📊 Postęp dopisywania wolumenu', 'volfillStatus')
-      .addItem('↺ Wolumen: zacznij od nowa', 'volfillReset')
-      .addSeparator()
-      .addItem('📡 Wyślij stan do GitHub teraz', 'telemetryPublishNow')
-      .addItem('🔑 Ustaw token GitHub', 'telemetrySetToken')
-      .addItem('⏱ Włącz telemetrię co godzinę', 'telemetryInstallTrigger'))
-    .addSubMenu(ui.createMenu('💼 Inwestorzy')
-      .addItem('📒 Utwórz / odśwież Transaction LOG', 'txlogSetup')
-      .addItem('🔄 Dociągnij transakcje z bazy', 'txlogSync')
-      .addItem('⏱ Odświeżaj co godzinę', 'txlogInstallTrigger'))
-    .addSeparator()
+  SpreadsheetApp.getUi().createMenu('IA 4')
     .addItem('⚙️ Konfiguruj i włącz automat', 'setup')
-    .addItem('▶️ Uzupełnij braki (ostatni miesiąc)', 'runNow')
+    .addItem('▶️ Uzupełnij ostatni miesiąc', 'runNow')
+    .addItem('🌙 Nocne odświeżenie teraz', 'nightlyNow')
     .addItem('🔥 Test połączenia z Firestore', 'testFirestore')
     .addSeparator()
-    .addSubMenu(ui.createMenu('📜 Historia wstecz → Firestore')
-      .addItem('▶️ Start / wznów', 'startHistory')
-      .addItem('⏭ Pobierz kolejny dzień teraz', 'historyStepNow')
-      .addItem('⏸ Zatrzymaj', 'stopHistory')
-      .addItem('↺ Reset do daty startowej', 'resetHistory'))
-    .addSubMenu(ui.createMenu('🔬 Spółki kontrolne i tło rynku')
-      .addItem('▶️ Pobierz historię', 'startProof')
-      .addItem('🎯 Pobierz ponownie wybrane…', 'refetchProof')
-      .addItem('🔄 Uzupełnij najnowsze', 'refreshProof')
-      .addItem('⏸ Zatrzymaj', 'stopProof')
-      .addItem('↺ Reset', 'resetProof'))
+    .addItem('📡 Wyślij stan do GitHub teraz', 'telemetryPublishNow')
+    .addItem('🔑 Ustaw token GitHub', 'telemetrySetToken')
     .addSeparator()
-    .addItem('⏹ Zatrzymaj automat bieżący', 'stopCollector')
+    .addItem('🧹 Sprzątanie po wersji 1.0 (raz)', 'cleanupLegacy')
+    .addItem('⏹ Zatrzymaj automat', 'stopCollector')
     .addToUi();
 }
 
-/**
- * Konfiguracja. Można uruchamiać wielokrotnie.
- * Najpierw uzupełnia Firestore danymi z ostatniego miesiąca, a stare arkusze
- * spółek usuwa DOPIERO, gdy zapis się powiódł — żeby nic nie przepadło.
- */
+/** Konfiguracja: arkusz STATS, triggery, lista instrumentów, uzupełnienie miesiąca. */
 function setup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   ss.setSpreadsheetTimeZone(CONFIG.LOCAL_TZ);
-  ss.setRecalculationInterval(SpreadsheetApp.RecalculationInterval.MINUTE); // dla „watchdoga” w STATS
-
+  ss.setRecalculationInterval(SpreadsheetApp.RecalculationInterval.MINUTE); // watchdog w STATS
   setupStatsSheet_(ss);
-  removeDefaultSheet_(ss);
-  installTrigger_();
-
-  const s = execute_('manual', `Konfiguracja: automat co ${CONFIG.TRIGGER_EVERY_MIN} min dla ${liveSymbols_().length} spółek.`);
-  const removed = s && s.fsOk ? removeSymbolSheets_(ss) : [];
-  orderSheets_(ss);
-
-  if (typeof projectRefresh === 'function') {
-    try { projectRefresh(); } catch (e) { console.warn('PROJEKT: ' + e.message); }
-  }
-
-  if (s && s.fsOk === false) {
-    toast_('Automat działa, ale zapis do Firestore się nie powiódł — stare arkusze spółek zostawiam. Sprawdź STATS.');
-  } else {
-    toast_(`Gotowe. Automat zbiera ${liveSymbols_().length} spółek.` +
-      (removed.length ? ` Usunięto arkusze: ${removed.join(', ')}.` : ''));
-  }
+  installTriggers_();
+  try { fsWriteUniverse_(); } catch (e) { console.warn('system/universe: ' + e.message); }
+  const s = execute_('manual', `Konfiguracja: automat co ${CONFIG.TRIGGER_EVERY_MIN} min dla ${allSymbols_().length} instrumentów.`);
+  toast_(s ? `Gotowe. Zapisano ${s.written} świec.` : 'Automat włączony.');
 }
 
 /** Handler triggera — NIE zmieniaj nazwy. */
@@ -277,34 +155,25 @@ function runCollector() { execute_('auto'); }
 
 function runNow() {
   const s = execute_('manual');
-  toast_(s ? `Zapisano ${s.written} świec na ${s.symbolsWritten} spółkach.` : 'Poprzednie uruchomienie wciąż trwa.');
+  toast_(s ? `Zapisano ${s.written} świec na ${s.symbolsWritten} instrumentach.` : 'Poprzednie uruchomienie wciąż trwa.');
+}
+
+function nightlyNow() {
+  const s = execute_('nightly');
+  toast_(s ? `Odświeżono: ${s.written} świec na ${s.symbolsWritten} instrumentach.` : 'Poprzednie uruchomienie wciąż trwa.');
 }
 
 function stopCollector() {
-  const n = removeTriggers_();
-  toast_(`Automat zatrzymany (usunięto triggerów: ${n}). Włączysz go ponownie przez „Konfiguruj”.`);
+  const n = removeTriggers_(['runCollector']);
+  toast_(`Automat zatrzymany (usunięto triggerów: ${n}). Włączysz go przez „Konfiguruj”.`);
 }
 
 function testFirestore() {
   try {
-    firestoreCommit_([{
-      update: {
-        name: `${fsBase_()}/system/test`,
-        fields: {
-          ping: { timestampValue: new Date().toISOString() },
-          from: { stringValue: 'IA 4 / Google Apps Script' },
-        },
-      },
-    }]);
-    setFsStatus_({ ok: true, at: new Date().toISOString(), count: 0 });
-    alert_('✅ Firestore działa — zapisano dokument system/test.');
+    firestoreCommit_([{ update: { name: `${fsBase_()}/system/status`, fields: statusFields_(0) } }]);
+    alert_('✅ Firestore działa — zapisano system/status.');
   } catch (e) {
-    setFsStatus_({ ok: false, at: new Date().toISOString(), error: e.message });
-    alert_('❌ ' + e.message +
-      '\n\nNajczęstsze przyczyny:\n' +
-      '• brak zakresu „datastore” w appsscript.json,\n' +
-      '• konto Google, na którym działa skrypt, nie ma dostępu do projektu Firebase,\n' +
-      '• baza Firestore nie została jeszcze utworzona w konsoli Firebase.');
+    alert_('❌ ' + e.message + '\n\nSprawdź zakres „datastore” w appsscript.json i dostęp konta do projektu Firebase.');
   }
 }
 
@@ -316,18 +185,12 @@ let RUN_ = null; // stan bieżącego uruchomienia
 
 function execute_(mode, initMessage) {
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(30 * 1000)) {
-    console.warn('Poprzednie uruchomienie wciąż trwa — pomijam.');
-    return null;
-  }
-  let ctx = null;
-  let summary = null;
-  let action = '';
+  if (!lock.tryLock(30 * 1000)) return null;
+  let ctx = null, summary = null, action = '';
   try {
     startRun_();
     if (initMessage) log_('INFO', 'SYSTEM', initMessage);
     ctx = marketContext_(new Date());
-    RUN_.counters.runs++;
 
     if (mode === 'auto') {
       const gate = gate_(ctx);
@@ -335,22 +198,17 @@ function execute_(mode, initMessage) {
         summary = fastCollect_(ctx);
       } else {
         action = gate.reason;
-        // Nic do zebrania — dobry moment, żeby połatać stare luki (bez kolejki
-        // Yahoo w godzinach sesji i bez ryzyka, że opóźnimy bieżącą świecę).
-        const patched = patchGapsIfIdle_(ctx);
-        if (patched) action += ` · ${patched}`;
-        // Luki mają pierwszeństwo — dopisywanie wolumenu dopiero, gdy ich nie ma.
-        if (!patched) {
-          const vol = volfillIfIdle_(ctx);
-          if (vol) action += ` · ${vol}`;
-        }
+        const extra = nightlyIfDue_(ctx) || countIfDue_();
+        if (extra) action += ' · ' + extra;
       }
+    } else if (mode === 'nightly') {
+      summary = runNightly_(ctx);
     } else {
       summary = collectAll_(CONFIG.CATCHUP_RANGE, ctx, true);
-      log_('INFO', 'SYSTEM', `Uzupełnianie (${CONFIG.CATCHUP_RANGE}): ${summary.written} świec na ${summary.symbolsWritten} spółkach.`);
+      log_('INFO', 'SYSTEM', `Uzupełnianie (${CONFIG.CATCHUP_RANGE}): ${summary.written} świec na ${summary.symbolsWritten} instrumentach.`);
     }
-    if (summary) {
-      action = `Pobrano ${summary.fetched}/${liveSymbols_().length} spółek, zapisano ${summary.written} świec` +
+    if (summary && !action) {
+      action = `Pobrano ${summary.fetched}/${allSymbols_().length}, zapisano ${summary.written} świec` +
                (summary.skipped ? `, aktualnych: ${summary.skipped}` : '');
     }
   } catch (e) {
@@ -358,447 +216,59 @@ function execute_(mode, initMessage) {
     recordError_('SYSTEM', e.message || String(e));
     action = 'Błąd krytyczny — szczegóły w dzienniku';
   } finally {
-    try {
-      finishRun_(ctx || marketContext_(new Date()), action);
-    } catch (e2) {
-      console.error('Nie udało się zaktualizować STATS: ' + e2);
-    }
+    try { finishRun_(ctx || marketContext_(new Date()), action); }
+    catch (e2) { console.error('STATS: ' + e2); }
     lock.releaseLock();
   }
   return summary;
 }
 
 /**
- * ZBIERANIE W TRYBIE SZYBKIM
- *
- * Zamknięcie świecy ma w Etapie 4 być momentem wejścia w transakcję, więc
- * liczy się każda sekunda opóźnienia. Yahoo nie publikuje świecy punktualnie —
- * zwykle pojawia się kilkanaście do kilkudziesięciu sekund po pełnej godzinie,
- * czasem później. Trigger Apps Script nie chodzi częściej niż co minutę, więc
- * zamiast czekać na kolejne uruchomienie, ponawiamy próbę wewnątrz tego samego.
- *
- * Pętla działa tylko w oknie FAST_WINDOW_MIN po zamknięciu świecy i kończy się
- * od razu, gdy wszystkie spółki mają komplet — w praktyce po pierwszej lub
- * drugiej próbie. Poza tym oknem zachowuje się jak zwykłe jedno pobranie.
+ * Tuż po zamknięciu świecy ponawia pobranie co FAST_RETRY_SEC, aż trzy spółki
+ * główne dostaną nową świecę. Pozostałe instrumenty dociągną się przy
+ * kolejnych uruchomieniach.
  */
 function fastCollect_(ctx) {
-  const session = getSession_();
-  const closeMin = sessionCloseFor_(session, ctx.etDate);
+  const closeMin = sessionCloseFor_(getSession_(), ctx.etDate);
   const expectedKey = liveExpectedKey_(ctx, closeMin);
-  const sinceClose = minutesSinceLastClose_(ctx, closeMin);
-  const fast = expectedKey && sinceClose !== null && sinceClose < CONFIG.FAST_WINDOW_MIN;
-
-  let summary = collectAll_(CONFIG.LIVE_RANGE, ctx, false);
-  if (!fast) return summary;
+  const expected = expectedSlots_(ctx.etMin, closeMin);
+  const sinceClose = expected ? ctx.etMin - slotEnd_(expected - 1, closeMin) : null;
+  const t0 = Date.now();
+  const summary = collectAll_(CONFIG.LIVE_RANGE, ctx, false);
+  if (!expectedKey || sinceClose === null || sinceClose >= CONFIG.FAST_WINDOW_MIN) return summary;
 
   for (let i = 1; i < CONFIG.FAST_MAX_TRIES; i++) {
     const live = liveLoad_();
-    // Decyzja D15: liczy się czas dojścia świecy dla TRZECH SPÓŁEK GŁÓWNYCH —
-    // to na nich powstają sygnały. Kontrolne i tło rynku dociągną się spokojnie
-    // przy kolejnych uruchomieniach; czekanie na nie opóźniałoby sygnał.
-    const waiting = CONFIG.SYMBOLS.filter(s => !live[s] || live[s].k < expectedKey);
-    if (!waiting.length) {
-      log_('INFO', 'SYSTEM',
-        `Świeca złapana po ${i} ${i === 1 ? 'próbie' : 'próbach'} ` +
-        `(~${Math.round(i * CONFIG.FAST_RETRY_SEC)} s od zamknięcia).`);
-      break;
-    }
-    if (i === 1) {
-      log_('INFO', 'SYSTEM', `Yahoo jeszcze nie ma świecy dla ${waiting.length} instrumentów — ponawiam co ${CONFIG.FAST_RETRY_SEC} s.`);
-    }
+    if (CONFIG.SYMBOLS.every(s => live[s] && live[s].k >= expectedKey)) break;
+    // Limit Apps Script to 6 min na uruchomienie — zostawiamy zapas.
+    if (Date.now() - t0 > CONFIG.FAST_MAX_RUN_SEC * 1000) break;
     Utilities.sleep(CONFIG.FAST_RETRY_SEC * 1000);
     const s2 = collectAll_(CONFIG.LIVE_RANGE, ctx, false);
     summary.fetched += s2.fetched;
     summary.written += s2.written;
     summary.symbolsWritten += s2.symbolsWritten;
-    if (s2.fsOk !== null) summary.fsOk = s2.fsOk;
   }
   return summary;
 }
-
-/** Ile minut minęło od zamknięcia ostatniej świecy (null, gdy żadna jeszcze nie zamknięta). */
-function minutesSinceLastClose_(ctx, closeMin) {
-  const expected = expectedSlots_(ctx.etMin, closeMin);
-  if (!expected) return null;
-  return ctx.etMin - slotEnd_(expected - 1, closeMin);
-}
-
-
-/**
- * SAMOCZYNNE ŁATANIE LUK
- *
- * Audyt wykrywa braki, ale sam ich nie naprawia — do tej pory każdą lukę
- * trzeba było łatać ręcznie. Tu system bierze luki z arkusza _AUDYT i dociąga
- * brakujące sesje z Yahoo w przebiegach, w których i tak nie ma nic do roboty
- * (weekend, noc, po sesji). Dzięki temu przerwa w danych — na przykład z
- * powodu limitu Firestore (HTTP 429) albo chwilowej awarii Yahoo — zasklepia
- * się sama, bez pamiętania o niej.
- *
- * Ograniczenia celowe: PATCH_PER_RUN luk na przebieg, odstęp PATCH_MIN_GAP_MIN
- * między przebiegami i (od 0.34) własny dzienny sufit zapisów PATCH_DAILY_WRITES
- * — żeby łatanie nigdy nie zjadło limitu potrzebnego bieżącym świecom ani
- * dopisywaniu wolumenu (VOLFILL_DAILY_WRITES), z którym dzieli ten sam,
- * twardy dzienny limit Firestore (20 000 zapisów, Spark). Luki starsze niż
- * granica Yahoo (~730 dni) są pomijane — tych danych już nie da się odzyskać.
- */
-/** Dzienny licznik zapisów łatania — ten sam wzorzec co VOLFILL (spent/spentDay). */
-function patchSpendLoad_() {
-  const raw = PropertiesService.getScriptProperties().getProperty('PATCH_SPEND');
-  return raw ? JSON.parse(raw) : { spent: 0, spentDay: '' };
-}
-function patchSpendSave_(st) {
-  PropertiesService.getScriptProperties().setProperty('PATCH_SPEND', JSON.stringify(st));
-}
-
-function patchGapsIfIdle_(ctx) {
-  if (!CONFIG.PATCH_ENABLED || !CONFIG.FIRESTORE_ENABLED) return '';
-  if (fsQuotaBlocked_()) return '';   // limit wyczerpany — wrócimy jutro
-  const props = PropertiesService.getScriptProperties();
-  const last = props.getProperty('PATCH_LAST_AT');
-  if (last && Date.now() - Number(last) < CONFIG.PATCH_MIN_GAP_MIN * 60000) return '';
-
-  const spend = patchSpendLoad_();
-  if (spend.spentDay === ctx.etDate && spend.spent >= CONFIG.PATCH_DAILY_WRITES) return '';
-
-  let gaps;
-  try {
-    gaps = patchReadGaps_();
-  } catch (e) {
-    return '';   // brak arkusza audytu — nie ma czego łatać
-  }
-  if (!gaps.length) return '';
-
-  props.setProperty('PATCH_LAST_AT', String(Date.now()));
-  const attempts = JSON.parse(props.getProperty('PATCH_ATTEMPTS') || '{}');
-  const fixed = [], gaveUp = [];
-  if (spend.spentDay !== ctx.etDate) { spend.spent = 0; spend.spentDay = ctx.etDate; }
-
-  for (let i = 0; i < gaps.length && fixed.length + gaveUp.length < CONFIG.PATCH_PER_RUN
-       && spend.spent < CONFIG.PATCH_DAILY_WRITES; i++) {
-    const g = gaps[i];
-    let r;
-    try {
-      r = patchOneGap_(g);
-    } catch (e) {
-      log_('UWAGA', 'ŁATANIE', `${g.symbol} ${g.date}: ${e.message}`);
-      break;   // najczęściej limit Firestore — nie ma sensu próbować dalej
-    }
-    spend.spent += r.written || 0;
-
-    if (r.gained) {
-      // Naprawdę wypełniło brakującą świecę — luka znika z arkusza od razu,
-      // zamiast czekać do następnego pełnego audytu.
-      patchRemoveGapRow_(g.key);
-      delete attempts[g.key];
-      fixed.push(`${g.symbol} ${g.date}`);
-      continue;
-    }
-    // Brak postępu — czy to dlatego, że Yahoo nic nie zwrócił, czy zwrócił
-    // dokładnie to, co już mieliśmy (typowe przy trwałej przerwie, L3) —
-    // liczy się tak samo. Licznik prób, nie kolejny "sukces" w logu.
-    attempts[g.key] = (attempts[g.key] || 0) + 1;
-    if (attempts[g.key] >= CONFIG.PATCH_MAX_RETRIES) {
-      patchAutoAccept_(g.key,
-        `Automatycznie zaakceptowana po ${CONFIG.PATCH_MAX_RETRIES} próbach bez postępu — ` +
-        (r.wrote
-          ? 'Yahoo zwraca te same, już posiadane świece (prawdopodobnie trwały przestój, L3).'
-          : 'Yahoo nie zwraca żadnych danych dla tej daty.'));
-      delete attempts[g.key];
-      gaveUp.push(`${g.symbol} ${g.date}`);
-    }
-  }
-  props.setProperty('PATCH_ATTEMPTS', JSON.stringify(attempts));
-  patchSpendSave_(spend);
-
-  const parts = [];
-  if (fixed.length) {
-    log_('ZAPIS', 'ŁATANIE', `Uzupełniono z luk: ${fixed.join(', ')}.`);
-    parts.push(`załatano ${fixed.length}`);
-  }
-  if (gaveUp.length) {
-    log_('INFO', 'ŁATANIE', `Zaakceptowano jako trwałe (bez postępu po ${CONFIG.PATCH_MAX_RETRIES} próbach): ${gaveUp.join(', ')}.`);
-    parts.push(`zaakceptowano ${gaveUp.length}`);
-  }
-  if (fixed.length || gaveUp.length) {
-    // Bez tego arkusz PROJEKT i kryterium 0.6 pokazują liczbę luk sprzed
-    // OSTATNIEGO PEŁNEGO AUDYTU. applyManual: false jest tu KONIECZNE (L23) —
-    // inaczej ten render czyta widoczny arkusz sprzed WŁASNEJ decyzji sprzed
-    // chwili (patchAutoAccept_ wyżej) i nadpisuje nią świeżą akceptację
-    // z powrotem na „nowa". Bez tej flagi ta sama poprawka z 0.23 cofała
-    // każdą akceptację, którą sama miała ujawnić — te same ~37 spółek
-    // „akceptowane" w kółko co ~6 godzin, zamiast raz na zawsze.
-    const p = projLoad_();
-    projRender_(p, { applyManual: false });
-    projSave_(p);
-  }
-  return parts.join(' · ');
-}
-
-/**
- * DOPISYWANIE WOLUMENU DO STAREJ HISTORII (D12)
- *
- * Idzie po instrumentach w kolejności z liveSymbols_() (najpierw trzy główne —
- * to na nich powstają sygnały), a w każdym cofa się od dziś w przeszłość oknami
- * po VOLFILL_CHUNK_DAYS dni, aż do granicy Yahoo. Każde okno pobiera z Yahoo te
- * same świece co wcześniej i zapisuje je ponownie — teraz razem z wolumenem.
- *
- * Nadpisanie jest bezpieczne: ceny pochodzą z tego samego źródła, a zapis to
- * `update`, więc sesje, których Yahoo już nie zwraca (np. przerwa ze stycznia),
- * zostają nietknięte w starej postaci zamiast zniknąć.
- *
- * Dzienny budżet: VOLFILL_DAILY_WRITES dokumentów. Po jego wyczerpaniu proces
- * milknie do następnego dnia, żeby limit Firestore został dla bieżących świec.
- * Przy 10 000 zapisach dziennie reszta historii (~29 000 dokumentów, stan na
- * 2026-09-26) zajmie ok. 3 dni i nie wymaga od nikogo uwagi.
- */
-function volfillIfIdle_(ctx) {
-  if (!CONFIG.VOLFILL_ENABLED || !CONFIG.FIRESTORE_ENABLED) return '';
-  if (fsQuotaBlocked_()) return '';   // limit wyczerpany — wrócimy jutro
-  const props = PropertiesService.getScriptProperties();
-  const last = props.getProperty('VOLFILL_LAST_AT');
-  if (last && Date.now() - Number(last) < CONFIG.VOLFILL_MIN_GAP_MIN * 60000) return '';
-
-  const st = volfillLoad_(ctx);
-  if (st.done) return '';
-  if (st.spentDay === ctx.etDate && st.spent >= CONFIG.VOLFILL_DAILY_WRITES) return '';
-
-  props.setProperty('VOLFILL_LAST_AT', String(Date.now()));
-  const symbol = st.symbols[st.idx];
-  const to = st.cursor;
-  const from = addDays_(to, -CONFIG.VOLFILL_CHUNK_DAYS);
-  const floor = addDays_(ctx.etDate, -PROOF.YAHOO_MAX_AGE_DAYS);
-  const realFrom = from < floor ? floor : from;
-
-  let written = 0;
-  try {
-    const sessions = proofFetchRange_(symbol, realFrom, to);
-    const dates = Object.keys(sessions).sort();
-    if (dates.length) {
-      if (isMain_(symbol)) {
-        dates.forEach(d => {
-          const bySlot = sessions[d];
-          const bars = Object.keys(bySlot).map(Number).sort((a, b) => a - b).map(s => bySlot[s]);
-          bars.forEach(b => { b.symbol = symbol; });   // candleFields_ tego wymaga
-          fsWriteMainCandles_(symbol, bars);
-          written += bars.length;
-        });
-      } else {
-        written += proofSaveSessions_(symbol, sessions, dates);
-      }
-    }
-  } catch (e) {
-    // 429 albo chwilowy problem Yahoo — kursor zostaje, spróbujemy ponownie.
-    log_('UWAGA', 'WOLUMEN', `${symbol} ${realFrom}–${to}: ${e.message}`);
-    volfillSave_(st);
-    return '';
-  }
-
-  // Kursor przesuwamy dopiero po udanym zapisie.
-  st.spent = (st.spentDay === ctx.etDate ? st.spent : 0) + written;
-  st.spentDay = ctx.etDate;
-  st.written += written;
-
-  if (realFrom <= floor) {
-    st.idx++;
-    st.cursor = ctx.etDate;
-    if (st.idx >= st.symbols.length) {
-      st.done = true;
-      st.finishedAt = new Date().toISOString();
-      log_('INFO', 'WOLUMEN', `✓ Wolumen dopisany do całej historii: ${st.written} dokumentów.`);
-    } else {
-      log_('ZAPIS', 'WOLUMEN',
-        `${symbol}: gotowe. Następny: ${st.symbols[st.idx]} (${st.idx + 1}/${st.symbols.length}).`);
-    }
-  } else {
-    st.cursor = addDays_(realFrom, -1);
-  }
-  volfillSave_(st);
-  return written ? `wolumen +${written} (${symbol} do ${realFrom})` : '';
-}
-
-function volfillLoad_(ctx) {
-  const raw = PropertiesService.getScriptProperties().getProperty('VOLFILL_STATE');
-  if (raw) {
-    const st = JSON.parse(raw);
-    // Lista instrumentów mogła się zmienić — dopisujemy nowe na koniec.
-    liveSymbols_().forEach(s => { if (st.symbols.indexOf(s) < 0) { st.symbols.push(s); st.done = false; } });
-    return st;
-  }
-  return {
-    symbols: liveSymbols_(), idx: 0, cursor: ctx.etDate,
-    spent: 0, spentDay: '', written: 0, done: false,
-    startedAt: new Date().toISOString(), finishedAt: '',
-  };
-}
-
-function volfillSave_(st) {
-  PropertiesService.getScriptProperties().setProperty('VOLFILL_STATE', JSON.stringify(st));
-}
-
-/** Menu: pokazuje, jak daleko zaszło dopisywanie wolumenu. */
-function volfillStatus() {
-  const raw = PropertiesService.getScriptProperties().getProperty('VOLFILL_STATE');
-  if (!raw) { alert_('Dopisywanie wolumenu jeszcze się nie zaczęło — ruszy w pierwszym wolnym przebiegu automatu.'); return; }
-  const st = JSON.parse(raw);
-  const all = st.symbols.length;
-  alert_(st.done
-    ? `✓ Wolumen dopisany do całej historii.\nPrzepisanych dokumentów: ${st.written}.`
-    : `Instrument ${st.idx + 1} z ${all}: ${st.symbols[st.idx]}\n` +
-      `Cofnięto się do: ${st.cursor}\n` +
-      `Przepisanych dokumentów: ${st.written}\n` +
-      `Dziś zużyto: ${st.spentDay === Utilities.formatDate(new Date(), CONFIG.MARKET_TZ, 'yyyy-MM-dd') ? st.spent : 0} z ${CONFIG.VOLFILL_DAILY_WRITES}`);
-}
-
-/** Wyzerowanie postępu dopisywania wolumenu (zacznie od nowa). */
-function volfillReset() {
-  PropertiesService.getScriptProperties().deleteProperty('VOLFILL_STATE');
-  toast_('Dopisywanie wolumenu zacznie się od nowa przy najbliższym wolnym przebiegu.');
-}
-
-
-/** Luki z arkusza _AUDYT, które da się jeszcze pobrać z Yahoo. */
-function patchReadGaps_() {
-  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PROJECT.AUDIT_SHEET);
-  if (!sh || sh.getLastRow() < 2) return [];
-  const rows = sh.getRange(2, 1, Math.min(sh.getLastRow() - 1, PROJECT.MAX_GAP_ROWS), 5).getValues();
-  const oldest = Utilities.formatDate(
-    new Date(Date.now() - 720 * 86400000), CONFIG.MARKET_TZ, 'yyyy-MM-dd');
-  const today = Utilities.formatDate(new Date(), CONFIG.MARKET_TZ, 'yyyy-MM-dd');
-  const known = liveSymbols_();
-  const accepted = patchAcceptedKeys_();
-  const out = [];
-  rows.forEach(r => {
-    const key = String(r[0] || '').trim();
-    const symbol = String(r[1] || '').trim();
-    const type = String(r[2] || '').trim();
-    const date = String(r[3] || '').trim();
-    const desc = String(r[4] || '').trim();
-    if (!key || !symbol || !date || known.indexOf(symbol) < 0) return;
-    if (accepted[key]) return;   // decyzja („zaakceptowana") już podjęta — nie ruszamy
-    // ZERO_WOLUMEN (0.33) dołącza do automatycznego łatania na tych samych
-    // zasadach co braki świec — patchOneGap_ i patchExpectedSlots_ mają dla
-    // niej osobną gałąź (inna definicja "postępu": wolumen > 0, nie obecność).
-    if (type !== 'BRAK_SWIEC' && type !== 'BRAK_SESJI' && type !== 'ZERO_WOLUMEN') return;
-    if (date < oldest || date >= today) return;   // poza zasięgiem Yahoo albo dzisiejsza sesja
-    out.push({ key, symbol, type, date, desc });
-  });
-  return out;
-}
-
-/** Klucze luk już oznaczonych jako `zaakceptowana` w arkuszu decyzji. */
-function patchAcceptedKeys_() {
-  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PROJECT.DECISION_SHEET);
-  if (!sh || sh.getLastRow() < 2) return {};
-  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues();
-  const set = {};
-  rows.forEach(r => { if (r[0] && String(r[1]).trim() === 'zaakceptowana') set[String(r[0])] = true; });
-  return set;
-}
-
-/** Zapisuje (albo nadpisuje) decyzję o luce — używane do auto-akceptacji trwałych luk. */
-function patchAutoAccept_(key, comment) {
-  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PROJECT.DECISION_SHEET);
-  if (!sh) return;
-  const last = sh.getLastRow();
-  const ids = last > 1 ? sh.getRange(2, 1, last - 1, 1).getValues().map(r => String(r[0])) : [];
-  const at = ids.indexOf(key);
-  const row = [key, 'zaakceptowana', comment];
-  if (at >= 0) sh.getRange(at + 2, 1, 1, 3).setValues([row]);
-  else sh.getRange(last + 1, 1, 1, 3).setValues([row]);
-}
-
-/** Usuwa wiersz luki z arkusza audytu — używane, gdy łatanie naprawdę ją zamknęło. */
-function patchRemoveGapRow_(key) {
-  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PROJECT.AUDIT_SHEET);
-  if (!sh || sh.getLastRow() < 2) return;
-  const keys = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
-  for (let i = 0; i < keys.length; i++) {
-    if (String(keys[i][0]) === key) { sh.deleteRow(i + 2); return; }
-  }
-}
-
-/** Numery brakujących świec (1–7) wynikające z opisu luki. Cała sesja = wszystkie. */
-function patchExpectedSlots_(g) {
-  if (g.type === 'BRAK_SESJI') return [1, 2, 3, 4, 5, 6, 7];
-  // ZERO_WOLUMEN ma inny format opisu (bez " z N") niż BRAK_SWIEC/NADMIAR —
-  // "świeca nr 3, 7: wolumen 0 — ..." — stąd osobne dopasowanie przed ogólnym.
-  const mZero = /nr ([\d, ]+): wolumen 0/.exec(g.desc || '');
-  if (mZero) return mZero[1].split(',').map(s => Number(s.trim())).filter(n => n > 0);
-  const m = /nr ([\d, ]+) z/.exec(g.desc || '');
-  if (!m) return [1, 2, 3, 4, 5, 6, 7];   // opis w nietypowym formacie — bezpieczniej sprawdzić wszystko
-  return m[1].split(',').map(s => Number(s.trim())).filter(n => n > 0);
-}
-
-/**
- * Dociąga jedną sesję. Zwraca { wrote, gained, written }:
- *   wrote   — Yahoo zwróciło cokolwiek (nawet jeśli to tylko to, co już mieliśmy),
- *   gained  — realny postęp względem tego, co konkretny typ luki zgłasza jako brak,
- *   written — ile dokumentów Firestore ten wpis faktycznie zapisał (dla
- *             PATCH_DAILY_WRITES w patchGapsIfIdle_ — ten sam licznik, co przy
- *             VOLFILL_DAILY_WRITES, żeby oba razem nie przekroczyły dziennego
- *             limitu Firestore).
- * Bez rozróżnienia wrote/gained luka bez rozwiązania (np. trwała przerwa
- * Yahoo) byłaby "łatana" w kółko, bo te same istniejące świece zawsze wracają.
- *
- * Dla BRAK_SWIEC/BRAK_SESJI/NADMIAR "brak" = świecy nie było, więc gained =
- * któraś z oczekiwanych świec się pojawiła. Dla ZERO_WOLUMEN świeca już
- * istnieje (0.33) — "brak" = wolumen równy 0, więc gained musi sprawdzać
- * `.volume > 0` na tych samych slotach, nie samą obecność świecy, inaczej
- * każda próba wyglądałaby na postęp i auto-akceptacja (3 próby) nigdy by
- * nie zadziałała, mimo że Yahoo wciąż zwraca ten sam zerowy wolumen.
- */
-function patchOneGap_(g) {
-  const sessions = proofFetchRange_(g.symbol, g.date, g.date);
-  const bySlot = sessions[g.date];
-  if (!bySlot || !Object.keys(bySlot).length) return { wrote: false, gained: false, written: 0 };
-
-  const expected = patchExpectedSlots_(g);
-  let gained;
-  if (g.type === 'ZERO_WOLUMEN') {
-    gained = expected.some(s => {
-      const b = bySlot[s - 1];
-      return b && typeof b.volume === 'number' && b.volume > 0;
-    });
-  } else {
-    const fetched1based = Object.keys(bySlot).map(Number).map(s => s + 1);
-    gained = fetched1based.some(s => expected.indexOf(s) >= 0);
-  }
-
-  let written;
-  if (isMain_(g.symbol)) {
-    const bars = Object.keys(bySlot).map(Number).sort((a, b) => a - b).map(s => bySlot[s]);
-    bars.forEach(b => { b.symbol = g.symbol; });   // candleFields_ tego wymaga
-    fsWriteMainCandles_(g.symbol, bars);
-    written = bars.length + 1;   // + dokument podsumowania spółki (stocks/{symbol})
-  } else {
-    written = proofSaveSessions_(g.symbol, sessions, [g.date]);   // sesja + podsumowanie
-  }
-  return { wrote: true, gained, written };
-}
-
 
 /** Czy w trybie automatycznym w ogóle warto pytać Yahoo? */
 function gate_(ctx) {
   if (!ctx.weekday) return { fetch: false, reason: 'Weekend — giełda zamknięta' };
   const session = getSession_();
-  if (session && session.date === ctx.etDate && session.holiday) {
-    return { fetch: false, reason: 'Święto w USA — dziś brak sesji' };
-  }
+  if (isHolidayToday_(ctx, session)) return { fetch: false, reason: 'Święto w USA — brak sesji' };
   const closeMin = sessionCloseFor_(session, ctx.etDate);
-  if (ctx.etMin < OPEN) return { fetch: false, reason: 'Przed otwarciem sesji' };
-  if (ctx.etMin < OPEN + 60 + CONFIG.BUFFER_MIN) {
-    return { fetch: false, reason: 'Sesja trwa — czekam na zamknięcie pierwszej świecy' };
-  }
-  if (ctx.etMin > closeMin + CONFIG.POLL_AFTER_CLOSE_MIN) {
-    return { fetch: false, reason: 'Po sesji — dane z dzisiaj zamknięte' };
-  }
-  // Wszystkie spółki mają już ostatnią zamkniętą świecę — nie ma po co pytać Yahoo.
+  if (ctx.etMin < OPEN + 60) return { fetch: false, reason: 'Przed zamknięciem pierwszej świecy' };
+  if (ctx.etMin > closeMin + CONFIG.POLL_AFTER_CLOSE_MIN) return { fetch: false, reason: 'Po sesji' };
   const expectedKey = liveExpectedKey_(ctx, closeMin);
   const live = liveLoad_();
-  if (expectedKey && liveSymbols_().every(s => live[s] && live[s].k >= expectedKey)) {
-    return { fetch: false, reason: 'Sesja trwa — wszystkie spółki aktualne' };
+  if (expectedKey && allSymbols_().every(s => live[s] && live[s].k >= expectedKey)) {
+    return { fetch: false, reason: 'Sesja trwa — wszystko aktualne' };
   }
   return { fetch: true };
+}
+
+function isHolidayToday_(ctx, session) {
+  return !!(US_MARKET_HOLIDAYS[ctx.etDate] || (session && session.date === ctx.etDate && session.holiday));
 }
 
 /** Klucz ostatniej świecy, która dziś powinna już być zamknięta (0 — żadna). */
@@ -808,53 +278,40 @@ function liveExpectedKey_(ctx, closeMin) {
 }
 
 /**
- * Pobiera świece wszystkich spółek i zapisuje nowe do Firestore.
- * Każda spółka zapisuje się osobno, więc błąd jednej nie blokuje pozostałych.
- * Pamięć „co już zapisane” przesuwamy dopiero po potwierdzeniu zapisu.
+ * Pobiera świece wszystkich instrumentów i zapisuje je do Firestore.
+ * force = false: tylko świece nowsze niż ostatnia zapisana (praca na żywo).
+ * force = true:  wszystkie zamknięte świece z zakresu (uzupełnianie, nocne odświeżenie).
+ * Pamięć „co już zapisane” przesuwa się dopiero po potwierdzeniu zapisu.
  */
 function collectAll_(range, ctx, force) {
-  const summary = { fetched: 0, skipped: 0, written: 0, symbolsWritten: 0, fsOk: null };
-  const symbols = liveSymbols_();
+  const summary = { fetched: 0, skipped: 0, written: 0, symbolsWritten: 0, errors: 0 };
   const live = liveLoad_();
   let session = getSession_();
-  const groupLog = { proof: { symbols: 0, candles: 0 }, context: { symbols: 0, candles: 0 } };
   const nowIso = new Date().toISOString();
 
-  symbols.forEach(symbol => {
+  allSymbols_().forEach(symbol => {
     const st = live[symbol] || (live[symbol] = {});
     try {
       if (!force) {
-        if (session && session.date === ctx.etDate && session.holiday) { st.st = '— święto, brak sesji'; return; }
         const expectedKey = liveExpectedKey_(ctx, sessionCloseFor_(session, ctx.etDate));
         if (expectedKey && st.k >= expectedKey) { summary.skipped++; st.st = '✓ aktualne'; return; }
       }
-
       if (summary.fetched) Utilities.sleep(CONFIG.FETCH_PAUSE_MS);
       const r = fetchYahoo_(symbol, range);
-      RUN_.counters.fetches++;
       summary.fetched++;
       st.t = nowIso;
 
-      // Zabezpieczenie niezależne od `force`: nawet gdy „Uzupełnij braki” pomija
-      // sprawdzenie święta na dziś, żadna świeca z dnia bez sesji (weekend albo
-      // święto z kalendarza) i tak nie trafi do bazy — niezależnie od tego, co
-      // akurat zwróci Yahoo.
       const bars = parseBars_(r.result).filter(b => isoWeekday_(b.date) <= 5 && !US_MARKET_HOLIDAYS[b.date]);
-      const hasToday = bars.some(b => b.date === ctx.etDate);
-      session = updateSessionFromMeta_(r.result.meta, ctx, hasToday) || session;
+      session = updateSessionFromMeta_(r.result.meta, ctx, bars.some(b => b.date === ctx.etDate)) || session;
 
       const done = bars.filter(b => isComplete_(b, ctx, session));
       const fresh = force ? done : done.filter(b => barKey_(b) > (st.k || 0));
-      if (!fresh.length) { st.st = '✓ OK (brak nowych)'; clearError_(symbol); return; }
+      if (!fresh.length) { st.st = '✓ brak nowych'; clearError_(symbol); return; }
       fresh.forEach(b => { b.symbol = symbol; });
 
-      if (CONFIG.FIRESTORE_ENABLED) {
-        if (isMain_(symbol)) fsWriteMainCandles_(symbol, fresh);
-        else fsWriteSessions_(symbol, done, fresh);
-        summary.fsOk = summary.fsOk === false ? false : true;
-      }
+      if (isMain_(symbol)) fsWriteMainCandles_(symbol, fresh);
+      else fsWriteSessions_(symbol, done, fresh);
 
-      // Zapis potwierdzony — dopiero teraz przesuwamy pamięć.
       const last = fresh.reduce((a, b) => barKey_(b) > barKey_(a) ? b : a);
       if (!st.k || barKey_(last) >= st.k) {
         st.k = barKey_(last); st.d = last.date; st.s = last.slot; st.c = last.close;
@@ -865,39 +322,101 @@ function collectAll_(range, ctx, force) {
       RUN_.counters.candles += fresh.length;
       RUN_.props.setProperty('LAST_WRITE', nowIso);
       clearError_(symbol);
-
-      if (isMain_(symbol)) log_('ZAPIS', symbol, describeBars_(fresh));
-      else { const g = groupLog[symbolGroup_(symbol)]; g.symbols++; g.candles += fresh.length; }
     } catch (e) {
       const msg = e.message || String(e);
       st.st = '✗ ' + msg.slice(0, 120);
-      if (/Firestore/.test(msg)) summary.fsOk = false;
+      summary.errors++;
       recordError_(symbol, msg);
     }
   });
 
-  if (groupLog.proof.symbols) {
-    log_('ZAPIS', 'KONTROLNE', `Zapisano ${groupLog.proof.candles} świec na ${groupLog.proof.symbols} spółkach kontrolnych.`);
-  }
-  if (groupLog.context.symbols) {
-    log_('ZAPIS', 'TŁO RYNKU', `Zapisano ${groupLog.context.candles} świec na ${groupLog.context.symbols} instrumentach tła.`);
-  }
-  if (CONFIG.FIRESTORE_ENABLED && summary.written) {
-    try { fsWriteStatus_(summary.written); } catch (e) { console.warn('system/status: ' + e.message); }
-    setFsStatus_({ ok: summary.fsOk !== false, at: nowIso, count: summary.written });
+  if (summary.written) {
+    try { firestoreCommit_([{ update: { name: `${fsBase_()}/system/status`, fields: statusFields_(summary.written) } }]); }
+    catch (e) { console.warn('system/status: ' + e.message); }
   }
   liveSave_(live);
-  if (RUN_) RUN_.live = live;
+  RUN_.live = live;
   return summary;
 }
 
 function liveLoad_() {
-  const raw = PropertiesService.getScriptProperties().getProperty('LIVE_STATE');
-  return raw ? JSON.parse(raw) : {};
+  return JSON.parse(PropertiesService.getScriptProperties().getProperty('LIVE_STATE') || '{}');
 }
-
 function liveSave_(live) {
   PropertiesService.getScriptProperties().setProperty('LIVE_STATE', JSON.stringify(live));
+}
+
+
+// ============================================================================
+//  NOCNE ODŚWIEŻENIE I LICZENIE BAZY
+//  Raz na dzień sesyjny, po jej zamknięciu, przepisuje ostatnie ~5 sesji
+//  wszystkich instrumentów tymi samymi danymi z Yahoo (~400 zapisów). Jeśli
+//  w ciągu dnia zabrakło świecy (awaria Yahoo, limit Firestore), wraca ona
+//  sama tej samej nocy — bez audytów i list luk. Po udanym odświeżeniu,
+//  w kolejnym wolnym przebiegu, liczymy świece każdego instrumentu w bazie.
+// ============================================================================
+function nightlyIfDue_(ctx) {
+  const props = PropertiesService.getScriptProperties();
+  if (!ctx.weekday || isHolidayToday_(ctx, getSession_())) return '';
+  if (ctx.etMin <= sessionCloseFor_(getSession_(), ctx.etDate) + CONFIG.POLL_AFTER_CLOSE_MIN) return '';
+  if (props.getProperty('NIGHTLY_DONE') === ctx.etDate) return '';
+  const lastTry = Number(props.getProperty('NIGHTLY_TRY_AT') || 0);
+  if (Date.now() - lastTry < CONFIG.NIGHTLY_RETRY_MIN * 60000) return '';
+
+  const s = runNightly_(ctx);
+  return `nocne odświeżenie: ${s.written} świec` + (s.errors ? `, błędów ${s.errors} (ponowię)` : '');
+}
+
+function runNightly_(ctx) {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('NIGHTLY_TRY_AT', String(Date.now()));
+  const s = collectAll_(CONFIG.NIGHTLY_RANGE, ctx, true);
+  if (!s.errors) {
+    props.setProperty('NIGHTLY_DONE', ctx.etDate);
+    props.setProperty('NIGHTLY_INFO', JSON.stringify({ date: ctx.etDate, at: new Date().toISOString(), written: s.written }));
+    log_('INFO', 'NOC', `Nocne odświeżenie ${ctx.etDate}: przepisano ${s.written} świec na ${s.symbolsWritten} instrumentach.`);
+  }
+  return s;
+}
+
+/** Po udanym nocnym odświeżeniu: liczba świec i pierwsza data każdego instrumentu. */
+function countIfDue_() {
+  const props = PropertiesService.getScriptProperties();
+  const done = props.getProperty('NIGHTLY_DONE');
+  if (!done) return '';
+  const prev = JSON.parse(props.getProperty('BASE_COUNTS') || 'null');
+  if (prev && prev.date === done) return '';
+  const lastTry = Number(props.getProperty('COUNT_TRY_AT') || 0);
+  if (Date.now() - lastTry < CONFIG.NIGHTLY_RETRY_MIN * 60000) return '';
+  props.setProperty('COUNT_TRY_AT', String(Date.now()));
+  const counts = countBase_();
+  counts.date = done;
+  props.setProperty('BASE_COUNTS', JSON.stringify(counts));
+  return `baza policzona: ${counts.total} świec`;
+}
+
+function countBase_() {
+  const out = { at: new Date().toISOString(), total: 0, items: {} };
+  allSymbols_().forEach(symbol => {
+    const parent = `${fsBase_()}/${fsCollection_(symbol)}/${symbol}`;
+    const coll = isMain_(symbol) ? 'candles' : 'sessions';
+    const agg = isMain_(symbol) ? { alias: 'n', count: {} } : { alias: 'n', sum: { field: { fieldPath: 'bars' } } };
+    const r = firestorePost_(`${parent}:runAggregationQuery`, {
+      structuredAggregationQuery: { structuredQuery: { from: [{ collectionId: coll }] }, aggregations: [agg] },
+    });
+    const f = r[0] && r[0].result && r[0].result.aggregateFields && r[0].result.aggregateFields.n;
+    const n = f ? Number(f.integerValue || f.doubleValue || 0) : 0;
+    const q = firestorePost_(`${parent}:runQuery`, {
+      structuredQuery: {
+        from: [{ collectionId: coll }], select: { fields: [{ fieldPath: 'date' }] },
+        orderBy: [{ field: { fieldPath: 'date' }, direction: 'ASCENDING' }], limit: 1,
+      },
+    });
+    const first = q[0] && q[0].document ? q[0].document.fields.date.stringValue : '';
+    out.items[symbol] = { candles: n, first };
+    out.total += n;
+  });
+  return out;
 }
 
 
@@ -909,15 +428,14 @@ function marketContext_(now) {
   const etMin = minutesOf_(now, CONFIG.MARKET_TZ);
   let offset = minutesOf_(now, CONFIG.LOCAL_TZ) - etMin; // PL − ET, zwykle 360 min
   if (offset < 0) offset += 1440;
-  const dow = isoWeekday_(etDate); // 1 = pn … 7 = nd
+  const dow = isoWeekday_(etDate);
   return { now, etDate, etMin, dow, weekday: dow <= 5, offset };
 }
 
-/** Informacje o dzisiejszej sesji (godzina zamknięcia, święto) z metadanych Yahoo. */
+/** Godzina zamknięcia i święto na dziś — z metadanych Yahoo (sesje skrócone). */
 function updateSessionFromMeta_(meta, ctx, hasTodayBars) {
   const reg = meta && meta.currentTradingPeriod && meta.currentTradingPeriod.regular;
   if (!reg || !ctx.weekday) return null;
-
   const start = new Date(reg.start * 1000);
   const end = new Date(reg.end * 1000);
   let info = null;
@@ -927,47 +445,34 @@ function updateSessionFromMeta_(meta, ctx, hasTodayBars) {
     info = { date: ctx.etDate, holiday: true };
   }
   if (!info) return null;
-
   const prev = getSession_();
-  const changed = !prev || prev.date !== info.date || prev.holiday !== info.holiday || prev.closeMin !== info.closeMin;
-  if (changed) {
+  if (!prev || prev.date !== info.date || prev.holiday !== info.holiday || prev.closeMin !== info.closeMin) {
     RUN_.props.setProperty('SESSION', JSON.stringify(info));
-    if (info.holiday) log_('INFO', 'SESJA', 'Dziś w USA nie ma sesji (święto) — pomijam pobieranie do jutra.');
-    else if (info.closeMin < CLOSE) log_('INFO', 'SESJA', `Sesja skrócona — zamknięcie o ${fmtMin_(info.closeMin)} ET.`);
+    if (info.closeMin && info.closeMin < CLOSE) log_('INFO', 'SESJA', `Sesja skrócona — zamknięcie o ${fmtMin_(info.closeMin)} ET.`);
   }
   return info;
 }
 
 function getSession_() {
-  const raw = PropertiesService.getScriptProperties().getProperty('SESSION');
-  return raw ? JSON.parse(raw) : null;
+  return JSON.parse(PropertiesService.getScriptProperties().getProperty('SESSION') || 'null');
 }
-
 function sessionCloseFor_(session, date) {
   return (session && session.date === date && !session.holiday && session.closeMin) ? session.closeMin : CLOSE;
 }
+function slotsInSession_(closeMin) { return Math.min(SLOTS, Math.ceil((closeMin - OPEN) / 60)); }
+function slotEnd_(slot, closeMin) { return Math.min(OPEN + (slot + 1) * 60, closeMin); }
 
-function slotsInSession_(closeMin) {
-  return Math.min(SLOTS, Math.ceil((closeMin - OPEN) / 60));
-}
-
-function slotEnd_(slot, closeMin) {
-  return Math.min(OPEN + (slot + 1) * 60, closeMin);
-}
-
-/** Ile świec dzisiejszej sesji powinno już być zamkniętych i „dojrzałych”. */
+/** Ile świec dzisiejszej sesji powinno już być zamkniętych. */
 function expectedSlots_(etMin, closeMin) {
   let k = 0;
-  for (let s = 0; s < slotsInSession_(closeMin); s++) {
-    if (etMin >= slotEnd_(s, closeMin) + CONFIG.BUFFER_MIN) k++;
-  }
+  for (let s = 0; s < slotsInSession_(closeMin); s++) if (etMin >= slotEnd_(s, closeMin)) k++;
   return k;
 }
 
 function isComplete_(bar, ctx, session) {
   if (bar.date < ctx.etDate) return true;
   if (bar.date > ctx.etDate) return false;
-  return ctx.etMin >= slotEnd_(bar.slot, sessionCloseFor_(session, bar.date)) + CONFIG.BUFFER_MIN;
+  return ctx.etMin >= slotEnd_(bar.slot, sessionCloseFor_(session, bar.date));
 }
 
 
@@ -975,388 +480,76 @@ function isComplete_(bar, ctx, session) {
 //  YAHOO FINANCE
 // ============================================================================
 function fetchYahoo_(symbol, range) {
-  const hosts = YAHOO_HOSTS;
   let lastErr = null;
-  for (let i = 0; i < hosts.length; i++) {
-    const url = `https://${hosts[i]}/v8/finance/chart/${encodeURIComponent(symbol)}` +
+  for (let i = 0; i < YAHOO_HOSTS.length; i++) {
+    const url = `https://${YAHOO_HOSTS[i]}/v8/finance/chart/${encodeURIComponent(symbol)}` +
                 `?interval=1h&range=${range}&includePrePost=false`;
-    const t0 = Date.now();
     try {
       const resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true, headers: YAHOO_HEADERS });
-      const code = resp.getResponseCode();
-      if (code !== 200) {
-        lastErr = new Error(`Yahoo HTTP ${code} (${hosts[i]})`);
+      if (resp.getResponseCode() !== 200) {
+        lastErr = new Error(`Yahoo HTTP ${resp.getResponseCode()} (${YAHOO_HOSTS[i]})`);
       } else {
         const json = JSON.parse(resp.getContentText());
         const result = json && json.chart && json.chart.result && json.chart.result[0];
-        if (result) return { result, ms: Date.now() - t0, host: hosts[i] };
+        if (result) return { result };
         const err = json && json.chart && json.chart.error;
         lastErr = new Error('Yahoo: ' + (err ? err.description : 'pusta odpowiedź'));
       }
     } catch (e) {
       lastErr = e;
     }
-    if (i < hosts.length - 1) Utilities.sleep(1500);
+    if (i < YAHOO_HOSTS.length - 1) Utilities.sleep(1500);
   }
   throw lastErr;
 }
 
-/** Zamienia odpowiedź Yahoo na listę świec przypisanych do slotów sesji (0…6). */
+/** Odpowiedź Yahoo → lista świec przypisanych do slotów sesji (0…6). */
 function parseBars_(result) {
   const ts = result.timestamp || [];
   const q = (result.indicators && result.indicators.quote && result.indicators.quote[0]) || {};
-  const o = q.open || [], h = q.high || [], l = q.low || [], c = q.close || [];
-  const v = q.volume || [];   // wolumen (decyzja D12) — bywa null, wtedy zapisujemy 0
+  const o = q.open || [], h = q.high || [], l = q.low || [], c = q.close || [], v = q.volume || [];
   const out = [];
-
   for (let i = 0; i < ts.length; i++) {
     const vals = [o[i], h[i], l[i], c[i]];
-    if (vals.some(v => typeof v !== 'number' || !isFinite(v))) continue;
-
+    if (vals.some(x => typeof x !== 'number' || !isFinite(x))) continue;
     const d = new Date(ts[i] * 1000);
     const etMin = minutesOf_(d, CONFIG.MARKET_TZ);
     const slot = Math.floor((etMin - OPEN) / 60);
     if (slot < 0 || slot >= SLOTS) continue;
-
     let offset = minutesOf_(d, CONFIG.LOCAL_TZ) - etMin;
     if (offset < 0) offset += 1440;
     const slotStart = OPEN + slot * 60;
-    const aligned = new Date(d.getTime() - ((etMin - slotStart) * 60 + d.getUTCSeconds()) * 1000);
-
     out.push({
       date: Utilities.formatDate(d, CONFIG.MARKET_TZ, 'yyyy-MM-dd'),
       slot,
-      open: round_(vals[0]),
-      high: round_(vals[1]),
-      low: round_(vals[2]),
-      close: round_(vals[3]),
-      // Brak wolumenu nie unieważnia świecy — cena jest ważniejsza, a bez niej
-      // i tak pomijamy świecę wyżej. Zapisane 0 oznacza „Yahoo nie podał";
-      // świec z wolumenem 0 nie należy mylić z brakiem obrotu.
+      open: round_(vals[0]), high: round_(vals[1]), low: round_(vals[2]), close: round_(vals[3]),
+      // 0 = Yahoo nie podał wolumenu (nie „brak obrotu”)
       volume: (typeof v[i] === 'number' && isFinite(v[i])) ? Math.round(v[i]) : 0,
       startET: fmtMin_(slotStart),
       startPL: fmtMin_(slotStart + offset),
       openPL: fmtMin_(OPEN + offset),
-      time: aligned,
+      time: new Date(d.getTime() - ((etMin - slotStart) * 60 + d.getUTCSeconds()) * 1000),
     });
   }
   return out;
 }
 
 
-
-// ============================================================================
-//  ARKUSZ STATS (monitoring)
-// ============================================================================
-function setupStatsSheet_(ss) {
-  const sh = ss.getSheetByName(CONFIG.STATS_SHEET) || ss.insertSheet(CONFIG.STATS_SHEET);
-  const needRows = logFirstRow_() + CONFIG.LOG_MAX_ROWS;
-  if (sh.getMaxRows() < needRows) sh.insertRowsAfter(sh.getMaxRows(), needRows - sh.getMaxRows());
-  if (sh.getMaxColumns() < SYM_TABLE_COLS) sh.insertColumnsAfter(sh.getMaxColumns(), SYM_TABLE_COLS - sh.getMaxColumns());
-  sh.setTabColor('#1a73e8');
-
-  // Układ zmienia się wraz z liczbą instrumentów i sekcją projektu, więc czyścimy
-  // cały obszar pod blokiem statusu (kolumny A:H), żeby stare wiersze nie
-  // nakładały się na nowe.
-  sh.getRange(17, 1, sh.getMaxRows() - 16, SYM_TABLE_COLS)
-    .breakApart().clearContent().clearFormat();
-
-  sh.getRange('A1:H1').breakApart().merge()
-    .setValue('IA 4 — MONITORING SYSTEMU')
-    .setFontSize(14).setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
-  sh.getRange('A2').setValue(`Odświeżane przy każdym uruchomieniu automatu (co ${CONFIG.TRIGGER_EVERY_MIN} min).`)
-    .setFontStyle('italic').setFontColor('#5f6368');
-
-  const labels = [
-    'Status systemu', 'Ostatnie uruchomienie (PL)', 'Ostatnia akcja', 'Ostatni zapis świecy (PL)',
-    'Czas w Nowym Jorku (ET)', 'Sesja USA', 'Godziny sesji dziś (PL)', 'Automat (trigger)',
-    'Uruchomień dziś', 'Zapytań do Yahoo dziś', 'Zapisanych świec dziś', 'Błędów dziś',
-    'Firestore', 'Ostatni błąd',
-  ];
-  sh.getRange(STATS.STATUS, 1, labels.length, 1).setValues(labels.map(x => [x]))
-    .setFontWeight('bold').setBackground('#f1f3f4');
-  sh.getRange(STATS.STATUS, 2, labels.length, 1).setNumberFormat('@');
-  sh.getRange(STATS.LAST_RUN, 2).setNumberFormat('yyyy-mm-dd hh:mm:ss');
-  sh.getRange(STATS.LAST_WRITE, 2).setNumberFormat('yyyy-mm-dd hh:mm:ss');
-  sh.getRange(STATS.RUNS, 2, 4, 1).setNumberFormat('0').setHorizontalAlignment('left');
-  sh.getRange(STATS.STATUS, 2).setFontWeight('bold').setHorizontalAlignment('center');
-
-  // Watchdog: działa nawet wtedy, gdy skrypt przestał się uruchamiać
-  sh.getRange(STATS.LAST_RUN, 3).setFormula(
-    `=IF(B${STATS.LAST_RUN}="","",IF(NOW()-B${STATS.LAST_RUN}>15/1440,` +
-    `"⚠ brak uruchomień >15 min — sprawdź trigger","✓ automat żyje"))`);
-
-  // Stan projektu (Project.gs, zasady w IA4_INSTRUKCJA.md)
-  sh.getRange(STATS.PROJ_STAGE, 1, 3, 1).setValues([['Etap projektu'], ['Luki w danych'], ['Skarbiec']])
-    .setFontWeight('bold').setBackground('#fef7e0');
-  sh.getRange(STATS.PROJ_STAGE, 2, 3, 1).setNumberFormat('@');
-
-  // Tabela spółek
-  const symbols = liveSymbols_();
-  const n = symbols.length;
-  sh.getRange(STATS.SYM_HEADER, 1, 1, SYM_TABLE_COLS)
-    .setValues([['Spółka', 'Grupa', 'Ostatnia świeca', 'Godzina (PL)', 'Close', 'Świece dziś',
-                 'Ostatni fetch (PL)', 'Status']])
-    .setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
-  sh.getRange(STATS.SYM_FIRST, 1, n, 2)
-    .setValues(symbols.map(s => [s, GROUP_LABELS[symbolGroup_(s)]])).setFontWeight('bold');
-  sh.getRange(STATS.SYM_FIRST, 2, n, 3).setNumberFormat('@');
-  sh.getRange(STATS.SYM_FIRST, 5, n, 1).setNumberFormat('#,##0.00');
-  sh.getRange(STATS.SYM_FIRST, 6, n, 1).setNumberFormat('@');
-  sh.getRange(STATS.SYM_FIRST, 7, n, 1).setNumberFormat('yyyy-mm-dd hh:mm');
-  sh.getRange(STATS.SYM_FIRST, 8, n, 1).setNumberFormat('@');
-  sh.getRange(STATS.SYM_FIRST, 1, CONFIG.SYMBOLS.length, SYM_TABLE_COLS).setBackground('#e8f0fe');
-  symbols.forEach((s, i) => {
-    if (symbolGroup_(s) === 'context') sh.getRange(STATS.SYM_FIRST + i, 1, 1, SYM_TABLE_COLS).setBackground('#fef7e0');
-  });
-
-  // Dziennik zdarzeń
-  const lt = logTitleRow_();
-  sh.getRange(lt, 1, 1, SYM_TABLE_COLS).merge().setValue('DZIENNIK ZDARZEŃ (najnowsze na górze)')
-    .setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
-  sh.getRange(lt + 1, 1, 1, 4).setValues([['Czas (PL)', 'Poziom', 'Źródło', 'Wiadomość']])
-    .setFontWeight('bold').setBackground('#f1f3f4');
-  sh.getRange(logFirstRow_(), 1, CONFIG.LOG_MAX_ROWS, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
-  sh.getRange(logFirstRow_(), 2, CONFIG.LOG_MAX_ROWS, 3).setNumberFormat('@');
-
-  sh.setColumnWidth(1, 210);
-  sh.setColumnWidth(2, 280);
-  sh.setColumnWidth(3, 260);
-  sh.setColumnWidths(4, 5, 120);
-  sh.setFrozenRows(2);
-
-  // Zapamiętujemy, dla ilu instrumentów zbudowano ten układ. Nagłówek dziennika
-  // i tło grup są scalone/pozycjonowane względem TEJ liczby — jeśli lista
-  // instrumentów urośnie (np. po zmianie kodu) bez ponownego wywołania tej
-  // funkcji, stare scalenie zostaje dokładnie tam, gdzie było, i automat
-  // wpisujący nowe wiersze w tabelę zaczyna nadpisywać scaloną komórkę.
-  // statsLayoutFresh_() sprawdza to przed każdym renderowaniem.
-  PropertiesService.getScriptProperties().setProperty('STATS_LAYOUT_SYMS', String(n));
-
-  // Kolorowanie statusów
-  const status = sh.getRange(STATS.STATUS, 2);
-  const watchdog = sh.getRange(STATS.LAST_RUN, 3);
-  const symStatus = sh.getRange(STATS.SYM_FIRST, 8, n, 1);
-  const logLevel = sh.getRange(logFirstRow_(), 2, CONFIG.LOG_MAX_ROWS, 1);
-  const rule = () => SpreadsheetApp.newConditionalFormatRule();
-  sh.setConditionalFormatRules([
-    rule().whenTextEqualTo('OK').setBackground('#ceead6').setFontColor('#0d652d').setRanges([status]).build(),
-    rule().whenTextEqualTo('UWAGA').setBackground('#feefc3').setFontColor('#b06000').setRanges([status]).build(),
-    rule().whenTextEqualTo('BŁĄD').setBackground('#fad2cf').setFontColor('#a50e0e').setRanges([status]).build(),
-    rule().whenTextStartsWith('⚠').setBackground('#fad2cf').setFontColor('#a50e0e').setRanges([watchdog]).build(),
-    rule().whenTextStartsWith('✓').setFontColor('#0d652d').setRanges([watchdog, symStatus]).build(),
-    rule().whenTextStartsWith('✗').setFontColor('#a50e0e').setRanges([symStatus]).build(),
-    rule().whenTextEqualTo('BŁĄD').setFontColor('#a50e0e').setBold(true).setRanges([logLevel]).build(),
-    rule().whenTextEqualTo('UWAGA').setFontColor('#b06000').setBold(true).setRanges([logLevel]).build(),
-    rule().whenTextEqualTo('ZAPIS').setFontColor('#0d652d').setRanges([logLevel]).build(),
-  ]);
-}
-
-/**
- * Sprawdza, czy układ arkusza STATS pasuje do bieżącej liczby instrumentów.
- * Gdy nie pasuje (lista spółek urosła po zmianie kodu, a nikt nie uruchomił
- * ponownie „Konfiguruj”), przebudowuje układ automatycznie — inaczej nowe
- * wiersze nadpisywałyby scaloną komórkę nagłówka dziennika ze starego układu
- * i psuły formatowanie w środku tabeli.
- */
-function ensureStatsLayout_(ss) {
-  const want = liveSymbols_().length;
-  const have = Number(PropertiesService.getScriptProperties().getProperty('STATS_LAYOUT_SYMS') || 0);
-  if (want === have) return false;
-  setupStatsSheet_(ss);
-  log_('INFO', 'SYSTEM', `Układ STATS przebudowany: liczba instrumentów zmieniła się z ${have} na ${want}. Dziennik poniżej zaczyna się od nowa.`);
-  return true;
-}
-
-function finishRun_(ctx, action) {
-  const p = RUN_.props;
-  saveCounters_(p, RUN_.counters);
-  p.setProperty('ERR_SEEN', JSON.stringify(RUN_.errSeen));
-
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  ensureStatsLayout_(ss);
-  const sh = ss.getSheetByName(CONFIG.STATS_SHEET);
-  if (!sh) return;
-
-  const status = RUN_.errors.length ? 'BŁĄD' : (RUN_.warnings.length ? 'UWAGA' : 'OK');
-  const lastWrite = p.getProperty('LAST_WRITE');
-  const lastErr = JSON.parse(p.getProperty('LAST_ERROR') || 'null');
-  const session = getSession_();
-  const closeMin = sessionCloseFor_(session, ctx.etDate);
-  const c = RUN_.counters;
-
-  sh.getRange(STATS.STATUS, 2, 14, 1).setValues([
-    [status],
-    [ctx.now],
-    [action || '—'],
-    [lastWrite ? new Date(lastWrite) : ''],
-    [`${ctx.etDate} ${fmtMin_(ctx.etMin)} (${DAY_NAMES_PL[ctx.dow - 1]})`],
-    [sessionLabel_(ctx, session, closeMin)],
-    [sessionHoursLabel_(ctx, session, closeMin)],
-    [triggerLabel_()],
-    [c.runs],
-    [c.fetches],
-    [c.candles],
-    [c.errors],
-    [firestoreLabel_(p)],
-    [lastErr ? `${Utilities.formatDate(new Date(lastErr.at), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm')} — ${lastErr.text}` : 'brak'],
-  ]);
-  if (typeof projectSummary_ === 'function' && sh.getRange(STATS.PROJ_STAGE, 1).getValue() === 'Etap projektu') {
-    try { sh.getRange(STATS.PROJ_STAGE, 2, 3, 1).setValues(projectSummary_().map(x => [x])); }
-    catch (e) { console.warn('Stan projektu: ' + e.message); }
-  }
-  renderLiveTable_(sh, ctx, session, closeMin);
-  flushLog_(sh);
-}
-
-/** Tabela 27 spółek rysowana jednym zapisem z pamięci automatu. */
-function renderLiveTable_(sh, ctx, session, closeMin) {
-  if (sh.getRange(STATS.SYM_HEADER, 2).getValue() !== 'Grupa') return;   // STATS sprzed zmiany — czeka na „Konfiguruj”
-  const live = (RUN_ && RUN_.live) || liveLoad_();
-  const symbols = liveSymbols_();
-  const noSession = !ctx.weekday || (session && session.date === ctx.etDate && session.holiday);
-  const nToday = slotsInSession_(closeMin);
-
-  const rows = symbols.map(s => {
-    const st = live[s] || {};
-    const today = noSession ? '— (brak sesji)'
-      : `${st.d === ctx.etDate ? st.s + 1 : 0} z ${nToday}`;
-    return [
-      s, GROUP_LABELS[symbolGroup_(s)],
-      st.d || '—',
-      st.d ? CONFIG.SLOT_LABELS_PL[st.s] : '—',
-      st.c !== undefined ? st.c : '',
-      today,
-      st.t ? new Date(st.t) : '',
-      st.st || '—',
-    ];
-  });
-  sh.getRange(STATS.SYM_FIRST, 1, rows.length, SYM_TABLE_COLS).setValues(rows);
-}
-
-function sessionLabel_(ctx, session, closeMin) {
-  if (!ctx.weekday) return 'ZAMKNIĘTA — weekend';
-  if (session && session.date === ctx.etDate && session.holiday) return 'ZAMKNIĘTA — święto w USA';
-  if (ctx.etMin < OPEN) return 'PRZED OTWARCIEM';
-  if (ctx.etMin < closeMin) return 'OTWARTA';
-  return 'ZAMKNIĘTA — po sesji';
-}
-
-function sessionHoursLabel_(ctx, session, closeMin) {
-  if (!ctx.weekday || (session && session.date === ctx.etDate && session.holiday)) return '—';
-  let txt = `${fmtMin_(OPEN + ctx.offset)}–${fmtMin_(closeMin + ctx.offset)}`;
-  if (closeMin < CLOSE) txt += ' (sesja skrócona)';
-  if (ctx.offset !== 360) txt += ` (różnica czasu ${ctx.offset / 60} h — okres zmiany czasu)`;
-  return txt;
-}
-
-function triggerLabel_() {
-  try {
-    const n = ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'runCollector').length;
-    return n ? `AKTYWNY (co ${CONFIG.TRIGGER_EVERY_MIN} min)` : 'BRAK — uruchom IA 4 → Konfiguruj';
-  } catch (e) {
-    return 'nie można sprawdzić';
-  }
-}
-
-function firestoreLabel_(p) {
-  if (!CONFIG.FIRESTORE_ENABLED) return 'wyłączony w CONFIG';
-  const st = JSON.parse(p.getProperty('FS_STATUS') || 'null');
-  if (!st) return 'czeka na pierwszy zapis';
-  const at = Utilities.formatDate(new Date(st.at), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm');
-  return st.ok ? `OK — ostatni zapis ${at} (${st.count} świec)` : `✗ ${at}: ${st.error}`;
-}
-
-function flushLog_(sh) {
-  if (!RUN_.logs.length) return;
-  const max = CONFIG.LOG_MAX_ROWS;
-  const range = sh.getRange(logFirstRow_(), 1, max, 4);
-  const existing = range.getValues().filter(r => r.some(x => x !== ''));
-  const rows = RUN_.logs.slice().reverse().concat(existing).slice(0, max);
-  while (rows.length < max) rows.push(['', '', '', '']);
-  range.setValues(rows);
-}
-
-
-
-// ============================================================================
-//  STAN, LICZNIKI, DZIENNIK
-// ============================================================================
-function startRun_() {
-  const props = PropertiesService.getScriptProperties();
-  RUN_ = {
-    props,
-    counters: loadCounters_(props),
-    logs: [],
-    errors: [],
-    warnings: [],
-    errSeen: JSON.parse(props.getProperty('ERR_SEEN') || '{}'),
-  };
-}
-
-function loadCounters_(props) {
-  const today = Utilities.formatDate(new Date(), CONFIG.LOCAL_TZ, 'yyyy-MM-dd');
-  const c = JSON.parse(props.getProperty('COUNTERS') || '{}');
-  return c.date === today ? c : { date: today, runs: 0, fetches: 0, candles: 0, errors: 0 };
-}
-
-function saveCounters_(props, c) { props.setProperty('COUNTERS', JSON.stringify(c)); }
-
-function log_(level, source, message) {
-  if (!RUN_) startRun_();
-  RUN_.logs.push([new Date(), level, source, message]);
-  console.log(`[${level}] ${source}: ${message}`);
-}
-
-/** Rejestruje błąd. Ten sam błąd z tego samego źródła trafia do dziennika tylko raz (bez spamu). */
-function recordError_(source, message, isWarning) {
-  (isWarning ? RUN_.warnings : RUN_.errors).push(`${source}: ${message}`);
-  RUN_.counters.errors++;
-  RUN_.props.setProperty('LAST_ERROR', JSON.stringify({ at: new Date().toISOString(), text: `${source}: ${message}` }));
-  if (RUN_.errSeen[source] !== message) {
-    log_(isWarning ? 'UWAGA' : 'BŁĄD', source, message);
-    RUN_.errSeen[source] = message;
-  }
-  console.error(`${source}: ${message}`);
-}
-
-function clearError_(source) { delete RUN_.errSeen[source]; }
-
-function setFsStatus_(st) {
-  PropertiesService.getScriptProperties().setProperty('FS_STATUS', JSON.stringify(st));
-}
-
-function describeBars_(bars) {
-  if (bars.length <= 3) {
-    return 'Zapisano: ' + bars.map(b => `${b.date} ${CONFIG.SLOT_LABELS_PL[b.slot]} (C ${b.close})`).join(', ');
-  }
-  const first = bars[0].date, last = bars[bars.length - 1].date;
-  return `Zapisano ${bars.length} świec: ` + (first === last ? `sesja ${first}` : `${first} → ${last}`);
-}
-
-
-
 // ============================================================================
 //  FIRESTORE (REST API, autoryzacja kontem Google, na którym działa skrypt)
-//  Struktura:
-//    stocks/{SYMBOL}                         – ostatnia świeca spółki głównej
-//    stocks/{SYMBOL}/candles/{data}_{nr}     – świeca spółki głównej (nr 1…7)
-//    proof/{SYMBOL}                          – zakres danych spółki kontrolnej
-//    proof/{SYMBOL}/sessions/{data}          – sesja spółki kontrolnej (tablice)
-//    context/{ID}/sessions/{data}            – sesja instrumentu tła rynku
-//    system/project                          – etap i granica skarbca (Project.gs)
-//    system/status                           – kiedy był ostatni zapis
+//  Format bazy opisuje IA4_INSTRUKCJA.md, sekcja 4 — nie zmieniaj go bez
+//  zmiany instrukcji.
 // ============================================================================
 function fsBase_() {
   return `projects/${CONFIG.FIREBASE_PROJECT_ID}/databases/${CONFIG.FIRESTORE_DATABASE}/documents`;
 }
 
-/** Spółka główna: jeden dokument na świecę + podsumowanie stocks/{SYMBOL}. */
+/** Spółka główna: dokument na świecę + podsumowanie stocks/{SYMBOL}. */
 function fsWriteMainCandles_(symbol, bars) {
   const base = fsBase_();
   const nowIso = new Date().toISOString();
   const writes = bars.map(b => ({
-    update: { name: `${base}/stocks/${symbol}/candles/${b.date}_${b.slot + 1}`, fields: candleFields_(b, nowIso, 'live') },
+    update: { name: `${base}/stocks/${symbol}/candles/${b.date}_${b.slot + 1}`, fields: candleFields_(b, nowIso) },
   }));
   const l = bars.reduce((a, b) => barKey_(b) > barKey_(a) ? b : a);
   writes.push({
@@ -1376,10 +569,9 @@ function fsWriteMainCandles_(symbol, bars) {
 }
 
 /**
- * Spółka kontrolna: przepisuje cały dokument sesji dla każdego dnia, w którym
- * pojawiła się nowa świeca. Do dokumentu trafiają wszystkie zamknięte świece
- * tego dnia (nie tylko nowe), bo sesja to jedna tablica — inaczej nadpisanie
- * wymazałoby wcześniejsze godziny.
+ * Pozostałe instrumenty: przepisuje cały dokument sesji dla każdego dnia
+ * z nową świecą — sesja to jedna tablica, więc trafiają do niej wszystkie
+ * zamknięte świece tego dnia, nie tylko nowe.
  */
 function fsWriteSessions_(symbol, doneBars, freshBars) {
   const base = fsBase_();
@@ -1388,19 +580,15 @@ function fsWriteSessions_(symbol, doneBars, freshBars) {
   freshBars.forEach(b => { dates[b.date] = 1; });
   const byDate = {};
   doneBars.forEach(b => {
-    if (!dates[b.date]) return;
-    (byDate[b.date] = byDate[b.date] || {})[b.slot] = b;
+    if (dates[b.date]) (byDate[b.date] = byDate[b.date] || {})[b.slot] = b;
   });
-
   const list = Object.keys(byDate).sort();
   const writes = list.map(date => ({
-    update: { name: `${base}/${fsCollection_(symbol)}/${fsId_(symbol)}/sessions/${date}`, fields: sessionFields_(symbol, date, byDate[date], nowIso) },
+    update: { name: `${base}/${fsCollection_(symbol)}/${symbol}/sessions/${date}`, fields: sessionFields_(symbol, date, byDate[date], nowIso) },
   }));
-  // Podsumowanie aktualizujemy częściowo (updateMask), żeby nie skasować
-  // zakresu i liczby sesji zapisanych przy pobieraniu historii.
   writes.push({
     update: {
-      name: `${base}/${fsCollection_(symbol)}/${fsId_(symbol)}`,
+      name: `${base}/${fsCollection_(symbol)}/${symbol}`,
       fields: { lastDate: { stringValue: list[list.length - 1] }, liveUpdatedAt: { timestampValue: nowIso } },
     },
     updateMask: { fieldPaths: ['lastDate', 'liveUpdatedAt'] },
@@ -1408,11 +596,6 @@ function fsWriteSessions_(symbol, doneBars, freshBars) {
   for (let i = 0; i < writes.length; i += 400) firestoreCommit_(writes.slice(i, i + 400));
 }
 
-/**
- * Wspólny format dokumentu sesji spółki kontrolnej. Używa go zarówno automat
- * bieżący, jak i pobieranie historii (Proof.gs) — dzięki temu backtest czyta
- * jeden format niezależnie od tego, skąd sesja pochodzi.
- */
 function sessionFields_(symbol, date, bySlot, nowIso) {
   const slots = Object.keys(bySlot).map(Number).sort((a, b) => a - b);
   const bars = slots.map(s => bySlot[s]);
@@ -1435,22 +618,7 @@ function sessionFields_(symbol, date, bySlot, nowIso) {
   };
 }
 
-function fsWriteStatus_(count) {
-  firestoreCommit_([{
-    update: {
-      name: `${fsBase_()}/system/status`,
-      fields: {
-        lastWrite: { timestampValue: new Date().toISOString() },
-        lastWriteCount: { integerValue: String(count) },
-        symbols: { integerValue: String(liveSymbols_().length) },
-        source: { stringValue: 'google-apps-script' },
-      },
-    },
-  }]);
-}
-
-/** Wspólny format dokumentu świecy (automat bieżący i historia). */
-function candleFields_(b, nowIso, source) {
+function candleFields_(b, nowIso) {
   return {
     symbol: { stringValue: b.symbol },
     date: { stringValue: b.date },
@@ -1464,126 +632,275 @@ function candleFields_(b, nowIso, source) {
     close: { doubleValue: b.close },
     volume: { integerValue: String(b.volume || 0) },
     candleTime: { timestampValue: b.time.toISOString() },
-    source: { stringValue: source },
+    source: { stringValue: 'live' },
     updatedAt: { timestampValue: nowIso },
   };
 }
 
+function statusFields_(count) {
+  return {
+    lastWrite: { timestampValue: new Date().toISOString() },
+    lastWriteCount: { integerValue: String(count) },
+    symbols: { integerValue: String(allSymbols_().length) },
+    version: { stringValue: CONFIG.VERSION },
+    source: { stringValue: 'google-apps-script' },
+  };
+}
+
+/** system/universe — listy instrumentów; czyta je synchronizacja w Pythonie. */
+function fsWriteUniverse_() {
+  const strArr = (list) => ({ arrayValue: { values: list.map(s => ({ stringValue: s })) } });
+  firestoreCommit_([{
+    update: {
+      name: `${fsBase_()}/system/universe`,
+      fields: {
+        live: strArr(CONFIG.SYMBOLS),
+        proof: strArr(CONFIG.PROOF_SYMBOLS),
+        context: strArr(CONFIG.CONTEXT_SYMBOLS),
+        updatedAt: { timestampValue: new Date().toISOString() },
+      },
+    },
+  }]);
+}
+
 function firestoreCommit_(writes) {
-  const url = `https://firestore.googleapis.com/v1/projects/${CONFIG.FIREBASE_PROJECT_ID}` +
-              `/databases/${CONFIG.FIRESTORE_DATABASE}/documents:commit`;
-  const resp = UrlFetchApp.fetch(url, {
+  firestorePost_(`${fsBase_()}:commit`, { writes });
+}
+
+function firestorePost_(path, body) {
+  const resp = UrlFetchApp.fetch(`https://firestore.googleapis.com/v1/${path}`, {
     method: 'post',
     contentType: 'application/json',
     headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
-    payload: JSON.stringify({ writes }),
+    payload: JSON.stringify(body),
     muteHttpExceptions: true,
   });
   const code = resp.getResponseCode();
   if (code !== 200) {
     let msg = resp.getContentText();
-    try { msg = JSON.parse(msg).error.message; } catch (e) { /* zostaw surowy tekst */ }
-    if (code === 429) fsQuotaNoteExhausted_();
+    try { msg = JSON.parse(msg).error.message; } catch (e) { /* surowy tekst */ }
     throw new Error(`Firestore HTTP ${code}: ${String(msg).slice(0, 250)}`);
   }
-  fsQuotaNoteSuccess_();
+  return JSON.parse(resp.getContentText() || '{}');
 }
 
 
-// ----------------------------------------------------------------------------
-//  LIMIT DZIENNY FIRESTORE — wspólna blokada zadań drugoplanowych
-//
-//  Darmowy limit (20 000 zapisów / 50 000 odczytów) resetuje się o północy czasu
-//  pacyficznego. Do wersji 0.18 każde zadanie w tle po napotkaniu 429 próbowało
-//  dalej co kilka minut do końca doby: setki nieudanych zapytań i dziennik pełen
-//  identycznych wpisów, przez które nie widać prawdziwych zdarzeń.
-//
-//  Teraz pierwszy 429 zapala blokadę na resztę doby pacyficznej. Zadania w tle
-//  (dopisywanie wolumenu, łatanie luk, telemetria do Firestore) same się wtedy
-//  wstrzymują, bez logowania. NIE blokujemy zbierania świec na żywo — to
-//  najważniejsze zadanie systemu i ma próbować do skutku; jego błędy i tak
-//  przechodzą przez recordError_, które nie powtarza tego samego komunikatu.
-// ----------------------------------------------------------------------------
-/** Dzisiejsza data w strefie pacyficznej — po niej rozpoznajemy reset limitu. */
-function fsQuotaDay_() {
-  return Utilities.formatDate(new Date(), 'America/Los_Angeles', 'yyyy-MM-dd');
+// ============================================================================
+//  ARKUSZ STATS
+// ============================================================================
+function setupStatsSheet_(ss) {
+  const sh = ss.getSheetByName(CONFIG.STATS_SHEET) || ss.insertSheet(CONFIG.STATS_SHEET);
+  sh.clear();
+  sh.clearConditionalFormatRules();
+  const needRows = logFirstRow_() + CONFIG.LOG_MAX_ROWS;
+  if (sh.getMaxRows() < needRows) sh.insertRowsAfter(sh.getMaxRows(), needRows - sh.getMaxRows());
+  sh.getRange(1, 1, sh.getMaxRows(), Math.max(SYM_COLS, sh.getMaxColumns())).breakApart();
+  sh.setTabColor('#1a73e8');
+
+  sh.getRange(1, 1, 1, SYM_COLS).merge().setValue(`IA 4 — ZBIERANIE DANYCH (wersja ${CONFIG.VERSION})`)
+    .setFontSize(14).setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
+  sh.getRange(STATS_FIRST, 1, STATUS_LABELS.length, 1).setValues(STATUS_LABELS.map(x => [x]))
+    .setFontWeight('bold').setBackground('#f1f3f4');
+  sh.getRange(STATS_FIRST, 2, STATUS_LABELS.length, 1).setNumberFormat('@');
+  sh.getRange(STATS_FIRST + 1, 2).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  sh.getRange(STATS_FIRST + 3, 2).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  // Watchdog: działa także wtedy, gdy skrypt przestał się uruchamiać.
+  const lr = STATS_FIRST + 1;
+  sh.getRange(lr, 3).setFormula(`=IF(B${lr}="","",IF(NOW()-B${lr}>15/1440,"⚠ brak uruchomień >15 min — sprawdź trigger","✓ automat żyje"))`);
+
+  const symbols = allSymbols_();
+  sh.getRange(SYM_HEADER, 1, 1, SYM_COLS)
+    .setValues([['Instrument', 'Grupa', 'Ostatnia świeca', 'Godzina (PL)', 'Close', 'Świec w bazie', 'Status']])
+    .setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
+  sh.getRange(SYM_FIRST, 1, symbols.length, SYM_COLS).setNumberFormat('@');
+  sh.getRange(SYM_FIRST, 5, symbols.length, 1).setNumberFormat('#,##0.00');
+  sh.getRange(SYM_FIRST, 6, symbols.length, 1).setNumberFormat('#,##0');
+
+  const lt = logFirstRow_() - 2;
+  sh.getRange(lt, 1, 1, SYM_COLS).merge().setValue('DZIENNIK (najnowsze na górze)')
+    .setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
+  sh.getRange(lt + 1, 1, 1, 4).setValues([['Czas (PL)', 'Poziom', 'Źródło', 'Wiadomość']])
+    .setFontWeight('bold').setBackground('#f1f3f4');
+  sh.getRange(logFirstRow_(), 1, CONFIG.LOG_MAX_ROWS, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+
+  sh.setColumnWidth(1, 200);
+  sh.setColumnWidth(2, 260);
+  sh.setColumnWidths(3, 5, 120);
+  sh.setFrozenRows(1);
+
+  const rule = () => SpreadsheetApp.newConditionalFormatRule();
+  const status = sh.getRange(STATS_FIRST, 2);
+  const symStatus = sh.getRange(SYM_FIRST, SYM_COLS, symbols.length, 1);
+  sh.setConditionalFormatRules([
+    rule().whenTextEqualTo('OK').setBackground('#ceead6').setFontColor('#0d652d').setRanges([status]).build(),
+    rule().whenTextEqualTo('BŁĄD').setBackground('#fad2cf').setFontColor('#a50e0e').setRanges([status]).build(),
+    rule().whenTextStartsWith('⚠').setBackground('#fad2cf').setFontColor('#a50e0e').setRanges([sh.getRange(lr, 3)]).build(),
+    rule().whenTextStartsWith('✗').setFontColor('#a50e0e').setRanges([symStatus]).build(),
+  ]);
+  ss.setActiveSheet(sh);
+  ss.moveActiveSheet(1);
 }
 
-function fsQuotaNoteExhausted_() {
-  const props = PropertiesService.getScriptProperties();
-  const day = fsQuotaDay_();
-  if (props.getProperty('FS_QUOTA_DAY') === day) return;   // już wiemy, nie logujemy drugi raz
-  props.setProperty('FS_QUOTA_DAY', day);
-  log_('UWAGA', 'LIMIT',
-    'Dzienny limit Firestore wyczerpany. Zadania w tle (wolumen, łatanie luk, telemetria) ' +
-    'wstrzymane do resetu — ok. 9:00 czasu polskiego. Zbieranie świec próbuje dalej.');
-}
+function finishRun_(ctx, action) {
+  const p = RUN_.props;
+  p.setProperty('COUNTERS', JSON.stringify(RUN_.counters));
+  p.setProperty('ERR_SEEN', JSON.stringify(RUN_.errSeen));
+  p.setProperty('LAST_RUN', JSON.stringify({ at: ctx.now.toISOString(), action: action || '—', ok: !RUN_.errors.length }));
 
-/** Udany zapis po resecie zdejmuje blokadę. */
-function fsQuotaNoteSuccess_() {
-  const props = PropertiesService.getScriptProperties();
-  const stored = props.getProperty('FS_QUOTA_DAY');
-  if (stored && stored !== fsQuotaDay_()) {
-    props.deleteProperty('FS_QUOTA_DAY');
-    log_('INFO', 'LIMIT', 'Limit Firestore odnowiony — zadania w tle wracają do pracy.');
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.STATS_SHEET);
+  if (!sh || sh.getRange(SYM_HEADER, 1).getValue() !== 'Instrument') return;  // czeka na „Konfiguruj”
+
+  const lastWrite = p.getProperty('LAST_WRITE');
+  const lastErr = JSON.parse(p.getProperty('LAST_ERROR') || 'null');
+  const nightly = JSON.parse(p.getProperty('NIGHTLY_INFO') || 'null');
+  const counts = JSON.parse(p.getProperty('BASE_COUNTS') || 'null');
+  const fmt = iso => Utilities.formatDate(new Date(iso), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm');
+  const nTrig = ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'runCollector').length;
+
+  sh.getRange(STATS_FIRST, 2, STATUS_LABELS.length, 1).setValues([
+    [RUN_.errors.length ? 'BŁĄD' : 'OK'],
+    [ctx.now],
+    [action || '—'],
+    [lastWrite ? new Date(lastWrite) : ''],
+    [`${ctx.etDate} ${fmtMin_(ctx.etMin)} (${DAY_NAMES_PL[ctx.dow - 1]})`],
+    [sessionLabel_(ctx)],
+    [nTrig ? `AKTYWNY (co ${CONFIG.TRIGGER_EVERY_MIN} min)` : 'BRAK — uruchom IA 4 → Konfiguruj'],
+    [RUN_.counters.candles],
+    [RUN_.counters.errors],
+    [lastErr ? `${fmt(lastErr.at)} — ${lastErr.text}` : 'brak'],
+    [nightly ? `${nightly.date} (${fmt(nightly.at)}), ${nightly.written} świec` : 'jeszcze nie było'],
+    [counts ? `${counts.total.toLocaleString('pl-PL')} (policzone ${fmt(counts.at)})` : 'po pierwszym nocnym odświeżeniu'],
+  ]);
+
+  const live = RUN_.live || liveLoad_();
+  const rows = allSymbols_().map(s => {
+    const st = live[s] || {};
+    const n = counts && counts.items[s] ? counts.items[s].candles : '';
+    return [s, GROUP_LABELS[symbolGroup_(s)], st.d || '—', st.d ? CONFIG.SLOT_LABELS_PL[st.s] : '—',
+            st.c !== undefined ? st.c : '', n, st.st || '—'];
+  });
+  sh.getRange(SYM_FIRST, 1, rows.length, SYM_COLS).setValues(rows);
+
+  if (RUN_.logs.length) {
+    const range = sh.getRange(logFirstRow_(), 1, CONFIG.LOG_MAX_ROWS, 4);
+    const existing = range.getValues().filter(r => r.some(x => x !== ''));
+    const out = RUN_.logs.slice().reverse().concat(existing).slice(0, CONFIG.LOG_MAX_ROWS);
+    while (out.length < CONFIG.LOG_MAX_ROWS) out.push(['', '', '', '']);
+    range.setValues(out);
   }
 }
 
-/** Czy zadania drugoplanowe mają dziś odpuścić? */
-function fsQuotaBlocked_() {
-  return PropertiesService.getScriptProperties().getProperty('FS_QUOTA_DAY') === fsQuotaDay_();
+function sessionLabel_(ctx) {
+  const session = getSession_();
+  if (!ctx.weekday) return 'ZAMKNIĘTA — weekend';
+  if (isHolidayToday_(ctx, session)) return 'ZAMKNIĘTA — święto w USA';
+  const closeMin = sessionCloseFor_(session, ctx.etDate);
+  const hours = `${fmtMin_(OPEN + ctx.offset)}–${fmtMin_(closeMin + ctx.offset)} PL` + (closeMin < CLOSE ? ', skrócona' : '');
+  if (ctx.etMin < OPEN) return `PRZED OTWARCIEM (${hours})`;
+  if (ctx.etMin < closeMin) return `OTWARTA (${hours})`;
+  return 'ZAMKNIĘTA — po sesji';
 }
 
 
 // ============================================================================
-//  TRIGGERY I PORZĄDKI
+//  STAN URUCHOMIENIA I DZIENNIK
 // ============================================================================
-function installTrigger_() {
-  removeTriggers_();
+function startRun_() {
+  const props = PropertiesService.getScriptProperties();
+  const today = Utilities.formatDate(new Date(), CONFIG.LOCAL_TZ, 'yyyy-MM-dd');
+  const c = JSON.parse(props.getProperty('COUNTERS') || '{}');
+  RUN_ = {
+    props,
+    counters: c.date === today && c.candles !== undefined ? c : { date: today, candles: 0, errors: 0 },
+    logs: [], errors: [], live: null,
+    errSeen: JSON.parse(props.getProperty('ERR_SEEN') || '{}'),
+  };
+}
+
+function log_(level, source, message) {
+  if (!RUN_) startRun_();
+  RUN_.logs.push([new Date(), level, source, message]);
+  console.log(`[${level}] ${source}: ${message}`);
+}
+
+/** Błąd trafia do dziennika raz — powtórka tego samego komunikatu go nie zaśmieca. */
+function recordError_(source, message) {
+  RUN_.errors.push(`${source}: ${message}`);
+  RUN_.counters.errors++;
+  RUN_.props.setProperty('LAST_ERROR', JSON.stringify({ at: new Date().toISOString(), text: `${source}: ${message}` }));
+  if (RUN_.errSeen[source] !== message) {
+    log_('BŁĄD', source, message);
+    RUN_.errSeen[source] = message;
+  }
+}
+function clearError_(source) { delete RUN_.errSeen[source]; }
+
+
+// ============================================================================
+//  TRIGGERY
+// ============================================================================
+function installTriggers_() {
+  removeTriggers_(['runCollector', 'telemetryHourly']);
   ScriptApp.newTrigger('runCollector').timeBased().everyMinutes(CONFIG.TRIGGER_EVERY_MIN).create();
+  ScriptApp.newTrigger('telemetryHourly').timeBased().everyHours(1).create();
 }
 
-function removeTriggers_() {
+function removeTriggers_(handlers) {
   let n = 0;
   ScriptApp.getProjectTriggers().forEach(t => {
-    if (t.getHandlerFunction() === 'runCollector') { ScriptApp.deleteTrigger(t); n++; }
+    if (handlers.indexOf(t.getHandlerFunction()) >= 0) { ScriptApp.deleteTrigger(t); n++; }
   });
   return n;
 }
 
-/**
- * Usuwa dawne arkusze z świecami spółek głównych (AAPL, TSLA, NVDA).
- * Wywoływane z setup() dopiero po udanym zapisie do Firestore.
- */
-function removeSymbolSheets_(ss) {
-  const removed = [];
-  CONFIG.SYMBOLS.forEach(name => {
-    const sh = ss.getSheetByName(name);
-    if (!sh || ss.getSheets().length <= 1) return;
+
+// ============================================================================
+//  SPRZĄTANIE PO WERSJI 1.0 — uruchomić raz, po wklejeniu nowego kodu.
+//  Usuwa arkusze, triggery, właściwości skryptu i dokumenty system/* po
+//  strategiach, audycie, historii, inwestorach i telemetrii sprzed 1.0.
+//  NIE dotyka świec (stocks/, proof/, context/).
+// ============================================================================
+const LEGACY = {
+  SHEETS: ['PROJEKT', '_AUDYT', '_AUDYT_DECYZJE', 'S1', 'S1-BACKTEST', 'Transaction LOG'],
+  PROPS: ['AUDIT_READ_BUDGET', 'AUDIT_STATE', 'HISTORY_STATE', 'PATCH_ATTEMPTS', 'PATCH_LAST_AT',
+          'PATCH_SPEND', 'PROJECT_STATE', 'PROOF_STATE', 'VOLFILL_LAST_AT', 'VOLFILL_STATE',
+          'FS_QUOTA_DAY', 'FS_STATUS', 'STATS_LAYOUT_SYMS', 'TELEMETRY_HASH', 'TELEMETRY_PUSHED_AT'],
+  DOCS: ['system/project', 'system/history', 'system/telemetry', 'system/test'],
+};
+
+function cleanupLegacy() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const done = [];
+
+  // Triggery: zostają tylko runCollector i telemetryHourly (tworzone od nowa niżej).
+  let nt = 0;
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (['runCollector', 'telemetryHourly'].indexOf(t.getHandlerFunction()) < 0) { ScriptApp.deleteTrigger(t); nt++; }
+  });
+  done.push(`triggery usunięte: ${nt}`);
+
+  const sheets = LEGACY.SHEETS.filter(n => {
+    const sh = ss.getSheetByName(n);
+    if (!sh || ss.getSheets().length <= 1) return false;
     ss.deleteSheet(sh);
-    removed.push(name);
+    return true;
   });
-  if (removed.length) {
-    startRun_();
-    log_('INFO', 'SYSTEM', `Usunięto arkusze ${removed.join(', ')} — dane są w Firestore.`);
-    const stats = ss.getSheetByName(CONFIG.STATS_SHEET);
-    if (stats) flushLog_(stats);
+  done.push(`arkusze usunięte: ${sheets.length ? sheets.join(', ') : 'brak'}`);
+
+  const props = PropertiesService.getScriptProperties();
+  LEGACY.PROPS.forEach(k => props.deleteProperty(k));
+  done.push(`właściwości skryptu wyczyszczone: ${LEGACY.PROPS.length}`);
+
+  try {
+    firestoreCommit_(LEGACY.DOCS.map(d => ({ delete: `${fsBase_()}/${d}` })));
+    done.push(`Firestore: usunięto ${LEGACY.DOCS.join(', ')}`);
+  } catch (e) {
+    done.push('Firestore: ' + e.message);
   }
-  return removed;
-}
 
-function orderSheets_(ss) {
-  const stats = ss.getSheetByName(CONFIG.STATS_SHEET);
-  if (!stats) return;
-  ss.setActiveSheet(stats);
-  ss.moveActiveSheet(1);
-}
-
-function removeDefaultSheet_(ss) {
-  ['Arkusz1', 'Arkusz 1', 'Sheet1'].forEach(name => {
-    const sh = ss.getSheetByName(name);
-    if (sh && sh.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(sh);
-  });
+  setup();   // nowy STATS, triggery, system/universe, uzupełnienie miesiąca
+  alert_('Sprzątanie zakończone.\n\n• ' + done.join('\n• ') +
+    '\n\nAutomat działa w wersji ' + CONFIG.VERSION + '. Świece w bazie nie były ruszane.');
 }
 
 
@@ -1602,13 +919,8 @@ function fmtMin_(m) {
 
 function isoWeekday_(ymd) {
   const p = ymd.split('-').map(Number);
-  const d = new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay(); // 0 = niedziela
+  const d = new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay();
   return d === 0 ? 7 : d;
-}
-
-function normDate_(v) {
-  if (v instanceof Date) return Utilities.formatDate(v, CONFIG.LOCAL_TZ, 'yyyy-MM-dd');
-  return String(v || '').trim();
 }
 
 function round_(v) { return Math.round(v * 10000) / 10000; }
