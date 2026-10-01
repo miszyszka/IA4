@@ -1,13 +1,13 @@
 """
 IA 4 — pętla poszukiwania strategii (instrukcja, sekcja 9).
-Wersja projektu: 1.3 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.4 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kolejność dla każdej reguły:
   1. symulacja na grupie głównej, wszystkie hipotezy SL × TP,
   2. sito: liczba transakcji, PF, stabilność w 4 okresach, PF sąsiednich SL/TP,
   3. stabilność parametrów: sąsiednie reguły (±10% okresu, sąsiedni próg…),
   4. duplikat? (ta sama rodzina, parametry w promieniu) → bez skarbca,
-  5. OTWARCIE SKARBCA (liczone) → PF łączny i liczba transakcji w skarbcu,
+  5. OTWARCIE SKARBCA (liczone) → PF skarbca, PF ważony i liczba transakcji w skarbcu,
   6. zapis strategii + natychmiastowy push.
 Co `log_every_min` minut: status, dziennik, punkt wznowienia, push.
 """
@@ -36,6 +36,20 @@ TOTAL_KEYS = ("evals", "hypotheses", "eligible", "unstable", "promising", "dupli
 CRITERIA_KEYS = ("sl_grid", "tp_grid", "min_trades_main", "pf_min", "pf_sltp_neighbors", "folds_min_ok",
                  "pf_param_neighbors", "param_neighbors_share_ok", "pf_edge_min", "dup_jaccard",
                  "vault_pf_min", "tp_sl_ratio", "max_per_group")
+
+
+PF_W_CAP = 10.0   # sufit PF każdej części we wzorze ważonym (bez strat PF = 99 zawyżałby średnią)
+
+
+def weighted_pf(rec_or_stats) -> float:
+    """PF ważony liczbą transakcji (instrukcja 8.6 p. 11):
+    (n_główna·min(PF_główna, 10) + n_skarbiec·min(PF_skarbiec, 10)) / (n_główna + n_skarbiec)."""
+    st = rec_or_stats.get("stats", rec_or_stats)
+    m, v = st["main"], st["vault"]
+    n = m["trades"] + v["trades"]
+    if not n:
+        return 0.0
+    return round((m["trades"] * min(m["pf"], PF_W_CAP) + v["trades"] * min(v["pf"], PF_W_CAP)) / n, 3)
 
 
 def _now():
@@ -249,6 +263,12 @@ class Lab:
                 "main_pf": st["main"]["pf"], "blind_pf": st.get("blind_entry_main", {}).get("pf"),
                 "edge": rec.get("robustness", {}).get("edge_vs_blind_entry"),
                 "vault_pf": st["vault"]["pf"], "combined_pf": st["combined"]["pf"],
+                "pf_w": weighted_pf(st), "sl": rec["rule"]["exit"]["sl"], "tp": rec["rule"]["exit"]["tp"],
+                "main_trades": st["main"]["trades"], "vault_trades": st["vault"]["trades"],
+                "fc_pct": round(st["combined"]["fc"] / st["combined"]["trades"], 4) if st["combined"]["trades"] else 0.0,
+                "sl_pct": round(st["combined"]["sl"] / st["combined"]["trades"], 4) if st["combined"]["trades"] else 0.0,
+                "tp_pct": round(st["combined"]["tp"] / st["combined"]["trades"], 4) if st["combined"]["trades"] else 0.0,
+                "time_pct": round(st["combined"]["time"] / st["combined"]["trades"], 4) if st["combined"]["trades"] else 0.0,
                 "trades": st["combined"]["trades"], "win_rate": st["combined"]["win_rate"]}
 
     def _write_index(self):
@@ -289,8 +309,8 @@ class Lab:
             return "grupa główna poniżej progu"
         if st["vault"]["trades"] < c["min_trades_vault"] or st["vault"]["pf"] < c["vault_pf_min"]:
             return f"skarbiec PF {st['vault']['pf']} poniżej {c['vault_pf_min']}"
-        if st["combined"]["pf"] < c["pf_min"]:
-            return "PF łączny poniżej progu"
+        if weighted_pf(st) < c["pf_min"]:
+            return f"PF ważony {weighted_pf(st)} poniżej {c['pf_min']}"
         edge = rec.get("robustness", {}).get("edge_vs_blind_entry")
         if c["pf_edge_min"] > 0 and (edge is None or edge < c["pf_edge_min"]):
             return f"przewaga nad wejściem na ślepo {edge} poniżej {c['pf_edge_min']}"
@@ -301,7 +321,7 @@ class Lab:
         for r in self.active.values():
             by.setdefault(space.group(r["rule"]), []).append(r)
         for g, lst in by.items():
-            lst.sort(key=lambda r: (-r["stats"]["combined"]["pf"], r["found_at"]))
+            lst.sort(key=lambda r: (-weighted_pf(r), r["found_at"]))
             for r in lst[self.cfg["max_per_group"]:]:
                 self._archive(r["id"], f"limit grupy {g} ({self.cfg['max_per_group']})")
 
@@ -337,14 +357,15 @@ class Lab:
         main, vault, comb = full["main"], full["vault"], full["combined"]
         ok = (main["trades"] >= self.cfg["min_trades_main"] and main["pf"] >= self.cfg["pf_min"]
               and vault["trades"] >= self.cfg["min_trades_vault"] and vault["pf"] >= self.cfg["vault_pf_min"]
-              and comb["pf"] >= self.cfg["pf_min"])
+              and weighted_pf(full) >= self.cfg["pf_min"])
+        full["pf_weighted"] = weighted_pf(full)
         sid = rules.rule_id(rule)
         now = _now()
         self.repo.append_jsonl("vault.jsonl", {
             "at": _iso(now), "peek": self.totals["vault_peeks"], "id": sid, "accepted": ok,
             "main_pf": main["pf"], "main_trades": main["trades"],
             "blind_pf": full["blind_entry_main"]["pf"], "vault_pf": vault["pf"],
-            "vault_trades": vault["trades"], "combined_pf": comb["pf"], "combined_trades": comb["trades"],
+            "vault_trades": vault["trades"], "combined_pf": comb["pf"], "pf_weighted": weighted_pf(full), "combined_trades": comb["trades"],
             "desc": space.describe(rule)})
         self.known.append((rule["direction"], entries))
         if not ok:
@@ -357,11 +378,11 @@ class Lab:
             return
         members = self._group_members(rule)
         if len(members) >= self.cfg["max_per_group"]:
-            worst = min(members, key=lambda r: r["stats"]["combined"]["pf"])
-            if comb["pf"] <= worst["stats"]["combined"]["pf"]:
+            worst = min(members, key=weighted_pf)
+            if weighted_pf(full) <= weighted_pf(worst):
                 self._count("group_full")
                 return
-            self._archive(worst["id"], f"zastąpiona przez {sid} (lepszy PF łączny w grupie {space.group(rule)})")
+            self._archive(worst["id"], f"zastąpiona przez {sid} (lepszy PF ważony w grupie {space.group(rule)})")
         self._count("accepted")
         rec = {
             "id": sid, "version": __version__, "found_at": _iso(now), "found_at_pl": _pl(now),
@@ -389,9 +410,9 @@ class Lab:
         self.repo.write_json(f"strategies/{sid}.json", rec)
         self.active[sid] = rec
         self._write_index()
-        self.log(f"★ Nowa strategia {sid}: PF łączny {comb['pf']} ({comb['trades']} transakcji) — "
+        self.log(f"★ Nowa strategia {sid}: PF ważony {full['pf_weighted']} ({comb['trades']} transakcji) — "
                  f"{rec['description']}")
-        self.repo.commit_push(f"research: strategia {sid} (PF {comb['pf']})")
+        self.repo.commit_push(f"research: strategia {sid} (PF ważony {full['pf_weighted']})")
 
     # ------------------------------------------------------------ log co 30 min
     def _write_status(self, started, note=""):
@@ -495,6 +516,10 @@ class Lab:
         self._load_active()
         if self.cp_version != __version__ and self.cp_version < "1.2":
             self._upgrade_12()
+        elif self.cp_version != __version__ and self.cp_version < "1.4":
+            self.log("Wersja 1.4: przegląd strategii wg PF ważonego.")
+            self.migrate()
+            self.repo.commit_push(f"research: wersja 1.4 — przegląd wg PF ważonego, aktywnych {len(self.active)}")
         self._write_index()
         self.log("Kompiluję silnik i przygotowuję wykrywanie duplikatów…")
         worker.warmup(self.m)

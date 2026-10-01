@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — POSZUKIWANIE STRATEGII  (GitHub, branch `research` → arkusz RESEARCH)
  *
- *  Wersja projektu: 1.3 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.4 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Program `python -m ia4.lab` na Macu co 30 minut zapisuje na branchu
  *  `research` pliki research/status.json i research/log.jsonl. Ten plik co
@@ -40,7 +40,7 @@ const R_LOG_COLS = ['Czas (PL)', 'Komputer', 'Etap', 'Siatka %', 'Reguł', '+ re
   'Obiecujących', '+ obiec.', 'Skarbiec', '+ skarbiec', 'Strategii', '+ strategii',
   'Najlepszy wynik', 'Baza do', 'Baza OK', 'Uwagi'];
 const R_STRAT_COLS = ['Id', 'Znaleziona', 'Opis', 'PF główna', 'PF na ślepo', 'PF skarbiec',
-  'PF łącznie', 'Transakcji', 'Skuteczność'];
+  'PF ważony', 'Transakcji', 'Skuteczność'];
 
 /** Handler triggera co 30 min — NIE zmieniaj nazwy. */
 function researchSync() { researchUpdate_(false); }
@@ -136,14 +136,15 @@ function researchWrite_(st, log) {
     [t.run_minutes ? (t.run_minutes / 60).toFixed(1) : '0'],
     [st.data ? `${st.data.instruments} instr., ${n(st.data.candles)} świec, do ${st.data.last_date}` +
       (chk.ok ? ' · kompletna' : ` · braki: sesji ${chk.missing_sessions || 0}, niepełnych ${chk.incomplete_sessions || 0}, nieaktualnych ${chk.stale || 0}`) : ''],
-    [`PF ≥ ${c.pf_min} (główna i łącznie), skarbiec PF ≥ ${c.vault_pf_min}, transakcji ≥ ${c.min_trades_main} + skarbiec ≥ ${c.min_trades_vault}, ` +
+    [`PF ≥ ${c.pf_min} (główna i ważony), skarbiec PF ≥ ${c.vault_pf_min}, transakcji ≥ ${c.min_trades_main} + skarbiec ≥ ${c.min_trades_vault}, ` +
       `okresy ≥ ${c.folds_min_ok}/4, przewaga ≥ ${c.pf_edge_min}` +
       (c.tp_sl_ratio ? `, TP/SL ${Number(c.tp_sl_ratio[0]).toFixed(2)}–${c.tp_sl_ratio[1]}` : '')],
   ]);
 
   const strat = (st.recent_strategies || []).slice(-RESEARCH.STRAT_ROWS).map(s => [
     s.id, s.found_at ? Utilities.formatDate(new Date(s.found_at), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm') : '',
-    s.desc, s.main_pf, s.blind_pf !== undefined ? s.blind_pf : '', s.vault_pf, s.combined_pf, s.trades,
+    s.desc, s.main_pf, s.blind_pf !== undefined ? s.blind_pf : '', s.vault_pf,
+    s.pf_w !== undefined ? s.pf_w : s.combined_pf, s.trades,
     s.win_rate !== undefined ? s.win_rate : '']);
   while (strat.length < RESEARCH.STRAT_ROWS) strat.push(R_STRAT_COLS.map(() => ''));
   sh.getRange(R_STRAT_HEADER + 1, 1, RESEARCH.STRAT_ROWS, R_STRAT_COLS.length).setValues(strat);
@@ -160,24 +161,26 @@ function researchWrite_(st, log) {
 
 // ============================================================================
 //  ARKUSZ STRATEGIE — wszystkie strategie aktywne (research/strategies.jsonl),
-//  od najwyższego PF łącznego. Przepisywany w całości przy każdym odświeżeniu.
+//  od najwyższego PF ważonego. Przepisywany w całości przy każdym odświeżeniu.
 // ============================================================================
-const S_COLS = ['Id', 'Grupa', 'Kierunek', 'Opis (reguła)', 'PF główna', 'PF na ślepo', 'Przewaga',
-  'PF skarbiec', 'PF łącznie', 'Transakcji', 'Skuteczność', 'Znaleziona'];
+const S_COLS = ['Id', 'Grupa', 'Kierunek', 'Opis (reguła)', 'SL %', 'TP %',
+  'PF główna', 'Transakcji główna', 'PF skarbiec', 'Transakcji skarbiec', 'PF ważony',
+  'PF na ślepo', 'Przewaga', 'Skuteczność', '% TP', '% SL', '% FC', '% limit', 'Znaleziona'];
 
 function strategiesWrite_(idx) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName(RESEARCH.STRAT_SHEET) || ss.insertSheet(RESEARCH.STRAT_SHEET);
   sh.clear();
   sh.setTabColor('#e37400');
-  const rows = idx.slice().sort((a, b) => (b.combined_pf || 0) - (a.combined_pf || 0)).map(s => [
-    s.id, s.group || '', /^SHORT/.test(s.desc || '') ? 'short' : 'long', s.desc || '',
-    s.main_pf, s.blind_pf !== undefined && s.blind_pf !== null ? s.blind_pf : '',
-    s.edge !== undefined && s.edge !== null ? s.edge : '', s.vault_pf, s.combined_pf, s.trades,
-    s.win_rate !== undefined ? s.win_rate : '',
+  if (sh.getMaxColumns() < S_COLS.length) sh.insertColumnsAfter(sh.getMaxColumns(), S_COLS.length - sh.getMaxColumns());
+  const v = x => (x === undefined || x === null) ? '' : x;
+  const rows = idx.slice().sort((a, b) => (b.pf_w || 0) - (a.pf_w || 0)).map(s => [
+    s.id, v(s.group), /^SHORT/.test(s.desc || '') ? 'short' : 'long', v(s.desc), v(s.sl), v(s.tp),
+    v(s.main_pf), v(s.main_trades), v(s.vault_pf), v(s.vault_trades), v(s.pf_w),
+    v(s.blind_pf), v(s.edge), v(s.win_rate), v(s.tp_pct), v(s.sl_pct), v(s.fc_pct), v(s.time_pct),
     s.found_at ? Utilities.formatDate(new Date(s.found_at), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm') : '']);
   sh.getRange(1, 1, 1, S_COLS.length).merge()
-    .setValue(`IA 4 — STRATEGIE AKTYWNE: ${rows.length} (od najwyższego PF łącznego) · ` +
+    .setValue(`IA 4 — STRATEGIE AKTYWNE: ${rows.length} (od najwyższego PF ważonego) · ` +
       Utilities.formatDate(new Date(), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm'))
     .setFontSize(13).setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
   sh.getRange(2, 1, 1, S_COLS.length).setValues([S_COLS]).setFontWeight('bold').setBackground('#f1f3f4');
@@ -185,8 +188,8 @@ function strategiesWrite_(idx) {
     const need = rows.length + 2;
     if (sh.getMaxRows() < need) sh.insertRowsAfter(sh.getMaxRows(), need - sh.getMaxRows());
     sh.getRange(3, 1, rows.length, S_COLS.length).setValues(rows);
-    sh.getRange(3, 5, rows.length, 5).setNumberFormat('0.00');
-    sh.getRange(3, 11, rows.length, 1).setNumberFormat('0.0%');
+    [7, 9, 11, 12, 13].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('0.00'));
+    sh.getRange(3, 14, rows.length, 5).setNumberFormat('0.0%');
   }
   sh.setFrozenRows(2);
   sh.setColumnWidth(1, 110);
