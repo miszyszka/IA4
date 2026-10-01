@@ -1,6 +1,6 @@
 """
 IA 4 — wyniki poszukiwania na branchu `research` w GitHub.
-Wersja projektu: 1.1 (2026-09-30) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.2 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Wyniki mają osobny branch, żeby commity co 30 minut nie mieszały się
 z `main` (kod, instrukcja, telemetria z Apps Script). Python trzyma własny

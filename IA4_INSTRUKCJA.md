@@ -1,7 +1,7 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.1
-**Data:** 30 września 2026
+**Wersja:** 1.2
+**Data:** 1 października 2026
 **Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii. Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca.
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jeśli kod, arkusz albo telemetria się z nim rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba naprawić.
@@ -307,7 +307,7 @@ FC to warunek sprawdzany na zamknięciu każdej świecy f ≥ e (e = świeca wej
    - pary A < B, wszystkie pary typów: `cross` (FC brak / `cross_back`), `converge` (G, S) = (3,1), (3,2), (5,2) z `reexpand` 2, `revert` k = 1 i 2 (FC brak / `cross_back`), `turn` pos `below`/`above` (FC brak / `turn_back`),
    - `ribbon`: trzy linie tego samego typu, FC brak / `cross_back`.
    Razem ok. 547 tys. reguł, bez filtrów. Postęp (kursor) jest w `checkpoint.json`.
-2. **Adaptacja** (bez końca, po siatce): 80% zadań to mutacje rodziców z puli najlepszych reguł (okresy 5–150 co 1, typ średniej, filtry, FC, limit czasu, parametry sygnału), 20% to reguły losowane od zera z pełnej przestrzeni. Rodzic: najlepszy z 3 losowych z puli. Pula: 400 reguł, najwyżej 25 z jednej rodziny (ten sam rodzaj, kierunek, typy średnich, FC, limit, cechy filtrów). Wynik do puli: najlepsze min(PF, mediana PF sąsiednich SL/TP) wśród hipotez z liczbą transakcji ≥ minimum.
+2. **Adaptacja** (bez końca, po siatce): 80% zadań to mutacje rodziców z puli najlepszych reguł (okresy 5–150 co 1, typ średniej, filtry, FC, limit czasu, parametry sygnału), 20% to reguły losowane od zera z pełnej przestrzeni. Pula ma dwie połowy — long i short (po 200 reguł), najwyżej 25 z jednej rodziny (ten sam rodzaj, kierunek, typy średnich, FC, limit, cechy filtrów). Rodzic: kierunek losowany (short z prawdopodobieństwem `short_share` = 0,5), potem najlepszy z 3 losowych z puli tego kierunku. Wynik do puli: najlepsze min(PF, mediana PF sąsiednich SL/TP) wśród hipotez z liczbą transakcji ≥ minimum.
 3. Reguła raz przetestowana (ta sama reguła bez SL/TP) nie jest liczona ponownie (`ia4-research/state/tested.txt`).
 
 ### 9.3 Sita i kryteria (wartości domyślne; zmienia je `research/config.json`)
@@ -315,11 +315,14 @@ FC to warunek sprawdzany na zamknięciu każdej świecy f ≥ e (e = świeca wej
 | Krok | Warunek | Ustawienie |
 |---|---|---|
 | 1. Sito grupy główna | dla pary SL/TP: transakcji ≥ 30 **i** PF ≥ 1,5 **i** PF > 1 w ≥ 3 z 4 okresów **i** mediana PF sąsiednich SL/TP (±1 pkt proc.) ≥ 1,2 | `min_trades_main`, `pf_min`, `folds_min_ok`, `pf_sltp_neighbors` |
-| 1a. Przewaga | PF / PF wejścia na ślepo ≥ próg; **domyślnie 0 = tylko mierzone i zapisywane** | `pf_edge_min` |
+| 1a. Przewaga | PF / PF wejścia na ślepo (ten sam kierunek, SL, TP, limit) ≥ 1,2 | `pf_edge_min` |
+| 1b. Stosunek TP/SL | TP/SL od 1:3 do 3:1 (np. SL 8% / TP 1% odpada) | `tp_sl_ratio` |
 | 2. Wybór SL/TP | spośród par, które przeszły sito — najwyższy PF grupy głównej | — |
 | 3. Stabilność parametrów | do 12 reguł różniących się jednym parametrem (okres ±10%, grow/shrink ±1, k ±0,25, sąsiedni próg filtra) przy tym samym SL/TP: mediana PF ≥ 1,2 **i** ≥ 60% z PF ≥ 1 — inaczej „niestabilna” | `pf_param_neighbors`, `param_neighbors_share_ok` |
-| 4. Duplikat | ten sam kierunek i ≥ 50% wspólnych świec wejścia (Jaccard, grupa główna) ze strategią już zapisaną albo już odrzuconą przez skarbiec → bez skarbca | `dup_jaccard` |
-| 5. Skarbiec | transakcji w skarbcu ≥ 10 **i** PF łączny (grupa główna + skarbiec) ≥ 1,5 **i** PF grupy głównej ≥ 1,5 → strategia zapisana | `min_trades_vault`, `pf_min` |
+| 3a. Grupa pełna | w grupie strategii (9.5) jest już 5 aktywnych, a PF grupy głównej kandydata nie jest wyższy niż najsłabszej z nich → bez skarbca | `max_per_group` |
+| 4. Duplikat | ten sam kierunek i ≥ 50% wspólnych świec wejścia (Jaccard, grupa główna) ze strategią aktywną, zarchiwizowaną albo odrzuconą przez skarbiec → bez skarbca | `dup_jaccard` |
+| 5. Skarbiec | transakcji w skarbcu ≥ 10 **i** PF samego skarbca ≥ 1,2 **i** PF łączny (grupa główna + skarbiec) ≥ 1,5 **i** PF grupy głównej ≥ 1,5 → strategia przyjęta | `min_trades_vault`, `vault_pf_min`, `pf_min` |
+| 6. Limit grupy | grupa ma mniej niż 5 aktywnych → zapis; grupa pełna → nowa zastępuje najsłabszą (najniższy PF łączny), jeśli ma wyższy PF łączny, inaczej nie jest zapisywana | `max_per_group` |
 
 Progi są stałe — nie rosną z liczbą prób. Zapisujemy wszystko, co przejdzie; progi zmieniamy po przejrzeniu wyników.
 
@@ -327,15 +330,19 @@ Progi są stałe — nie rosną z liczbą prób. Zapisujemy wszystko, co przejdz
 
 Jedyne miejsce, które otwiera skarbiec: `Lab._open_vault`. Każde otwarcie: licznik `vault_peeks` +1, wpis w `research/vault.jsonl` (reguła, PF grupy głównej, PF na ślepo, PF skarbca, PF łączny, wynik). Strategia odrzucona przez skarbiec trafia na listę odrzuconych; strategie o tych samych transakcjach nie otwierają skarbca ponownie (sito 4).
 
-### 9.5 Zapis strategii
+### 9.5 Zapis strategii, grupy i archiwum
 
-`research/strategies/S-*.json`: `id`, `version`, `found_at`, `description` (opis słowny), `rule` (8.1, z `sl`/`tp`), `execution` (8.6), `stats` (grupa główna, skarbiec, łącznie, wejście na ślepo, 4 okresy, rozbicie po numerze świecy wejścia i dniu tygodnia, instrumenty, czas trzymania, statystyka czasu między przecięciami A/B), `sltp_hypotheses` (macierze PF i liczby transakcji 10 × 10), `robustness`, `data`, `search`, `criteria`. Plus wiersz w `research/strategies.jsonl`. Commit i push od razu po znalezieniu.
+**Grupa strategii** = rodzaj sygnału + kierunek + zestaw cech filtrów z operatorami (np. `revert|long|rsi<`). Okresy, typy średnich, FC, limit czasu i SL/TP nie tworzą nowej grupy. W każdej grupie jest najwyżej `max_per_group` (5) **aktywnych** strategii — najlepszych wg PF łącznego.
+
+**Archiwum** (`research/archive/S-*.json` + `research/archive.jsonl`): strategia przestaje być aktywna, gdy zastąpi ją lepsza w grupie albo gdy po zmianie progów przestaje spełniać kryteria (przegląd uruchamia się sam przy zmianie progów w `config.json`). Niczego nie kasujemy — plik w archiwum ma dopisane pole `archived` (czas, powód). Zarchiwizowane strategie nadal blokują duplikaty.
+
+Strategia aktywna — `research/strategies/S-*.json`: `id`, `version`, `found_at`, `description` (opis słowny), `rule` (8.1, z `sl`/`tp`), `execution` (8.6), `stats` (grupa główna, skarbiec, łącznie, wejście na ślepo, 4 okresy, rozbicie po numerze świecy wejścia i dniu tygodnia, instrumenty, czas trzymania, statystyka czasu między przecięciami A/B), `sltp_hypotheses` (macierze PF i liczby transakcji 10 × 10), `robustness`, `data`, `search`, `criteria`. `research/strategies.jsonl` to indeks strategii aktywnych, przepisywany w całości przy każdej zmianie. Strategia o tym samym `id` nigdy nie jest zapisywana drugi raz (także po twardym przerwaniu programu). Commit i push od razu po znalezieniu.
 
 ### 9.6 Log co 30 minut
 
 `research/status.json` (stan bieżący) i wiersz w `research/log.jsonl`: czas, komputer, etap (siatka %/adaptacja), reguł przetestowanych i przyrost, tempo, obiecujących, otwarć skarbca, zapisanych strategii (sumy i przyrosty), najlepszy wynik puli, stan bazy. Do tego `checkpoint.json`. Commit i push.
 
-Liczniki: `evals` — reguły zasymulowane (każda na 100 hipotezach SL/TP; wliczają się sąsiedzi ze stabilności), `hypotheses` — reguły × hipotezy, `eligible` — przeszły sito 1, `unstable` — odpadły na stabilności parametrów, `promising` — przeszły stabilność, `duplicates`, `vault_peeks`, `accepted`, `rejected_vault`, `run_minutes`.
+Liczniki: `evals` — reguły zasymulowane (każda na 100 hipotezach SL/TP; wliczają się sąsiedzi ze stabilności), `hypotheses` — reguły × hipotezy, `eligible` — przeszły sito 1, `unstable` — odpadły na stabilności parametrów, `promising` — przeszły stabilność, `duplicates`, `vault_peeks`, `accepted` (przyjęte łącznie, także później zarchiwizowane), `rejected_vault`, `group_full` (pominięte, bo grupa pełna), `archived`, `run_minutes`. `status.json` ma też `active_strategies` i `groups` (liczba aktywnych w każdej grupie).
 
 ### 9.7 Jak Claude dostosowuje poszukiwanie
 
@@ -354,8 +361,10 @@ research/status.json          stan bieżący (co 30 min)
 research/log.jsonl            dziennik (wiersz co 30 min pracy)
 research/checkpoint.json      punkt wznowienia: kursor siatki, pula, liczniki, strategie
 research/vault.jsonl          każde otwarcie skarbca
-research/strategies/S-*.json  zapisane strategie
-research/strategies.jsonl     indeks strategii
+research/strategies/S-*.json  strategie aktywne
+research/strategies.jsonl     indeks strategii aktywnych
+research/archive/S-*.json     strategie zarchiwizowane (z polem archived)
+research/archive.jsonl        dziennik archiwizacji (id, czas, powód)
 ```
 
 Lokalnie (poza gitem): `ia4-research/state/tested.txt` — reguły już przetestowane.
@@ -365,8 +374,8 @@ Lokalnie (poza gitem): `ia4-research/state/tested.txt` — reguły już przetest
 ## 11. Arkusz RESEARCH (`Research.gs`)
 
 Trigger `researchSync` co 30 min (i menu IA 4 → „🔬 Odśwież RESEARCH teraz”) czyta z GitHub `research/status.json` i `research/log.jsonl` (branch `research`, token `GITHUB_TOKEN`) i przepisuje arkusz RESEARCH:
-- stan: ostatni log, czy program liczy (brak logu > 45 min = nie liczy), komputer, etap i postęp siatki, liczniki z 9.6, tempo, łączny czas pracy, stan bazy na Macu, kryteria,
-- ostatnie 20 zapisanych strategii: id, data, opis, PF grupy głównej, PF na ślepo, PF skarbca, PF łączny, transakcji, skuteczność,
+- stan: ostatni log, czy program liczy (brak logu > 45 min = nie liczy), komputer, etap i postęp siatki, liczniki z 9.6, strategie aktywne, tempo, łączny czas pracy, stan bazy na Macu, kryteria,
+- ostatnie 20 aktywnych strategii: id, data, opis, PF grupy głównej, PF na ślepo, PF skarbca, PF łączny, transakcji, skuteczność,
 - dziennik: ostatnie 500 wpisów, najnowsze na górze.
 
 ---
@@ -414,6 +423,7 @@ git push
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.2 | 2026-10-01 | Ostrzejsze kryteria po pierwszej dobie (1292 strategie, w większości ta sama „kup spadek w hossie”): przewaga nad wejściem na ślepo ≥ 1,2, PF samego skarbca ≥ 1,2, TP/SL od 1:3 do 3:1, najwyżej 5 aktywnych strategii w grupie (rodzaj sygnału + kierunek + cechy filtrów), archiwum zamiast kasowania, osobne pule rodziców long/short. Poprawka: strategia nie zapisuje się drugi raz po twardym przerwaniu. Przy pierwszym starcie 1.2 program sam wpisuje nowe progi do `config.json` i przenosi niespełniające ich strategie do archiwum (z 1292 zostaje ok. 45). |
 | 1.1 | 2026-09-30 | Etap 1 zamknięty. Etap 2 — poszukiwanie strategii: program `python -m ia4.lab` (synchronizacja, kontrola kompletności, siatka i adaptacja, sita, bramka skarbca, log co 30 min, wznawianie), język reguł `ia4-rule/1` (9 typów średnich, 6 rodzajów sygnałów, 18 cech filtrów, 4 rodzaje FC, limit czasu), symulacja pesymistyczna na 100 hipotezach SL × TP, kryterium PF zamiast skuteczności, wejście na ślepo jako punkt odniesienia, duplikaty po wspólnych transakcjach. Skarbiec: wielokrotne otwieranie przez bramkę, tylko dla obiecujących strategii, każde otwarcie liczone. Wyniki na branchu `research`; nowy `Research.gs` i arkusz RESEARCH, trigger `researchSync`. Usunięte jednorazowe sprzątanie po 1.0. |
 | 1.0 | 2026-09-30 | Nowe założenia: jedynym celem jest baza danych. Usunięte strategie S1/S2, backtesty, poletko, stary skarbiec, etapy 0–5, audyt i łatanie luk, dopisywanie wolumenu, pobieranie historii, inwestorzy, dashboard i cały Python poza synchronizacją. Zbieranie w jednym pliku `Code.gs` + nocne odświeżenie ostatnich 5 sesji i liczenie bazy. Telemetria skrócona do stanu bazy. Skarbiec = najstarsze 800 świec. Instrukcja przepisana od zera. |
 | ≤ 0.47 | do 2026-09-29 | Poprzedni projekt (strategie, backtesty, etapy 0–5) — w historii gita. |

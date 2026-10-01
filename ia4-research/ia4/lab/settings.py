@@ -1,5 +1,5 @@
 """
-IA 4 — ustawienia poszukiwania (domyślne). Wersja projektu: 1.1 (2026-09-30)
+IA 4 — ustawienia poszukiwania (domyślne). Wersja projektu: 1.2 (2026-10-01)
 
 Wartości domyślne są tu. Claude (albo człowiek) nadpisuje je plikiem
 research/config.json na branchu `research` — Python czyta go przy starcie
@@ -28,11 +28,14 @@ DEFAULTS = {
     "param_neighbors_share_ok": 0.6,   # udział sąsiadów z PF ≥ 1
     "max_param_neighbors": 12,
     # przewaga nad wejściem „na ślepo” (PF strategii / PF losowego wejścia z tym samym
-    # wyjściem); 0 = tylko mierzone i zapisywane, bez odrzucania (sekcja 9.3)
-    "pf_edge_min": 0.0,
+    # wyjściem); 0 = bez odrzucania (sekcja 9.3)
+    "pf_edge_min": 1.2,
     # duplikat: ten sam kierunek i ≥ tyle wspólnych świec wejścia (Jaccard) co strategia
     # już zapisana albo już odrzucona przez skarbiec
     "dup_jaccard": 0.5,
+    "vault_pf_min": 1.2,          # PF samego skarbca (oprócz PF łącznego ≥ pf_min)
+    "tp_sl_ratio": [0.3334, 3.0], # dozwolony stosunek TP/SL (od 1:3 do 3:1)
+    "max_per_group": 5,           # najwyżej tyle aktywnych strategii w jednej grupie (sekcja 9.5)
 
     # --- złożoność ---------------------------------------------------------
     "period_min": 5,
@@ -52,6 +55,7 @@ DEFAULTS = {
     "max_bars_options": [None, 7, 14, 35, 70],
     "pool_size": 400,
     "pool_per_family": 25,
+    "short_share": 0.5,           # udział rodziców z puli short w adaptacji
     "explore_share": 0.2,         # część zadań losowanych od zera z pełnej przestrzeni
     "batch": 0,                   # 0 = 24 × liczba procesów
 

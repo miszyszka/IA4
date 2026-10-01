@@ -1,6 +1,6 @@
 """
 IA 4 — obliczenia wykonywane w procesach roboczych.
-Wersja projektu: 1.1 (2026-09-30) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.2 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 SKARBIEC WYMUSZONY KODEM (instrukcja, sekcja 6): `evaluate` i `evaluate_fixed`
 zwracają wyłącznie wyniki grupy głównej — liczby skarbca są zerowane, zanim
@@ -105,6 +105,9 @@ def screen(stats: np.ndarray, cfg: dict, base_pf: np.ndarray) -> dict:
                 & (nb >= cfg["pf_sltp_neighbors"]))
     if cfg.get("pf_edge_min", 0) > 0:
         eligible &= edge >= cfg["pf_edge_min"]
+    lo, hi = cfg.get("tp_sl_ratio", [0, 1e9])
+    ratio = np.asarray(cfg["tp_grid"], float)[None, :] / np.asarray(cfg["sl_grid"], float)[:, None]
+    eligible &= (ratio >= lo) & (ratio <= hi)
     smooth = np.where(enough, np.minimum(pf, nb), 0.0)
     ia, ib = np.unravel_index(int(np.argmax(smooth)), smooth.shape)
     out = {"score": float(smooth[ia, ib]), "best": [int(ia), int(ib)],

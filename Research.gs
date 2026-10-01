@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — POSZUKIWANIE STRATEGII  (GitHub, branch `research` → arkusz RESEARCH)
  *
- *  Wersja projektu: 1.1 (2026-09-30) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.2 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Program `python -m ia4.lab` na Macu co 30 minut zapisuje na branchu
  *  `research` pliki research/status.json i research/log.jsonl. Ten plik co
@@ -26,7 +26,8 @@ const RESEARCH = {
 const R_STATUS_LABELS = [
   'Ostatni log (PL)', 'Program na Macu', 'Komputer', 'Etap poszukiwania', 'Reguł przetestowanych',
   'Hipotez SL/TP', 'Tempo (reguł/min)', 'Przeszło sito', 'Obiecujących (stabilne)', 'Duplikatów',
-  'Otwarć skarbca', 'Strategii zapisanych', 'Odrzuconych przez skarbiec', 'Łączny czas pracy (h)',
+  'Otwarć skarbca', 'Strategii aktywnych', 'Przyjętych łącznie', 'Odrzuconych przez skarbiec',
+  'Pominiętych (grupa pełna)', 'Przeniesionych do archiwum', 'Łączny czas pracy (h)',
   'Baza na Macu', 'Kryteria',
 ];
 const R_FIRST = 3;
@@ -93,7 +94,7 @@ function researchSheet_() {
   sh.getRange(R_FIRST, 1, R_STATUS_LABELS.length, 1).setValues(R_STATUS_LABELS.map(x => [x]))
     .setFontWeight('bold').setBackground('#f1f3f4');
   sh.getRange(R_FIRST, 2, R_STATUS_LABELS.length, 1).setNumberFormat('@');
-  sh.getRange(R_STRAT_HEADER - 1, 1, 1, 9).merge().setValue('OSTATNIE ZAPISANE STRATEGIE (najnowsze na dole)')
+  sh.getRange(R_STRAT_HEADER - 1, 1, 1, 9).merge().setValue('OSTATNIE AKTYWNE STRATEGIE (najnowsze na dole)')
     .setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
   sh.getRange(R_STRAT_HEADER, 1, 1, R_STRAT_COLS.length).setValues([R_STRAT_COLS]).setFontWeight('bold').setBackground('#f1f3f4');
   sh.getRange(R_LOG_HEADER - 1, 1, 1, 9).merge().setValue('DZIENNIK — co 30 minut pracy programu (najnowsze na górze)')
@@ -123,12 +124,15 @@ function researchWrite_(st, log) {
     [st.phase === 'siatka' ? `siatka ${g.pct}% (${n(g.cursor)} / ${n(g.total)})` : 'adaptacja (siatka zakończona)'],
     [n(t.evals)], [n(t.hypotheses)],
     [st.run ? n(st.run.evals_per_min) : ''],
-    [n(t.eligible)], [n(t.promising)], [n(t.duplicates)], [n(t.vault_peeks)], [n(t.accepted)], [n(t.rejected_vault)],
+    [n(t.eligible)], [n(t.promising)], [n(t.duplicates)], [n(t.vault_peeks)],
+    [st.active_strategies !== undefined ? `${n(st.active_strategies)} (najwyżej ${c.max_per_group || '?'} w grupie)` : n(t.accepted)],
+    [n(t.accepted)], [n(t.rejected_vault)], [n(t.group_full || 0)], [n(t.archived || 0)],
     [t.run_minutes ? (t.run_minutes / 60).toFixed(1) : '0'],
     [st.data ? `${st.data.instruments} instr., ${n(st.data.candles)} świec, do ${st.data.last_date}` +
       (chk.ok ? ' · kompletna' : ` · braki: sesji ${chk.missing_sessions || 0}, niepełnych ${chk.incomplete_sessions || 0}, nieaktualnych ${chk.stale || 0}`) : ''],
-    [`PF ≥ ${c.pf_min}, transakcji ≥ ${c.min_trades_main} + skarbiec ≥ ${c.min_trades_vault}, okresy ≥ ${c.folds_min_ok}/4` +
-      (c.pf_edge_min ? `, przewaga nad wejściem na ślepo ≥ ${c.pf_edge_min}` : '')],
+    [`PF ≥ ${c.pf_min} (główna i łącznie), skarbiec PF ≥ ${c.vault_pf_min}, transakcji ≥ ${c.min_trades_main} + skarbiec ≥ ${c.min_trades_vault}, ` +
+      `okresy ≥ ${c.folds_min_ok}/4, przewaga ≥ ${c.pf_edge_min}` +
+      (c.tp_sl_ratio ? `, TP/SL ${Number(c.tp_sl_ratio[0]).toFixed(2)}–${c.tp_sl_ratio[1]}` : '')],
   ]);
 
   const strat = (st.recent_strategies || []).slice(-RESEARCH.STRAT_ROWS).map(s => [

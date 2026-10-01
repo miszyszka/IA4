@@ -1,6 +1,6 @@
 # telemetry/
 
-**Wersja projektu: 1.1 (2026-09-30)**
+**Wersja projektu: 1.2 (2026-10-01)**
 
 `state.json` — najnowszy stan zbierania danych. Zapisuje go `Telemetry.gs`
 z Apps Script (co godzinę, tylko gdy coś się zmieniło). Nie edytuj ręcznie.

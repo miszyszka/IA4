@@ -1,6 +1,6 @@
 """
 IA 4 — pętla poszukiwania strategii (instrukcja, sekcja 9).
-Wersja projektu: 1.1 (2026-09-30) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.2 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kolejność dla każdej reguły:
   1. symulacja na grupie głównej, wszystkie hipotezy SL × TP,
@@ -32,9 +32,10 @@ from . import rules, settings, space, worker
 PL = ZoneInfo("Europe/Warsaw")
 
 TOTAL_KEYS = ("evals", "hypotheses", "eligible", "unstable", "promising", "duplicates",
-              "vault_peeks", "accepted", "rejected_vault", "errors", "run_minutes")
+              "vault_peeks", "accepted", "rejected_vault", "group_full", "archived", "errors", "run_minutes")
 CRITERIA_KEYS = ("sl_grid", "tp_grid", "min_trades_main", "pf_min", "pf_sltp_neighbors", "folds_min_ok",
-                 "pf_param_neighbors", "param_neighbors_share_ok", "pf_edge_min", "dup_jaccard")
+                 "pf_param_neighbors", "param_neighbors_share_ok", "pf_edge_min", "dup_jaccard",
+                 "vault_pf_min", "tp_sl_ratio", "max_per_group")
 
 
 def _now():
@@ -71,9 +72,9 @@ class Lab:
         self.totals.update(cp.get("totals", {}))
         self.grid = cp.get("grid", {"signature": "", "cursor": 0, "total": 0, "done": False})
         self.pool = {e["key"]: e for e in cp.get("pool", [])}
-        self.accepted = cp.get("accepted", [])
+        self.cp_version = cp.get("version", "")
         self.rejected = cp.get("rejected", [])
-        self.recent = cp.get("recent_strategies", [])
+        self.active = {}                 # id → zapisana strategia (pliki research/strategies/)
         self.rng = random.Random(cp.get("rng_seed", int(time.time())))
         self.first_start = cp.get("first_start", _iso(_now()))
         self.session = {k: 0 for k in TOTAL_KEYS}
@@ -127,7 +128,8 @@ class Lab:
         return out
 
     def _pick_parent(self):
-        entries = list(self.pool.values())
+        want = "short" if self.rng.random() < self.cfg["short_share"] else "long"
+        entries = [e for e in self.pool.values() if e["rule"]["direction"] == want] or list(self.pool.values())
         cand = self.rng.sample(entries, min(3, len(entries)))
         return max(cand, key=lambda e: e["score"])["rule"]
 
@@ -161,15 +163,20 @@ class Lab:
                                  "best": res["best"], "rule": res["rule"]}
         limit = self.cfg["pool_size"]
         if len(self.pool) > limit * 1.2:
-            per_fam, keep = {}, {}
-            for e in sorted(self.pool.values(), key=lambda e: -e["score"]):
-                fam = space.family(e["rule"])
-                if per_fam.get(fam, 0) >= self.cfg["pool_per_family"]:
-                    continue
-                per_fam[fam] = per_fam.get(fam, 0) + 1
-                keep[e["key"]] = e
-                if len(keep) >= limit:
-                    break
+            # osobne pule long i short, po połowie miejsc (sekcja 9.2)
+            keep = {}
+            for d in ("long", "short"):
+                per_fam, n = {}, 0
+                for e in sorted((e for e in self.pool.values() if e["rule"]["direction"] == d),
+                                key=lambda e: -e["score"]):
+                    fam = space.family(e["rule"])
+                    if per_fam.get(fam, 0) >= self.cfg["pool_per_family"]:
+                        continue
+                    per_fam[fam] = per_fam.get(fam, 0) + 1
+                    keep[e["key"]] = e
+                    n += 1
+                    if n >= limit // 2:
+                        break
             self.pool = keep
 
     def _count(self, key, n=1):
@@ -197,6 +204,9 @@ class Lab:
             self._count("unstable")
             return
         self._count("promising")
+        if self._group_blocks(rule, res["elig_pf"]):
+            self._count("group_full")
+            return
         entries = np.asarray(ex.apply(worker.main_entries, {"rule": rule}), dtype=np.int64)
         if self._duplicate(rule["direction"], entries):
             self._count("duplicates")
@@ -208,9 +218,105 @@ class Lab:
         return np.asarray(worker.main_entries({"rule": rule}), dtype=np.int64)
 
     def _build_dedup(self):
-        """Świece wejścia strategii zapisanych i odrzuconych — liczone na bieżących danych."""
+        """Świece wejścia strategii aktywnych, zarchiwizowanych i odrzuconych — na bieżących danych."""
         worker.set_market(self.m)
-        self.known = [(r["direction"], self._entries_of(r)) for r in self.accepted + self.rejected[-500:]]
+        rules_ = [a["rule"] for a in self.active.values()] + self._archived_rules + self.rejected[-500:]
+        self.known = [(r["direction"], self._entries_of(r)) for r in rules_]
+
+    # ------------------------------------------------------------ strategie aktywne i archiwum
+    def _load_active(self):
+        self.active = {}
+        sdir = self.repo.dir / "strategies"
+        for p in sorted(sdir.glob("S-*.json")) if sdir.exists() else []:
+            try:
+                rec = json.loads(p.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                continue
+            self.active[rec["id"]] = rec
+        adir = self.repo.dir / "archive"
+        self._archived_rules = []
+        for p in sorted(adir.glob("S-*.json"))[-1500:] if adir.exists() else []:
+            try:
+                self._archived_rules.append(json.loads(p.read_text(encoding="utf-8"))["rule"])
+            except (json.JSONDecodeError, KeyError):
+                continue
+
+    @staticmethod
+    def _summary(rec):
+        st = rec["stats"]
+        return {"id": rec["id"], "found_at": rec["found_at"], "desc": rec["description"],
+                "group": space.group(rec["rule"]),
+                "main_pf": st["main"]["pf"], "blind_pf": st.get("blind_entry_main", {}).get("pf"),
+                "edge": rec.get("robustness", {}).get("edge_vs_blind_entry"),
+                "vault_pf": st["vault"]["pf"], "combined_pf": st["combined"]["pf"],
+                "trades": st["combined"]["trades"], "win_rate": st["combined"]["win_rate"]}
+
+    def _write_index(self):
+        """strategies.jsonl = indeks strategii aktywnych (przepisywany w całości)."""
+        lines = [json.dumps(self._summary(r), ensure_ascii=False, separators=(",", ":"))
+                 for r in sorted(self.active.values(), key=lambda r: r["found_at"])]
+        (self.repo.dir / "strategies.jsonl").write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+        self.recent = [self._summary(r) for r in sorted(self.active.values(), key=lambda r: r["found_at"])[-20:]]
+
+    def _archive(self, sid, reason):
+        rec = self.active.pop(sid)
+        rec["archived"] = {"at": _iso(_now()), "reason": reason, "version": __version__}
+        self.repo.write_json(f"archive/{sid}.json", rec)
+        (self.repo.dir / "strategies" / f"{sid}.json").unlink(missing_ok=True)
+        self.repo.append_jsonl("archive.jsonl", {"id": sid, "at": rec["archived"]["at"], "reason": reason,
+                                                 "desc": rec["description"]})
+        self._archived_rules.append(rec["rule"])
+        self._count("archived")
+
+    def _group_members(self, rule):
+        g = space.group(rule)
+        return [r for r in self.active.values() if space.group(r["rule"]) == g]
+
+    def _group_blocks(self, rule, main_pf) -> bool:
+        """Grupa pełna i kandydat nie bije najsłabszej strategii grupy już na grupie głównej."""
+        m = self._group_members(rule)
+        if len(m) < self.cfg["max_per_group"]:
+            return False
+        return main_pf <= min(r["stats"]["main"]["pf"] for r in m)
+
+    def criteria_ok(self, rec) -> str:
+        """'' gdy zapisana strategia spełnia bieżące kryteria, inaczej powód."""
+        c, st, ex = self.cfg, rec["stats"], rec["rule"]["exit"]
+        lo, hi = c["tp_sl_ratio"]
+        if not lo <= ex["tp"] / ex["sl"] <= hi:
+            return f"stosunek TP/SL {ex['tp']}/{ex['sl']} poza zakresem"
+        if st["main"]["trades"] < c["min_trades_main"] or st["main"]["pf"] < c["pf_min"]:
+            return "grupa główna poniżej progu"
+        if st["vault"]["trades"] < c["min_trades_vault"] or st["vault"]["pf"] < c["vault_pf_min"]:
+            return f"skarbiec PF {st['vault']['pf']} poniżej {c['vault_pf_min']}"
+        if st["combined"]["pf"] < c["pf_min"]:
+            return "PF łączny poniżej progu"
+        edge = rec.get("robustness", {}).get("edge_vs_blind_entry")
+        if c["pf_edge_min"] > 0 and (edge is None or edge < c["pf_edge_min"]):
+            return f"przewaga nad wejściem na ślepo {edge} poniżej {c['pf_edge_min']}"
+        return ""
+
+    def _enforce_groups(self):
+        by = {}
+        for r in self.active.values():
+            by.setdefault(space.group(r["rule"]), []).append(r)
+        for g, lst in by.items():
+            lst.sort(key=lambda r: (-r["stats"]["combined"]["pf"], r["found_at"]))
+            for r in lst[self.cfg["max_per_group"]:]:
+                self._archive(r["id"], f"limit grupy {g} ({self.cfg['max_per_group']})")
+
+    def migrate(self):
+        """Przegląd zapisanych strategii wg bieżących kryteriów (start wersji 1.2 albo zmiana progów)."""
+        before = len(self.active)
+        for sid in list(self.active):
+            why = self.criteria_ok(self.active[sid])
+            if why:
+                self._archive(sid, why)
+        self._enforce_groups()
+        self._write_index()
+        self.log(f"Przegląd strategii: z {before} aktywnych zostało {len(self.active)}, "
+                 f"do archiwum {before - len(self.active)}.")
+        return before - len(self.active)
 
     def _duplicate(self, direction, entries) -> bool:
         if entries.size == 0:
@@ -230,7 +336,8 @@ class Lab:
         full = ex.apply(worker.open_vault, {"rule": rule})
         main, vault, comb = full["main"], full["vault"], full["combined"]
         ok = (main["trades"] >= self.cfg["min_trades_main"] and main["pf"] >= self.cfg["pf_min"]
-              and vault["trades"] >= self.cfg["min_trades_vault"] and comb["pf"] >= self.cfg["pf_min"])
+              and vault["trades"] >= self.cfg["min_trades_vault"] and vault["pf"] >= self.cfg["vault_pf_min"]
+              and comb["pf"] >= self.cfg["pf_min"])
         sid = rules.rule_id(rule)
         now = _now()
         self.repo.append_jsonl("vault.jsonl", {
@@ -245,8 +352,17 @@ class Lab:
             self.rejected.append(rule)
             self.rejected = self.rejected[-2000:]
             return
+        if sid in self.active:                       # już zapisana (np. po twardym przerwaniu)
+            self._count("duplicates")
+            return
+        members = self._group_members(rule)
+        if len(members) >= self.cfg["max_per_group"]:
+            worst = min(members, key=lambda r: r["stats"]["combined"]["pf"])
+            if comb["pf"] <= worst["stats"]["combined"]["pf"]:
+                self._count("group_full")
+                return
+            self._archive(worst["id"], f"zastąpiona przez {sid} (lepszy PF łączny w grupie {space.group(rule)})")
         self._count("accepted")
-        self.accepted.append(rule)
         rec = {
             "id": sid, "version": __version__, "found_at": _iso(now), "found_at_pl": _pl(now),
             "description": space.describe(rule),
@@ -271,12 +387,8 @@ class Lab:
             "criteria": {k: self.cfg[k] for k in CRITERIA_KEYS + ("min_trades_vault",)},
         }
         self.repo.write_json(f"strategies/{sid}.json", rec)
-        summary = {"id": sid, "found_at": rec["found_at"], "desc": rec["description"],
-                   "main_pf": main["pf"], "blind_pf": full["blind_entry_main"]["pf"],
-                   "vault_pf": vault["pf"], "combined_pf": comb["pf"],
-                   "trades": comb["trades"], "win_rate": comb["win_rate"]}
-        self.repo.append_jsonl("strategies.jsonl", summary)
-        self.recent = (self.recent + [summary])[-20:]
+        self.active[sid] = rec
+        self._write_index()
         self.log(f"★ Nowa strategia {sid}: PF łączny {comb['pf']} ({comb['trades']} transakcji) — "
                  f"{rec['description']}")
         self.repo.commit_push(f"research: strategia {sid} (PF {comb['pf']})")
@@ -310,6 +422,8 @@ class Lab:
                                  "sl": self.cfg["sl_grid"][e["best"][0]], "tp": self.cfg["tp_grid"][e["best"][1]],
                                  "desc": space.describe(e["rule"])} for e in best],
             "recent_strategies": self.recent,
+            "active_strategies": len(self.active),
+            "groups": self._group_counts(),
             "config": {k: self.cfg[k] for k in CRITERIA_KEYS + ("min_trades_vault", "paused_kinds")},
             "note": note,
         }
@@ -329,7 +443,7 @@ class Lab:
             "version": __version__, "saved_at": _iso(now), "first_start": self.first_start,
             "grid": self.grid, "totals": self.totals, "rng_seed": self.rng.randrange(1 << 30),
             "pool": sorted(self.pool.values(), key=lambda e: -e["score"]),
-            "accepted": self.accepted, "rejected": self.rejected[-2000:], "recent_strategies": self.recent})
+            "rejected": self.rejected[-2000:]})
         self._flush_tested()
         ok = self.repo.commit_push(f"research: log {_pl(now)} — {self.phase()}, "
                                    f"{self.totals['evals']} reguł, skarbiec {self.totals['vault_peeks']}, "
@@ -339,15 +453,38 @@ class Lab:
                  f"skarbiec {self.totals['vault_peeks']} · strategii {self.totals['accepted']}"
                  + ("" if ok else f" · PUSH NIEUDANY: {self.repo.last_error}"))
 
+    def _group_counts(self):
+        out = {}
+        for r in self.active.values():
+            g = space.group(r["rule"])
+            out[g] = out.get(g, 0) + 1
+        return dict(sorted(out.items(), key=lambda x: -x[1]))
+
     def _reload_config(self):
         self.repo.pull()
         new = settings.merged(self.repo.read_json("config.json"))
         if new != self.cfg:
             self.log("Wczytano zmieniony research/config.json.")
+            crit_changed = any(new.get(k) != self.cfg.get(k) for k in CRITERIA_KEYS + ("min_trades_vault",))
             self.cfg = new
             self._check_grid_signature()
+            if crit_changed:
+                self.migrate()
 
     # ------------------------------------------------------------ główna pętla
+    def _upgrade_12(self):
+        """Jednorazowo przy pierwszym starcie 1.2: nowe kryteria w config.json + przegląd strategii."""
+        cfgj = self.repo.read_json("config.json") or {}
+        for k in ("pf_edge_min", "vault_pf_min", "tp_sl_ratio", "max_per_group", "short_share"):
+            cfgj[k] = settings.DEFAULTS[k]
+        cfgj["_wersja"] = "1.2"
+        self.repo.write_json("config.json", cfgj)
+        self.cfg = settings.merged(cfgj)
+        self.log("Wersja 1.2: nowe kryteria zapisane w research/config.json.")
+        self.migrate()
+        self.cp_version = __version__
+        self.repo.commit_push(f"research: wersja 1.2 — przegląd strategii, aktywnych {len(self.active)}")
+
     def run(self):
         started = _now()
         self.last_log_at = started
@@ -355,6 +492,10 @@ class Lab:
             self.repo.write_json("config.json", {"_opis": "Nadpisania ustawień z ia4/lab/settings.py. "
                                                  "Puste = wartości domyślne. Zmienia Claude lub człowiek.",
                                                  **{k: settings.DEFAULTS[k] for k in CRITERIA_KEYS + ("min_trades_vault",)}})
+        self._load_active()
+        if self.cp_version != __version__ and self.cp_version < "1.2":
+            self._upgrade_12()
+        self._write_index()
         self.log("Kompiluję silnik i przygotowuję wykrywanie duplikatów…")
         worker.warmup(self.m)
         self._build_dedup()
