@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — POSZUKIWANIE STRATEGII  (GitHub, branch `research` → arkusz RESEARCH)
  *
- *  Wersja projektu: 1.6 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.7 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Program `python -m ia4.lab` na Macu co 30 minut zapisuje na branchu
  *  `research` pliki research/status.json i research/log.jsonl. Ten plik co
@@ -167,7 +167,8 @@ function researchWrite_(st, log) {
 // ============================================================================
 const S_COLS = ['Id', 'Grupa', 'Kierunek', 'Opis (reguła)', 'SL %', 'TP %',
   'PF główna', 'Transakcji główna', 'PF skarbiec', 'Transakcji skarbiec', 'PF ważony',
-  'PF na ślepo', 'Przewaga', 'Skuteczność (TP)', '% SL', '% FC', '% limit', 'Znaleziona'];
+  'PF na ślepo', 'Przewaga', 'Skuteczność (TP)', '% SL', '% FC', '% limit',
+  'Śr. wynik FC %', 'Śr. wynik transakcji %', 'Znaleziona'];
 
 function strategiesWrite_(idx) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -180,6 +181,7 @@ function strategiesWrite_(idx) {
     s.id, v(s.group), /^SHORT/.test(s.desc || '') ? 'short' : 'long', v(s.desc), v(s.sl), v(s.tp),
     v(s.main_pf), v(s.main_trades), v(s.vault_pf), v(s.vault_trades), v(s.pf_w),
     v(s.blind_pf), v(s.edge), v(s.tp_pct), v(s.sl_pct), v(s.fc_pct), v(s.time_pct),
+    v(s.fc_avg), v(s.avg_ret),
     s.found_at ? Utilities.formatDate(new Date(s.found_at), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm') : '']);
   sh.getRange(1, 1, 1, S_COLS.length).merge()
     .setValue(`IA 4 — STRATEGIE AKTYWNE: ${rows.length} (od najwyższego PF ważonego) · ` +
@@ -192,6 +194,7 @@ function strategiesWrite_(idx) {
     sh.getRange(3, 1, rows.length, S_COLS.length).setValues(rows);
     [7, 9, 11, 12, 13].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('0.00'));
     sh.getRange(3, 14, rows.length, 4).setNumberFormat('0.0%');
+    sh.getRange(3, 18, rows.length, 2).setNumberFormat('+0.00;-0.00;0.00');
   }
   sh.setFrozenRows(2);
   sh.setColumnWidth(1, 110);

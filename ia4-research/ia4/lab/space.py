@@ -1,6 +1,6 @@
 """
 IA 4 — przestrzeń strategii: siatka, losowanie, mutacje, sąsiedzi, opisy.
-Wersja projektu: 1.6 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.7 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Reguły budowane tutaj NIE mają jeszcze SL/TP — każdą symulujemy na całej
 siatce SL × TP naraz (instrukcja, sekcja 8.6), a SL/TP dopisujemy dopiero

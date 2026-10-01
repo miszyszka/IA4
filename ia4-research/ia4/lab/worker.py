@@ -1,6 +1,6 @@
 """
 IA 4 — obliczenia wykonywane w procesach roboczych.
-Wersja projektu: 1.6 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.7 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 SKARBIEC WYMUSZONY KODEM (instrukcja, sekcja 6): `evaluate` i `evaluate_fixed`
 zwracają wyłącznie wyniki grupy głównej — liczby skarbca są zerowane, zanim
@@ -189,7 +189,15 @@ def open_vault(task: dict) -> dict:
     main = s[1:5].sum(axis=0)
     comb = s.sum(axis=0)
     bs = baseline_stats(rule["direction"], rule["exit"].get("max_bars"), [sl], [tp])[0, 0, 1:5].sum(axis=0)
+    # średni wynik % wg rodzaju wyjścia (wszystkie transakcje: grupa główna + skarbiec)
+    exit_avg = {}
+    if rec.size:
+        for code, name in ((sim.K_TP, "tp"), (sim.K_SL, "sl"), (sim.K_FC, "fc"), (sim.K_TIME, "time")):
+            r = rec[rec[:, 4] == code, 3]
+            exit_avg[name] = round(float(r.mean()), 4) if r.size else None
+        exit_avg["all"] = round(float(rec[:, 3].mean()), 4)
     out = {"main": _block(main), "vault": _block(s[0]), "combined": _block(comb),
+           "exit_avg_ret_pct": exit_avg,
            "blind_entry_main": _block(bs),
            "folds": [dict(_block(s[k]), period=f"{m.fold_dates[k-1][0]}–{m.fold_dates[k-1][1]}")
                      for k in range(1, 5) if k - 1 < len(m.fold_dates)]}

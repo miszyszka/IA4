@@ -1,6 +1,6 @@
 """
 IA 4 — pętla poszukiwania strategii (instrukcja, sekcja 9).
-Wersja projektu: 1.6 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.7 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kolejność dla każdej reguły:
   1. symulacja na grupie głównej, wszystkie hipotezy SL × TP,
@@ -269,6 +269,8 @@ class Lab:
                 "sl_pct": round(st["combined"]["sl"] / st["combined"]["trades"], 4) if st["combined"]["trades"] else 0.0,
                 "tp_pct": round(st["combined"]["tp"] / st["combined"]["trades"], 4) if st["combined"]["trades"] else 0.0,
                 "time_pct": round(st["combined"]["time"] / st["combined"]["trades"], 4) if st["combined"]["trades"] else 0.0,
+                "fc_avg": st.get("exit_avg_ret_pct", {}).get("fc"),
+                "avg_ret": st.get("exit_avg_ret_pct", {}).get("all", st["combined"].get("avg_ret_pct")),
                 "trades": st["combined"]["trades"], "win_rate": st["combined"]["win_rate"]}
 
     def _write_index(self):
@@ -511,8 +513,35 @@ class Lab:
         self.cfg = settings.merged(cfgj)
         self.log("Wersja 1.2: nowe kryteria zapisane w research/config.json.")
         self.migrate()
-        self.cp_version = __version__
+        self.cp_version = "1.2"
         self.repo.commit_push(f"research: wersja 1.2 — przegląd strategii, aktywnych {len(self.active)}")
+
+    def _upgrade_17(self):
+        """Jednorazowo przy pierwszym starcie 1.7: przeliczenie statystyk aktywnych strategii
+        (średni wynik wg rodzaju wyjścia), przegląd wg wszystkich kryteriów 1.2–1.6 i nowy
+        dziennik od zera (stary → research/archive/)."""
+        worker.set_market(self.m)
+        for sid, rec in list(self.active.items()):
+            if "exit_avg_ret_pct" not in rec["stats"]:
+                rec["stats"] = worker.open_vault({"rule": rec["rule"]})   # ta sama reguła, nie nowe otwarcie
+                rec["stats"]["pf_weighted"] = weighted_pf(rec)
+                self.repo.write_json(f"strategies/{sid}.json", rec)
+        self.migrate()
+        stamp = _now().strftime("%Y%m%d-%H%M")
+        for name in ("log.jsonl", "vault.jsonl"):
+            p = self.repo.dir / name
+            if p.exists():
+                dst = self.repo.dir / "archive" / f"{name.split('.')[0]}-do-1.6-{stamp}.jsonl"
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                p.rename(dst)
+        self.totals = {k: 0 for k in TOTAL_KEYS}
+        self.session = {k: 0 for k in TOTAL_KEYS}
+        self.at_last_log = dict(self.totals)
+        self.totals["accepted"] = len(self.active)
+        self.log(f"Wersja 1.7: nowy dziennik od zera; startujemy z {len(self.active)} aktywnymi strategiami.")
+        self.cp_version = __version__
+        self._write_index()
+        self.repo.commit_push(f"research: wersja 1.7 — nowy dziennik, aktywnych {len(self.active)}")
 
     def run(self):
         started = _now()
@@ -524,10 +553,8 @@ class Lab:
         self._load_active()
         if self.cp_version != __version__ and self.cp_version < "1.2":
             self._upgrade_12()
-        elif self.cp_version != __version__ and self.cp_version < "1.6":
-            self.log("Wersja 1.6: przegląd strategii — limit czasu najwyżej 10% transakcji, grupy, PF ważony.")
-            self.migrate()
-            self.repo.commit_push(f"research: wersja 1.6 — przegląd strategii, aktywnych {len(self.active)}")
+        if self.cp_version != __version__ and self.cp_version < "1.7":
+            self._upgrade_17()
         self._write_index()
         self.log("Kompiluję silnik i przygotowuję wykrywanie duplikatów…")
         worker.warmup(self.m)
