@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.4
+**Wersja:** 1.5
 **Data:** 1 października 2026
 **Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii. Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca.
 
@@ -333,7 +333,7 @@ Jedyne miejsce, które otwiera skarbiec: `Lab._open_vault`. Każde otwarcie: lic
 
 ### 9.5 Zapis strategii, grupy i archiwum
 
-**Grupa strategii** = rodzaj sygnału + kierunek + zestaw cech filtrów z operatorami (np. `revert|long|rsi<`). Okresy, typy średnich, FC, limit czasu i SL/TP nie tworzą nowej grupy. W każdej grupie jest najwyżej `max_per_group` (5) **aktywnych** strategii — najlepszych wg PF ważonego.
+**Grupa strategii** = rodzaj sygnału + kierunek (np. `revert|long`) — 6 rodzajów × 2 kierunki = 12 grup. Filtry, okresy, typy średnich, FC, limit czasu i SL/TP nie tworzą nowej grupy. W każdej grupie jest najwyżej `max_per_group` (5) **aktywnych** strategii — najlepszych wg PF ważonego, czyli łącznie najwyżej 60.
 
 **Archiwum** (`research/archive/S-*.json` + `research/archive.jsonl`): strategia przestaje być aktywna, gdy zastąpi ją lepsza w grupie albo gdy po zmianie progów przestaje spełniać kryteria (przegląd uruchamia się sam przy zmianie progów w `config.json`). Niczego nie kasujemy — plik w archiwum ma dopisane pole `archived` (czas, powód). Zarchiwizowane strategie nadal blokują duplikaty.
 
@@ -426,6 +426,7 @@ git push
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.5 | 2026-10-01 | Grupa strategii = rodzaj sygnału + kierunek (było: + zestaw filtrów, co dawało 188 grup i 330 aktywnych). Najwyżej 5 w grupie, łącznie najwyżej 60 aktywnych. Przegląd przy pierwszym starcie 1.5 (także dla wersji 1.2–1.4). |
 | 1.4 | 2026-10-01 | Ostateczny PF strategii = PF ważony liczbą transakcji grupy głównej i skarbca (sufit 10 na część); decyduje o przyjęciu i kolejności w grupie. Przy pierwszym starcie 1.4 przegląd strategii wg nowego PF. Arkusz STRATEGIE: osobne kolumny SL, TP, transakcji skarbca, PF ważony, udziały wyjść TP/SL/FC/limit. |
 | 1.3 | 2026-10-01 | Arkusz STRATEGIE: wszystkie strategie aktywne z wynikami (`Research.gs`, ten sam trigger `researchSync`). |
 | 1.2 | 2026-10-01 | Ostrzejsze kryteria po pierwszej dobie (1292 strategie, w większości ta sama „kup spadek w hossie”): przewaga nad wejściem na ślepo ≥ 1,2, PF samego skarbca ≥ 1,2, TP/SL od 1:3 do 3:1, najwyżej 5 aktywnych strategii w grupie (rodzaj sygnału + kierunek + cechy filtrów), archiwum zamiast kasowania, osobne pule rodziców long/short. Poprawka: strategia nie zapisuje się drugi raz po twardym przerwaniu. Przy pierwszym starcie 1.2 program sam wpisuje nowe progi do `config.json` i przenosi niespełniające ich strategie do archiwum (z 1292 zostaje ok. 45). |

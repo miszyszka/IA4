@@ -1,6 +1,6 @@
 """
 IA 4 — pętla poszukiwania strategii (instrukcja, sekcja 9).
-Wersja projektu: 1.4 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.5 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kolejność dla każdej reguły:
   1. symulacja na grupie głównej, wszystkie hipotezy SL × TP,
@@ -516,10 +516,10 @@ class Lab:
         self._load_active()
         if self.cp_version != __version__ and self.cp_version < "1.2":
             self._upgrade_12()
-        elif self.cp_version != __version__ and self.cp_version < "1.4":
-            self.log("Wersja 1.4: przegląd strategii wg PF ważonego.")
+        elif self.cp_version != __version__ and self.cp_version < "1.5":
+            self.log("Wersja 1.5: przegląd strategii — PF ważony, grupy = sygnał + kierunek.")
             self.migrate()
-            self.repo.commit_push(f"research: wersja 1.4 — przegląd wg PF ważonego, aktywnych {len(self.active)}")
+            self.repo.commit_push(f"research: wersja 1.5 — przegląd strategii, aktywnych {len(self.active)}")
         self._write_index()
         self.log("Kompiluję silnik i przygotowuję wykrywanie duplikatów…")
         worker.warmup(self.m)

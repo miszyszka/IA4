@@ -1,6 +1,6 @@
 """
 IA 4 — przestrzeń strategii: siatka, losowanie, mutacje, sąsiedzi, opisy.
-Wersja projektu: 1.4 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.5 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Reguły budowane tutaj NIE mają jeszcze SL/TP — każdą symulujemy na całej
 siatce SL × TP naraz (instrukcja, sekcja 8.6), a SL/TP dopisujemy dopiero
@@ -287,10 +287,9 @@ def _swiec(n: int) -> str:
 
 
 def group(rule: dict) -> str:
-    """Grupa strategii (limit max_per_group): rodzaj sygnału, kierunek, cechy filtrów z operatorem.
-    Okresy, typy średnich, FC, limit czasu i SL/TP NIE tworzą nowej grupy."""
-    feats = ",".join(sorted(f"{f['f']}{f['op']}" for f in rule.get("filters", [])))
-    return f"{rule['signal']['kind']}|{rule['direction']}|{feats}"
+    """Grupa strategii (limit max_per_group): rodzaj sygnału + kierunek (instrukcja 9.5).
+    Filtry, okresy, typy średnich, FC, limit czasu i SL/TP NIE tworzą nowej grupy."""
+    return f"{rule['signal']['kind']}|{rule['direction']}"
 
 
 # ---------------------------------------------------------------- opis słowny
