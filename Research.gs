@@ -2,12 +2,13 @@
  * ============================================================================
  *  IA 4 — POSZUKIWANIE STRATEGII  (GitHub, branch `research` → arkusz RESEARCH)
  *
- *  Wersja projektu: 1.2 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.3 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Program `python -m ia4.lab` na Macu co 30 minut zapisuje na branchu
  *  `research` pliki research/status.json i research/log.jsonl. Ten plik co
  *  30 minut (trigger researchSync) czyta je i przepisuje do arkusza RESEARCH:
- *  stan, ostatnie znalezione strategie i dziennik (najnowsze na górze).
+ *  stan, ostatnie znalezione strategie i dziennik (najnowsze na górze),
+ *  a do arkusza STRATEGIE — wszystkie strategie aktywne z wynikami.
  *
  *  Tylko odczyt z GitHub — ten sam token co telemetria (GITHUB_TOKEN).
  * ============================================================================
@@ -17,7 +18,9 @@ const RESEARCH = {
   BRANCH: 'research',
   STATUS: 'research/status.json',
   LOG: 'research/log.jsonl',
+  INDEX: 'research/strategies.jsonl',   // indeks strategii aktywnych
   SHEET: 'RESEARCH',
+  STRAT_SHEET: 'STRATEGIE',
   LOG_ROWS: 500,          // ile ostatnich wpisów dziennika pokazujemy
   STRAT_ROWS: 20,
   STALE_MIN: 45,          // brak nowego logu dłużej = program na Macu nie liczy
@@ -56,6 +59,9 @@ function researchUpdate_(interactive) {
     const log = logTxt.split('\n').filter(l => l.trim()).map(l => { try { return JSON.parse(l); } catch (e) { return null; } })
       .filter(x => x).reverse().slice(0, RESEARCH.LOG_ROWS);
     researchWrite_(status, log);
+    const idx = (researchRaw_(RESEARCH.INDEX) || '').split('\n').filter(l => l.trim())
+      .map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(x => x);
+    strategiesWrite_(idx);
     return { ok: true };
   } catch (e) {
     console.error('RESEARCH: ' + e.message);
@@ -149,4 +155,41 @@ function researchWrite_(st, log) {
   const range = sh.getRange(R_LOG_HEADER + 1, 1, RESEARCH.LOG_ROWS, R_LOG_COLS.length);
   range.clearContent();
   if (rows.length) sh.getRange(R_LOG_HEADER + 1, 1, rows.length, R_LOG_COLS.length).setValues(rows);
+}
+
+
+// ============================================================================
+//  ARKUSZ STRATEGIE — wszystkie strategie aktywne (research/strategies.jsonl),
+//  od najwyższego PF łącznego. Przepisywany w całości przy każdym odświeżeniu.
+// ============================================================================
+const S_COLS = ['Id', 'Grupa', 'Kierunek', 'Opis (reguła)', 'PF główna', 'PF na ślepo', 'Przewaga',
+  'PF skarbiec', 'PF łącznie', 'Transakcji', 'Skuteczność', 'Znaleziona'];
+
+function strategiesWrite_(idx) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(RESEARCH.STRAT_SHEET) || ss.insertSheet(RESEARCH.STRAT_SHEET);
+  sh.clear();
+  sh.setTabColor('#e37400');
+  const rows = idx.slice().sort((a, b) => (b.combined_pf || 0) - (a.combined_pf || 0)).map(s => [
+    s.id, s.group || '', /^SHORT/.test(s.desc || '') ? 'short' : 'long', s.desc || '',
+    s.main_pf, s.blind_pf !== undefined && s.blind_pf !== null ? s.blind_pf : '',
+    s.edge !== undefined && s.edge !== null ? s.edge : '', s.vault_pf, s.combined_pf, s.trades,
+    s.win_rate !== undefined ? s.win_rate : '',
+    s.found_at ? Utilities.formatDate(new Date(s.found_at), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm') : '']);
+  sh.getRange(1, 1, 1, S_COLS.length).merge()
+    .setValue(`IA 4 — STRATEGIE AKTYWNE: ${rows.length} (od najwyższego PF łącznego) · ` +
+      Utilities.formatDate(new Date(), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm'))
+    .setFontSize(13).setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
+  sh.getRange(2, 1, 1, S_COLS.length).setValues([S_COLS]).setFontWeight('bold').setBackground('#f1f3f4');
+  if (rows.length) {
+    const need = rows.length + 2;
+    if (sh.getMaxRows() < need) sh.insertRowsAfter(sh.getMaxRows(), need - sh.getMaxRows());
+    sh.getRange(3, 1, rows.length, S_COLS.length).setValues(rows);
+    sh.getRange(3, 5, rows.length, 5).setNumberFormat('0.00');
+    sh.getRange(3, 11, rows.length, 1).setNumberFormat('0.0%');
+  }
+  sh.setFrozenRows(2);
+  sh.setColumnWidth(1, 110);
+  sh.setColumnWidth(2, 170);
+  sh.setColumnWidth(4, 560);
 }

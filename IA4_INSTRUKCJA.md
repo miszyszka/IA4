@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.2
+**Wersja:** 1.3
 **Data:** 1 października 2026
 **Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii. Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca.
 
@@ -52,7 +52,7 @@ Yahoo ──(Apps Script, co minutę)──▶ Firestore ──(ia4.sync)──�
 |---|---|
 | `Code.gs` | automat: listy instrumentów, zbieranie na żywo, nocne odświeżenie, liczenie bazy, zapis do Firestore, arkusz STATS, menu, triggery |
 | `Telemetry.gs` | stan zbierania → `telemetry/state.json` w GitHub (branch `main`) |
-| `Research.gs` | branch `research` (`status.json`, `log.jsonl`) → arkusz RESEARCH |
+| `Research.gs` | branch `research` (`status.json`, `log.jsonl`, `strategies.jsonl`) → arkusze RESEARCH i STRATEGIE |
 | `appsscript.json` | uprawnienia Apps Script |
 | `ia4-research/ia4/sync.py` | Firestore → lokalne pliki parquet, tylko przyrosty |
 | `ia4-research/ia4/config.py` | klucz serwisowy (poza repo), listy instrumentów z Firestore |
@@ -371,12 +371,14 @@ Lokalnie (poza gitem): `ia4-research/state/tested.txt` — reguły już przetest
 
 ---
 
-## 11. Arkusz RESEARCH (`Research.gs`)
+## 11. Arkusze RESEARCH i STRATEGIE (`Research.gs`)
 
 Trigger `researchSync` co 30 min (i menu IA 4 → „🔬 Odśwież RESEARCH teraz”) czyta z GitHub `research/status.json` i `research/log.jsonl` (branch `research`, token `GITHUB_TOKEN`) i przepisuje arkusz RESEARCH:
 - stan: ostatni log, czy program liczy (brak logu > 45 min = nie liczy), komputer, etap i postęp siatki, liczniki z 9.6, strategie aktywne, tempo, łączny czas pracy, stan bazy na Macu, kryteria,
 - ostatnie 20 aktywnych strategii: id, data, opis, PF grupy głównej, PF na ślepo, PF skarbca, PF łączny, transakcji, skuteczność,
 - dziennik: ostatnie 500 wpisów, najnowsze na górze.
+
+Przy tym samym odświeżeniu arkusz **STRATEGIE** dostaje wszystkie strategie aktywne z `research/strategies.jsonl`, od najwyższego PF łącznego: id, grupa, kierunek, opis reguły, PF grupy głównej, PF wejścia na ślepo, przewaga, PF skarbca, PF łączny, transakcji (łącznie), skuteczność, data znalezienia. Arkusz jest przepisywany w całości — nie wpisuje się do niego niczego ręcznie. Pełna reguła i statystyki: plik `research/strategies/{id}.json`.
 
 ---
 
@@ -423,6 +425,7 @@ git push
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.3 | 2026-10-01 | Arkusz STRATEGIE: wszystkie strategie aktywne z wynikami (`Research.gs`, ten sam trigger `researchSync`). |
 | 1.2 | 2026-10-01 | Ostrzejsze kryteria po pierwszej dobie (1292 strategie, w większości ta sama „kup spadek w hossie”): przewaga nad wejściem na ślepo ≥ 1,2, PF samego skarbca ≥ 1,2, TP/SL od 1:3 do 3:1, najwyżej 5 aktywnych strategii w grupie (rodzaj sygnału + kierunek + cechy filtrów), archiwum zamiast kasowania, osobne pule rodziców long/short. Poprawka: strategia nie zapisuje się drugi raz po twardym przerwaniu. Przy pierwszym starcie 1.2 program sam wpisuje nowe progi do `config.json` i przenosi niespełniające ich strategie do archiwum (z 1292 zostaje ok. 45). |
 | 1.1 | 2026-09-30 | Etap 1 zamknięty. Etap 2 — poszukiwanie strategii: program `python -m ia4.lab` (synchronizacja, kontrola kompletności, siatka i adaptacja, sita, bramka skarbca, log co 30 min, wznawianie), język reguł `ia4-rule/1` (9 typów średnich, 6 rodzajów sygnałów, 18 cech filtrów, 4 rodzaje FC, limit czasu), symulacja pesymistyczna na 100 hipotezach SL × TP, kryterium PF zamiast skuteczności, wejście na ślepo jako punkt odniesienia, duplikaty po wspólnych transakcjach. Skarbiec: wielokrotne otwieranie przez bramkę, tylko dla obiecujących strategii, każde otwarcie liczone. Wyniki na branchu `research`; nowy `Research.gs` i arkusz RESEARCH, trigger `researchSync`. Usunięte jednorazowe sprzątanie po 1.0. |
 | 1.0 | 2026-09-30 | Nowe założenia: jedynym celem jest baza danych. Usunięte strategie S1/S2, backtesty, poletko, stary skarbiec, etapy 0–5, audyt i łatanie luk, dopisywanie wolumenu, pobieranie historii, inwestorzy, dashboard i cały Python poza synchronizacją. Zbieranie w jednym pliku `Code.gs` + nocne odświeżenie ostatnich 5 sesji i liczenie bazy. Telemetria skrócona do stanu bazy. Skarbiec = najstarsze 800 świec. Instrukcja przepisana od zera. |
