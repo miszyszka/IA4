@@ -1,6 +1,6 @@
 """
 IA 4 — pętla poszukiwania strategii (instrukcja, sekcja 9).
-Wersja projektu: 1.5 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.6 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kolejność dla każdej reguły:
   1. symulacja na grupie głównej, wszystkie hipotezy SL × TP,
@@ -35,7 +35,7 @@ TOTAL_KEYS = ("evals", "hypotheses", "eligible", "unstable", "promising", "dupli
               "vault_peeks", "accepted", "rejected_vault", "group_full", "archived", "errors", "run_minutes")
 CRITERIA_KEYS = ("sl_grid", "tp_grid", "min_trades_main", "pf_min", "pf_sltp_neighbors", "folds_min_ok",
                  "pf_param_neighbors", "param_neighbors_share_ok", "pf_edge_min", "dup_jaccard",
-                 "vault_pf_min", "tp_sl_ratio", "max_per_group")
+                 "vault_pf_min", "tp_sl_ratio", "max_per_group", "max_time_share", "min_tp_share")
 
 
 PF_W_CAP = 10.0   # sufit PF każdej części we wzorze ważonym (bez strat PF = 99 zawyżałby średnią)
@@ -311,6 +311,11 @@ class Lab:
             return f"skarbiec PF {st['vault']['pf']} poniżej {c['vault_pf_min']}"
         if weighted_pf(st) < c["pf_min"]:
             return f"PF ważony {weighted_pf(st)} poniżej {c['pf_min']}"
+        cb = st["combined"]
+        if cb["trades"] and cb["time"] / cb["trades"] > c["max_time_share"]:
+            return f"limit czasu w {cb['time'] / cb['trades']:.0%} transakcji (najwyżej {c['max_time_share']:.0%})"
+        if cb["trades"] and cb["tp"] / cb["trades"] < c["min_tp_share"]:
+            return f"TP w {cb['tp'] / cb['trades']:.0%} transakcji (najmniej {c['min_tp_share']:.0%})"
         edge = rec.get("robustness", {}).get("edge_vs_blind_entry")
         if c["pf_edge_min"] > 0 and (edge is None or edge < c["pf_edge_min"]):
             return f"przewaga nad wejściem na ślepo {edge} poniżej {c['pf_edge_min']}"
@@ -357,7 +362,10 @@ class Lab:
         main, vault, comb = full["main"], full["vault"], full["combined"]
         ok = (main["trades"] >= self.cfg["min_trades_main"] and main["pf"] >= self.cfg["pf_min"]
               and vault["trades"] >= self.cfg["min_trades_vault"] and vault["pf"] >= self.cfg["vault_pf_min"]
-              and weighted_pf(full) >= self.cfg["pf_min"])
+              and weighted_pf(full) >= self.cfg["pf_min"]
+              and comb["trades"] > 0
+              and comb["time"] / comb["trades"] <= self.cfg["max_time_share"]
+              and comb["tp"] / comb["trades"] >= self.cfg["min_tp_share"])
         full["pf_weighted"] = weighted_pf(full)
         sid = rules.rule_id(rule)
         now = _now()
@@ -516,10 +524,10 @@ class Lab:
         self._load_active()
         if self.cp_version != __version__ and self.cp_version < "1.2":
             self._upgrade_12()
-        elif self.cp_version != __version__ and self.cp_version < "1.5":
-            self.log("Wersja 1.5: przegląd strategii — PF ważony, grupy = sygnał + kierunek.")
+        elif self.cp_version != __version__ and self.cp_version < "1.6":
+            self.log("Wersja 1.6: przegląd strategii — limit czasu najwyżej 10% transakcji, grupy, PF ważony.")
             self.migrate()
-            self.repo.commit_push(f"research: wersja 1.5 — przegląd strategii, aktywnych {len(self.active)}")
+            self.repo.commit_push(f"research: wersja 1.6 — przegląd strategii, aktywnych {len(self.active)}")
         self._write_index()
         self.log("Kompiluję silnik i przygotowuję wykrywanie duplikatów…")
         worker.warmup(self.m)

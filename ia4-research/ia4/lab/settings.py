@@ -1,5 +1,5 @@
 """
-IA 4 — ustawienia poszukiwania (domyślne). Wersja projektu: 1.5 (2026-10-01)
+IA 4 — ustawienia poszukiwania (domyślne). Wersja projektu: 1.6 (2026-10-01)
 
 Wartości domyślne są tu. Claude (albo człowiek) nadpisuje je plikiem
 research/config.json na branchu `research` — Python czyta go przy starcie
@@ -35,7 +35,9 @@ DEFAULTS = {
     "dup_jaccard": 0.5,
     "vault_pf_min": 1.2,          # PF samego skarbca (oprócz PF łącznego ≥ pf_min)
     "tp_sl_ratio": [0.3334, 3.0], # dozwolony stosunek TP/SL (od 1:3 do 3:1)
-    "max_per_group": 5,           # najwyżej tyle aktywnych strategii w jednej grupie (sekcja 9.5)
+    "max_per_group": 5,
+    "max_time_share": 0.10,       # najwyżej tyle transakcji może się kończyć limitem czasu
+    "min_tp_share": 0.0,          # najmniej tyle transakcji musi kończyć się na TP (0 = bez progu)           # najwyżej tyle aktywnych strategii w jednej grupie (sekcja 9.5)
 
     # --- złożoność ---------------------------------------------------------
     "period_min": 5,

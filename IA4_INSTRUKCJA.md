@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.5
+**Wersja:** 1.6
 **Data:** 1 października 2026
 **Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii. Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca.
 
@@ -317,12 +317,13 @@ FC to warunek sprawdzany na zamknięciu każdej świecy f ≥ e (e = świeca wej
 |---|---|---|
 | 1. Sito grupy główna | dla pary SL/TP: transakcji ≥ 30 **i** PF ≥ 1,5 **i** PF > 1 w ≥ 3 z 4 okresów **i** mediana PF sąsiednich SL/TP (±1 pkt proc.) ≥ 1,2 | `min_trades_main`, `pf_min`, `folds_min_ok`, `pf_sltp_neighbors` |
 | 1a. Przewaga | PF / PF wejścia na ślepo (ten sam kierunek, SL, TP, limit) ≥ 1,2 | `pf_edge_min` |
+| 1c. Wyjścia | transakcje zamknięte limitem czasu ≤ 10% (cel: strategie, które trafiają w TP, a nie zarabiają na samym trzymaniu w hossie); opcjonalnie udział TP ≥ próg (domyślnie 0 = bez progu). Pula rodziców adaptacji bierze tylko hipotezy spełniające ten warunek | `max_time_share`, `min_tp_share` |
 | 1b. Stosunek TP/SL | TP/SL od 1:3 do 3:1 (np. SL 8% / TP 1% odpada) | `tp_sl_ratio` |
 | 2. Wybór SL/TP | spośród par, które przeszły sito — najwyższy PF grupy głównej | — |
 | 3. Stabilność parametrów | do 12 reguł różniących się jednym parametrem (okres ±10%, grow/shrink ±1, k ±0,25, sąsiedni próg filtra) przy tym samym SL/TP: mediana PF ≥ 1,2 **i** ≥ 60% z PF ≥ 1 — inaczej „niestabilna” | `pf_param_neighbors`, `param_neighbors_share_ok` |
 | 3a. Grupa pełna | w grupie strategii (9.5) jest już 5 aktywnych, a PF grupy głównej kandydata nie jest wyższy niż najsłabszej z nich → bez skarbca | `max_per_group` |
 | 4. Duplikat | ten sam kierunek i ≥ 50% wspólnych świec wejścia (Jaccard, grupa główna) ze strategią aktywną, zarchiwizowaną albo odrzuconą przez skarbiec → bez skarbca | `dup_jaccard` |
-| 5. Skarbiec | transakcji w skarbcu ≥ 10 **i** PF samego skarbca ≥ 1,2 **i** PF ważony (8.6 p. 11) ≥ 1,5 **i** PF grupy głównej ≥ 1,5 → strategia przyjęta | `min_trades_vault`, `vault_pf_min`, `pf_min` |
+| 5. Skarbiec | transakcji w skarbcu ≥ 10 **i** PF samego skarbca ≥ 1,2 **i** PF ważony (8.6 p. 11) ≥ 1,5 **i** PF grupy głównej ≥ 1,5 **i** limit czasu ≤ 10% wszystkich transakcji (główna + skarbiec) → strategia przyjęta | `min_trades_vault`, `vault_pf_min`, `pf_min` |
 | 6. Limit grupy | grupa ma mniej niż 5 aktywnych → zapis; grupa pełna → nowa zastępuje najsłabszą (najniższy PF ważony), jeśli ma wyższy PF ważony, inaczej nie jest zapisywana | `max_per_group` |
 
 Progi są stałe — nie rosną z liczbą prób. Zapisujemy wszystko, co przejdzie; progi zmieniamy po przejrzeniu wyników.
@@ -379,7 +380,7 @@ Trigger `researchSync` co 30 min (i menu IA 4 → „🔬 Odśwież RESEARCH ter
 - ostatnie 20 aktywnych strategii: id, data, opis, PF grupy głównej, PF na ślepo, PF skarbca, PF ważony, transakcji, skuteczność,
 - dziennik: ostatnie 500 wpisów, najnowsze na górze.
 
-Przy tym samym odświeżeniu arkusz **STRATEGIE** dostaje wszystkie strategie aktywne z `research/strategies.jsonl`, od najwyższego PF ważonego: id, grupa, kierunek, opis reguły, SL %, TP %, PF i liczba transakcji grupy głównej, PF i liczba transakcji skarbca, PF ważony, PF wejścia na ślepo, przewaga, skuteczność, udział wyjść na TP / SL / FC / limit czasu (z wszystkich transakcji), data znalezienia. Arkusz jest przepisywany w całości — nie wpisuje się do niego niczego ręcznie. Pełna reguła i statystyki: plik `research/strategies/{id}.json`.
+Przy tym samym odświeżeniu arkusz **STRATEGIE** dostaje wszystkie strategie aktywne z `research/strategies.jsonl`, od najwyższego PF ważonego: id, grupa, kierunek, opis reguły, SL %, TP %, PF i liczba transakcji grupy głównej, PF i liczba transakcji skarbca, PF ważony, PF wejścia na ślepo, przewaga, **skuteczność = udział transakcji zamkniętych na TP**, udział wyjść na SL / FC / limit czasu (z wszystkich transakcji), data znalezienia. Arkusz jest przepisywany w całości — nie wpisuje się do niego niczego ręcznie. Pełna reguła i statystyki: plik `research/strategies/{id}.json`.
 
 ---
 
@@ -426,6 +427,7 @@ git push
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.6 | 2026-10-01 | Najwyżej 10% transakcji może kończyć się limitem czasu (sito grupy głównej, skarbiec, przegląd zapisanych). Skuteczność w arkuszach = udział wyjść na TP. Nowy próg `min_tp_share` (domyślnie wyłączony). Przegląd strategii przy pierwszym starcie 1.6. |
 | 1.5 | 2026-10-01 | Grupa strategii = rodzaj sygnału + kierunek (było: + zestaw filtrów, co dawało 188 grup i 330 aktywnych). Najwyżej 5 w grupie, łącznie najwyżej 60 aktywnych. Przegląd przy pierwszym starcie 1.5 (także dla wersji 1.2–1.4). |
 | 1.4 | 2026-10-01 | Ostateczny PF strategii = PF ważony liczbą transakcji grupy głównej i skarbca (sufit 10 na część); decyduje o przyjęciu i kolejności w grupie. Przy pierwszym starcie 1.4 przegląd strategii wg nowego PF. Arkusz STRATEGIE: osobne kolumny SL, TP, transakcji skarbca, PF ważony, udziały wyjść TP/SL/FC/limit. |
 | 1.3 | 2026-10-01 | Arkusz STRATEGIE: wszystkie strategie aktywne z wynikami (`Research.gs`, ten sam trigger `researchSync`). |

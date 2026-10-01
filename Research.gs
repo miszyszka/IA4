@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — POSZUKIWANIE STRATEGII  (GitHub, branch `research` → arkusz RESEARCH)
  *
- *  Wersja projektu: 1.5 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.6 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Program `python -m ia4.lab` na Macu co 30 minut zapisuje na branchu
  *  `research` pliki research/status.json i research/log.jsonl. Ten plik co
@@ -40,7 +40,7 @@ const R_LOG_COLS = ['Czas (PL)', 'Komputer', 'Etap', 'Siatka %', 'Reguł', '+ re
   'Obiecujących', '+ obiec.', 'Skarbiec', '+ skarbiec', 'Strategii', '+ strategii',
   'Najlepszy wynik', 'Baza do', 'Baza OK', 'Uwagi'];
 const R_STRAT_COLS = ['Id', 'Znaleziona', 'Opis', 'PF główna', 'PF na ślepo', 'PF skarbiec',
-  'PF ważony', 'Transakcji', 'Skuteczność'];
+  'PF ważony', 'Transakcji', 'Skuteczność (TP)'];
 
 /** Handler triggera co 30 min — NIE zmieniaj nazwy. */
 function researchSync() { researchUpdate_(false); }
@@ -138,6 +138,8 @@ function researchWrite_(st, log) {
       (chk.ok ? ' · kompletna' : ` · braki: sesji ${chk.missing_sessions || 0}, niepełnych ${chk.incomplete_sessions || 0}, nieaktualnych ${chk.stale || 0}`) : ''],
     [`PF ≥ ${c.pf_min} (główna i ważony), skarbiec PF ≥ ${c.vault_pf_min}, transakcji ≥ ${c.min_trades_main} + skarbiec ≥ ${c.min_trades_vault}, ` +
       `okresy ≥ ${c.folds_min_ok}/4, przewaga ≥ ${c.pf_edge_min}` +
+      (c.max_time_share !== undefined ? `, limit czasu ≤ ${Math.round(c.max_time_share * 100)}%` : '') +
+      (c.min_tp_share ? `, TP ≥ ${Math.round(c.min_tp_share * 100)}%` : '') +
       (c.tp_sl_ratio ? `, TP/SL ${Number(c.tp_sl_ratio[0]).toFixed(2)}–${c.tp_sl_ratio[1]}` : '')],
   ]);
 
@@ -145,7 +147,7 @@ function researchWrite_(st, log) {
     s.id, s.found_at ? Utilities.formatDate(new Date(s.found_at), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm') : '',
     s.desc, s.main_pf, s.blind_pf !== undefined ? s.blind_pf : '', s.vault_pf,
     s.pf_w !== undefined ? s.pf_w : s.combined_pf, s.trades,
-    s.win_rate !== undefined ? s.win_rate : '']);
+    s.tp_pct !== undefined ? s.tp_pct : '']);
   while (strat.length < RESEARCH.STRAT_ROWS) strat.push(R_STRAT_COLS.map(() => ''));
   sh.getRange(R_STRAT_HEADER + 1, 1, RESEARCH.STRAT_ROWS, R_STRAT_COLS.length).setValues(strat);
   sh.getRange(R_STRAT_HEADER + 1, 9, RESEARCH.STRAT_ROWS, 1).setNumberFormat('0.0%');
@@ -165,7 +167,7 @@ function researchWrite_(st, log) {
 // ============================================================================
 const S_COLS = ['Id', 'Grupa', 'Kierunek', 'Opis (reguła)', 'SL %', 'TP %',
   'PF główna', 'Transakcji główna', 'PF skarbiec', 'Transakcji skarbiec', 'PF ważony',
-  'PF na ślepo', 'Przewaga', 'Skuteczność', '% TP', '% SL', '% FC', '% limit', 'Znaleziona'];
+  'PF na ślepo', 'Przewaga', 'Skuteczność (TP)', '% SL', '% FC', '% limit', 'Znaleziona'];
 
 function strategiesWrite_(idx) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -177,7 +179,7 @@ function strategiesWrite_(idx) {
   const rows = idx.slice().sort((a, b) => (b.pf_w || 0) - (a.pf_w || 0)).map(s => [
     s.id, v(s.group), /^SHORT/.test(s.desc || '') ? 'short' : 'long', v(s.desc), v(s.sl), v(s.tp),
     v(s.main_pf), v(s.main_trades), v(s.vault_pf), v(s.vault_trades), v(s.pf_w),
-    v(s.blind_pf), v(s.edge), v(s.win_rate), v(s.tp_pct), v(s.sl_pct), v(s.fc_pct), v(s.time_pct),
+    v(s.blind_pf), v(s.edge), v(s.tp_pct), v(s.sl_pct), v(s.fc_pct), v(s.time_pct),
     s.found_at ? Utilities.formatDate(new Date(s.found_at), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm') : '']);
   sh.getRange(1, 1, 1, S_COLS.length).merge()
     .setValue(`IA 4 — STRATEGIE AKTYWNE: ${rows.length} (od najwyższego PF ważonego) · ` +
@@ -189,7 +191,7 @@ function strategiesWrite_(idx) {
     if (sh.getMaxRows() < need) sh.insertRowsAfter(sh.getMaxRows(), need - sh.getMaxRows());
     sh.getRange(3, 1, rows.length, S_COLS.length).setValues(rows);
     [7, 9, 11, 12, 13].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('0.00'));
-    sh.getRange(3, 14, rows.length, 5).setNumberFormat('0.0%');
+    sh.getRange(3, 14, rows.length, 4).setNumberFormat('0.0%');
   }
   sh.setFrozenRows(2);
   sh.setColumnWidth(1, 110);

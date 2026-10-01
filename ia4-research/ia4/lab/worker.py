@@ -1,6 +1,6 @@
 """
 IA 4 — obliczenia wykonywane w procesach roboczych.
-Wersja projektu: 1.5 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.6 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 SKARBIEC WYMUSZONY KODEM (instrukcja, sekcja 6): `evaluate` i `evaluate_fixed`
 zwracają wyłącznie wyniki grupy głównej — liczby skarbca są zerowane, zanim
@@ -105,10 +105,16 @@ def screen(stats: np.ndarray, cfg: dict, base_pf: np.ndarray) -> dict:
                 & (nb >= cfg["pf_sltp_neighbors"]))
     if cfg.get("pf_edge_min", 0) > 0:
         eligible &= edge >= cfg["pf_edge_min"]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        time_share = np.where(n > 0, v["g"][..., sim.NTIME] / np.maximum(n, 1), 0.0)
+        tp_share = np.where(n > 0, v["g"][..., sim.NTP] / np.maximum(n, 1), 0.0)
+    exit_ok = (time_share <= cfg.get("max_time_share", 1.0)) & (tp_share >= cfg.get("min_tp_share", 0.0))
+    eligible &= exit_ok
     lo, hi = cfg.get("tp_sl_ratio", [0, 1e9])
     ratio = np.asarray(cfg["tp_grid"], float)[None, :] / np.asarray(cfg["sl_grid"], float)[:, None]
     eligible &= (ratio >= lo) & (ratio <= hi)
-    smooth = np.where(enough, np.minimum(pf, nb), 0.0)
+    # pula rodziców: tylko hipotezy z wyjściami zgodnymi z celem (TP, mało limitu czasu)
+    smooth = np.where(enough & exit_ok, np.minimum(pf, nb), 0.0)
     ia, ib = np.unravel_index(int(np.argmax(smooth)), smooth.shape)
     out = {"score": float(smooth[ia, ib]), "best": [int(ia), int(ib)],
            "n": int(n[ia, ib]), "pf": float(pf[ia, ib]), "edge": float(edge[ia, ib]),
