@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — zbieranie świec 1h  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 1.7 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.8 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Jedyne zadanie tego pliku: żeby baza świec w Firestore była kompletna
  *  i rosła każdego dnia. Zasady i format bazy: IA4_INSTRUKCJA.md.
@@ -16,7 +16,8 @@
  *  • Arkusz STATS pokazuje tylko stan automatu. Dane są wyłącznie w Firestore.
  *
  *  Plik współpracuje z Telemetry.gs (stan → telemetry/state.json w GitHub)
- *  i Research.gs (wyniki poszukiwania z brancha `research` → arkusz RESEARCH).
+ *  i Research.gs (wyniki poszukiwania z brancha `research` → arkusz RESEARCH)
+ *  oraz Paper.gs + PaperEngine.gs (sygnały na żywo i wirtualny inwestor).
  * ============================================================================
  */
 
@@ -24,7 +25,7 @@
 //  KONFIGURACJA
 // ============================================================================
 const CONFIG = {
-  VERSION: '1.7',
+  VERSION: '1.8',
 
   // Trzy grupy instrumentów — nazwy kolekcji w Firestore są historyczne
   // i zostają bez zmian (instrukcja, sekcja 4).
@@ -134,6 +135,7 @@ function onOpen() {
     .addItem('📡 Wyślij stan do GitHub teraz', 'telemetryPublishNow')
     .addItem('🔑 Ustaw token GitHub', 'telemetrySetToken')
     .addItem('🔬 Odśwież RESEARCH teraz', 'researchSyncNow')
+    .addItem('📈 Paper trading — przelicz teraz', 'paperNow')
     .addSeparator()
     .addItem('⏹ Zatrzymaj automat', 'stopCollector')
     .addToUi();
@@ -188,6 +190,7 @@ function execute_(mode, initMessage) {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(30 * 1000)) return null;
   let ctx = null, summary = null, action = '';
+  const t0 = Date.now();
   try {
     startRun_();
     if (initMessage) log_('INFO', 'SYSTEM', initMessage);
@@ -211,6 +214,11 @@ function execute_(mode, initMessage) {
     if (summary && !action) {
       action = `Pobrano ${summary.fetched}/${allSymbols_().length}, zapisano ${summary.written} świec` +
                (summary.skipped ? `, aktualnych: ${summary.skipped}` : '');
+    }
+    if (mode === 'auto') {
+      // paper trading: sygnały i wirtualny inwestor po zamknięciu świecy (Paper.gs)
+      try { const p = paperIfDue_(ctx, t0); if (p) action = (action ? action + ' · ' : '') + p; }
+      catch (e) { recordError_('PAPER', e.message || String(e)); }
     }
   } catch (e) {
     if (!RUN_) startRun_();

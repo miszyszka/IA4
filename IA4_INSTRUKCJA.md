@@ -1,8 +1,8 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.7
+**Wersja:** 1.8
 **Data:** 1 października 2026
-**Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii. Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca.
+**Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca.
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jeśli kod, arkusz albo telemetria się z nim rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -34,6 +34,7 @@ Historia wcześniejszych prac (strategie S1/S2, backtesty, etapy 0–5) jest w h
 9. **Strategia to reguła, nie kod.** Każda zapisana strategia jest pełną regułą w języku `ia4-rule/1` (sekcja 8): linie, sygnał, filtry, SL, TP, FC, limit czasu — wszystko liczbami, bez parametrów domyślnych. Definicje z sekcji 8 zmienia się tylko razem z nową wersją języka (`ia4-rule/2`); stare strategie zachowują swoją wersję.
 10. **Symulacja jest zawsze pesymistyczna** (sekcja 8.6) i bez kosztów transakcyjnych. Każda reguła jest liczona na wszystkich hipotezach SL × TP naraz.
 11. **Wyniki poszukiwania żyją na branchu `research`** (sekcja 10). Python nie pisze do `main`; `main` to kod, ta instrukcja i telemetria automatu.
+12. **Jeden język reguł, dwie implementacje.** Reguły liczy Python (`ia4/lab`, backtest) i JavaScript (`PaperEngine.gs`, na żywo). Każda zmiana definicji z sekcji 8 musi trafić do obu naraz, a test zgodności (`ia4-research/tests/`, sekcja 11a) musi dać 0 rozbieżności.
 
 ---
 
@@ -45,7 +46,8 @@ Yahoo ──(Apps Script, co minutę)──▶ Firestore ──(ia4.sync)──�
                   ├──▶ arkusz STATS                                     ▼
                   ├──▶ GitHub main: telemetry/state.json      python -m ia4.lab (bez końca)
                   │                                                     │
-                  └──◀ arkusz RESEARCH ◀──(Research.gs, co 30 min)──── GitHub research: research/*
+                  ├──◀ arkusz RESEARCH ◀──(Research.gs, co 30 min)──── GitHub research: research/*
+                  └──▶ po każdej świecy: Paper.gs (Firestore → pamięć _IA4_DANE → sygnały, inwestor)
 ```
 
 | Plik | Rola |
@@ -53,6 +55,9 @@ Yahoo ──(Apps Script, co minutę)──▶ Firestore ──(ia4.sync)──�
 | `Code.gs` | automat: listy instrumentów, zbieranie na żywo, nocne odświeżenie, liczenie bazy, zapis do Firestore, arkusz STATS, menu, triggery |
 | `Telemetry.gs` | stan zbierania → `telemetry/state.json` w GitHub (branch `main`) |
 | `Research.gs` | branch `research` (`status.json`, `log.jsonl`, `strategies.jsonl`) → arkusze RESEARCH i STRATEGIE |
+| `Paper.gs` | paper trading: pamięć świec, sygnały na żywo (SIGNALS-REALTIME), wirtualny inwestor (VIRTUAL-INVESTOR) |
+| `PaperEngine.gs` | język reguł `ia4-rule/1` w JavaScript — wierna kopia `indicators/data/rules/sim.py` |
+| `ia4-research/tests/` | test zgodności PaperEngine.gs z Pythonem (`parity_dump.py`, `parity.js`) |
 | `appsscript.json` | uprawnienia Apps Script |
 | `ia4-research/ia4/sync.py` | Firestore → lokalne pliki parquet, tylko przyrosty |
 | `ia4-research/ia4/config.py` | klucz serwisowy (poza repo), listy instrumentów z Firestore |
@@ -175,9 +180,12 @@ Etap 2 jest wdrożony, gdy:
 - 2.3 pierwsze uruchomienie `python -m ia4.lab` utworzyło branch `research` z `status.json` i `log.jsonl`,
 - 2.4 arkusz RESEARCH pokazuje dziennik.
 
-### Etap 3 — Użycie strategii ⬜
+### Etap 3 — Paper trading 🟨
 
-Zakres do ustalenia (np. wykrywanie sygnałów zapisanych strategii na żywo i śledzenie SL/TP/FC na każdej zamkniętej świecy).
+Sygnały strategii na żywo i wirtualny inwestor w Apps Script (sekcja 11a). Działa bez Maca, przy każdej zamkniętej świecy. Wdrożony, gdy:
+- 3.1 `Paper.gs` i `PaperEngine.gs` są w Apps Script, a pierwsze przeliczenie zbudowało pamięć świec,
+- 3.2 SIGNALS-REALTIME dostaje wiersz po każdej świecy sesji,
+- 3.3 VIRTUAL-INVESTOR otwiera i zamyka transakcje dla strategii wpisanych przez człowieka.
 
 ---
 
@@ -384,6 +392,37 @@ Przy tym samym odświeżeniu arkusz **STRATEGIE** dostaje wszystkie strategie ak
 
 ---
 
+## 11a. Paper trading (`Paper.gs`, `PaperEngine.gs`)
+
+**Kiedy:** w tym samym uruchomieniu `runCollector`, w którym automat potwierdził zapis nowej świecy — gdy wszystkie 53 spółki mają już tę świecę, albo 8 min po ostatnim zapisie, jeśli którejś brakuje. Bez osobnego triggera. Ręcznie: menu IA 4 → „📈 Paper trading — przelicz teraz”. Pierwsza świeca dnia zamyka się o 10:30 ET (zwykle 16:30 PL), ostatnia o 16:00 ET (22:00 PL).
+
+**Dane:** wyłącznie z Firestore. Pamięć robocza = ostatnie 1800 świec każdego z 55 instrumentów w ukrytym arkuszu `_IA4_DANE` (JSON pocięty na komórki; obok stan inwestora). Pierwsze zbudowanie: ok. 19 tys. odczytów (raz). Potem przy każdej świecy sesje od ostatniej daty w pamięci (ok. 140 odczytów), raz dziennie 7 dni wstecz (łapie nocne odświeżenie). Pamięć można skasować (usunąć arkusz `_IA4_DANE`) — odbuduje się, ale razem z nią znika stan inwestora.
+
+**Strategie:** aktywne (`research/strategies.jsonl`) + wpisane w VIRTUAL-INVESTOR. Reguła o danym ID pobierana raz z `research/strategies/` albo `research/archive/` i pamiętana.
+
+**Obliczenia:** `PaperEngine.gs` = sekcja 8 w JavaScript, te same wzory i ta sama kolejność zdarzeń. Średnie okienkowe (WMA, HMA, VWMA) liczone tylko dla końcówki serii (ostatnie 64 świece i świece otwartych pozycji) — te same wartości, mniej pracy. EMA, DEMA, TEMA, KAMA, ZLEMA liczone od początku pamięci (1800 świec; różnica wobec liczenia od początku bazy jest pomijalna). Cecha `since` liczy pełne serie.
+
+**Kolejność na każdej nowej świecy K** (świece po kolei, najwyżej 21 naraz przy nadrabianiu):
+1. pozycje inwestora — każda świeca instrumentu po ostatniej obsłużonej: wejście (open świecy po sygnale), potem luka SL/TP → FC → SL → TP → limit (8.6), na koniec FC na zamknięciu,
+2. sygnały wszystkich strategii na świecy K na 53 spółkach,
+3. inwestor otwiera pozycję „oczekuje” dla sygnału strategii z jego listy, jeśli ta strategia nie ma już otwartej/oczekującej pozycji na tej spółce.
+
+**SIGNALS-REALTIME:** wiersz na każdą przeliczoną świecę, najnowsze na górze: data, numer świecy, zamknięcie (PL), liczba sygnałów, potem pary kolumn ID strategii + ticker. Najwyżej 3000 wierszy.
+
+**VIRTUAL-INVESTOR:**
+- A4:A23 — do 20 ID strategii wpisywanych ręcznie (B: opis albo „nie znaleziono”); usunięcie ID nie zamyka otwartych pozycji, tylko blokuje nowe,
+- statystyki (D4:E18): kapitał 100 000 $, stawka 100 $ na transakcję, stan konta = kapitał + wynik zamkniętych, wynik zamkniętych $ i % kapitału, wynik otwartych $, stan konta gdyby teraz zamknąć wszystko, wynik całkowity %, wolna gotówka, liczba pozycji, wyjścia TP/SL/FC/limit, skuteczność (TP), średni wynik zamkniętej,
+- transakcje od wiersza 28: nr, strategia, ticker, kierunek, sygnał, wejście, cena wejścia, SL, TP, status (oczekuje / otwarta / zamknięta), ostatnia świeca, cena aktualna, wynik % i $, wyjście, cena wyjścia, powód, świec w pozycji. Otwarte na górze.
+- Wynik % jak w 8.6 p. 6, wynik $ = 100 $ × wynik %; koszty 0.
+
+**Test zgodności** (po każdej zmianie sekcji 8, `PaperEngine.gs` albo `ia4/lab`):
+```bash
+cd ia4-research && python tests/parity_dump.py /tmp/ia4_parity.json && node tests/parity.js /tmp/ia4_parity.json
+```
+Wynik musi brzmieć „rozbieżności: sygnały 0, transakcje 0”.
+
+---
+
 ## 12. Wdrożenie i uruchamianie
 
 ### Wdrożenie wersji 1.1 (jednorazowo)
@@ -427,6 +466,7 @@ git push
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.8 | 2026-10-01 | Etap 3 — paper trading: `PaperEngine.gs` (język reguł w JS, zgodność z Pythonem 100% w teście 140 reguł / 13 335 sygnałów / 11 962 transakcji), `Paper.gs` (pamięć świec `_IA4_DANE`, krok po każdej świecy w `runCollector`, arkusze SIGNALS-REALTIME i VIRTUAL-INVESTOR, menu „Paper trading — przelicz teraz”), test `ia4-research/tests/`. Zasada 12: jeden język reguł, dwie implementacje. |
 | 1.7 | 2026-10-01 | Statystyki strategii: średni wynik % wg rodzaju wyjścia (`stats.exit_avg_ret_pct`: tp, sl, fc, time, all); w arkuszu STRATEGIE kolumny „Śr. wynik FC %” i „Śr. wynik transakcji %”. Przy pierwszym starcie 1.7: przeliczenie statystyk aktywnych strategii (bez liczenia jako otwarcie skarbca), przegląd wg wszystkich kryteriów, nowy dziennik od zera — stare `log.jsonl` i `vault.jsonl` w `research/archive/`, liczniki wyzerowane. |
 | 1.6 | 2026-10-01 | Najwyżej 10% transakcji może kończyć się limitem czasu (sito grupy głównej, skarbiec, przegląd zapisanych). Skuteczność w arkuszach = udział wyjść na TP. Nowy próg `min_tp_share` (domyślnie wyłączony). Przegląd strategii przy pierwszym starcie 1.6. |
 | 1.5 | 2026-10-01 | Grupa strategii = rodzaj sygnału + kierunek (było: + zestaw filtrów, co dawało 188 grup i 330 aktywnych). Najwyżej 5 w grupie, łącznie najwyżej 60 aktywnych. Przegląd przy pierwszym starcie 1.5 (także dla wersji 1.2–1.4). |
