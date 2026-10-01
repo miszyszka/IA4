@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — PAPER TRADING  (sygnały na żywo + wirtualny inwestor)
  *
- *  Wersja projektu: 1.9 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.10 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Po zamknięciu każdej świecy, gdy automat zapisał ją do Firestore:
  *   1. dociąga nowe świece z Firestore do pamięci (ukryty arkusz _IA4_DANE,
@@ -23,8 +23,8 @@ const PAPER = {
   INVESTOR_SHEET: 'VIRTUAL-INVESTOR',
   CAPITAL: 100000,
   STAKE: 100,
-  MAX_IDS: 20,
-  ID_FIRST_ROW: 4,             // A4:A23 — ID strategii wpisywane ręcznie
+  MAX_IDS: 20,                 // ile zaznaczonych strategii pokazuje lista w VIRTUAL-INVESTOR
+  ID_FIRST_ROW: 4,             // A4:B23 — lista strategii „for VI” (tylko podgląd)
   TRADES_HEADER_ROW: 27,
   SIGNALS_MAX_ROWS: 3000,
   MAX_CATCHUP: 21,             // najwięcej świec nadrabianych naraz (3 sesje)
@@ -85,7 +85,7 @@ function paperStep_() {
   // 2. Strategie: aktywne + lista inwestora
   const active = pp_activeIds_();
   const sh = pp_investorSheet_();
-  const invIds = pp_investorIds_(sh);
+  const invIds = viSelectedIds_();               // checkboxy „for VI” w arkuszu STRATEGIE (Research.gs)
   const ids = Array.from(new Set(active.concat(invIds)));
   ids.forEach(id => { if (!state.rules[id]) { const r = pp_fetchRule_(id); if (r) state.rules[id] = r; } });
   const rules = ids.filter(id => state.rules[id]).map(id => ({ id, rule: state.rules[id].rule }));
@@ -402,9 +402,7 @@ function pp_investorSheet_() {
   if (sh.getMaxColumns() < INV_COLS.length) sh.insertColumnsAfter(sh.getMaxColumns(), INV_COLS.length - sh.getMaxColumns());
   sh.getRange(1, 1, 1, 8).merge().setValue('IA 4 — WIRTUALNY INWESTOR (paper trading, 100 $ na transakcję)')
     .setFontSize(13).setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
-  sh.getRange(3, 1, 1, 2).setValues([['ID strategii (wpisz, najwyżej 20)', 'Opis / stan']])
-    .setFontWeight('bold').setBackground('#f1f3f4');
-  sh.getRange(PAPER.ID_FIRST_ROW, 1, PAPER.MAX_IDS, 1).setBackground('#fff8e1');
+  sh.getRange(3, 1, 1, 2).setValues([['Strategie for VI', 'Opis']]).setFontWeight('bold').setBackground('#f1f3f4');
   sh.getRange(3, 4, 1, 2).setValues([['Statystyki', '']]).setFontWeight('bold').setBackground('#f1f3f4');
   sh.getRange(4, 4, INV_STATS.length, 1).setValues(INV_STATS.map(x => [x])).setFontWeight('bold');
   sh.getRange(PAPER.TRADES_HEADER_ROW - 1, 1, 1, 8).merge()
@@ -418,21 +416,18 @@ function pp_investorSheet_() {
   return sh;
 }
 
-function pp_investorIds_(sh) {
-  return sh.getRange(PAPER.ID_FIRST_ROW, 1, PAPER.MAX_IDS, 1).getValues()
-    .map(r => String(r[0] || '').trim()).filter(x => x);
-}
 
 function pp_usd_(x) { return Math.round(x * 100) / 100; }
 
 function pp_writeInvestor_(sh, state, invIds, X) {
-  // opisy strategii z listy
-  const raw = sh.getRange(PAPER.ID_FIRST_ROW, 1, PAPER.MAX_IDS, 1).getValues().map(r => String(r[0] || '').trim());
-  sh.getRange(PAPER.ID_FIRST_ROW, 2, PAPER.MAX_IDS, 1).setValues(raw.map(id => {
-    if (!id) return [''];
-    const r = state.rules[id];
-    return [r ? r.desc : '✗ nie znaleziono takiej strategii na branchu research'];
-  }));
+  // podgląd listy „for VI” (wybór: checkboxy w arkuszu STRATEGIE)
+  sh.getRange(3, 1, 1, 2).setValues([[`Strategie for VI: ${invIds.length}`,
+    'Opis — wybór: zaznacz „for VI” w arkuszu STRATEGIE (bez limitu)']]);
+  const view = invIds.length > PAPER.MAX_IDS ? invIds.slice(0, PAPER.MAX_IDS - 1) : invIds.slice();
+  const list = view.map(id => [id, state.rules[id] ? state.rules[id].desc : '✗ nie znaleziono takiej strategii na branchu research']);
+  if (invIds.length > view.length) list.push([`… i ${invIds.length - view.length} więcej`, 'pełna lista: arkusz STRATEGIE, kolumna „for VI”']);
+  while (list.length < PAPER.MAX_IDS) list.push(['', '']);
+  sh.getRange(PAPER.ID_FIRST_ROW, 1, PAPER.MAX_IDS, 2).setValues(list).setBackground(null);
 
   const P = state.positions;
   const closed = P.filter(p => p.status === 'zamknięta');

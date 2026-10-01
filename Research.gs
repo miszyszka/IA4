@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — POSZUKIWANIE STRATEGII  (GitHub, branch `research` → arkusz RESEARCH)
  *
- *  Wersja projektu: 1.9 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.10 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Program `python -m ia4.lab` na Macu co 30 minut zapisuje na branchu
  *  `research` pliki research/status.json i research/log.jsonl. Ten plik co
@@ -170,28 +170,98 @@ const S_COLS = ['Id', 'Grupa', 'Kierunek', 'Opis (reguła)', 'SL %', 'TP %',
   'PF na ślepo', 'Przewaga', 'Skuteczność (TP)', '% SL', '% FC', '% limit',
   'Śr. wynik FC %', 'Śr. wynik transakcji %', 'Znaleziona'];
 
+const S_VI_HEAD = 'for VI';
+const S_VI_COL = S_COLS.length + 1;          // ostatnia kolumna: checkbox dla wirtualnego inwestora
+const S_ID_RE = /^S-[0-9a-f]{10}$/;
+
+/**
+ * Strategie zaznaczone „for VI” (instrukcja 11a). Czyta checkboxy z arkusza STRATEGIE i zapamiętuje
+ * je w Script Properties (VI_IDS), bo arkusz jest co 30 min przepisywany w całości.
+ * Pierwsze użycie przejmuje ID wpisane ręcznie w VIRTUAL-INVESTOR (wersje ≤ 1.9).
+ */
+function viSelectedIds_() {
+  const props = PropertiesService.getScriptProperties();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sel = JSON.parse(props.getProperty('VI_IDS') || 'null');
+  if (sel === null) {
+    sel = [];
+    const inv = ss.getSheetByName(PAPER.INVESTOR_SHEET);
+    if (inv && String(inv.getRange(3, 1).getValue()).indexOf('wpisz') >= 0) {
+      sel = inv.getRange(4, 1, 20, 1).getValues().map(r => String(r[0] || '').trim()).filter(x => S_ID_RE.test(x));
+    }
+  }
+  const sh = ss.getSheetByName(RESEARCH.STRAT_SHEET);
+  if (sh && sh.getRange(2, S_VI_COL).getValue() === S_VI_HEAD && sh.getLastRow() > 2) {
+    const set = new Set(sel);
+    sh.getRange(3, 1, sh.getLastRow() - 2, S_VI_COL).getValues().forEach(r => {
+      const id = String(r[0] || '').trim();
+      if (!S_ID_RE.test(id)) return;
+      if (r[S_VI_COL - 1] === true) set.add(id); else set.delete(id);
+    });
+    sel = Array.from(set);
+  }
+  props.setProperty('VI_IDS', JSON.stringify(sel));
+  return sel;
+}
+
+/** Wiersz indeksu z pełnego pliku strategii (dla zaznaczonych, które wypadły do archiwum). */
+function strategySummaryFromRec_(rec) {
+  const st = rec.stats || {}, m = st.main || {}, vv = st.vault || {}, c = st.combined || {}, ex = (rec.rule || {}).exit || {};
+  const n = (m.trades || 0) + (vv.trades || 0);
+  const cap = x => Math.min(x || 0, 10);
+  const share = k => c.trades ? (c[k] || 0) / c.trades : '';
+  const avg = st.exit_avg_ret_pct || {};
+  return {
+    id: rec.id, desc: rec.description, found_at: rec.found_at,
+    group: `${rec.rule.signal.kind}|${rec.rule.direction} (archiwum)`,
+    sl: ex.sl, tp: ex.tp, main_pf: m.pf, main_trades: m.trades, vault_pf: vv.pf, vault_trades: vv.trades,
+    pf_w: n ? Math.round((m.trades * cap(m.pf) + vv.trades * cap(vv.pf)) / n * 1000) / 1000 : '',
+    blind_pf: (st.blind_entry_main || {}).pf, edge: (rec.robustness || {}).edge_vs_blind_entry,
+    tp_pct: share('tp'), sl_pct: share('sl'), fc_pct: share('fc'), time_pct: share('time'),
+    fc_avg: avg.fc, avg_ret: avg.all !== undefined ? avg.all : c.avg_ret_pct,
+  };
+}
+
 function strategiesWrite_(idx) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sel = viSelectedIds_();                  // PRZED przepisaniem — zachowuje checkboxy
+  const selSet = {};
+  sel.forEach(id => { selSet[id] = 1; });
   const sh = ss.getSheetByName(RESEARCH.STRAT_SHEET) || ss.insertSheet(RESEARCH.STRAT_SHEET);
   sh.clear();
+  sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).clearDataValidations();
   sh.setTabColor('#e37400');
-  if (sh.getMaxColumns() < S_COLS.length) sh.insertColumnsAfter(sh.getMaxColumns(), S_COLS.length - sh.getMaxColumns());
+  if (sh.getMaxColumns() < S_VI_COL) sh.insertColumnsAfter(sh.getMaxColumns(), S_VI_COL - sh.getMaxColumns());
   const v = x => (x === undefined || x === null) ? '' : x;
-  const rows = idx.slice().sort((a, b) => (b.pf_w || 0) - (a.pf_w || 0)).map(s => [
+  const list = idx.slice().sort((a, b) => (b.pf_w || 0) - (a.pf_w || 0));
+  const shown = {};
+  list.forEach(s => { shown[s.id] = 1; });
+  sel.filter(id => !shown[id]).forEach(id => {     // zaznaczone, ale już nieaktywne — na dole
+    let txt = null;
+    try { txt = researchRaw_(`research/archive/${id}.json`) || researchRaw_(`research/strategies/${id}.json`); }
+    catch (e) { console.warn('STRATEGIE: ' + id + ' — ' + e.message); }
+    if (txt) list.push(strategySummaryFromRec_(JSON.parse(txt)));
+    else list.push({ id, desc: '✗ nie znaleziono pliku strategii', group: '' });
+  });
+  const rows = list.map(s => [
     s.id, v(s.group), /^SHORT/.test(s.desc || '') ? 'short' : 'long', v(s.desc), v(s.sl), v(s.tp),
     v(s.main_pf), v(s.main_trades), v(s.vault_pf), v(s.vault_trades), v(s.pf_w),
     v(s.blind_pf), v(s.edge), v(s.tp_pct), v(s.sl_pct), v(s.fc_pct), v(s.time_pct),
     v(s.fc_avg), v(s.avg_ret),
-    s.found_at ? Utilities.formatDate(new Date(s.found_at), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm') : '']);
+    s.found_at ? Utilities.formatDate(new Date(s.found_at), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm') : '',
+    !!selSet[s.id]]);
   sh.getRange(1, 1, 1, S_COLS.length).merge()
-    .setValue(`IA 4 — STRATEGIE AKTYWNE: ${rows.length} (od najwyższego PF ważonego) · ` +
+    .setValue(`IA 4 — STRATEGIE AKTYWNE: ${idx.length} (od najwyższego PF ważonego) · for VI: ${sel.length} · ` +
       Utilities.formatDate(new Date(), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm'))
     .setFontSize(13).setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
-  sh.getRange(2, 1, 1, S_COLS.length).setValues([S_COLS]).setFontWeight('bold').setBackground('#f1f3f4');
+  sh.getRange(2, 1, 1, S_VI_COL).setValues([S_COLS.concat([S_VI_HEAD])]).setFontWeight('bold').setBackground('#f1f3f4');
+  sh.getRange(2, S_VI_COL).setBackground('#ceead6');
   if (rows.length) {
     const need = rows.length + 2;
     if (sh.getMaxRows() < need) sh.insertRowsAfter(sh.getMaxRows(), need - sh.getMaxRows());
-    sh.getRange(3, 1, rows.length, S_COLS.length).setValues(rows);
+    sh.getRange(3, 1, rows.length, S_VI_COL).setValues(rows);
+    sh.getRange(3, S_VI_COL, rows.length, 1).insertCheckboxes();
+    sh.getRange(3, S_VI_COL, rows.length, 1).setValues(rows.map(r => [r[S_VI_COL - 1]]));
     [7, 9, 11, 12, 13].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('0.00'));
     sh.getRange(3, 14, rows.length, 4).setNumberFormat('0.0%');
     sh.getRange(3, 18, rows.length, 2).setNumberFormat('+0.00;-0.00;0.00');

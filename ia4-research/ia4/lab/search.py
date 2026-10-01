@@ -1,6 +1,6 @@
 """
 IA 4 — pętla poszukiwania strategii (instrukcja, sekcja 9).
-Wersja projektu: 1.9 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.10 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kolejność dla każdej reguły:
   1. symulacja na grupie głównej, wszystkie hipotezy SL × TP,
@@ -50,6 +50,14 @@ def weighted_pf(rec_or_stats) -> float:
     if not n:
         return 0.0
     return round((m["trades"] * min(m["pf"], PF_W_CAP) + v["trades"] * min(v["pf"], PF_W_CAP)) / n, 3)
+
+
+def _ver(v) -> tuple:
+    """'1.10' → (1, 10) — wersje porównujemy liczbowo, nie jako tekst."""
+    try:
+        return tuple(int(x) for x in str(v).split("."))
+    except ValueError:
+        return (0,)
 
 
 def _now():
@@ -551,9 +559,9 @@ class Lab:
                                                  "Puste = wartości domyślne. Zmienia Claude lub człowiek.",
                                                  **{k: settings.DEFAULTS[k] for k in CRITERIA_KEYS + ("min_trades_vault",)}})
         self._load_active()
-        if self.cp_version != __version__ and self.cp_version < "1.2":
+        if _ver(self.cp_version) < _ver("1.2"):
             self._upgrade_12()
-        if self.cp_version != __version__ and self.cp_version < "1.7":
+        if _ver(self.cp_version) < _ver("1.7"):
             self._upgrade_17()
         self._write_index()
         self.log("Kompiluję silnik i przygotowuję wykrywanie duplikatów…")
