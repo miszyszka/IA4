@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — zbieranie świec 1h  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 1.10 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.11 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Jedyne zadanie tego pliku: żeby baza świec w Firestore była kompletna
  *  i rosła każdego dnia. Zasady i format bazy: IA4_INSTRUKCJA.md.
@@ -25,7 +25,7 @@
 //  KONFIGURACJA
 // ============================================================================
 const CONFIG = {
-  VERSION: '1.10',
+  VERSION: '1.11',
 
   // Trzy grupy instrumentów — nazwy kolekcji w Firestore są historyczne
   // i zostają bez zmian (instrukcja, sekcja 4).
@@ -67,7 +67,7 @@ const CONFIG = {
   FAST_RETRY_SEC: 30,
   FAST_MAX_TRIES: 8,
   FAST_WINDOW_MIN: 5,
-  FAST_MAX_RUN_SEC: 240,       // po tylu sekundach jedno uruchomienie przestaje ponawiać
+  FAST_MAX_RUN_SEC: 240,       // ponawianie musi się zakończyć przed upływem tylu sekund
 
   LIVE_RANGE: '5d',            // zakres pobierania na żywo
   CATCHUP_RANGE: '1mo',        // „Uzupełnij ostatni miesiąc” (ręcznie)
@@ -259,15 +259,19 @@ function fastCollect_(ctx) {
   const sinceClose = expected ? ctx.etMin - slotEnd_(expected - 1, closeMin) : null;
   const t0 = Date.now();
   const summary = collectAll_(CONFIG.LIVE_RANGE, ctx, false);
+  let lastDur = Date.now() - t0;                 // ile trwało ostatnie pobranie (75 instrumentów ~1,5 min)
   if (!expectedKey || sinceClose === null || sinceClose >= CONFIG.FAST_WINDOW_MIN) return summary;
 
   for (let i = 1; i < CONFIG.FAST_MAX_TRIES; i++) {
     const live = liveLoad_();
     if (CONFIG.SYMBOLS.every(s => live[s] && live[s].k >= expectedKey)) break;
-    // Limit Apps Script to 6 min na uruchomienie — zostawiamy zapas.
-    if (Date.now() - t0 > CONFIG.FAST_MAX_RUN_SEC * 1000) break;
+    // Limit Apps Script to 6 min na uruchomienie: kolejna próba (pauza + pobranie)
+    // musi się zmieścić w FAST_MAX_RUN_SEC — zostaje zapas na STATS i paper trading.
+    if (Date.now() - t0 + CONFIG.FAST_RETRY_SEC * 1000 + lastDur > CONFIG.FAST_MAX_RUN_SEC * 1000) break;
     Utilities.sleep(CONFIG.FAST_RETRY_SEC * 1000);
+    const t1 = Date.now();
     const s2 = collectAll_(CONFIG.LIVE_RANGE, ctx, false);
+    lastDur = Date.now() - t1;
     summary.fetched += s2.fetched;
     summary.written += s2.written;
     summary.symbolsWritten += s2.symbolsWritten;

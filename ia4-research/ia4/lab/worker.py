@@ -1,6 +1,6 @@
 """
 IA 4 — obliczenia wykonywane w procesach roboczych.
-Wersja projektu: 1.10 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.11 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 SKARBIEC WYMUSZONY KODEM (instrukcja, sekcja 6): `evaluate` i `evaluate_fixed`
 zwracają wyłącznie wyniki grupy głównej — liczby skarbca są zerowane, zanim

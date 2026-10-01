@@ -1,6 +1,6 @@
 """
 IA 4 — dane do badań: kopia lokalna → jedna płaska tablica świec.
-Wersja projektu: 1.10 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.11 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Wszystkie instrumenty handlowane (spółki główne + kontrolne) leżą jedna za drugą
 w tych samych tablicach o, h, l, c, v; `seg_start/seg_end` mówią, gdzie zaczyna

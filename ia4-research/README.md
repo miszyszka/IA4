@@ -1,6 +1,6 @@
 # IA 4 — Python na Macu: kopia bazy i poszukiwanie strategii
 
-**Wersja projektu: 1.10 (2026-10-01)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.11 (2026-10-01)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Dwie rzeczy:
 1. `python -m ia4.sync` — ściąga świece z Firestore na dysk (`data/*.parquet`), przy
@@ -39,7 +39,7 @@ python -m ia4.lab.selftest        # test silnika — musi być „WYNIK: OK”
 python -m ia4.lab                 # liczy do Ctrl+C (zapisuje stan i wysyła log przed końcem)
 python -m ia4.lab --hours 5       # liczy 5 godzin
 python -m ia4.lab --check         # tylko synchronizacja i kontrola kompletności bazy
-python -m ia4.lab --workers 4     # mniej procesów (domyślnie rdzenie − 1)
+python -m ia4.lab --workers 4     # 4 procesy — ok. połowa mocy M2 (domyślnie rdzenie − 1)
 python -m ia4.lab --no-push       # bez GitHub (test)
 ```
 
@@ -48,12 +48,29 @@ pobranie `research/config.json` i punktu wznowienia, dalsze liczenie od miejsca,
 w którym skończył poprzedni przebieg. Wyniki: branch `research` (klon w
 `research-repo/`), lokalna lista przetestowanych reguł: `state/tested.txt`.
 
+Skrót (raz): `alias ia4='cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && python -m ia4.lab --workers 4'`
+w `~/.zshrc` — potem wystarczy `ia4`.
+
+Poszukiwanie używa tylko spółek głównych i kontrolnych. Grupa **doubleProof** (20 spółek)
+jest synchronizowana, ale nigdy nie bierze udziału w szukaniu — służy do ręcznej
+weryfikacji strategii (instrukcja, sekcja 6a).
+
+## Test zgodności z paper tradingiem
+
+Silnik reguł istnieje też w JavaScript (`PaperEngine.gs`). Po każdej zmianie języka reguł:
+
+```bash
+python tests/parity_dump.py /tmp/ia4_parity.json && node tests/parity.js /tmp/ia4_parity.json
+```
+
+Wynik musi brzmieć „rozbieżności: sygnały 0, transakcje 0” (potrzebny Node.js).
+
 ## Kopia bazy
 
 ```bash
 python -m ia4.sync              # przyrostowo (robi to też ia4.lab przy starcie)
 python -m ia4.sync AAPL TSLA    # wybrane instrumenty
-python -m ia4.sync --full       # od nowa — ok. 37 000 odczytów, najwyżej raz dziennie
+python -m ia4.sync --full       # od nowa — ok. 48 000 odczytów (prawie cały dzienny limit)
 ```
 
 ```python

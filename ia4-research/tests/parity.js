@@ -1,4 +1,4 @@
-// IA 4 — test zgodności PaperEngine.gs z Pythonem. Wersja projektu: 1.10 (2026-10-01). Opis: tests/parity_dump.py
+// IA 4 — test zgodności PaperEngine.gs z Pythonem. Wersja projektu: 1.11 (2026-10-01). Opis: tests/parity_dump.py
 const fs = require('fs');
 eval(fs.readFileSync(require('path').join(__dirname, '..', '..', 'PaperEngine.gs'), 'utf8'));
 const C = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));

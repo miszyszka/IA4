@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.10
+**Wersja:** 1.11
 **Data:** 1 października 2026
 **Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca.
 
@@ -11,7 +11,9 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Je�
 ## 1. Cel
 
 1. **Baza świec 1h w Firestore** (Etap 1, działa stale): kompletna, rośnie każdego dnia sesyjnego, ma stały format.
-2. **Poszukiwanie strategii** (Etap 2): program w Pythonie na Macu, uruchamiany w dowolnych momentach, bez końca przelicza kopię lokalną bazy i szuka powtarzalnych sygnałów long i short opartych na średnich kroczących. Liczy się jakość, nie liczba strategii. Każda zapisana strategia jest regułą opisaną na sztywno (sekcja 8), tak żeby inny system mógł ją odtworzyć świeca po świecy.
+2. **Poszukiwanie strategii** (Etap 2): program w Pythonie na Macu, uruchamiany w dowolnych momentach, bez końca przelicza kopię lokalną bazy i szuka powtarzalnych sygnałów long i short opartych na średnich kroczących. Liczy się jakość, nie liczba strategii: strategia ma trafiać w TP, a nie zarabiać na samym trzymaniu pozycji w hossie. Każda zapisana strategia jest regułą opisaną na sztywno (sekcja 8), tak żeby inny system mógł ją odtworzyć świeca po świecy.
+3. **Paper trading** (Etap 3): sygnały strategii na żywo i wirtualny inwestor w Apps Script, po każdej zamkniętej świecy (sekcja 11a).
+4. **Weryfikacja na nowych spółkach:** grupa doubleProof (20 spółek), której system nigdy nie widzi przy szukaniu — do sprawdzania strategii przez człowieka (sekcja 6a).
 
 Historia wcześniejszych prac (strategie S1/S2, backtesty, etapy 0–5) jest w historii gita do wersji 0.47.
 
@@ -27,7 +29,8 @@ Historia wcześniejszych prac (strategie S1/S2, backtesty, etapy 0–5) jest w h
 6. **System jest minimalny.** Nowa funkcja, arkusz, plik czy dziennik pojawia się tylko za zgodą człowieka i najpierw jako zmiana tej instrukcji.
 7. **Współpraca z Claude:**
    - na początku rozmowy Claude pobiera repozytorium `github.com/miszyszka/IA4.git`, czyta ten plik (branch `main`), `telemetry/state.json` (branch `main`) oraz `research/status.json` i `research/log.jsonl` (branch `research`),
-   - Claude przygotowuje zmiany jako commit w pliku `.bundle` i podaje gotowe polecenia terminala do wypchnięcia (sekcja 12); zmiany zapisuje też lokalnie w `~/Desktop/IA4`,
+   - Claude przygotowuje zmiany jako commit w pliku `.bundle` (wysyła go w rozmowie, użytkownik zapisuje w `~/Downloads`) i podaje gotowe polecenia terminala do wypchnięcia (sekcja 12); lokalna kopia `~/Desktop/IA4` aktualizuje się przez `git pull`,
+   - każdą zmianę Claude sprawdza przed wysłaniem: `selftest`, test zgodności (sekcja 11a), składnia plików `.gs`, symulacja zmienionej logiki,
    - pracę wykraczającą poza tę instrukcję albo pomysł na jej zmianę Claude najpierw proponuje i czeka na zgodę,
    - Claude nie ma dostępu do arkusza ani edytora Apps Script: użytkownik ręcznie wkleja zmienione pliki `.gs` do Apps Script i robi `git pull` na Macu.
 8. **Jedna wersja dla całego projektu.** Ten sam numer w nagłówku tej instrukcji, w nagłówku każdego pliku `.gs`, w `CONFIG.VERSION` (`Code.gs`) i w `ia4-research/` (`ia4/__init__.py`). Zmiana znacząca (logika, zasada, format, etap) podbija wersję i dostaje wpis w sekcji 13. Drobne poprawki — tylko opis w commicie. (`appsscript.json` nie nosi wersji — JSON nie ma komentarzy.)
@@ -133,12 +136,13 @@ Historia od połowy września 2024 (granica Yahoo: ok. 730 dni wstecz dla świec
 ### Jak baza jest aktualizowana (`Code.gs`)
 
 1. **Na żywo.** Trigger `runCollector` co minutę. Po zamknięciu każdej świecy automat pobiera z Yahoo ostatnie 5 dni i zapisuje tylko nowe, zamknięte świece. Tuż po zamknięciu ponawia co 30 s, aż spółki główne dostaną świecę. Pamięć „co już zapisane” przesuwa się dopiero po potwierdzeniu zapisu przez Firestore.
-2. **Nocne odświeżenie.** Raz na dzień sesyjny, 45 min po zamknięciu, automat przepisuje ostatnie ~5 sesji wszystkich instrumentów (~400 dokumentów). Świeca brakująca z powodu awarii wraca sama tej samej nocy. Nieudane odświeżenie jest ponawiane co 30 min.
-3. **Liczenie bazy.** Po nocnym odświeżeniu automat liczy świece i pierwszą datę każdego instrumentu (zapytania agregujące, ~110 odczytów) — widać to w STATS i w `telemetry/state.json`.
+   Pobranie 75 instrumentów trwa ok. 1,5 min; ponawianie kończy się tak, żeby jedno uruchomienie zmieściło się w 4 min (limit Apps Script: 6 min). Spółki, których świeca jeszcze nie dotarła, dociąga kolejne uruchomienie. Kolumna „Status” w STATS: `✓ zapisano N` = tyle nowych świec zapisało ostatnie pobranie tej spółki (2 zamiast 1 znaczy, że Yahoo opublikowało poprzednią świecę z opóźnieniem i doszła razem z bieżącą), `✓ brak nowych` / `✓ aktualne` = nie było czego zapisać, `✗ …` = błąd pobrania.
+2. **Nocne odświeżenie.** Raz na dzień sesyjny, 45 min po zamknięciu, automat przepisuje ostatnie ~5 sesji wszystkich instrumentów (ok. 550 zapisów). Świeca brakująca z powodu awarii wraca sama tej samej nocy. Nieudane odświeżenie jest ponawiane co 30 min.
+3. **Liczenie bazy.** Po nocnym odświeżeniu automat liczy świece i pierwszą datę każdego instrumentu (zapytania agregujące, ok. 150 odczytów) — widać to w STATS i w `telemetry/state.json`.
 4. **Ręcznie:** menu IA 4 → „Uzupełnij ostatni miesiąc” (po dłuższej przerwie automatu), „Nocne odświeżenie teraz”, „Historia doubleProof — jedna porcja teraz”.
 5. **Historia doubleProof (jednorazowo, sama się kończy).** Raz na godzinę, w wolnym przebiegu `runCollector`, jedna porcja: dla każdej spółki doubleProof bez pełnej historii kolejne 60 dni wstecz (Yahoo `period1/period2`, okna od północy do północy UTC — sesja nigdy nie jest dzielona). Zaczyna od wczoraj, kończy na granicy Yahoo (728 dni wstecz albo odpowiedź Yahoo „poza zakresem 730 dni”). Ok. 840 zapisów na porcję, ok. 10 tys. łącznie; najwyżej 8000 zapisów dziennie, więc całość trwa ok. 12–13 godzin pracy rozłożonych na 1–2 dni. Stan: Script Properties `BACKFILL_DP`, postęp w STATS („Historia doubleProof”) i w `telemetry/state.json` (`doubleProofHistory`). Dzisiejsze i ostatnie sesje zapisują zbieranie na żywo i nocne odświeżenie, jak dla pozostałych instrumentów.
 
-Limit Firestore (plan Spark): 20 000 zapisów i 50 000 odczytów dziennie. Normalny dzień (75 instrumentów) to ok. 1600 zapisów.
+Limity Firestore (plan Spark): 20 000 zapisów i 50 000 odczytów dziennie — zużycie wszystkich części systemu: sekcja 12, „Limity Firestore”.
 
 **Raz w roku (grudzień):** dopisać święta NYSE na kolejny rok do `US_MARKET_HOLIDAYS` w `Code.gs` oraz święta i sesje skrócone do `ia4-research/ia4/lab/check.py`.
 
@@ -149,7 +153,7 @@ Limit Firestore (plan Spark): 20 000 zapisów i 50 000 odczytów dziennie. Norma
 ```bash
 cd ia4-research && source .venv/bin/activate
 python -m ia4.sync            # przyrostowo: nowe sesje + wszystko przepisane od ostatniego razu
-python -m ia4.sync --full     # od nowa (~37 000 odczytów — najwyżej raz dziennie)
+python -m ia4.sync --full     # od nowa (~48 000 odczytów = prawie cały dzienny limit — tylko w razie awarii kopii)
 ```
 
 Wynik: `data/{SYMBOL}.parquet`, jedna tabela na instrument, kolumny `symbol, date, slot (1–7), o, h, l, c, v`, posortowana po `(date, slot)`; `data/_manifest.json` pamięta stan synchronizacji. Oba formaty Firestore sprowadzone do tej samej tabeli. W kodzie: `from ia4.sync import load; df = load("AAPL")`. Instalacja i klucz: `ia4-research/README.md`.
@@ -185,18 +189,14 @@ Wersja 1.0 wdrożona w Apps Script, triggery `runCollector` i `telemetryHourly`,
 
 Program `python -m ia4.lab` na Macu (sekcje 8–10), wyniki na branchu `research`, podgląd w arkuszu RESEARCH (sekcja 11). Etap trwa bez końca; Claude okresowo przegląda wyniki i proponuje zmiany ustawień w `research/config.json`.
 
-Etap 2 jest wdrożony, gdy:
-- 2.1 wersja 1.1 wklejona do Apps Script, „Konfiguruj” wykonane, triggery: `runCollector`, `telemetryHourly`, `researchSync` (sekcja 12),
-- 2.2 `python -m ia4.lab.selftest` na Macu kończy się „WYNIK: OK”,
-- 2.3 pierwsze uruchomienie `python -m ia4.lab` utworzyło branch `research` z `status.json` i `log.jsonl`,
-- 2.4 arkusz RESEARCH pokazuje dziennik.
+Wdrożony 30.09.2026: triggery `runCollector`, `telemetryHourly`, `researchSync`; `python -m ia4.lab.selftest` kończy się „WYNIK: OK”; branch `research` ma `status.json` i `log.jsonl`; arkusze RESEARCH i STRATEGIE się odświeżają. Siatka zakończona 1.10.2026, od tego czasu adaptacja.
 
 ### Etap 3 — Paper trading 🟨
 
 Sygnały strategii na żywo i wirtualny inwestor w Apps Script (sekcja 11a). Działa bez Maca, przy każdej zamkniętej świecy. Wdrożony, gdy:
-- 3.1 `Paper.gs` i `PaperEngine.gs` są w Apps Script, a pierwsze przeliczenie zbudowało pamięć świec,
+- 3.1 `Paper.gs` i `PaperEngine.gs` są w Apps Script, a pierwsze przeliczenie zbudowało pamięć świec (ukryty arkusz `_IA4_DANE`),
 - 3.2 SIGNALS-REALTIME dostaje wiersz po każdej świecy sesji,
-- 3.3 VIRTUAL-INVESTOR otwiera i zamyka transakcje dla strategii wpisanych przez człowieka.
+- 3.3 VIRTUAL-INVESTOR otwiera i zamyka transakcje dla strategii zaznaczonych „for VI” w arkuszu STRATEGIE.
 
 ---
 
@@ -305,8 +305,9 @@ FC to warunek sprawdzany na zamknięciu każdej świecy f ≥ e (e = świeca wej
 7. **Wyniki** dla każdej kombinacji SL × TP i każdej strefy (skarbiec, okresy 1–4 grupy głównej): liczba transakcji, zyskownych, suma zysków, suma strat, liczba wyjść SL / TP / FC / limit / anulowanych.
 8. **Profit factor (PF)** = suma zysków % / suma strat %; bez strat i z zyskiem → 99 (sufit).
 9. **Hipotezy SL × TP:** każda reguła jest symulowana zawsze na pełnej siatce SL 1–10% × TP 1–10% (100 hipotez). Zapisana strategia ma jedną parę SL/TP i pełną macierz PF wszystkich 100 hipotez.
-11. **PF ważony (ostateczny PF strategii)** = (n_g · min(PF_g, 10) + n_s · min(PF_s, 10)) / (n_g + n_s), gdzie n_g, PF_g — liczba transakcji i PF grupy głównej, n_s, PF_s — skarbca. Sufit 10 dla każdej części, bo PF bez strat wynosi umownie 99 i przy kilkunastu transakcjach zawyżałby średnią. To on decyduje o przyjęciu strategii (próg `pf_min`) i o kolejności w grupie.
 10. **Wejście „na ślepo”** (punkt odniesienia): każda świeca grupy głównej od 150. świecy instrumentu jest sygnałem, ten sam kierunek, SL, TP i limit, bez FC, jedna pozycja naraz. Przewaga strategii = PF strategii / PF wejścia na ślepo przy tym samym SL/TP.
+11. **PF ważony (ostateczny PF strategii)** = (n_g · min(PF_g, 10) + n_s · min(PF_s, 10)) / (n_g + n_s), gdzie n_g, PF_g — liczba transakcji i PF grupy głównej, n_s, PF_s — skarbca. Sufit 10 dla każdej części, bo PF bez strat wynosi umownie 99 i przy kilkunastu transakcjach zawyżałby średnią. To on decyduje o przyjęciu strategii (próg `pf_min`) i o kolejności w grupie.
+12. **Skuteczność** = udział transakcji zamkniętych na TP (nie: udział zyskownych). Średni wynik % liczony jest też osobno dla każdego rodzaju wyjścia (`stats.exit_avg_ret_pct`: tp, sl, fc, time, all) — widać, czy FC zarabia, czy tylko ucina straty.
 
 ---
 
@@ -336,8 +337,8 @@ FC to warunek sprawdzany na zamknięciu każdej świecy f ≥ e (e = świeca wej
 |---|---|---|
 | 1. Sito grupy główna | dla pary SL/TP: transakcji ≥ 30 **i** PF ≥ 1,5 **i** PF > 1 w ≥ 3 z 4 okresów **i** mediana PF sąsiednich SL/TP (±1 pkt proc.) ≥ 1,2 | `min_trades_main`, `pf_min`, `folds_min_ok`, `pf_sltp_neighbors` |
 | 1a. Przewaga | PF / PF wejścia na ślepo (ten sam kierunek, SL, TP, limit) ≥ 1,2 | `pf_edge_min` |
-| 1c. Wyjścia | transakcje zamknięte limitem czasu ≤ 10% (cel: strategie, które trafiają w TP, a nie zarabiają na samym trzymaniu w hossie); opcjonalnie udział TP ≥ próg (domyślnie 0 = bez progu). Pula rodziców adaptacji bierze tylko hipotezy spełniające ten warunek | `max_time_share`, `min_tp_share` |
 | 1b. Stosunek TP/SL | TP/SL od 1:3 do 3:1 (np. SL 8% / TP 1% odpada) | `tp_sl_ratio` |
+| 1c. Wyjścia | transakcje zamknięte limitem czasu ≤ 10% (cel: strategie, które trafiają w TP, a nie zarabiają na samym trzymaniu w hossie); opcjonalnie udział TP ≥ próg (domyślnie 0 = bez progu). Pula rodziców adaptacji bierze tylko hipotezy spełniające ten warunek | `max_time_share`, `min_tp_share` |
 | 2. Wybór SL/TP | spośród par, które przeszły sito — najwyższy PF grupy głównej | — |
 | 3. Stabilność parametrów | do 12 reguł różniących się jednym parametrem (okres ±10%, grow/shrink ±1, k ±0,25, sąsiedni próg filtra) przy tym samym SL/TP: mediana PF ≥ 1,2 **i** ≥ 60% z PF ≥ 1 — inaczej „niestabilna” | `pf_param_neighbors`, `param_neighbors_share_ok` |
 | 3a. Grupa pełna | w grupie strategii (9.5) jest już 5 aktywnych, a PF grupy głównej kandydata nie jest wyższy niż najsłabszej z nich → bez skarbca | `max_per_group` |
@@ -413,7 +414,7 @@ Przy tym samym odświeżeniu arkusz **STRATEGIE** dostaje wszystkie strategie ak
 
 **Obliczenia:** `PaperEngine.gs` = sekcja 8 w JavaScript, te same wzory i ta sama kolejność zdarzeń. Średnie okienkowe (WMA, HMA, VWMA) liczone tylko dla końcówki serii (ostatnie 64 świece i świece otwartych pozycji) — te same wartości, mniej pracy. EMA, DEMA, TEMA, KAMA, ZLEMA liczone od początku pamięci (1800 świec; różnica wobec liczenia od początku bazy jest pomijalna). Cecha `since` liczy pełne serie.
 
-**Kolejność na każdej nowej świecy K** (świece po kolei, najwyżej 21 naraz przy nadrabianiu):
+**Kolejność na każdej nowej świecy K** (świece po kolei, najwyżej 21 naraz przy nadrabianiu; spółka, której świeca K dotarła dopiero po przeliczeniu, nie dostaje sygnału na tej świecy — jej pozycje są prowadzone dalej normalnie):
 1. pozycje inwestora — każda świeca instrumentu po ostatniej obsłużonej: wejście (open świecy po sygnale), potem luka SL/TP → FC → SL → TP → limit (8.6), na koniec FC na zamknięciu,
 2. sygnały wszystkich strategii na świecy K na 53 spółkach,
 3. inwestor otwiera pozycję „oczekuje” dla sygnału strategii z jego listy, jeśli ta strategia nie ma już otwartej/oczekującej pozycji na tej spółce.
@@ -437,27 +438,42 @@ Wynik musi brzmieć „rozbieżności: sygnały 0, transakcje 0”.
 
 ## 12. Wdrożenie i uruchamianie
 
-### Wdrożenie wersji 1.1 (jednorazowo)
+### Apps Script — skład
 
-1. Wypchnięcie zmian z pakietu `.bundle` (polecenia podaje Claude).
-2. Apps Script: **podmień** `Code.gs` i `Telemetry.gs`, **dodaj plik** `Research.gs` (treść z GitHub). Zapisz. Odśwież arkusz → menu **IA 4 → ⚙️ Konfiguruj i włącz automat** (odtwarza STATS, zakłada triggery `runCollector`, `telemetryHourly`, `researchSync`).
-3. Mac:
-   ```bash
-   cd ~/Desktop/IA4 && git pull
-   cd ia4-research && source .venv/bin/activate
-   pip install -r requirements.txt
-   python -m ia4.lab.selftest          # musi być „WYNIK: OK”
-   python -m ia4.lab                   # liczy do Ctrl+C
-   ```
-4. Po pierwszym logu: menu IA 4 → **🔬 Odśwież RESEARCH teraz**.
+Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min. Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY` i inne — nie edytować). Arkusze: STATS, RESEARCH, STRATEGIE, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
 
-### Na co dzień
+### Aktualizacja do nowej wersji
+
+1. Wypchnięcie pakietu `.bundle` (polecenia niżej).
+2. Apps Script: podmienić pliki `.gs` zmienione w pakiecie (Claude podaje listę) — najprościej zawsze wszystkie pięć. Zapisać, odświeżyć arkusz.
+3. „⚙️ Konfiguruj i włącz automat” — tylko gdy zmieniła się lista instrumentów, układ STATS albo triggery (Claude o tym mówi). Konfiguruj odtwarza STATS, triggery i `system/universe` oraz uzupełnia ostatni miesiąc (ok. 2500 zapisów).
+4. Mac: `cd ~/Desktop/IA4 && git pull`; `pip install -r requirements.txt`, gdy zmieniły się zależności; zatrzymać program (Ctrl+C) i uruchomić ponownie, gdy zmienił się kod Pythona.
+
+### Mac — na co dzień
 
 ```bash
-cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && python -m ia4.lab
+# raz: skrót ia4 (4 procesy = ok. połowa mocy M2, Mac się nie przegrzewa)
+echo "alias ia4='cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && python -m ia4.lab --workers 4'" >> ~/.zshrc
+source ~/.zshrc
+
+ia4                 # liczy do Ctrl+C (zapisuje stan i wysyła log przed końcem)
+ia4 --hours 4       # liczy 4 godziny
 ```
 
-Opcje: `--hours N`, `--workers N`, `--check` (tylko synchronizacja i kontrola bazy), `--no-sync`, `--no-push`. Po zmianie kodu na `main`: `git pull` w `~/Desktop/IA4`.
+Opcje: `--hours N`, `--workers N` (domyślnie rdzenie − 1), `--check` (tylko synchronizacja i kontrola bazy), `--no-sync`, `--no-push`. Program można przerwać w dowolnym momencie — wznawia od ostatniego punktu (twarde zamknięcie traci najwyżej 30 min pracy; strategie są wysyłane od razu). Test silnika: `python -m ia4.lab.selftest`.
+
+### Limity Firestore (plan Spark: 20 000 zapisów i 50 000 odczytów na dzień)
+
+| Część | Zapisy | Odczyty |
+|---|---|---|
+| zbieranie na żywo (75 instrumentów, 7 świec) | ok. 1100 / dzień | — |
+| nocne odświeżenie + liczenie bazy | ok. 550 / noc | ok. 150 / noc |
+| historia doubleProof (do zakończenia) | najwyżej 8000 / dzień | — |
+| „Konfiguruj” / „Uzupełnij ostatni miesiąc” | ok. 2500 / raz | — |
+| paper trading | — | pierwsze zbudowanie pamięci ok. 19 000 (raz), potem ok. 150 / świecę + ok. 650 raz dziennie |
+| Mac: `ia4.sync` przyrostowo | — | kilkaset / start |
+| Mac: pierwsza synchronizacja nowych instrumentów (doubleProof) | — | ok. 10 000 (raz) |
+| Mac: `ia4.sync --full` | — | ok. 48 000 — nie łączyć tego samego dnia z innymi dużymi odczytami |
 
 ### Pakiety `.bundle` od Claude
 
@@ -470,6 +486,7 @@ git fetch ~/Downloads/IA4-vX.Y.bundle vX.Y
 git cherry-pick FETCH_HEAD || { git rm -rq telemetry/history; git -c core.editor=true cherry-pick --continue; }
 git log --oneline -2
 git push
+cd ~/Desktop/IA4 && git pull
 ```
 
 ---
@@ -478,6 +495,7 @@ git push
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.11 | 2026-10-01 | Przegląd całości. Poprawka: szybkie ponawianie pobrań po zamknięciu świecy liczy czas następnej próby (przy 75 instrumentach groziło przekroczeniem 6 min Apps Script). Instrukcja uporządkowana: cele 3–4, kolejność 8.6 i 9.3, skuteczność (8.6 p. 12), status w STATS, zużycie Firestore przy 75 instrumentach, sekcja 12 (skład Apps Script, aktualizacja, Mac na co dzień z `--workers 4`, limity), etapy 2–3. Telemetria: etap „2 + 3”. |
 | 1.10 | 2026-10-01 | Wirtualny inwestor bierze strategie zaznaczone checkboxem „for VI” w arkuszu STRATEGIE (bez limitu) zamiast listy 20 ID w VIRTUAL-INVESTOR; zaznaczenia w `VI_IDS`, zaznaczone nieaktywne zostają w STRATEGIE jako „(archiwum)”. Python: wersje porównywane liczbowo. |
 | 1.9 | 2026-10-01 | Nowa kolekcja `doubleProof` (20 spółek S&P 500: AMD, INTC, QCOM, CSCO, ADBE, LRCX, C, MS, SCHW, COP, OXY, SLB, BA, GE, UBER, F, GM, COST, BMY, CMCSA) — zbierana na żywo i w nocnym odświeżeniu, historia pobierana wstecz porcjami co godzinę do granicy Yahoo (sekcja 4 p. 5). Sekcja 6a: doubleProof wyłączona z poszukiwania i paper tradingu, tylko do weryfikacji. STATS: wiersz „Historia doubleProof”; telemetria: `doubleProofHistory`. Python: `system/universe.doubleProof`, grupa w manifeście synchronizacji. |
 | 1.8 | 2026-10-01 | Etap 3 — paper trading: `PaperEngine.gs` (język reguł w JS, zgodność z Pythonem 100% w teście 140 reguł / 13 335 sygnałów / 11 962 transakcji), `Paper.gs` (pamięć świec `_IA4_DANE`, krok po każdej świecy w `runCollector`, arkusze SIGNALS-REALTIME i VIRTUAL-INVESTOR, menu „Paper trading — przelicz teraz”), test `ia4-research/tests/`. Zasada 12: jeden język reguł, dwie implementacje. |

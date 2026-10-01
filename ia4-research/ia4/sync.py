@@ -1,6 +1,6 @@
 """
 IA 4 — synchronizacja Firestore → lokalna kopia (parquet).
-Wersja projektu: 1.10 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.11 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Firestore jest jedynym źródłem prawdy. Pliki w data/ to kopia robocza na Macu —
 można je skasować i odtworzyć.
@@ -12,8 +12,8 @@ tanie pytania na instrument i skleja odpowiedzi:
      co Apps Script przepisał (np. nocne odświeżenie ostatnich 5 sesji).
 Manifest (data/_manifest.json) pamięta datę ostatniej synchronizacji instrumentu.
 
-KOSZT: pełne pobranie wszystkich instrumentów to ok. 37 000 odczytów Firestore
-(~3/4 dziennego darmowego limitu 50 000) — najwyżej raz dziennie. Synchronizacja
+KOSZT: pełne pobranie wszystkich instrumentów (75) to ok. 48 000 odczytów Firestore
+(prawie cały dzienny darmowy limit 50 000) — najwyżej raz dziennie. Synchronizacja
 przyrostowa kosztuje kilkaset odczytów.
 
 DWA FORMATY W FIRESTORE (instrukcja, sekcja 4) sprowadzamy do jednej tabeli
