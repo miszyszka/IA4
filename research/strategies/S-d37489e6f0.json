@@ -1,0 +1,603 @@
+{
+  "id": "S-d37489e6f0",
+  "version": "1.7",
+  "found_at": "2026-10-01T10:58:32Z",
+  "found_at_pl": "2026-10-01 12:58",
+  "description": "SHORT: VWMA35 nad VWMA61: odległość rosła 4 świece, potem malała 2 — zapowiedź przecięcia · filtr: świec od ostatniego przecięcia A/B > 100 · SL 7% / TP 3% · FC: ponowne rozejście (1 świecę)",
+  "rule": {
+    "direction": "short",
+    "exit": {
+      "fc": [
+        {
+          "kind": "reexpand",
+          "n": 1
+        }
+      ],
+      "max_bars": null,
+      "sl": 7,
+      "tp": 3
+    },
+    "filters": [
+      {
+        "f": "since",
+        "op": ">",
+        "x": 100
+      }
+    ],
+    "lines": {
+      "A": {
+        "ma": "VWMA",
+        "n": 35
+      },
+      "B": {
+        "ma": "VWMA",
+        "n": 61
+      }
+    },
+    "schema": "ia4-rule/1",
+    "signal": {
+      "grow": 4,
+      "kind": "converge",
+      "shrink": 2
+    }
+  },
+  "execution": {
+    "entry": "open świecy po sygnale",
+    "intrabar": "najpierw SL, potem TP",
+    "gap": "luka przez SL → cena otwarcia; luka przez TP → poziom TP",
+    "fc": "sygnał FC na zamknięciu → wyjście po open następnej świecy",
+    "time": "limit → wyjście po close ostatniej świecy",
+    "positions": "jedna naraz na instrument",
+    "costs": 0
+  },
+  "stats": {
+    "main": {
+      "trades": 187,
+      "pf": 1.6,
+      "win_rate": 0.6043,
+      "avg_ret_pct": 0.3299,
+      "sum_ret_pct": 61.699,
+      "sl": 3,
+      "tp": 38,
+      "fc": 146,
+      "time": 0,
+      "cancelled": 1
+    },
+    "vault": {
+      "trades": 52,
+      "pf": 2.096,
+      "win_rate": 0.4615,
+      "avg_ret_pct": 0.3049,
+      "sum_ret_pct": 15.855,
+      "sl": 0,
+      "tp": 7,
+      "fc": 45,
+      "time": 0,
+      "cancelled": 0
+    },
+    "combined": {
+      "trades": 239,
+      "pf": 1.661,
+      "win_rate": 0.5732,
+      "avg_ret_pct": 0.3245,
+      "sum_ret_pct": 77.554,
+      "sl": 3,
+      "tp": 45,
+      "fc": 191,
+      "time": 0,
+      "cancelled": 1
+    },
+    "exit_avg_ret_pct": {
+      "tp": 3.0,
+      "sl": -7.0,
+      "fc": -0.1908,
+      "time": null,
+      "all": 0.3245
+    },
+    "blind_entry_main": {
+      "trades": 3665,
+      "pf": 0.741,
+      "win_rate": 0.648,
+      "avg_ret_pct": -0.6791,
+      "sum_ret_pct": -2489.013,
+      "sl": 1290,
+      "tp": 2375,
+      "fc": 0,
+      "time": 0,
+      "cancelled": 52
+    },
+    "folds": [
+      {
+        "trades": 61,
+        "pf": 1.683,
+        "win_rate": 0.6066,
+        "avg_ret_pct": 0.2225,
+        "sum_ret_pct": 13.572,
+        "sl": 1,
+        "tp": 4,
+        "fc": 56,
+        "time": 0,
+        "cancelled": 0,
+        "period": "20250304–20250725"
+      },
+      {
+        "trades": 25,
+        "pf": 3.774,
+        "win_rate": 0.76,
+        "avg_ret_pct": 0.9616,
+        "sum_ret_pct": 24.041,
+        "sl": 0,
+        "tp": 8,
+        "fc": 17,
+        "time": 0,
+        "cancelled": 0,
+        "period": "20250728–20251215"
+      },
+      {
+        "trades": 59,
+        "pf": 0.869,
+        "win_rate": 0.4576,
+        "avg_ret_pct": -0.1218,
+        "sum_ret_pct": -7.186,
+        "sl": 1,
+        "tp": 13,
+        "fc": 45,
+        "time": 0,
+        "cancelled": 0,
+        "period": "20251216–20260508"
+      },
+      {
+        "trades": 42,
+        "pf": 2.611,
+        "win_rate": 0.7143,
+        "avg_ret_pct": 0.7446,
+        "sum_ret_pct": 31.273,
+        "sl": 1,
+        "tp": 13,
+        "fc": 28,
+        "time": 0,
+        "cancelled": 1,
+        "period": "20260511–20260930"
+      }
+    ],
+    "breakdown": {
+      "entry_slot": {
+        "1": {
+          "trades": 25,
+          "pf": 3.084,
+          "avg_ret_pct": 1.001
+        },
+        "2": {
+          "trades": 5,
+          "pf": 10.457,
+          "avg_ret_pct": 1.0921
+        },
+        "3": {
+          "trades": 22,
+          "pf": 0.516,
+          "avg_ret_pct": -0.5894
+        },
+        "4": {
+          "trades": 17,
+          "pf": 0.714,
+          "avg_ret_pct": -0.3125
+        },
+        "5": {
+          "trades": 12,
+          "pf": 2.389,
+          "avg_ret_pct": 0.4048
+        },
+        "6": {
+          "trades": 48,
+          "pf": 3.44,
+          "avg_ret_pct": 0.6751
+        },
+        "7": {
+          "trades": 58,
+          "pf": 1.434,
+          "avg_ret_pct": 0.2109
+        }
+      },
+      "entry_dow": {
+        "1": {
+          "trades": 31,
+          "pf": 3.349,
+          "avg_ret_pct": 0.8031
+        },
+        "2": {
+          "trades": 44,
+          "pf": 1.463,
+          "avg_ret_pct": 0.2655
+        },
+        "3": {
+          "trades": 27,
+          "pf": 0.691,
+          "avg_ret_pct": -0.2905
+        },
+        "4": {
+          "trades": 46,
+          "pf": 2.5,
+          "avg_ret_pct": 0.5768
+        },
+        "5": {
+          "trades": 39,
+          "pf": 1.268,
+          "avg_ret_pct": 0.1649
+        }
+      },
+      "instruments_with_trades": 48,
+      "top_instruments": {
+        "MU": 13,
+        "JNJ": 9,
+        "CAT": 9,
+        "AMAT": 8,
+        "HON": 8,
+        "RTX": 7,
+        "MSFT": 6,
+        "BAC": 6,
+        "CVX": 6,
+        "KO": 6
+      },
+      "hold_bars": {
+        "median": 3.0,
+        "p90": 19.0
+      }
+    },
+    "cross_stats": {
+      "crosses": 2678,
+      "bars_between_median": 43.0,
+      "p25": 25.0,
+      "p75": 69.0,
+      "p90": 101.40000000000009
+    },
+    "pf_weighted": 1.708
+  },
+  "sltp_hypotheses": {
+    "sl": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tp": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "pf_main": [
+      [
+        1.298,
+        1.351,
+        1.332,
+        1.253,
+        1.154,
+        1.136,
+        1.176,
+        1.23,
+        1.285,
+        1.339
+      ],
+      [
+        1.078,
+        1.083,
+        1.131,
+        1.0,
+        0.937,
+        0.874,
+        0.909,
+        0.955,
+        1.001,
+        0.956
+      ],
+      [
+        1.086,
+        1.126,
+        1.155,
+        0.989,
+        0.938,
+        0.891,
+        0.942,
+        1.002,
+        0.982,
+        0.95
+      ],
+      [
+        1.033,
+        1.113,
+        1.185,
+        1.009,
+        0.952,
+        0.969,
+        1.036,
+        1.035,
+        1.022,
+        0.998
+      ],
+      [
+        1.09,
+        1.317,
+        1.35,
+        1.136,
+        1.076,
+        1.038,
+        1.047,
+        1.005,
+        0.994,
+        0.973
+      ],
+      [
+        1.154,
+        1.391,
+        1.401,
+        1.148,
+        1.073,
+        1.031,
+        1.039,
+        1.0,
+        0.989,
+        0.969
+      ],
+      [
+        1.131,
+        1.48,
+        1.6,
+        1.249,
+        1.144,
+        1.095,
+        1.191,
+        1.156,
+        1.145,
+        1.073
+      ],
+      [
+        1.104,
+        1.448,
+        1.554,
+        1.182,
+        1.075,
+        1.023,
+        1.113,
+        1.077,
+        1.092,
+        1.02
+      ],
+      [
+        1.078,
+        1.417,
+        1.678,
+        1.225,
+        1.099,
+        1.04,
+        1.133,
+        1.097,
+        1.116,
+        1.043
+      ],
+      [
+        1.201,
+        1.573,
+        1.856,
+        1.253,
+        1.101,
+        1.12,
+        1.184,
+        1.18,
+        1.204,
+        1.125
+      ]
+    ],
+    "trades_main": [
+      [
+        188,
+        188,
+        188,
+        188,
+        188,
+        188,
+        188,
+        188,
+        188,
+        188
+      ],
+      [
+        188,
+        188,
+        188,
+        188,
+        188,
+        188,
+        188,
+        188,
+        188,
+        188
+      ],
+      [
+        188,
+        187,
+        187,
+        187,
+        187,
+        187,
+        187,
+        187,
+        187,
+        187
+      ],
+      [
+        188,
+        187,
+        187,
+        187,
+        187,
+        187,
+        187,
+        187,
+        187,
+        187
+      ],
+      [
+        188,
+        187,
+        187,
+        187,
+        187,
+        187,
+        187,
+        186,
+        186,
+        186
+      ],
+      [
+        188,
+        187,
+        187,
+        187,
+        187,
+        187,
+        187,
+        186,
+        186,
+        186
+      ],
+      [
+        188,
+        187,
+        187,
+        187,
+        187,
+        187,
+        187,
+        186,
+        186,
+        185
+      ],
+      [
+        188,
+        187,
+        187,
+        187,
+        187,
+        187,
+        187,
+        186,
+        186,
+        185
+      ],
+      [
+        188,
+        187,
+        187,
+        186,
+        186,
+        186,
+        186,
+        185,
+        185,
+        184
+      ],
+      [
+        188,
+        187,
+        187,
+        182,
+        182,
+        182,
+        181,
+        181,
+        181,
+        180
+      ]
+    ]
+  },
+  "robustness": {
+    "sltp_neighbors_median_pf": 1.396,
+    "edge_vs_blind_entry": 2.158,
+    "folds_ok": 3,
+    "param_neighbors_median_pf": 1.229,
+    "param_neighbors_share_pf_ge_1": 0.667
+  },
+  "data": {
+    "last_date": 20260930,
+    "instruments": 53,
+    "vault_bars_per_instrument": 800,
+    "folds": [
+      [
+        20250304,
+        20250725
+      ],
+      [
+        20250728,
+        20251215
+      ],
+      [
+        20251216,
+        20260508
+      ],
+      [
+        20260511,
+        20260930
+      ]
+    ]
+  },
+  "search": {
+    "phase": "adaptacja",
+    "evals_before": 96814,
+    "vault_peek_no": 157
+  },
+  "criteria": {
+    "sl_grid": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tp_grid": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "min_trades_main": 30,
+    "pf_min": 1.5,
+    "pf_sltp_neighbors": 1.2,
+    "folds_min_ok": 3,
+    "pf_param_neighbors": 1.2,
+    "param_neighbors_share_ok": 0.6,
+    "pf_edge_min": 1.2,
+    "dup_jaccard": 0.5,
+    "vault_pf_min": 1.2,
+    "tp_sl_ratio": [
+      0.3334,
+      3.0
+    ],
+    "max_per_group": 5,
+    "max_time_share": 0.1,
+    "min_tp_share": 0.0,
+    "min_trades_vault": 10
+  }
+}
