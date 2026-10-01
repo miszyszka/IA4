@@ -1,6 +1,6 @@
 {
   "version": "1.8",
-  "saved_at": "2026-10-01T19:08:34Z",
+  "saved_at": "2026-10-01T19:38:38Z",
   "first_start": "2026-09-30T18:08:18Z",
   "grid": {
     "signature": "e2545a1453c7",
@@ -9,21 +9,21 @@
     "done": true
   },
   "totals": {
-    "evals": 2214814,
-    "hypotheses": 142207000,
-    "eligible": 94214,
-    "unstable": 2441,
-    "promising": 91757,
-    "duplicates": 6755,
-    "vault_peeks": 2049,
-    "accepted": 199,
-    "rejected_vault": 1684,
-    "group_full": 83173,
-    "archived": 139,
+    "evals": 2275834,
+    "hypotheses": 146517400,
+    "eligible": 96340,
+    "unstable": 2511,
+    "promising": 93813,
+    "duplicates": 6875,
+    "vault_peeks": 2086,
+    "accepted": 200,
+    "rejected_vault": 1715,
+    "group_full": 85077,
+    "archived": 140,
     "errors": 0,
-    "run_minutes": 370.29999999999995
+    "run_minutes": 400.4
   },
-  "rng_seed": 505833023,
+  "rng_seed": 199805400,
   "pool": [
     {
       "key": "cb354546cfa1379d",
@@ -17501,13 +17501,13 @@
       }
     },
     {
-      "key": "dd8e85041c72b5ec",
-      "score": 7.7778,
-      "n": 39,
-      "pf": 99.0,
-      "edge": 90.679,
+      "key": "0c48a3223baaec40",
+      "score": 2.95,
+      "n": 61,
+      "pf": 3.241,
+      "edge": 3.06,
       "best": [
-        9,
+        8,
         0
       ],
       "rule": {
@@ -17516,11 +17516,11 @@
         "lines": {
           "A": {
             "ma": "WMA",
-            "n": 30
+            "n": 22
           },
           "B": {
-            "ma": "DEMA",
-            "n": 58
+            "ma": "TEMA",
+            "n": 51
           }
         },
         "signal": {
@@ -17529,14 +17529,14 @@
         },
         "filters": [
           {
-            "f": "d5",
+            "f": "gap",
             "op": "<",
-            "x": 0.181
+            "x": 0.372
           },
           {
-            "f": "dow",
-            "op": ">",
-            "x": 1.5
+            "f": "rsi",
+            "op": "<",
+            "x": 58.7
           }
         ],
         "exit": {
@@ -17546,26 +17546,60 @@
       }
     },
     {
-      "key": "bd39b01964784009",
-      "score": 2.7339,
-      "n": 51,
-      "pf": 3.19,
-      "edge": 2.774,
+      "key": "639739bc2030e004",
+      "score": 1.8741,
+      "n": 38,
+      "pf": 1.891,
+      "edge": 2.326,
       "best": [
-        7,
-        2
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "EMA",
+            "n": 18
+          },
+          "B": {
+            "ma": "VWMA",
+            "n": 19
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 2.0
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 7,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "dfc7088edc2fc0a0",
+      "score": 1.7801,
+      "n": 228,
+      "pf": 1.863,
+      "edge": 1.32,
+      "best": [
+        9,
+        7
       ],
       "rule": {
         "schema": "ia4-rule/1",
         "direction": "long",
         "lines": {
           "A": {
-            "ma": "WMA",
+            "ma": "HMA",
             "n": 29
           },
           "B": {
-            "ma": "SMA",
-            "n": 50
+            "ma": "DEMA",
+            "n": 63
           }
         },
         "signal": {
@@ -17574,14 +17608,14 @@
         },
         "filters": [
           {
-            "f": "atrp",
-            "op": "<",
-            "x": 1.1
+            "f": "since",
+            "op": ">",
+            "x": 21
           },
           {
-            "f": "d20",
+            "f": "vrel",
             "op": ">",
-            "x": 0.441
+            "x": 1.11
           }
         ],
         "exit": {
@@ -17591,13 +17625,58 @@
       }
     },
     {
-      "key": "6f599bdd3cacf984",
-      "score": 2.1285,
-      "n": 89,
-      "pf": 2.275,
-      "edge": 1.616,
+      "key": "35a7995a2bb6a936",
+      "score": 1.6917,
+      "n": 72,
+      "pf": 1.854,
+      "edge": 1.291,
       "best": [
-        7,
+        8,
+        8
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 10
+          },
+          "B": {
+            "ma": "TEMA",
+            "n": 31
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 1.75
+        },
+        "filters": [
+          {
+            "f": "since",
+            "op": "<",
+            "x": 50
+          },
+          {
+            "f": "spy140",
+            "op": ">",
+            "x": -2.89
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "403cf11c63650f64",
+      "score": 1.5992,
+      "n": 488,
+      "pf": 1.643,
+      "edge": 1.129,
+      "best": [
+        8,
         9
       ],
       "rule": {
@@ -17605,12 +17684,12 @@
         "direction": "long",
         "lines": {
           "A": {
-            "ma": "WMA",
-            "n": 28
+            "ma": "HMA",
+            "n": 25
           },
           "B": {
-            "ma": "TEMA",
-            "n": 59
+            "ma": "DEMA",
+            "n": 56
           }
         },
         "signal": {
@@ -17618,11 +17697,6 @@
           "k": 2.5
         },
         "filters": [
-          {
-            "f": "d20",
-            "op": ">",
-            "x": 1.51
-          },
           {
             "f": "since",
             "op": ">",
@@ -17636,96 +17710,62 @@
       }
     },
     {
-      "key": "573f06813ecdfc0d",
-      "score": 1.2735,
-      "n": 135,
-      "pf": 1.273,
-      "edge": 1.3,
-      "best": [
-        5,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "ZLEMA",
-            "n": 35
-          },
-          "B": {
-            "ma": "HMA",
-            "n": 74
-          }
-        },
-        "signal": {
-          "kind": "revert",
-          "k": 2.5
-        },
-        "filters": [
-          {
-            "f": "rsi",
-            "op": ">",
-            "x": 43.4
-          }
-        ],
-        "exit": {
-          "max_bars": 70,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "76cb293b2852a547",
-      "score": 1.2616,
-      "n": 294,
-      "pf": 1.419,
-      "edge": 1.241,
+      "key": "570669582ee3a9a7",
+      "score": 1.5167,
+      "n": 53,
+      "pf": 1.595,
+      "edge": 1.959,
       "best": [
         0,
-        8
+        4
       ],
       "rule": {
         "schema": "ia4-rule/1",
-        "direction": "long",
+        "direction": "short",
         "lines": {
           "A": {
-            "ma": "VWMA",
-            "n": 38
+            "ma": "TEMA",
+            "n": 67
           },
           "B": {
-            "ma": "EMA",
-            "n": 105
-          },
-          "C": {
-            "ma": "ZLEMA",
-            "n": 145
+            "ma": "DEMA",
+            "n": 125
           }
         },
         "signal": {
-          "kind": "ribbon"
+          "kind": "converge",
+          "grow": 6,
+          "shrink": 3
         },
         "filters": [
           {
-            "f": "qqq35",
+            "f": "slopeA",
             "op": "<",
-            "x": 1.36
+            "x": -0.5
           }
         ],
         "exit": {
           "max_bars": null,
-          "fc": []
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 2
+            },
+            {
+              "kind": "cross_back"
+            }
+          ]
         }
       }
     },
     {
-      "key": "8892c48484ad5244",
-      "score": 1.257,
-      "n": 98,
-      "pf": 1.373,
-      "edge": 1.445,
+      "key": "e255f00210c1f40d",
+      "score": 1.4855,
+      "n": 136,
+      "pf": 1.485,
+      "edge": 1.458,
       "best": [
-        0,
+        4,
         1
       ],
       "rule": {
@@ -17734,295 +17774,36 @@
         "lines": {
           "A": {
             "ma": "WMA",
-            "n": 124
+            "n": 30
           },
           "B": {
-            "ma": "VWMA",
-            "n": 143
-          },
-          "C": {
-            "ma": "SMA",
-            "n": 147
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
-        },
-        "filters": [
-          {
-            "f": "qqq140",
-            "op": "<",
-            "x": 3.8
-          },
-          {
-            "f": "spy35",
-            "op": ">",
-            "x": 1.29
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "d089ba68d95dcef1",
-      "score": 1.2517,
-      "n": 126,
-      "pf": 1.662,
-      "edge": 2.46,
-      "best": [
-        9,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
             "ma": "WMA",
-            "n": 87
-          },
-          "B": {
-            "ma": "HMA",
-            "n": 141
+            "n": 58
           }
         },
         "signal": {
           "kind": "revert",
-          "k": 0.75
-        },
-        "filters": [
-          {
-            "f": "d20",
-            "op": "<",
-            "x": 6.89
-          },
-          {
-            "f": "since",
-            "op": "<",
-            "x": 35
-          }
-        ],
-        "exit": {
-          "max_bars": null,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "55dcb2cd358c2fe0",
-      "score": 1.2433,
-      "n": 417,
-      "pf": 1.243,
-      "edge": 1.145,
-      "best": [
-        7,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "TEMA",
-            "n": 56
-          },
-          "B": {
-            "ma": "ZLEMA",
-            "n": 85
-          },
-          "C": {
-            "ma": "KAMA",
-            "n": 126
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
-        },
-        "filters": [
-          {
-            "f": "atrp",
-            "op": ">",
-            "x": 0.941
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "d18c3b64ff173126",
-      "score": 1.1584,
-      "n": 711,
-      "pf": 1.158,
-      "edge": 1.167,
-      "best": [
-        6,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "EMA",
-            "n": 69
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 94
-          }
-        },
-        "signal": {
-          "kind": "revert",
-          "k": 3.0
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "1137f601bf013b06",
-      "score": 1.1528,
-      "n": 82,
-      "pf": 1.235,
-      "edge": 0.824,
-      "best": [
-        9,
-        9
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "EMA",
-            "n": 49
-          },
-          "B": {
-            "ma": "DEMA",
-            "n": 66
-          },
-          "C": {
-            "ma": "DEMA",
-            "n": 109
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
+          "k": 2.25
         },
         "filters": [
           {
             "f": "rsi",
             "op": "<",
-            "x": 38.8
+            "x": 43.5
           }
         ],
         "exit": {
-          "max_bars": null,
+          "max_bars": 70,
           "fc": []
         }
       }
     },
     {
-      "key": "ac9fbe15022273b8",
-      "score": 1.1402,
-      "n": 1731,
-      "pf": 1.144,
-      "edge": 1.152,
-      "best": [
-        7,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 108
-          },
-          "B": {
-            "ma": "DEMA",
-            "n": 116
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 2,
-          "shrink": 3
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 1
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "777aa64ebd155fa2",
-      "score": 1.1312,
-      "n": 793,
-      "pf": 1.209,
-      "edge": 1.178,
-      "best": [
-        8,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "TEMA",
-            "n": 66
-          },
-          "B": {
-            "ma": "EMA",
-            "n": 77
-          }
-        },
-        "signal": {
-          "kind": "revert",
-          "k": 1.25
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "d9c4e52c095b3abf",
-      "score": 1.0933,
-      "n": 2101,
-      "pf": 1.093,
-      "edge": 0.988,
+      "key": "3a814fab5665cbf9",
+      "score": 1.4469,
+      "n": 179,
+      "pf": 1.574,
+      "edge": 1.417,
       "best": [
         0,
         6
@@ -18032,82 +17813,42 @@
         "direction": "long",
         "lines": {
           "A": {
-            "ma": "EMA",
-            "n": 14
+            "ma": "WMA",
+            "n": 28
           },
           "B": {
             "ma": "SMA",
-            "n": 19
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 4,
-          "shrink": 4
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 3
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "bd5bd39e4285d2a0",
-      "score": 1.0933,
-      "n": 227,
-      "pf": 1.093,
-      "edge": 1.345,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "KAMA",
-            "n": 5
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 6
+            "n": 51
           }
         },
         "signal": {
           "kind": "revert",
-          "k": 1.75
+          "k": 2.5
         },
         "filters": [
           {
-            "f": "ret7",
+            "f": "atrrank",
             "op": "<",
-            "x": -2.12
+            "x": 37.7
           },
           {
-            "f": "spy35",
+            "f": "slot",
             "op": "<",
-            "x": -0.379
+            "x": 5.5
           }
         ],
         "exit": {
-          "max_bars": 7,
+          "max_bars": null,
           "fc": []
         }
       }
     },
     {
-      "key": "6aa9d1395c70a784",
-      "score": 1.0896,
-      "n": 798,
-      "pf": 1.09,
-      "edge": 0.749,
+      "key": "f39d22d0ddfb8486",
+      "score": 1.4343,
+      "n": 701,
+      "pf": 1.451,
+      "edge": 0.997,
       "best": [
         9,
         8
@@ -18117,1124 +17858,182 @@
         "direction": "long",
         "lines": {
           "A": {
-            "ma": "KAMA",
-            "n": 31
-          },
-          "B": {
-            "ma": "WMA",
-            "n": 71
-          },
-          "C": {
-            "ma": "DEMA",
-            "n": 76
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": null,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "36a7edd8588deea4",
-      "score": 1.0606,
-      "n": 483,
-      "pf": 1.069,
-      "edge": 1.352,
-      "best": [
-        4,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "DEMA",
-            "n": 22
-          },
-          "B": {
-            "ma": "WMA",
-            "n": 105
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 3,
-          "shrink": 1
-        },
-        "filters": [
-          {
-            "f": "slot",
-            "op": ">",
-            "x": 5.5
-          },
-          {
-            "f": "vrel",
-            "op": "<",
-            "x": 0.954
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 1
-            },
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "7f4cf8ca124a4894",
-      "score": 1.0272,
-      "n": 661,
-      "pf": 1.056,
-      "edge": 1.056,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "VWMA",
-            "n": 74
-          },
-          "B": {
-            "ma": "EMA",
-            "n": 119
-          }
-        },
-        "signal": {
-          "kind": "revert",
-          "k": 0.75
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "4fcbfe607b33d91f",
-      "score": 1.0262,
-      "n": 1532,
-      "pf": 1.05,
-      "edge": 1.022,
-      "best": [
-        0,
-        3
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
             "ma": "TEMA",
-            "n": 9
+            "n": 19
           },
           "B": {
             "ma": "ZLEMA",
-            "n": 143
-          }
-        },
-        "signal": {
-          "kind": "revert",
-          "k": 1.25
-        },
-        "filters": [
-          {
-            "f": "atrp",
-            "op": ">",
-            "x": 0.589
-          },
-          {
-            "f": "spy35",
-            "op": ">",
-            "x": -0.379
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "941288237c607865",
-      "score": 1.0253,
-      "n": 1840,
-      "pf": 1.025,
-      "edge": 1.021,
-      "best": [
-        7,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "DEMA",
-            "n": 40
-          },
-          "B": {
-            "ma": "HMA",
-            "n": 41
-          },
-          "C": {
-            "ma": "TEMA",
-            "n": 122
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 70,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "7bae4c65c796b685",
-      "score": 1.0096,
-      "n": 2699,
-      "pf": 1.01,
-      "edge": 0.982,
-      "best": [
-        0,
-        3
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "ZLEMA",
-            "n": 48
-          },
-          "B": {
-            "ma": "HMA",
-            "n": 137
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 4,
-          "shrink": 1
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 2
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "bf6d09ecc0dccbca",
-      "score": 1.0041,
-      "n": 2881,
-      "pf": 1.035,
-      "edge": 1.035,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "EMA",
-            "n": 37
-          },
-          "B": {
-            "ma": "DEMA",
-            "n": 103
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "any"
-        },
-        "filters": [
-          {
-            "f": "atrrank",
-            "op": "<",
-            "x": 72.0
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "54312c7170da5245",
-      "score": 1.0026,
-      "n": 670,
-      "pf": 1.02,
-      "edge": 1.158,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "VWMA",
-            "n": 7
-          },
-          "B": {
-            "ma": "SMA",
-            "n": 142
-          }
-        },
-        "signal": {
-          "kind": "revert",
-          "k": 3.0
-        },
-        "filters": [
-          {
-            "f": "qqq35",
-            "op": "<",
-            "x": 1.36
-          },
-          {
-            "f": "slopeA",
-            "op": ">",
-            "x": -2.0
-          }
-        ],
-        "exit": {
-          "max_bars": 14,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "702ef16fe8b27dc7",
-      "score": 0.9865,
-      "n": 84,
-      "pf": 1.092,
-      "edge": 1.314,
-      "best": [
-        0,
-        4
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "SMA",
-            "n": 48
-          },
-          "B": {
-            "ma": "DEMA",
-            "n": 84
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "below"
-        },
-        "filters": [
-          {
-            "f": "d20",
-            "op": ">",
-            "x": 6.89
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "461f66f2a2998a01",
-      "score": 0.9826,
-      "n": 3080,
-      "pf": 0.983,
-      "edge": 0.983,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "DEMA",
-            "n": 10
-          },
-          "B": {
-            "ma": "HMA",
-            "n": 103
-          }
-        },
-        "signal": {
-          "kind": "cross"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "f4cff2da865326e5",
-      "score": 0.9819,
-      "n": 761,
-      "pf": 0.982,
-      "edge": 1.052,
-      "best": [
-        2,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "WMA",
-            "n": 139
-          },
-          "B": {
-            "ma": "HMA",
-            "n": 150
-          }
-        },
-        "signal": {
-          "kind": "revert",
-          "k": 2.0
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "4f92b0471a612ff7",
-      "score": 0.968,
-      "n": 2577,
-      "pf": 0.975,
-      "edge": 1.25,
-      "best": [
-        3,
-        3
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "WMA",
             "n": 47
           }
         },
         "signal": {
-          "kind": "pcross"
+          "kind": "cross"
         },
-        "filters": [
-          {
-            "f": "qqq140",
-            "op": "<",
-            "x": 0.739
-          },
-          {
-            "f": "spy140",
-            "op": "<",
-            "x": 7.14
-          }
-        ],
+        "filters": [],
         "exit": {
           "max_bars": null,
-          "fc": [
-            {
-              "kind": "pcross_back"
-            }
-          ]
+          "fc": []
         }
       }
     },
     {
-      "key": "26bd427cdc4ae7b2",
-      "score": 0.9631,
-      "n": 1565,
-      "pf": 0.963,
-      "edge": 1.094,
+      "key": "00acc782d78bf29e",
+      "score": 1.3179,
+      "n": 462,
+      "pf": 1.337,
+      "edge": 0.948,
       "best": [
-        0,
-        0
+        9,
+        7
       ],
       "rule": {
         "schema": "ia4-rule/1",
         "direction": "long",
         "lines": {
           "A": {
-            "ma": "HMA",
-            "n": 86
+            "ma": "SMA",
+            "n": 9
           },
           "B": {
-            "ma": "HMA",
-            "n": 114
+            "ma": "DEMA",
+            "n": 51
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "any"
+        },
+        "filters": [
+          {
+            "f": "qqq140",
+            "op": "<",
+            "x": 3.8
+          },
+          {
+            "f": "vrel",
+            "op": ">",
+            "x": 1.34
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "a8bdd99100e772ee",
+      "score": 1.2967,
+      "n": 118,
+      "pf": 1.356,
+      "edge": 1.968,
+      "best": [
+        9,
+        2
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "KAMA",
+            "n": 68
+          },
+          "B": {
+            "ma": "VWMA",
+            "n": 73
+          },
+          "C": {
+            "ma": "SMA",
+            "n": 100
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [
+          {
+            "f": "spy35",
+            "op": "<",
+            "x": -2.13
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "3f418125e783fc22",
+      "score": 1.2792,
+      "n": 201,
+      "pf": 1.414,
+      "edge": 1.375,
+      "best": [
+        0,
+        3
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "VWMA",
+            "n": 39
+          },
+          "B": {
+            "ma": "SMA",
+            "n": 74
           }
         },
         "signal": {
           "kind": "cross"
         },
-        "filters": [],
-        "exit": {
-          "max_bars": 14,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "8f111bbeab499f6c",
-      "score": 0.9527,
-      "n": 2424,
-      "pf": 0.953,
-      "edge": 0.942,
-      "best": [
-        6,
-        1
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "EMA",
-            "n": 66
-          },
-          "B": {
-            "ma": "VWMA",
-            "n": 143
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "below"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 14,
-          "fc": [
-            {
-              "kind": "turn_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "e20fb724bec4b7fe",
-      "score": 0.9505,
-      "n": 300,
-      "pf": 1.024,
-      "edge": 1.268,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 29
-          },
-          "B": {
-            "ma": "DEMA",
-            "n": 144
-          },
-          "C": {
-            "ma": "HMA",
-            "n": 146
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
-        },
         "filters": [
           {
-            "f": "qqq140",
+            "f": "dow",
             "op": ">",
-            "x": 3.8
-          },
-          {
-            "f": "spy35",
-            "op": ">",
-            "x": 1.29
-          }
-        ],
-        "exit": {
-          "max_bars": null,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "f59d7278b6d275c1",
-      "score": 0.9488,
-      "n": 1068,
-      "pf": 1.001,
-      "edge": 1.211,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 128
-          },
-          "B": {
-            "ma": "EMA",
-            "n": 135
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 3,
-          "shrink": 4
-        },
-        "filters": [
-          {
-            "f": "vrel",
-            "op": ">",
-            "x": 0.484
-          }
-        ],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 2
-            },
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "ef9f41674e9383c9",
-      "score": 0.9416,
-      "n": 140,
-      "pf": 0.942,
-      "edge": 0.987,
-      "best": [
-        0,
-        1
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 38
-          },
-          "B": {
-            "ma": "EMA",
-            "n": 83
-          }
-        },
-        "signal": {
-          "kind": "revert",
-          "k": 0.75
-        },
-        "filters": [
-          {
-            "f": "d20",
-            "op": ">",
-            "x": 2.73
-          }
-        ],
-        "exit": {
-          "max_bars": 14,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "39da51d7f08a9cf7",
-      "score": 0.9383,
-      "n": 922,
-      "pf": 0.944,
-      "edge": 1.169,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "ZLEMA",
-            "n": 61
-          },
-          "B": {
-            "ma": "DEMA",
-            "n": 89
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 6,
-          "shrink": 3
-        },
-        "filters": [
-          {
-            "f": "vrel",
-            "op": ">",
-            "x": 0.575
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 1
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "57bd160969456039",
-      "score": 0.9303,
-      "n": 2159,
-      "pf": 0.93,
-      "edge": 1.02,
-      "best": [
-        1,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 92
-          },
-          "B": {
-            "ma": "ZLEMA",
-            "n": 104
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "any"
-        },
-        "filters": [
-          {
-            "f": "rsi",
-            "op": "<",
-            "x": 68.9
-          }
-        ],
-        "exit": {
-          "max_bars": 14,
-          "fc": [
-            {
-              "kind": "turn_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "5428dfcead033bdc",
-      "score": 0.929,
-      "n": 3388,
-      "pf": 0.968,
-      "edge": 1.328,
-      "best": [
-        9,
-        1
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "KAMA",
-            "n": 17
-          },
-          "B": {
-            "ma": "SMA",
-            "n": 135
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 2,
-          "shrink": 1
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 1
-            },
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "a936da5e9a86824c",
-      "score": 0.925,
-      "n": 1956,
-      "pf": 0.95,
-      "edge": 1.149,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "ZLEMA",
-            "n": 24
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 132
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 6,
-          "shrink": 2
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": null,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 1
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "2b3188fca9b98314",
-      "score": 0.923,
-      "n": 940,
-      "pf": 0.945,
-      "edge": 1.234,
-      "best": [
-        4,
-        4
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "WMA",
-            "n": 73
-          }
-        },
-        "signal": {
-          "kind": "pcross"
-        },
-        "filters": [
-          {
-            "f": "atrp",
-            "op": ">",
-            "x": 1.1
-          }
-        ],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "pcross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "100e3e0b34f00daf",
-      "score": 0.9146,
-      "n": 2891,
-      "pf": 0.925,
-      "edge": 1.32,
-      "best": [
-        7,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "KAMA",
-            "n": 13
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 24
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "any"
-        },
-        "filters": [
-          {
-            "f": "qqq35",
-            "op": ">",
-            "x": 0.806
-          },
-          {
-            "f": "ret35",
-            "op": "<",
-            "x": 2.16
-          }
-        ],
-        "exit": {
-          "max_bars": null,
-          "fc": [
-            {
-              "kind": "turn_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "60533714760f0f2b",
-      "score": 0.9141,
-      "n": 775,
-      "pf": 0.914,
-      "edge": 1.22,
-      "best": [
-        4,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 37
-          },
-          "B": {
-            "ma": "DEMA",
-            "n": 72
-          },
-          "C": {
-            "ma": "WMA",
-            "n": 107
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
-        },
-        "filters": [
-          {
-            "f": "slot",
-            "op": "<",
             "x": 4.5
           }
         ],
         "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "ca31a953132dc10a",
-      "score": 0.9059,
-      "n": 639,
-      "pf": 0.906,
-      "edge": 1.11,
-      "best": [
-        1,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "DEMA",
-            "n": 16
-          },
-          "B": {
-            "ma": "SMA",
-            "n": 54
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 2,
-          "shrink": 2
-        },
-        "filters": [
-          {
-            "f": "zAB",
-            "op": "<",
-            "x": 1.0
-          }
-        ],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 2
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "c38a785aab2e3143",
-      "score": 0.8965,
-      "n": 1745,
-      "pf": 0.926,
-      "edge": 1.141,
-      "best": [
-        1,
-        1
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "EMA",
-            "n": 29
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 35
-          },
-          "C": {
-            "ma": "ZLEMA",
-            "n": 90
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": null,
+          "max_bars": 35,
           "fc": []
         }
       }
     },
     {
-      "key": "e146cbe8fa4f1655",
-      "score": 0.8899,
-      "n": 3664,
-      "pf": 0.89,
-      "edge": 1.009,
+      "key": "2f0ac7ae44e3bf0d",
+      "score": 1.2547,
+      "n": 1181,
+      "pf": 1.266,
+      "edge": 0.845,
       "best": [
-        0,
-        0
+        9,
+        9
       ],
       "rule": {
         "schema": "ia4-rule/1",
         "direction": "long",
         "lines": {
           "A": {
-            "ma": "HMA",
-            "n": 14
+            "ma": "TEMA",
+            "n": 99
           },
           "B": {
-            "ma": "EMA",
-            "n": 91
+            "ma": "TEMA",
+            "n": 130
           }
         },
         "signal": {
           "kind": "converge",
-          "grow": 3,
+          "grow": 2,
           "shrink": 3
         },
         "filters": [],
         "exit": {
-          "max_bars": 7,
+          "max_bars": null,
           "fc": [
             {
               "kind": "reexpand",
@@ -19245,60 +18044,25 @@
       }
     },
     {
-      "key": "b61b8f3c430e35aa",
-      "score": 0.889,
-      "n": 442,
-      "pf": 1.04,
-      "edge": 1.287,
+      "key": "c9a27ff3987d0f68",
+      "score": 1.2175,
+      "n": 783,
+      "pf": 1.218,
+      "edge": 1.1,
       "best": [
         0,
-        0
+        6
       ],
       "rule": {
         "schema": "ia4-rule/1",
-        "direction": "short",
+        "direction": "long",
         "lines": {
           "A": {
-            "ma": "SMA",
-            "n": 88
-          }
-        },
-        "signal": {
-          "kind": "pcross"
-        },
-        "filters": [
-          {
-            "f": "spy35",
-            "op": ">",
-            "x": 2.51
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "0b69b19a9eaa1c63",
-      "score": 0.8842,
-      "n": 1783,
-      "pf": 0.931,
-      "edge": 1.126,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "DEMA",
-            "n": 13
+            "ma": "VWMA",
+            "n": 15
           },
           "B": {
-            "ma": "KAMA",
+            "ma": "VWMA",
             "n": 40
           }
         },
@@ -19309,6 +18073,54 @@
         "filters": [],
         "exit": {
           "max_bars": 70,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "56a5553d3d38c0b9",
+      "score": 1.2076,
+      "n": 31,
+      "pf": 1.489,
+      "edge": 1.722,
+      "best": [
+        0,
+        4
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "DEMA",
+            "n": 47
+          },
+          "B": {
+            "ma": "VWMA",
+            "n": 65
+          },
+          "C": {
+            "ma": "HMA",
+            "n": 109
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [
+          {
+            "f": "d5",
+            "op": ">",
+            "x": -3.09
+          },
+          {
+            "f": "ret35",
+            "op": ">",
+            "x": 0.289
+          }
+        ],
+        "exit": {
+          "max_bars": 14,
           "fc": [
             {
               "kind": "cross_back"
@@ -19318,136 +18130,30 @@
       }
     },
     {
-      "key": "3580c98a7eaf2b1f",
-      "score": 0.8815,
-      "n": 1677,
-      "pf": 0.882,
-      "edge": 1.091,
+      "key": "7c6dc6096a5e85cf",
+      "score": 1.1774,
+      "n": 1040,
+      "pf": 1.179,
+      "edge": 1.112,
       "best": [
-        0,
+        8,
         0
       ],
       "rule": {
         "schema": "ia4-rule/1",
-        "direction": "short",
+        "direction": "long",
         "lines": {
           "A": {
-            "ma": "WMA",
-            "n": 31
+            "ma": "KAMA",
+            "n": 30
           },
           "B": {
             "ma": "SMA",
-            "n": 32
-          },
-          "C": {
-            "ma": "DEMA",
-            "n": 133
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 14,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "1f6713e728d77a8c",
-      "score": 0.8803,
-      "n": 2696,
-      "pf": 0.88,
-      "edge": 1.089,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 22
-          },
-          "B": {
-            "ma": "DEMA",
-            "n": 78
+            "n": 80
           }
         },
         "signal": {
           "kind": "cross"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 14,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "f5e612cf3b2364bf",
-      "score": 0.8777,
-      "n": 4343,
-      "pf": 0.891,
-      "edge": 1.102,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "TEMA",
-            "n": 93
-          }
-        },
-        "signal": {
-          "kind": "pcross"
-        },
-        "filters": [
-          {
-            "f": "slot",
-            "op": "<",
-            "x": 5.5
-          }
-        ],
-        "exit": {
-          "max_bars": 14,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "81a5aeaea3bf1805",
-      "score": 0.8668,
-      "n": 833,
-      "pf": 0.929,
-      "edge": 1.129,
-      "best": [
-        0,
-        1
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "DEMA",
-            "n": 49
-          },
-          "B": {
-            "ma": "EMA",
-            "n": 112
-          }
-        },
-        "signal": {
-          "kind": "revert",
-          "k": 2.0
         },
         "filters": [],
         "exit": {
@@ -19461,26 +18167,666 @@
       }
     },
     {
-      "key": "1518f3eae3cc67b3",
-      "score": 0.8642,
-      "n": 1257,
-      "pf": 0.871,
-      "edge": 1.195,
+      "key": "ffa721939a52effb",
+      "score": 1.1662,
+      "n": 1799,
+      "pf": 1.166,
+      "edge": 1.101,
       "best": [
-        9,
-        1
+        0,
+        4
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 20
+          },
+          "B": {
+            "ma": "KAMA",
+            "n": 84
+          }
+        },
+        "signal": {
+          "kind": "converge",
+          "grow": 2,
+          "shrink": 4
+        },
+        "filters": [
+          {
+            "f": "since",
+            "op": "<",
+            "x": 50
+          }
+        ],
+        "exit": {
+          "max_bars": 35,
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "942a0dce19ef3e9c",
+      "score": 1.1645,
+      "n": 1050,
+      "pf": 1.201,
+      "edge": 0.825,
+      "best": [
+        8,
+        9
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "SMA",
+            "n": 16
+          },
+          "B": {
+            "ma": "KAMA",
+            "n": 58
+          },
+          "C": {
+            "ma": "TEMA",
+            "n": 132
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "3f0b7bb84c04dfe0",
+      "score": 1.1566,
+      "n": 765,
+      "pf": 1.187,
+      "edge": 0.815,
+      "best": [
+        8,
+        9
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "DEMA",
+            "n": 32
+          },
+          "B": {
+            "ma": "WMA",
+            "n": 84
+          },
+          "C": {
+            "ma": "DEMA",
+            "n": 98
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "4900195ce203c6a3",
+      "score": 1.1554,
+      "n": 1724,
+      "pf": 1.161,
+      "edge": 0.797,
+      "best": [
+        8,
+        9
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "VWMA",
+            "n": 17
+          },
+          "B": {
+            "ma": "DEMA",
+            "n": 44
+          },
+          "C": {
+            "ma": "EMA",
+            "n": 55
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [
+          {
+            "f": "dow",
+            "op": ">",
+            "x": 1.5
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "d5af5e5ef71eb739",
+      "score": 1.1156,
+      "n": 2681,
+      "pf": 1.148,
+      "edge": 1.088,
+      "best": [
+        0,
+        4
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "VWMA",
+            "n": 5
+          },
+          "B": {
+            "ma": "TEMA",
+            "n": 107
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 0.75
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 70,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "55fcc4751a138ae1",
+      "score": 1.1039,
+      "n": 6206,
+      "pf": 1.118,
+      "edge": 0.988,
+      "best": [
+        0,
+        9
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "EMA",
+            "n": 11
+          },
+          "B": {
+            "ma": "KAMA",
+            "n": 19
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "below"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 35,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "050cf577445baea9",
+      "score": 1.1005,
+      "n": 934,
+      "pf": 1.109,
+      "edge": 1.085,
+      "best": [
+        2,
+        2
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 110
+          },
+          "B": {
+            "ma": "VWMA",
+            "n": 135
+          }
+        },
+        "signal": {
+          "kind": "converge",
+          "grow": 5,
+          "shrink": 2
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 35,
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "de6785bce43dd4d2",
+      "score": 1.093,
+      "n": 2410,
+      "pf": 1.093,
+      "edge": 0.923,
+      "best": [
+        0,
+        9
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "HMA",
+            "n": 11
+          },
+          "B": {
+            "ma": "KAMA",
+            "n": 106
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "below"
+        },
+        "filters": [
+          {
+            "f": "qqq35",
+            "op": ">",
+            "x": 1.36
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "00d32371ec744771",
+      "score": 1.0696,
+      "n": 405,
+      "pf": 1.129,
+      "edge": 1.398,
+      "best": [
+        0,
+        0
       ],
       "rule": {
         "schema": "ia4-rule/1",
         "direction": "short",
         "lines": {
           "A": {
-            "ma": "SMA",
-            "n": 6
+            "ma": "ZLEMA",
+            "n": 73
           },
           "B": {
+            "ma": "EMA",
+            "n": 84
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 2.0
+        },
+        "filters": [
+          {
+            "f": "qqq35",
+            "op": ">",
+            "x": 0.806
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "04132d150289cb9f",
+      "score": 1.062,
+      "n": 911,
+      "pf": 1.072,
+      "edge": 0.926,
+      "best": [
+        0,
+        9
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "VWMA",
+            "n": 41
+          },
+          "B": {
+            "ma": "DEMA",
+            "n": 121
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 1.0
+        },
+        "filters": [
+          {
+            "f": "gap",
+            "op": ">",
+            "x": -1.06
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "1521b55c49f295f0",
+      "score": 1.0405,
+      "n": 2587,
+      "pf": 1.041,
+      "edge": 1.036,
+      "best": [
+        7,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "VWMA",
+            "n": 12
+          },
+          "B": {
+            "ma": "HMA",
+            "n": 29
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "below"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 70,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "a4c4ae7dfc53eade",
+      "score": 1.0396,
+      "n": 4716,
+      "pf": 1.045,
+      "edge": 1.016,
+      "best": [
+        0,
+        3
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
             "ma": "TEMA",
+            "n": 64
+          },
+          "B": {
+            "ma": "VWMA",
             "n": 66
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "any"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 35,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "eb259b25b6ae068c",
+      "score": 1.0356,
+      "n": 965,
+      "pf": 1.039,
+      "edge": 0.913,
+      "best": [
+        9,
+        2
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 56
+          },
+          "B": {
+            "ma": "WMA",
+            "n": 139
+          }
+        },
+        "signal": {
+          "kind": "cross"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "55e1bf59a8baec23",
+      "score": 1.0331,
+      "n": 6918,
+      "pf": 1.039,
+      "edge": 0.862,
+      "best": [
+        3,
+        9
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "TEMA",
+            "n": 27
+          }
+        },
+        "signal": {
+          "kind": "pcross"
+        },
+        "filters": [
+          {
+            "f": "spy35",
+            "op": ">",
+            "x": 0.186
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "pcross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "88bffda4ca89ecf6",
+      "score": 1.0324,
+      "n": 1530,
+      "pf": 1.038,
+      "edge": 0.898,
+      "best": [
+        6,
+        5
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "HMA",
+            "n": 128
+          }
+        },
+        "signal": {
+          "kind": "pcross"
+        },
+        "filters": [
+          {
+            "f": "spy140",
+            "op": "<",
+            "x": -0.0639
+          }
+        ],
+        "exit": {
+          "max_bars": 35,
+          "fc": [
+            {
+              "kind": "pcross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "5edb5c5bd22cf07f",
+      "score": 1.0262,
+      "n": 3210,
+      "pf": 1.026,
+      "edge": 0.779,
+      "best": [
+        9,
+        9
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "SMA",
+            "n": 82
+          },
+          "B": {
+            "ma": "SMA",
+            "n": 142
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "any"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "4f0c7f91923e92aa",
+      "score": 1.0122,
+      "n": 192,
+      "pf": 1.127,
+      "edge": 1.332,
+      "best": [
+        0,
+        2
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "EMA",
+            "n": 14
+          },
+          "B": {
+            "ma": "WMA",
+            "n": 53
           }
         },
         "signal": {
@@ -19490,18 +18836,203 @@
         },
         "filters": [
           {
-            "f": "qqq35",
+            "f": "gap",
             "op": ">",
-            "x": 1.87
+            "x": 1.18
+          },
+          {
+            "f": "rsi",
+            "op": ">",
+            "x": 32.7
           }
         ],
         "exit": {
-          "max_bars": 70,
+          "max_bars": 14,
           "fc": [
             {
               "kind": "reexpand",
-              "n": 3
-            },
+              "n": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "c357bceceb0ad535",
+      "score": 1.0022,
+      "n": 3355,
+      "pf": 1.002,
+      "edge": 0.857,
+      "best": [
+        1,
+        8
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "DEMA",
+            "n": 32
+          },
+          "B": {
+            "ma": "DEMA",
+            "n": 93
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "any"
+        },
+        "filters": [
+          {
+            "f": "qqq35",
+            "op": "<",
+            "x": 0.233
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "36f9e0c199cd1831",
+      "score": 0.9916,
+      "n": 4319,
+      "pf": 0.992,
+      "edge": 1.04,
+      "best": [
+        0,
+        1
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 54
+          },
+          "B": {
+            "ma": "SMA",
+            "n": 90
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "any"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 14,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "0f39c78af593dc5b",
+      "score": 0.9718,
+      "n": 557,
+      "pf": 1.01,
+      "edge": 1.211,
+      "best": [
+        0,
+        5
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 96
+          },
+          "B": {
+            "ma": "DEMA",
+            "n": 117
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "below"
+        },
+        "filters": [
+          {
+            "f": "ret7",
+            "op": ">",
+            "x": 0.0523
+          },
+          {
+            "f": "vrel",
+            "op": "<",
+            "x": 1.11
+          }
+        ],
+        "exit": {
+          "max_bars": 35,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "7a3892029b6b1623",
+      "score": 0.966,
+      "n": 250,
+      "pf": 0.987,
+      "edge": 1.454,
+      "best": [
+        7,
+        6
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 32
+          },
+          "B": {
+            "ma": "EMA",
+            "n": 35
+          },
+          "C": {
+            "ma": "WMA",
+            "n": 127
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [
+          {
+            "f": "atrp",
+            "op": "<",
+            "x": 0.705
+          },
+          {
+            "f": "since",
+            "op": "<",
+            "x": 5
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": [
             {
               "kind": "cross_back"
             }
@@ -19510,11 +19041,212 @@
       }
     },
     {
-      "key": "ac755b902b85517d",
-      "score": 0.8633,
-      "n": 756,
-      "pf": 0.863,
-      "edge": 0.979,
+      "key": "c3ba462bb44b2cb9",
+      "score": 0.9578,
+      "n": 905,
+      "pf": 0.979,
+      "edge": 1.25,
+      "best": [
+        3,
+        1
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "TEMA",
+            "n": 16
+          },
+          "B": {
+            "ma": "HMA",
+            "n": 136
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 2.5
+        },
+        "filters": [
+          {
+            "f": "dow",
+            "op": ">",
+            "x": 2.5
+          },
+          {
+            "f": "spy140",
+            "op": "<",
+            "x": 7.14
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "391fd4aed9681c76",
+      "score": 0.9494,
+      "n": 918,
+      "pf": 1.007,
+      "edge": 1.247,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 84
+          },
+          "B": {
+            "ma": "ZLEMA",
+            "n": 91
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "below"
+        },
+        "filters": [
+          {
+            "f": "spy140",
+            "op": ">",
+            "x": 2.64
+          }
+        ],
+        "exit": {
+          "max_bars": 14,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "10271b849368c289",
+      "score": 0.9478,
+      "n": 106,
+      "pf": 0.962,
+      "edge": 1.163,
+      "best": [
+        0,
+        3
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 33
+          },
+          "B": {
+            "ma": "DEMA",
+            "n": 95
+          },
+          "C": {
+            "ma": "TEMA",
+            "n": 116
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [
+          {
+            "f": "ret7",
+            "op": ">",
+            "x": 0.841
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "044748c86eb480e4",
+      "score": 0.9407,
+      "n": 2373,
+      "pf": 0.941,
+      "edge": 1.227,
+      "best": [
+        3,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "TEMA",
+            "n": 29
+          },
+          "B": {
+            "ma": "TEMA",
+            "n": 49
+          }
+        },
+        "signal": {
+          "kind": "cross"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 35,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "4f45240c70c2a00f",
+      "score": 0.9394,
+      "n": 2238,
+      "pf": 0.976,
+      "edge": 1.247,
+      "best": [
+        3,
+        3
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "DEMA",
+            "n": 34
+          },
+          "B": {
+            "ma": "HMA",
+            "n": 119
+          }
+        },
+        "signal": {
+          "kind": "converge",
+          "grow": 3,
+          "shrink": 3
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "71e7fd2de8251de0",
+      "score": 0.9252,
+      "n": 4604,
+      "pf": 0.925,
+      "edge": 1.051,
       "best": [
         0,
         0
@@ -19524,30 +19256,129 @@
         "direction": "long",
         "lines": {
           "A": {
+            "ma": "TEMA",
+            "n": 78
+          }
+        },
+        "signal": {
+          "kind": "pcross"
+        },
+        "filters": [
+          {
+            "f": "ret7",
+            "op": ">",
+            "x": -0.31
+          }
+        ],
+        "exit": {
+          "max_bars": 14,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "b72b529ab7e38661",
+      "score": 0.9181,
+      "n": 3961,
+      "pf": 0.918,
+      "edge": 1.043,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 136
+          }
+        },
+        "signal": {
+          "kind": "pcross"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 14,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "7d8e4c987eecd81e",
+      "score": 0.9079,
+      "n": 319,
+      "pf": 0.908,
+      "edge": 1.078,
+      "best": [
+        1,
+        1
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
             "ma": "EMA",
-            "n": 106
+            "n": 111
           },
           "B": {
-            "ma": "EMA",
-            "n": 108
+            "ma": "VWMA",
+            "n": 132
+          }
+        },
+        "signal": {
+          "kind": "converge",
+          "grow": 3,
+          "shrink": 4
+        },
+        "filters": [
+          {
+            "f": "atrp",
+            "op": ">",
+            "x": 1.1
+          }
+        ],
+        "exit": {
+          "max_bars": 7,
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "3d79d72accd8641f",
+      "score": 0.9048,
+      "n": 3428,
+      "pf": 0.905,
+      "edge": 1.113,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "KAMA",
+            "n": 37
+          },
+          "B": {
+            "ma": "SMA",
+            "n": 103
           }
         },
         "signal": {
           "kind": "turn",
-          "pos": "below"
+          "pos": "above"
         },
-        "filters": [
-          {
-            "f": "d5",
-            "op": ">",
-            "x": -3.09
-          },
-          {
-            "f": "dow",
-            "op": ">",
-            "x": 3.5
-          }
-        ],
+        "filters": [],
         "exit": {
           "max_bars": 7,
           "fc": [
@@ -19559,48 +19390,68 @@
       }
     },
     {
-      "key": "ef8d88f1d33adfcc",
-      "score": 0.8624,
-      "n": 1824,
-      "pf": 0.887,
-      "edge": 1.072,
+      "key": "0f20542db8b9a8bf",
+      "score": 0.9022,
+      "n": 308,
+      "pf": 1.011,
+      "edge": 1.329,
       "best": [
-        0,
-        2
+        4,
+        1
       ],
       "rule": {
         "schema": "ia4-rule/1",
         "direction": "short",
         "lines": {
           "A": {
-            "ma": "WMA",
-            "n": 65
+            "ma": "KAMA",
+            "n": 47
           },
           "B": {
-            "ma": "EMA",
-            "n": 131
+            "ma": "KAMA",
+            "n": 101
           }
         },
         "signal": {
-          "kind": "turn",
-          "pos": "above"
+          "kind": "converge",
+          "grow": 4,
+          "shrink": 1
         },
-        "filters": [],
+        "filters": [
+          {
+            "f": "spy140",
+            "op": ">",
+            "x": -2.89
+          },
+          {
+            "f": "zAB",
+            "op": ">",
+            "x": 3.0
+          }
+        ],
         "exit": {
-          "max_bars": 70,
-          "fc": []
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 2
+            },
+            {
+              "kind": "cross_back"
+            }
+          ]
         }
       }
     },
     {
-      "key": "6507dee9be2052a1",
-      "score": 0.8576,
-      "n": 3428,
-      "pf": 0.86,
-      "edge": 1.031,
+      "key": "8fdfdd3b24ed57fc",
+      "score": 0.8997,
+      "n": 161,
+      "pf": 0.941,
+      "edge": 1.134,
       "best": [
         0,
-        3
+        1
       ],
       "rule": {
         "schema": "ia4-rule/1",
@@ -19611,58 +19462,24 @@
             "n": 59
           },
           "B": {
-            "ma": "EMA",
-            "n": 149
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "any"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "547a01768ddb905a",
-      "score": 0.8561,
-      "n": 1214,
-      "pf": 0.861,
-      "edge": 1.106,
-      "best": [
-        4,
-        1
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "TEMA",
-            "n": 69
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 96
+            "ma": "KAMA",
+            "n": 125
           }
         },
         "signal": {
           "kind": "converge",
           "grow": 6,
-          "shrink": 4
+          "shrink": 1
         },
         "filters": [
           {
-            "f": "zAB",
-            "op": "<",
-            "x": 2.0
+            "f": "spy140",
+            "op": ">",
+            "x": 9.37
           }
         ],
         "exit": {
-          "max_bars": 35,
+          "max_bars": 14,
           "fc": [
             {
               "kind": "reexpand",
@@ -19676,11 +19493,11 @@
       }
     },
     {
-      "key": "c5543e1f072832db",
-      "score": 0.8498,
-      "n": 2322,
-      "pf": 0.858,
-      "edge": 1.061,
+      "key": "69459d945658d502",
+      "score": 0.8996,
+      "n": 721,
+      "pf": 0.9,
+      "edge": 1.113,
       "best": [
         0,
         0
@@ -19690,323 +19507,21 @@
         "direction": "short",
         "lines": {
           "A": {
-            "ma": "EMA",
-            "n": 7
+            "ma": "WMA",
+            "n": 78
           },
           "B": {
-            "ma": "ZLEMA",
-            "n": 64
+            "ma": "SMA",
+            "n": 147
           }
         },
         "signal": {
           "kind": "revert",
-          "k": 1.25
-        },
-        "filters": [
-          {
-            "f": "zAB",
-            "op": ">",
-            "x": -3.0
-          }
-        ],
-        "exit": {
-          "max_bars": 14,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "566e5746e70e5858",
-      "score": 0.846,
-      "n": 2488,
-      "pf": 0.86,
-      "edge": 1.034,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "TEMA",
-            "n": 28
-          },
-          "B": {
-            "ma": "VWMA",
-            "n": 61
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 6,
-          "shrink": 1
+          "k": 2.0
         },
         "filters": [],
         "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 2
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "217145c333b28f32",
-      "score": 0.8434,
-      "n": 1427,
-      "pf": 0.882,
-      "edge": 1.092,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "WMA",
-            "n": 123
-          },
-          "B": {
-            "ma": "EMA",
-            "n": 129
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "any"
-        },
-        "filters": [
-          {
-            "f": "slopeA",
-            "op": ">",
-            "x": 0.0
-          },
-          {
-            "f": "spy35",
-            "op": ">",
-            "x": -1.13
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "turn_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "5e3a030e5f916f73",
-      "score": 0.8405,
-      "n": 1925,
-      "pf": 0.843,
-      "edge": 1.103,
-      "best": [
-        5,
-        3
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "WMA",
-            "n": 65
-          }
-        },
-        "signal": {
-          "kind": "pcross"
-        },
-        "filters": [
-          {
-            "f": "gap",
-            "op": ">",
-            "x": 0.0301
-          }
-        ],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "pcross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "c4997fd92a83d6b0",
-      "score": 0.8366,
-      "n": 2538,
-      "pf": 0.837,
-      "edge": 1.053,
-      "best": [
-        1,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "WMA",
-            "n": 33
-          }
-        },
-        "signal": {
-          "kind": "pcross"
-        },
-        "filters": [
-          {
-            "f": "dow",
-            "op": "<",
-            "x": 3.5
-          },
-          {
-            "f": "qqq35",
-            "op": "<",
-            "x": 1.87
-          }
-        ],
-        "exit": {
-          "max_bars": 70,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "3b3df6366aafeeaa",
-      "score": 0.8209,
-      "n": 3654,
-      "pf": 0.821,
-      "edge": 1.01,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "WMA",
-            "n": 16
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 91
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "any"
-        },
-        "filters": [
-          {
-            "f": "zAB",
-            "op": "<",
-            "x": 0.0
-          }
-        ],
-        "exit": {
-          "max_bars": 7,
-          "fc": [
-            {
-              "kind": "turn_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "d332fe1ebcd1fa1d",
-      "score": 0.8189,
-      "n": 1059,
-      "pf": 0.819,
-      "edge": 1.013,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "DEMA",
-            "n": 12
-          },
-          "B": {
-            "ma": "VWMA",
-            "n": 134
-          }
-        },
-        "signal": {
-          "kind": "cross"
-        },
-        "filters": [
-          {
-            "f": "qqq140",
-            "op": ">",
-            "x": -1.77
-          },
-          {
-            "f": "rsi",
-            "op": "<",
-            "x": 58.7
-          }
-        ],
-        "exit": {
           "max_bars": 14,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "deb5f6190b88b3ae",
-      "score": 0.8105,
-      "n": 651,
-      "pf": 0.813,
-      "edge": 1.006,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "SMA",
-            "n": 30
-          },
-          "B": {
-            "ma": "EMA",
-            "n": 123
-          }
-        },
-        "signal": {
-          "kind": "revert",
-          "k": 1.25
-        },
-        "filters": [
-          {
-            "f": "dow",
-            "op": "<",
-            "x": 4.5
-          }
-        ],
-        "exit": {
-          "max_bars": null,
           "fc": [
             {
               "kind": "cross_back"
@@ -20016,54 +19531,11 @@
       }
     },
     {
-      "key": "4abd132c9c06a535",
-      "score": 0.8026,
-      "n": 659,
-      "pf": 0.803,
-      "edge": 0.803,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "TEMA",
-            "n": 66
-          },
-          "B": {
-            "ma": "HMA",
-            "n": 77
-          },
-          "C": {
-            "ma": "EMA",
-            "n": 132
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
-        },
-        "filters": [
-          {
-            "f": "qqq140",
-            "op": ">",
-            "x": 5.28
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "ac7841bc0c020416",
-      "score": 0.7884,
-      "n": 674,
-      "pf": 0.788,
-      "edge": 0.976,
+      "key": "fa1b329d14273bcc",
+      "score": 0.8811,
+      "n": 753,
+      "pf": 0.881,
+      "edge": 1.09,
       "best": [
         0,
         0
@@ -20074,11 +19546,307 @@
         "lines": {
           "A": {
             "ma": "TEMA",
-            "n": 57
+            "n": 81
+          },
+          "B": {
+            "ma": "EMA",
+            "n": 121
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 1.0
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 35,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "8c815ded5b97c9cf",
+      "score": 0.8746,
+      "n": 850,
+      "pf": 0.887,
+      "edge": 1.097,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "EMA",
+            "n": 96
+          },
+          "B": {
+            "ma": "WMA",
+            "n": 143
+          }
+        },
+        "signal": {
+          "kind": "cross"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 70,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "5e1cc12752c75487",
+      "score": 0.8674,
+      "n": 920,
+      "pf": 0.889,
+      "edge": 1.1,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 59
+          },
+          "B": {
+            "ma": "VWMA",
+            "n": 89
+          }
+        },
+        "signal": {
+          "kind": "cross"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": null,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "a416e8cf88cf4c0b",
+      "score": 0.864,
+      "n": 1071,
+      "pf": 0.865,
+      "edge": 1.045,
+      "best": [
+        0,
+        6
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "KAMA",
+            "n": 48
+          },
+          "B": {
+            "ma": "HMA",
+            "n": 65
+          },
+          "C": {
+            "ma": "KAMA",
+            "n": 94
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 35,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "94feb588d5b46b0c",
+      "score": 0.8537,
+      "n": 2452,
+      "pf": 0.871,
+      "edge": 1.059,
+      "best": [
+        0,
+        1
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "EMA",
+            "n": 72
+          },
+          "B": {
+            "ma": "TEMA",
+            "n": 149
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "below"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "19144bd41fda1af1",
+      "score": 0.8521,
+      "n": 2132,
+      "pf": 0.897,
+      "edge": 1.085,
+      "best": [
+        0,
+        3
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "HMA",
+            "n": 50
+          }
+        },
+        "signal": {
+          "kind": "pcross"
+        },
+        "filters": [
+          {
+            "f": "atrp",
+            "op": ">",
+            "x": 0.941
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "969be1c935825cc4",
+      "score": 0.8492,
+      "n": 187,
+      "pf": 0.911,
+      "edge": 1.095,
+      "best": [
+        0,
+        2
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 78
           },
           "B": {
             "ma": "SMA",
-            "n": 150
+            "n": 113
+          }
+        },
+        "signal": {
+          "kind": "cross"
+        },
+        "filters": [
+          {
+            "f": "spy35",
+            "op": ">",
+            "x": 1.92
+          }
+        ],
+        "exit": {
+          "max_bars": 35,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "76844004667e4408",
+      "score": 0.8399,
+      "n": 4001,
+      "pf": 0.887,
+      "edge": 1.073,
+      "best": [
+        0,
+        2
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 17
+          },
+          "B": {
+            "ma": "DEMA",
+            "n": 106
+          }
+        },
+        "signal": {
+          "kind": "converge",
+          "grow": 2,
+          "shrink": 2
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 2
+            },
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "4538ea7c654417fe",
+      "score": 0.8332,
+      "n": 3503,
+      "pf": 0.834,
+      "edge": 1.068,
+      "best": [
+        3,
+        1
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 8
+          },
+          "B": {
+            "ma": "DEMA",
+            "n": 68
           }
         },
         "signal": {
@@ -20092,17 +19860,21 @@
           }
         ],
         "exit": {
-          "max_bars": 14,
-          "fc": []
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
         }
       }
     },
     {
-      "key": "388ff04c98b8448b",
-      "score": 0.7625,
-      "n": 2337,
-      "pf": 0.763,
-      "edge": 0.938,
+      "key": "ab47fee2ce8e1753",
+      "score": 0.8088,
+      "n": 891,
+      "pf": 0.847,
+      "edge": 1.042,
       "best": [
         0,
         0
@@ -20112,12 +19884,12 @@
         "direction": "short",
         "lines": {
           "A": {
-            "ma": "KAMA",
-            "n": 80
+            "ma": "SMA",
+            "n": 57
           },
           "B": {
-            "ma": "HMA",
-            "n": 133
+            "ma": "EMA",
+            "n": 142
           }
         },
         "signal": {
@@ -20126,14 +19898,9 @@
         },
         "filters": [
           {
-            "f": "d20",
+            "f": "vrel",
             "op": "<",
-            "x": 1.51
-          },
-          {
-            "f": "gap",
-            "op": ">",
-            "x": -0.559
+            "x": 0.656
           }
         ],
         "exit": {
@@ -20147,11 +19914,11 @@
       }
     },
     {
-      "key": "fb26821cfead29ec",
-      "score": 0.7401,
-      "n": 143,
-      "pf": 0.747,
-      "edge": 0.848,
+      "key": "03bb60af575fb059",
+      "score": 0.8069,
+      "n": 495,
+      "pf": 0.807,
+      "edge": 0.916,
       "best": [
         0,
         0
@@ -20161,12 +19928,12 @@
         "direction": "long",
         "lines": {
           "A": {
-            "ma": "KAMA",
-            "n": 53
+            "ma": "TEMA",
+            "n": 90
           },
           "B": {
-            "ma": "VWMA",
-            "n": 138
+            "ma": "DEMA",
+            "n": 100
           }
         },
         "signal": {
@@ -20174,11 +19941,269 @@
         },
         "filters": [
           {
-            "f": "qqq35",
-            "op": "<",
-            "x": -0.404
+            "f": "dow",
+            "op": ">",
+            "x": 2.5
           }
         ],
+        "exit": {
+          "max_bars": 14,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "34e4e1a6af03b5af",
+      "score": 0.7945,
+      "n": 294,
+      "pf": 0.794,
+      "edge": 0.977,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 88
+          },
+          "B": {
+            "ma": "ZLEMA",
+            "n": 144
+          }
+        },
+        "signal": {
+          "kind": "converge",
+          "grow": 4,
+          "shrink": 4
+        },
+        "filters": [
+          {
+            "f": "ret35",
+            "op": ">",
+            "x": 2.16
+          }
+        ],
+        "exit": {
+          "max_bars": 7,
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 1
+            },
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "57a5499910489253",
+      "score": 0.7927,
+      "n": 1394,
+      "pf": 0.811,
+      "edge": 0.981,
+      "best": [
+        0,
+        3
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "KAMA",
+            "n": 6
+          },
+          "B": {
+            "ma": "HMA",
+            "n": 114
+          },
+          "C": {
+            "ma": "EMA",
+            "n": 121
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 70,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "3b314ba069a2b395",
+      "score": 0.7911,
+      "n": 530,
+      "pf": 0.791,
+      "edge": 0.979,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 75
+          },
+          "B": {
+            "ma": "HMA",
+            "n": 139
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "above"
+        },
+        "filters": [
+          {
+            "f": "spy140",
+            "op": "<",
+            "x": -0.0639
+          }
+        ],
+        "exit": {
+          "max_bars": 14,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "17df0add8fca0bdf",
+      "score": 0.781,
+      "n": 286,
+      "pf": 0.785,
+      "edge": 1.027,
+      "best": [
+        1,
+        6
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "SMA",
+            "n": 94
+          },
+          "B": {
+            "ma": "KAMA",
+            "n": 111
+          }
+        },
+        "signal": {
+          "kind": "converge",
+          "grow": 6,
+          "shrink": 2
+        },
+        "filters": [
+          {
+            "f": "dow",
+            "op": ">",
+            "x": 2.5
+          },
+          {
+            "f": "gap",
+            "op": ">",
+            "x": 0.372
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 1
+            },
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "bc3964af00dbb4bf",
+      "score": 0.7798,
+      "n": 169,
+      "pf": 0.938,
+      "edge": 1.125,
+      "best": [
+        0,
+        3
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 13
+          },
+          "B": {
+            "ma": "DEMA",
+            "n": 20
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 1.25
+        },
+        "filters": [
+          {
+            "f": "d5",
+            "op": "<",
+            "x": -0.988
+          }
+        ],
+        "exit": {
+          "max_bars": 35,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "15c5d5407e67684e",
+      "score": 0.7729,
+      "n": 641,
+      "pf": 0.794,
+      "edge": 0.952,
+      "best": [
+        0,
+        3
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "HMA",
+            "n": 137
+          },
+          "B": {
+            "ma": "VWMA",
+            "n": 145
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 1.0
+        },
+        "filters": [],
         "exit": {
           "max_bars": 35,
           "fc": []
@@ -20186,46 +20211,49 @@
       }
     },
     {
-      "key": "e43664f456cd0f7d",
-      "score": 0.7247,
-      "n": 168,
-      "pf": 0.759,
-      "edge": 0.923,
+      "key": "9b9feaab250ecca5",
+      "score": 0.734,
+      "n": 549,
+      "pf": 0.734,
+      "edge": 0.868,
       "best": [
         0,
-        1
+        2
       ],
       "rule": {
         "schema": "ia4-rule/1",
         "direction": "short",
         "lines": {
           "A": {
-            "ma": "VWMA",
-            "n": 31
+            "ma": "DEMA",
+            "n": 24
           },
           "B": {
-            "ma": "TEMA",
-            "n": 69
+            "ma": "ZLEMA",
+            "n": 25
+          },
+          "C": {
+            "ma": "EMA",
+            "n": 58
           }
         },
         "signal": {
-          "kind": "revert",
-          "k": 1.0
+          "kind": "ribbon"
         },
         "filters": [
           {
-            "f": "atrrank",
-            "op": "<",
-            "x": 37.7
+            "f": "dow",
+            "op": ">",
+            "x": 2.5
           },
           {
-            "f": "vrel",
+            "f": "ret35",
             "op": "<",
-            "x": 0.837
+            "x": -2.81
           }
         ],
         "exit": {
-          "max_bars": 35,
+          "max_bars": 14,
           "fc": [
             {
               "kind": "cross_back"
@@ -20235,1139 +20263,52 @@
       }
     },
     {
-      "key": "644e41f7223f1c62",
-      "score": 0.6611,
-      "n": 121,
-      "pf": 0.661,
-      "edge": 0.75,
+      "key": "9513905c7ca55001",
+      "score": 0.7325,
+      "n": 217,
+      "pf": 0.733,
+      "edge": 0.768,
       "best": [
         0,
-        0
+        1
       ],
       "rule": {
         "schema": "ia4-rule/1",
         "direction": "long",
         "lines": {
           "A": {
-            "ma": "SMA",
-            "n": 27
+            "ma": "WMA",
+            "n": 35
           },
           "B": {
-            "ma": "HMA",
-            "n": 29
+            "ma": "ZLEMA",
+            "n": 57
           }
         },
         "signal": {
           "kind": "revert",
-          "k": 2.0
+          "k": 2.5
         },
         "filters": [
           {
-            "f": "gap",
+            "f": "d20",
             "op": ">",
-            "x": 1.18
+            "x": 1.51
           },
           {
-            "f": "qqq35",
+            "f": "ret35",
             "op": ">",
-            "x": -0.404
+            "x": -2.81
           }
         ],
         "exit": {
-          "max_bars": 7,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
+          "max_bars": 14,
+          "fc": []
         }
       }
     }
   ],
   "rejected": [
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "VWMA",
-          "n": 84
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 121
-        },
-        "C": {
-          "ma": "SMA",
-          "n": 135
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [],
-      "exit": {
-        "max_bars": 14,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 4,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "VWMA",
-          "n": 72
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 110
-        },
-        "C": {
-          "ma": "SMA",
-          "n": 127
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "vrel",
-          "op": "<",
-          "x": 0.656
-        }
-      ],
-      "exit": {
-        "max_bars": 70,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 6,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "short",
-      "lines": {
-        "A": {
-          "ma": "HMA",
-          "n": 5
-        },
-        "B": {
-          "ma": "HMA",
-          "n": 117
-        }
-      },
-      "signal": {
-        "kind": "converge",
-        "grow": 3,
-        "shrink": 1
-      },
-      "filters": [
-        {
-          "f": "d5",
-          "op": "<",
-          "x": 0.737
-        },
-        {
-          "f": "qqq140",
-          "op": "<",
-          "x": 5.28
-        }
-      ],
-      "exit": {
-        "max_bars": 14,
-        "fc": [
-          {
-            "kind": "reexpand",
-            "n": 1
-          },
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 7,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "short",
-      "lines": {
-        "A": {
-          "ma": "DEMA",
-          "n": 40
-        },
-        "B": {
-          "ma": "SMA",
-          "n": 47
-        },
-        "C": {
-          "ma": "HMA",
-          "n": 64
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "ret35",
-          "op": "<",
-          "x": -4.79
-        }
-      ],
-      "exit": {
-        "max_bars": 7,
-        "fc": [],
-        "sl": 4,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "short",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 5
-        },
-        "B": {
-          "ma": "VWMA",
-          "n": 6
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 1.75
-      },
-      "filters": [
-        {
-          "f": "gap",
-          "op": "<",
-          "x": -0.295
-        }
-      ],
-      "exit": {
-        "max_bars": 7,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 3,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "SMA",
-          "n": 120
-        },
-        "B": {
-          "ma": "ZLEMA",
-          "n": 121
-        },
-        "C": {
-          "ma": "HMA",
-          "n": 138
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "ret7",
-          "op": "<",
-          "x": -2.12
-        }
-      ],
-      "exit": {
-        "max_bars": 35,
-        "fc": [],
-        "sl": 7,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 25
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 59
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.75
-      },
-      "filters": [
-        {
-          "f": "d20",
-          "op": ">",
-          "x": 1.51
-        },
-        {
-          "f": "since",
-          "op": ">",
-          "x": 14
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 8,
-        "tp": 3
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "DEMA",
-          "n": 26
-        }
-      },
-      "signal": {
-        "kind": "pcross"
-      },
-      "filters": [
-        {
-          "f": "d20",
-          "op": "<",
-          "x": -5.57
-        },
-        {
-          "f": "rsi",
-          "op": "<",
-          "x": 51.2
-        }
-      ],
-      "exit": {
-        "max_bars": 70,
-        "fc": [],
-        "sl": 9,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "VWMA",
-          "n": 57
-        },
-        "B": {
-          "ma": "KAMA",
-          "n": 82
-        },
-        "C": {
-          "ma": "VWMA",
-          "n": 142
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "ret35",
-          "op": "<",
-          "x": -4.79
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 10,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "DEMA",
-          "n": 84
-        },
-        "B": {
-          "ma": "HMA",
-          "n": 120
-        }
-      },
-      "signal": {
-        "kind": "cross"
-      },
-      "filters": [
-        {
-          "f": "ret7",
-          "op": "<",
-          "x": -2.12
-        }
-      ],
-      "exit": {
-        "max_bars": 70,
-        "fc": [],
-        "sl": 6,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "short",
-      "lines": {
-        "A": {
-          "ma": "TEMA",
-          "n": 55
-        },
-        "B": {
-          "ma": "ZLEMA",
-          "n": 76
-        }
-      },
-      "signal": {
-        "kind": "turn",
-        "pos": "below"
-      },
-      "filters": [
-        {
-          "f": "ret35",
-          "op": ">",
-          "x": 3.44
-        }
-      ],
-      "exit": {
-        "max_bars": 35,
-        "fc": [
-          {
-            "kind": "turn_back"
-          }
-        ],
-        "sl": 2,
-        "tp": 4
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "SMA",
-          "n": 71
-        },
-        "B": {
-          "ma": "ZLEMA",
-          "n": 106
-        },
-        "C": {
-          "ma": "VWMA",
-          "n": 120
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "dow",
-          "op": "<",
-          "x": 2.5
-        }
-      ],
-      "exit": {
-        "max_bars": 7,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 6,
-        "tp": 6
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "SMA",
-          "n": 119
-        },
-        "B": {
-          "ma": "HMA",
-          "n": 127
-        },
-        "C": {
-          "ma": "SMA",
-          "n": 128
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "vrel",
-          "op": "<",
-          "x": 0.74
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 10,
-        "tp": 5
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "TEMA",
-          "n": 42
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 115
-        },
-        "C": {
-          "ma": "WMA",
-          "n": 124
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "atrrank",
-          "op": ">",
-          "x": 72.0
-        }
-      ],
-      "exit": {
-        "max_bars": 70,
-        "fc": [],
-        "sl": 10,
-        "tp": 8
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "short",
-      "lines": {
-        "A": {
-          "ma": "ZLEMA",
-          "n": 55
-        },
-        "B": {
-          "ma": "VWMA",
-          "n": 121
-        }
-      },
-      "signal": {
-        "kind": "converge",
-        "grow": 5,
-        "shrink": 3
-      },
-      "filters": [
-        {
-          "f": "atrrank",
-          "op": ">",
-          "x": 37.7
-        },
-        {
-          "f": "d5",
-          "op": ">",
-          "x": 2.13
-        }
-      ],
-      "exit": {
-        "max_bars": 14,
-        "fc": [
-          {
-            "kind": "reexpand",
-            "n": 1
-          }
-        ],
-        "sl": 2,
-        "tp": 6
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "short",
-      "lines": {
-        "A": {
-          "ma": "EMA",
-          "n": 5
-        },
-        "B": {
-          "ma": "ZLEMA",
-          "n": 5
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 1.75
-      },
-      "filters": [
-        {
-          "f": "spy35",
-          "op": "<",
-          "x": -2.13
-        },
-        {
-          "f": "vrel",
-          "op": ">",
-          "x": 1.34
-        }
-      ],
-      "exit": {
-        "max_bars": 7,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 8,
-        "tp": 4
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "VWMA",
-          "n": 54
-        },
-        "B": {
-          "ma": "TEMA",
-          "n": 95
-        },
-        "C": {
-          "ma": "EMA",
-          "n": 97
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "since",
-          "op": ">",
-          "x": 5
-        }
-      ],
-      "exit": {
-        "max_bars": 35,
-        "fc": [],
-        "sl": 9,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "ZLEMA",
-          "n": 13
-        },
-        "B": {
-          "ma": "SMA",
-          "n": 107
-        }
-      },
-      "signal": {
-        "kind": "cross"
-      },
-      "filters": [
-        {
-          "f": "d5",
-          "op": ">",
-          "x": 2.13
-        },
-        {
-          "f": "vrel",
-          "op": "<",
-          "x": 0.484
-        }
-      ],
-      "exit": {
-        "max_bars": 14,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 5,
-        "tp": 3
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "HMA",
-          "n": 31
-        },
-        "B": {
-          "ma": "EMA",
-          "n": 41
-        },
-        "C": {
-          "ma": "DEMA",
-          "n": 69
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "ret35",
-          "op": ">",
-          "x": 2.16
-        },
-        {
-          "f": "vrel",
-          "op": ">",
-          "x": 1.11
-        }
-      ],
-      "exit": {
-        "max_bars": 14,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 2,
-        "tp": 1
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "KAMA",
-          "n": 80
-        }
-      },
-      "signal": {
-        "kind": "pcross"
-      },
-      "filters": [
-        {
-          "f": "gap",
-          "op": ">",
-          "x": 0.636
-        },
-        {
-          "f": "vrel",
-          "op": ">",
-          "x": 0.74
-        }
-      ],
-      "exit": {
-        "max_bars": 70,
-        "fc": [],
-        "sl": 10,
-        "tp": 8
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 137
-        },
-        "B": {
-          "ma": "EMA",
-          "n": 138
-        },
-        "C": {
-          "ma": "WMA",
-          "n": 149
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [],
-      "exit": {
-        "max_bars": 70,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 10,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "ZLEMA",
-          "n": 26
-        },
-        "B": {
-          "ma": "WMA",
-          "n": 82
-        }
-      },
-      "signal": {
-        "kind": "cross"
-      },
-      "filters": [
-        {
-          "f": "ret35",
-          "op": "<",
-          "x": -2.81
-        }
-      ],
-      "exit": {
-        "max_bars": 70,
-        "fc": [],
-        "sl": 7,
-        "tp": 3
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "short",
-      "lines": {
-        "A": {
-          "ma": "EMA",
-          "n": 56
-        },
-        "B": {
-          "ma": "VWMA",
-          "n": 149
-        }
-      },
-      "signal": {
-        "kind": "converge",
-        "grow": 6,
-        "shrink": 3
-      },
-      "filters": [
-        {
-          "f": "qqq35",
-          "op": "<",
-          "x": -2.31
-        }
-      ],
-      "exit": {
-        "max_bars": 14,
-        "fc": [
-          {
-            "kind": "reexpand",
-            "n": 1
-          },
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 3,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "short",
-      "lines": {
-        "A": {
-          "ma": "TEMA",
-          "n": 73
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 131
-        }
-      },
-      "signal": {
-        "kind": "converge",
-        "grow": 5,
-        "shrink": 2
-      },
-      "filters": [
-        {
-          "f": "slopeA",
-          "op": "<",
-          "x": -0.2
-        }
-      ],
-      "exit": {
-        "max_bars": 14,
-        "fc": [
-          {
-            "kind": "reexpand",
-            "n": 2
-          }
-        ],
-        "sl": 6,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "HMA",
-          "n": 14
-        },
-        "B": {
-          "ma": "SMA",
-          "n": 34
-        },
-        "C": {
-          "ma": "EMA",
-          "n": 58
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "atrp",
-          "op": "<",
-          "x": 0.52
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 9,
-        "tp": 6
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "VWMA",
-          "n": 69
-        },
-        "B": {
-          "ma": "WMA",
-          "n": 99
-        },
-        "C": {
-          "ma": "DEMA",
-          "n": 117
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [],
-      "exit": {
-        "max_bars": 14,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 8,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "DEMA",
-          "n": 45
-        }
-      },
-      "signal": {
-        "kind": "pcross"
-      },
-      "filters": [
-        {
-          "f": "d5",
-          "op": "<",
-          "x": -1.78
-        },
-        {
-          "f": "slot",
-          "op": ">",
-          "x": 6.5
-        }
-      ],
-      "exit": {
-        "max_bars": 70,
-        "fc": [],
-        "sl": 10,
-        "tp": 4
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "ZLEMA",
-          "n": 37
-        }
-      },
-      "signal": {
-        "kind": "pcross"
-      },
-      "filters": [
-        {
-          "f": "rsi",
-          "op": "<",
-          "x": 32.7
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 10,
-        "tp": 6
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "TEMA",
-          "n": 34
-        },
-        "B": {
-          "ma": "EMA",
-          "n": 117
-        }
-      },
-      "signal": {
-        "kind": "turn",
-        "pos": "below"
-      },
-      "filters": [
-        {
-          "f": "atrrank",
-          "op": ">",
-          "x": 26.3
-        },
-        {
-          "f": "ret7",
-          "op": "<",
-          "x": -2.12
-        }
-      ],
-      "exit": {
-        "max_bars": 35,
-        "fc": [],
-        "sl": 8,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "TEMA",
-          "n": 79
-        }
-      },
-      "signal": {
-        "kind": "pcross"
-      },
-      "filters": [
-        {
-          "f": "ret35",
-          "op": "<",
-          "x": -4.79
-        }
-      ],
-      "exit": {
-        "max_bars": 14,
-        "fc": [],
-        "sl": 10,
-        "tp": 7
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 129
-        },
-        "B": {
-          "ma": "TEMA",
-          "n": 150
-        }
-      },
-      "signal": {
-        "kind": "turn",
-        "pos": "below"
-      },
-      "filters": [
-        {
-          "f": "spy140",
-          "op": ">",
-          "x": 3.74
-        },
-        {
-          "f": "spy35",
-          "op": "<",
-          "x": 0.192
-        }
-      ],
-      "exit": {
-        "max_bars": 70,
-        "fc": [],
-        "sl": 6,
-        "tp": 3
-      }
-    },
     {
       "schema": "ia4-rule/1",
       "direction": "long",
@@ -95248,6 +94189,1173 @@
           },
           {
             "kind": "cross_back"
+          }
+        ],
+        "sl": 6,
+        "tp": 4
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 29
+        },
+        "B": {
+          "ma": "DEMA",
+          "n": 63
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 2.5
+      },
+      "filters": [
+        {
+          "f": "ret7",
+          "op": ">",
+          "x": 0.424
+        },
+        {
+          "f": "since",
+          "op": ">",
+          "x": 14
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 8,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "SMA",
+          "n": 29
+        },
+        "B": {
+          "ma": "DEMA",
+          "n": 32
+        },
+        "C": {
+          "ma": "SMA",
+          "n": 35
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "d20",
+          "op": ">",
+          "x": 4.3
+        },
+        {
+          "f": "ret7",
+          "op": ">",
+          "x": -0.712
+        }
+      ],
+      "exit": {
+        "max_bars": 35,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 4,
+        "tp": 10
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "HMA",
+          "n": 45
+        },
+        "B": {
+          "ma": "HMA",
+          "n": 69
+        },
+        "C": {
+          "ma": "VWMA",
+          "n": 147
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "d5",
+          "op": ">",
+          "x": 0.735
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 5,
+        "tp": 10
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "EMA",
+          "n": 21
+        },
+        "B": {
+          "ma": "EMA",
+          "n": 63
+        },
+        "C": {
+          "ma": "DEMA",
+          "n": 136
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "atrrank",
+          "op": "<",
+          "x": 6.0
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 4,
+        "tp": 9
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "VWMA",
+          "n": 74
+        },
+        "B": {
+          "ma": "ZLEMA",
+          "n": 136
+        },
+        "C": {
+          "ma": "VWMA",
+          "n": 144
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "atrp",
+          "op": ">",
+          "x": 0.839
+        },
+        {
+          "f": "slot",
+          "op": ">",
+          "x": 6.5
+        }
+      ],
+      "exit": {
+        "max_bars": 35,
+        "fc": [],
+        "sl": 3,
+        "tp": 4
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "KAMA",
+          "n": 25
+        },
+        "B": {
+          "ma": "TEMA",
+          "n": 49
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 3.0
+      },
+      "filters": [
+        {
+          "f": "qqq140",
+          "op": ">",
+          "x": -0.624
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 7,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 10
+        },
+        "B": {
+          "ma": "ZLEMA",
+          "n": 16
+        },
+        "C": {
+          "ma": "SMA",
+          "n": 39
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "slopeA",
+          "op": ">",
+          "x": 0.5
+        }
+      ],
+      "exit": {
+        "max_bars": 35,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 2,
+        "tp": 2
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "EMA",
+          "n": 68
+        },
+        "B": {
+          "ma": "ZLEMA",
+          "n": 125
+        }
+      },
+      "signal": {
+        "kind": "turn",
+        "pos": "below"
+      },
+      "filters": [
+        {
+          "f": "rsi",
+          "op": "<",
+          "x": 38.8
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 8,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "VWMA",
+          "n": 77
+        },
+        "B": {
+          "ma": "TEMA",
+          "n": 128
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 1.25
+      },
+      "filters": [
+        {
+          "f": "atrp",
+          "op": "<",
+          "x": 0.767
+        },
+        {
+          "f": "qqq35",
+          "op": "<",
+          "x": -2.31
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 7,
+        "tp": 5
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 8
+        },
+        "B": {
+          "ma": "ZLEMA",
+          "n": 80
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 2.0
+      },
+      "filters": [
+        {
+          "f": "zAB",
+          "op": "<",
+          "x": 0.5
+        }
+      ],
+      "exit": {
+        "max_bars": 35,
+        "fc": [],
+        "sl": 4,
+        "tp": 2
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "HMA",
+          "n": 115
+        },
+        "B": {
+          "ma": "VWMA",
+          "n": 125
+        }
+      },
+      "signal": {
+        "kind": "turn",
+        "pos": "any"
+      },
+      "filters": [
+        {
+          "f": "d20",
+          "op": ">",
+          "x": 6.89
+        },
+        {
+          "f": "dow",
+          "op": ">",
+          "x": 3.5
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 7,
+        "tp": 8
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "ZLEMA",
+          "n": 52
+        },
+        "B": {
+          "ma": "EMA",
+          "n": 82
+        }
+      },
+      "signal": {
+        "kind": "cross"
+      },
+      "filters": [
+        {
+          "f": "atrp",
+          "op": ">",
+          "x": 1.1
+        },
+        {
+          "f": "gap",
+          "op": "<",
+          "x": 0.184
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [],
+        "sl": 9,
+        "tp": 4
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "VWMA",
+          "n": 143
+        }
+      },
+      "signal": {
+        "kind": "pcross"
+      },
+      "filters": [
+        {
+          "f": "d5",
+          "op": "<",
+          "x": -0.988
+        },
+        {
+          "f": "ret7",
+          "op": ">",
+          "x": 1.39
+        }
+      ],
+      "exit": {
+        "max_bars": 35,
+        "fc": [
+          {
+            "kind": "pcross_back"
+          }
+        ],
+        "sl": 1,
+        "tp": 1
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 32
+        },
+        "B": {
+          "ma": "DEMA",
+          "n": 56
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 2.25
+      },
+      "filters": [
+        {
+          "f": "atrrank",
+          "op": "<",
+          "x": 49.1
+        },
+        {
+          "f": "since",
+          "op": ">",
+          "x": 14
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 7,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "EMA",
+          "n": 30
+        },
+        "B": {
+          "ma": "DEMA",
+          "n": 86
+        }
+      },
+      "signal": {
+        "kind": "cross"
+      },
+      "filters": [
+        {
+          "f": "atrp",
+          "op": ">",
+          "x": 1.4
+        },
+        {
+          "f": "dow",
+          "op": ">",
+          "x": 2.5
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 8,
+        "tp": 9
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "KAMA",
+          "n": 76
+        }
+      },
+      "signal": {
+        "kind": "pcross"
+      },
+      "filters": [
+        {
+          "f": "qqq140",
+          "op": ">",
+          "x": 9.77
+        },
+        {
+          "f": "slot",
+          "op": ">",
+          "x": 6.5
+        }
+      ],
+      "exit": {
+        "max_bars": 14,
+        "fc": [
+          {
+            "kind": "pcross_back"
+          }
+        ],
+        "sl": 1,
+        "tp": 2
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "KAMA",
+          "n": 43
+        },
+        "B": {
+          "ma": "EMA",
+          "n": 88
+        }
+      },
+      "signal": {
+        "kind": "turn",
+        "pos": "any"
+      },
+      "filters": [
+        {
+          "f": "d5",
+          "op": ">",
+          "x": 2.13
+        },
+        {
+          "f": "spy140",
+          "op": ">",
+          "x": 7.14
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [],
+        "sl": 4,
+        "tp": 2
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 42
+        },
+        "B": {
+          "ma": "DEMA",
+          "n": 84
+        },
+        "C": {
+          "ma": "TEMA",
+          "n": 122
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "gap",
+          "op": "<",
+          "x": 0.0301
+        },
+        {
+          "f": "ret35",
+          "op": ">",
+          "x": 3.44
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 1,
+        "tp": 1
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "ZLEMA",
+          "n": 11
+        },
+        "B": {
+          "ma": "EMA",
+          "n": 37
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 1.25
+      },
+      "filters": [
+        {
+          "f": "qqq140",
+          "op": ">",
+          "x": -1.77
+        },
+        {
+          "f": "zAB",
+          "op": "<",
+          "x": 0.0
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 4,
+        "tp": 7
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "HMA",
+          "n": 50
+        },
+        "B": {
+          "ma": "WMA",
+          "n": 92
+        },
+        "C": {
+          "ma": "TEMA",
+          "n": 108
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "atrrank",
+          "op": ">",
+          "x": 92.0
+        },
+        {
+          "f": "slot",
+          "op": "<",
+          "x": 4.5
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 10,
+        "tp": 4
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "HMA",
+          "n": 6
+        },
+        "B": {
+          "ma": "VWMA",
+          "n": 63
+        },
+        "C": {
+          "ma": "EMA",
+          "n": 121
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "gap",
+          "op": "<",
+          "x": -1.06
+        },
+        {
+          "f": "ret7",
+          "op": "<",
+          "x": -0.31
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 10,
+        "tp": 9
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 18
+        },
+        "B": {
+          "ma": "DEMA",
+          "n": 47
+        },
+        "C": {
+          "ma": "HMA",
+          "n": 57
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "atrrank",
+          "op": "<",
+          "x": 49.1
+        },
+        {
+          "f": "d5",
+          "op": ">",
+          "x": 3.45
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 3,
+        "tp": 9
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 110
+        },
+        "B": {
+          "ma": "TEMA",
+          "n": 119
+        }
+      },
+      "signal": {
+        "kind": "converge",
+        "grow": 5,
+        "shrink": 1
+      },
+      "filters": [
+        {
+          "f": "atrrank",
+          "op": "<",
+          "x": 15.4
+        },
+        {
+          "f": "spy140",
+          "op": ">",
+          "x": 3.74
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "reexpand",
+            "n": 2
+          },
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 10,
+        "tp": 9
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "VWMA",
+          "n": 19
+        },
+        "B": {
+          "ma": "TEMA",
+          "n": 59
+        },
+        "C": {
+          "ma": "SMA",
+          "n": 144
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "atrrank",
+          "op": "<",
+          "x": 6.0
+        },
+        {
+          "f": "qqq140",
+          "op": "<",
+          "x": 5.28
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 5,
+        "tp": 7
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 18
+        },
+        "B": {
+          "ma": "WMA",
+          "n": 40
+        },
+        "C": {
+          "ma": "EMA",
+          "n": 133
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "atrrank",
+          "op": "<",
+          "x": 15.4
+        },
+        {
+          "f": "gap",
+          "op": ">",
+          "x": -0.107
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 6,
+        "tp": 9
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "KAMA",
+          "n": 12
+        },
+        "B": {
+          "ma": "VWMA",
+          "n": 15
+        }
+      },
+      "signal": {
+        "kind": "turn",
+        "pos": "above"
+      },
+      "filters": [
+        {
+          "f": "slopeA",
+          "op": "<",
+          "x": -0.5
+        }
+      ],
+      "exit": {
+        "max_bars": 35,
+        "fc": [
+          {
+            "kind": "turn_back"
+          }
+        ],
+        "sl": 5,
+        "tp": 10
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 59
+        },
+        "B": {
+          "ma": "SMA",
+          "n": 123
+        }
+      },
+      "signal": {
+        "kind": "turn",
+        "pos": "above"
+      },
+      "filters": [
+        {
+          "f": "dow",
+          "op": ">",
+          "x": 4.5
+        },
+        {
+          "f": "ret35",
+          "op": ">",
+          "x": 3.44
+        }
+      ],
+      "exit": {
+        "max_bars": 35,
+        "fc": [],
+        "sl": 4,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 32
+        }
+      },
+      "signal": {
+        "kind": "pcross"
+      },
+      "filters": [
+        {
+          "f": "qqq35",
+          "op": ">",
+          "x": 3.52
+        },
+        {
+          "f": "rsi",
+          "op": ">",
+          "x": 58.7
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 10,
+        "tp": 8
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "HMA",
+          "n": 76
+        },
+        "B": {
+          "ma": "VWMA",
+          "n": 82
+        },
+        "C": {
+          "ma": "HMA",
+          "n": 107
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "atrp",
+          "op": ">",
+          "x": 0.52
+        },
+        {
+          "f": "d5",
+          "op": ">",
+          "x": 1.35
+        }
+      ],
+      "exit": {
+        "max_bars": 7,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 4,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "KAMA",
+          "n": 77
+        },
+        "B": {
+          "ma": "VWMA",
+          "n": 79
+        }
+      },
+      "signal": {
+        "kind": "cross"
+      },
+      "filters": [
+        {
+          "f": "d20",
+          "op": ">",
+          "x": 1.51
+        },
+        {
+          "f": "gap",
+          "op": "<",
+          "x": -0.559
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 8,
+        "tp": 6
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 97
+        }
+      },
+      "signal": {
+        "kind": "pcross"
+      },
+      "filters": [
+        {
+          "f": "ret35",
+          "op": ">",
+          "x": 5.61
+        },
+        {
+          "f": "spy140",
+          "op": ">",
+          "x": 7.14
+        }
+      ],
+      "exit": {
+        "max_bars": 35,
+        "fc": [
+          {
+            "kind": "pcross_back"
           }
         ],
         "sl": 6,
