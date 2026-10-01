@@ -1,6 +1,6 @@
 """
 IA 4 — poszukiwanie strategii na Macu (Etap 2).
-Wersja projektu: 1.8 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.9 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Uruchomienie (w folderze ia4-research/, z aktywnym .venv):
   python -m ia4.lab                 # liczy bez końca (Ctrl+C — zapisuje stan i kończy)
@@ -30,13 +30,20 @@ from . import check, data, search, store
 
 
 def _traded_symbols() -> list[str]:
-    """Spółki główne + kontrolne. Z Firestore (system/universe), a bez sieci — z plików parquet."""
+    """Spółki główne + kontrolne. Z Firestore (system/universe), a bez sieci — z plików parquet.
+    doubleProof nigdy nie bierze udziału w poszukiwaniu (instrukcja, sekcja 6a)."""
     try:
         u = base_config.universe()
         return u["main"] + u["proof"]
     except Exception as e:
+        import json
+        man = {}
+        if base_config.MANIFEST_PATH.exists():
+            man = json.loads(base_config.MANIFEST_PATH.read_text(encoding="utf-8"))
         files = sorted(p.stem for p in base_config.CACHE_DIR.glob("*.parquet"))
-        syms = [s for s in files if s not in data.CONTEXT]
+        syms = [s for s in files if s not in data.CONTEXT
+                and s not in base_config.DOUBLE_PROOF_FALLBACK
+                and man.get(s, {}).get("group", "proof") in ("main", "proof")]
         print(f"  ! Firestore niedostępny ({type(e).__name__}) — biorę listę z plików: {len(syms)} instrumentów")
         return syms
 

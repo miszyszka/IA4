@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — TELEMETRIA  (stan zbierania → telemetry/state.json w GitHub)
  *
- *  Wersja projektu: 1.8 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.9 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Claude widzi tylko repozytorium, nie arkusz. Ten plik raz na godzinę
  *  publikuje krótki stan bazy: etap, wersję, stan automatu i dla każdego
@@ -84,6 +84,7 @@ function telemetryCollect_() {
       lastError: JSON.parse(p.getProperty('LAST_ERROR') || 'null'),
     },
     nightly: JSON.parse(p.getProperty('NIGHTLY_INFO') || 'null'),
+    doubleProofHistory: backfillLabel_(),
     base: counts ? { countedAt: counts.at, totalCandles: counts.total } : null,
     instruments: allSymbols_().map(s => {
       const st = live[s] || {};

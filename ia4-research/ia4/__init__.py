@@ -1,3 +1,3 @@
-"""IA 4 — kopia lokalna bazy świec. Wersja projektu: 1.8 (2026-10-01)."""
+"""IA 4 — kopia lokalna bazy świec. Wersja projektu: 1.9 (2026-10-01)."""
 
-__version__ = "1.8"
+__version__ = "1.9"

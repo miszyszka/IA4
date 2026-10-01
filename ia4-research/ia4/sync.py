@@ -1,6 +1,6 @@
 """
 IA 4 — synchronizacja Firestore → lokalna kopia (parquet).
-Wersja projektu: 1.8 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.9 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Firestore jest jedynym źródłem prawdy. Pliki w data/ to kopia robocza na Macu —
 można je skasować i odtworzyć.
@@ -37,7 +37,7 @@ import pandas as pd
 from . import config
 
 COLUMNS = ["symbol", "date", "slot", "o", "h", "l", "c", "v"]
-GROUP_COLLECTION = {"main": "stocks", "proof": "proof", "context": "context"}
+GROUP_COLLECTION = {"main": "stocks", "proof": "proof", "context": "context", "doubleProof": "doubleProof"}
 
 # Ile ostatnich dni pobieramy ponownie przy każdej synchronizacji (nowe świece
 # i ewentualne poprawki dnia bieżącego). Przepisania starsze łapie pytanie 2.
@@ -204,7 +204,8 @@ def sync_symbol(symbol: str, manifest: dict, full: bool = False) -> dict:
         "last": str(df["date"].iloc[-1]),
         "added": int(len(df)) - had,
     }
-    manifest[symbol] = {"last_date": stats["last"], "synced_at": started.isoformat(), **stats}
+    manifest[symbol] = {"last_date": stats["last"], "synced_at": started.isoformat(),
+                        "group": config.group_of(symbol), **stats}
     print(f"  {symbol}: +{stats['added']} świec → {stats['candles']} w {stats['sessions']} sesjach "
           f"({stats['first']} – {stats['last']})")
     return stats

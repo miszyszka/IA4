@@ -1,6 +1,6 @@
 """
 IA 4 — konfiguracja kopii lokalnej.
-Wersja projektu: 1.8 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.9 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 KLUCZ SERWISOWY nigdy nie leży w repozytorium (instrukcja, zasada 5).
 Domyślna ścieżka to ~/.ia4/serviceAccount.json, poza folderem ia4-research/.
@@ -23,6 +23,11 @@ CACHE_DIR = RESEARCH_DIR / "data"
 MANIFEST_PATH = CACHE_DIR / "_manifest.json"
 
 DEFAULT_KEY_PATH = Path.home() / ".ia4" / "serviceAccount.json"
+
+# doubleProof — kopia listy z Code.gs (CONFIG.DOUBLE_PROOF_SYMBOLS), używana tylko gdy
+# Firestore jest niedostępny, żeby poszukiwanie nigdy nie wzięło tych spółek (instrukcja 6a).
+DOUBLE_PROOF_FALLBACK = ("AMD", "INTC", "QCOM", "CSCO", "ADBE", "LRCX", "C", "MS", "SCHW", "COP",
+                         "OXY", "SLB", "BA", "GE", "UBER", "F", "GM", "COST", "BMY", "CMCSA")
 
 
 def key_path() -> Path:
@@ -67,12 +72,13 @@ def universe() -> dict:
         "main": list(d.get("live", [])),
         "proof": list(d.get("proof", [])),
         "context": list(d.get("context", [])),
+        "doubleProof": list(d.get("doubleProof", [])),   # tylko do weryfikacji (instrukcja 6a)
     }
 
 
 def all_symbols() -> list[str]:
     u = universe()
-    return u["main"] + u["proof"] + u["context"]
+    return u["main"] + u["proof"] + u["context"] + u["doubleProof"]
 
 
 def group_of(symbol: str) -> str:
@@ -81,6 +87,8 @@ def group_of(symbol: str) -> str:
         return "main"
     if symbol in u["context"]:
         return "context"
+    if symbol in u["doubleProof"]:
+        return "doubleProof"
     return "proof"
 
 

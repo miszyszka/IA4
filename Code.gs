@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — zbieranie świec 1h  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 1.8 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.9 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Jedyne zadanie tego pliku: żeby baza świec w Firestore była kompletna
  *  i rosła każdego dnia. Zasady i format bazy: IA4_INSTRUKCJA.md.
@@ -25,7 +25,7 @@
 //  KONFIGURACJA
 // ============================================================================
 const CONFIG = {
-  VERSION: '1.8',
+  VERSION: '1.9',
 
   // Trzy grupy instrumentów — nazwy kolekcji w Firestore są historyczne
   // i zostają bez zmian (instrukcja, sekcja 4).
@@ -38,8 +38,20 @@ const CONFIG = {
     'KO', 'PEP',
   ],
   CONTEXT_SYMBOLS: ['SPY', 'QQQ'],                       // → context/ (dokument na sesję)
+  // Druga grupa kontrolna — wyłącznie do weryfikacji strategii przez człowieka;
+  // poszukiwanie na Macu jej nie używa (instrukcja, sekcja 6a).
+  DOUBLE_PROOF_SYMBOLS: [                                // → doubleProof/ (dokument na sesję)
+    'AMD', 'INTC', 'QCOM', 'CSCO', 'ADBE', 'LRCX', 'C', 'MS', 'SCHW', 'COP',
+    'OXY', 'SLB', 'BA', 'GE', 'UBER', 'F', 'GM', 'COST', 'BMY', 'CMCSA',
+  ],
 
   STATS_SHEET: 'STATS',
+
+  // Pobieranie historii doubleProof wstecz (instrukcja, sekcja 4): co godzinę jedna porcja.
+  BACKFILL_EVERY_MIN: 60,
+  BACKFILL_WINDOW_DAYS: 60,    // porcja: 60 dni kalendarzowych na instrument
+  BACKFILL_LIMIT_DAYS: 728,    // granica Yahoo dla świec 1h: ~730 dni wstecz
+  BACKFILL_DAY_WRITES: 8000,   // dzienny limit zapisów pobierania historii (Firestore: 20 000)
   MARKET_TZ: 'America/New_York',
   LOCAL_TZ: 'Europe/Warsaw',
   SESSION_OPEN_MIN: 9 * 60 + 30,   // 9:30 ET
@@ -91,28 +103,30 @@ const YAHOO_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
   'Accept': 'application/json',
 };
-const GROUP_LABELS = { main: 'główna', proof: 'kontrolna', context: 'tło rynku' };
-const GROUP_COLLECTION = { main: 'stocks', proof: 'proof', context: 'context' };
+const GROUP_LABELS = { main: 'główna', proof: 'kontrolna', context: 'tło rynku', doubleProof: 'doubleProof' };
+const GROUP_COLLECTION = { main: 'stocks', proof: 'proof', context: 'context', doubleProof: 'doubleProof' };
 
 // Układ arkusza STATS: blok statusu od wiersza 3, potem tabela instrumentów, potem dziennik.
 const STATUS_LABELS = [
   'Status', 'Ostatnie uruchomienie (PL)', 'Ostatnia akcja', 'Ostatni zapis świecy (PL)',
   'Czas w Nowym Jorku (ET)', 'Sesja USA', 'Automat (trigger)', 'Zapisanych świec dziś',
-  'Błędów dziś', 'Ostatni błąd', 'Nocne odświeżenie', 'Świec w bazie',
+  'Błędów dziś', 'Ostatni błąd', 'Nocne odświeżenie', 'Świec w bazie', 'Historia doubleProof',
 ];
 const STATS_FIRST = 3;
 const SYM_HEADER = STATS_FIRST + STATUS_LABELS.length + 1;
 const SYM_FIRST = SYM_HEADER + 1;
 const SYM_COLS = 7;
 
-/** Wszystkie instrumenty: główne, kontrolne, tło rynku. */
+/** Wszystkie instrumenty: główne, kontrolne, tło rynku, doubleProof. */
 function allSymbols_() {
-  return CONFIG.SYMBOLS.concat(CONFIG.PROOF_SYMBOLS, CONFIG.CONTEXT_SYMBOLS);
+  return CONFIG.SYMBOLS.concat(CONFIG.PROOF_SYMBOLS, CONFIG.CONTEXT_SYMBOLS, CONFIG.DOUBLE_PROOF_SYMBOLS);
 }
 function isMain_(symbol) { return CONFIG.SYMBOLS.indexOf(symbol) >= 0; }
 function symbolGroup_(symbol) {
   if (isMain_(symbol)) return 'main';
-  return CONFIG.CONTEXT_SYMBOLS.indexOf(symbol) >= 0 ? 'context' : 'proof';
+  if (CONFIG.CONTEXT_SYMBOLS.indexOf(symbol) >= 0) return 'context';
+  if (CONFIG.DOUBLE_PROOF_SYMBOLS.indexOf(symbol) >= 0) return 'doubleProof';
+  return 'proof';
 }
 function fsCollection_(symbol) { return GROUP_COLLECTION[symbolGroup_(symbol)]; }
 
@@ -129,6 +143,7 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu('IA 4')
     .addItem('⚙️ Konfiguruj i włącz automat', 'setup')
     .addItem('▶️ Uzupełnij ostatni miesiąc', 'runNow')
+    .addItem('⏪ Historia doubleProof — jedna porcja teraz', 'backfillNow')
     .addItem('🌙 Nocne odświeżenie teraz', 'nightlyNow')
     .addItem('🔥 Test połączenia z Firestore', 'testFirestore')
     .addSeparator()
@@ -202,7 +217,7 @@ function execute_(mode, initMessage) {
         summary = fastCollect_(ctx);
       } else {
         action = gate.reason;
-        const extra = nightlyIfDue_(ctx) || countIfDue_();
+        const extra = nightlyIfDue_(ctx) || countIfDue_() || backfillIfDue_(ctx);
         if (extra) action += ' · ' + extra;
       }
     } else if (mode === 'nightly') {
@@ -666,6 +681,7 @@ function fsWriteUniverse_() {
         live: strArr(CONFIG.SYMBOLS),
         proof: strArr(CONFIG.PROOF_SYMBOLS),
         context: strArr(CONFIG.CONTEXT_SYMBOLS),
+        doubleProof: strArr(CONFIG.DOUBLE_PROOF_SYMBOLS),
         updatedAt: { timestampValue: new Date().toISOString() },
       },
     },
@@ -779,6 +795,7 @@ function finishRun_(ctx, action) {
     [lastErr ? `${fmt(lastErr.at)} — ${lastErr.text}` : 'brak'],
     [nightly ? `${nightly.date} (${fmt(nightly.at)}), ${nightly.written} świec` : 'jeszcze nie było'],
     [counts ? `${counts.total.toLocaleString('pl-PL')} (policzone ${fmt(counts.at)})` : 'po pierwszym nocnym odświeżeniu'],
+    [backfillLabel_()],
   ]);
 
   const live = RUN_.live || liveLoad_();
@@ -861,6 +878,138 @@ function removeTriggers_(handlers) {
     if (handlers.indexOf(t.getHandlerFunction()) >= 0) { ScriptApp.deleteTrigger(t); n++; }
   });
   return n;
+}
+
+
+// ============================================================================
+//  HISTORIA doubleProof — pobieranie wstecz do granicy Yahoo (~730 dni)
+//  Raz na BACKFILL_EVERY_MIN minut (w wolnym przebiegu runCollector) jedna
+//  porcja: dla każdej spółki, która nie ma jeszcze pełnej historii, kolejne
+//  60 dni wstecz. Okna zaczynają się i kończą o północy UTC, więc sesja nigdy
+//  nie jest dzielona między porcje. Dzisiejsze i ostatnie sesje zapisuje
+//  zbieranie na żywo i nocne odświeżenie — historia zaczyna się od wczoraj.
+//  Stan: Script Properties → BACKFILL_DP.
+// ============================================================================
+function backfillState_() {
+  return JSON.parse(PropertiesService.getScriptProperties().getProperty('BACKFILL_DP') || '{}');
+}
+
+function backfillLabel_() {
+  const st = backfillState_();
+  const syms = CONFIG.DOUBLE_PROOF_SYMBOLS;
+  const done = syms.filter(s => st[s] && st[s].done).length;
+  const oldest = syms.map(s => st[s] && st[s].end).filter(x => x).sort()[0] || '';
+  if (done === syms.length) return `kompletna — ${syms.length} spółek od ${oldest}`;
+  return `w toku: gotowe ${done}/${syms.length}` + (oldest ? `, najstarsza pobrana sesja ${oldest}` : ', jeszcze nie zaczęte');
+}
+
+function backfillIfDue_(ctx) {
+  const props = PropertiesService.getScriptProperties();
+  const st = backfillState_();
+  if (CONFIG.DOUBLE_PROOF_SYMBOLS.every(s => st[s] && st[s].done)) return '';
+  const lastTry = Number(props.getProperty('BACKFILL_TRY_AT') || 0);
+  if (Date.now() - lastTry < CONFIG.BACKFILL_EVERY_MIN * 60000) return '';
+  return runBackfill_(ctx);
+}
+
+function backfillNow() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30 * 1000)) { toast_('Automat właśnie pracuje — spróbuj za minutę.'); return; }
+  try {
+    startRun_();
+    const ctx = marketContext_(new Date());
+    const r = runBackfill_(ctx);
+    finishRun_(ctx, r || 'Historia doubleProof już kompletna');
+    toast_(r || 'Historia doubleProof już kompletna.');
+  } finally { lock.releaseLock(); }
+}
+
+function runBackfill_(ctx) {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('BACKFILL_TRY_AT', String(Date.now()));
+  const st = backfillState_();
+  const today = Utilities.formatDate(new Date(), CONFIG.LOCAL_TZ, 'yyyy-MM-dd');
+  const budget = JSON.parse(props.getProperty('BACKFILL_WRITES') || '{}');
+  if (budget.date !== today) { budget.date = today; budget.n = 0; }
+  const DAY = 86400000;
+  const todayUtc = Math.floor(Date.now() / DAY) * DAY;              // dziś 00:00 UTC
+  const limitUtc = todayUtc - CONFIG.BACKFILL_LIMIT_DAYS * DAY;
+  let written = 0, symbolsDone = 0, errors = 0, n = 0;
+
+  CONFIG.DOUBLE_PROOF_SYMBOLS.forEach(symbol => {
+    const s = st[symbol] || (st[symbol] = {});
+    if (s.done) return;
+    if (budget.n + written > CONFIG.BACKFILL_DAY_WRITES) return;
+    const end = s.endUtc || todayUtc;
+    const start = Math.max(end - CONFIG.BACKFILL_WINDOW_DAYS * DAY, limitUtc);
+    if (start >= end) { s.done = true; symbolsDone++; return; }
+    try {
+      if (n++) Utilities.sleep(CONFIG.FETCH_PAUSE_MS);
+      const r = fetchYahooPeriod_(symbol, start / 1000, end / 1000);
+      const bars = r ? parseBars_(r.result).filter(b =>
+        isoWeekday_(b.date) <= 5 && !US_MARKET_HOLIDAYS[b.date] && b.date < ctx.etDate) : [];
+      bars.forEach(b => { b.symbol = symbol; });
+      if (bars.length) written += fsWriteHistory_(symbol, bars, start <= limitUtc);
+      s.endUtc = start;
+      if (bars.length) s.end = bars.map(b => b.date).sort()[0];
+      if (!r || start <= limitUtc) { s.done = true; symbolsDone++; }
+    } catch (e) {
+      errors++;
+      recordError_(symbol, 'historia doubleProof: ' + (e.message || e));
+    }
+  });
+
+  budget.n += written;
+  props.setProperty('BACKFILL_WRITES', JSON.stringify(budget));
+  props.setProperty('BACKFILL_DP', JSON.stringify(st));
+  const msg = `historia doubleProof: zapisano ${written} sesji` + (errors ? `, błędów ${errors}` : '') + ` · ${backfillLabel_()}`;
+  log_('INFO', 'HISTORIA', msg);
+  return msg;
+}
+
+/** Yahoo 1h dla okresu [p1, p2) w sekundach. null = okres poza granicą Yahoo (koniec historii). */
+function fetchYahooPeriod_(symbol, p1, p2) {
+  let lastErr = null;
+  for (let i = 0; i < YAHOO_HOSTS.length; i++) {
+    const url = `https://${YAHOO_HOSTS[i]}/v8/finance/chart/${encodeURIComponent(symbol)}` +
+                `?interval=1h&period1=${Math.floor(p1)}&period2=${Math.floor(p2)}&includePrePost=false`;
+    try {
+      const resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true, headers: YAHOO_HEADERS });
+      const txt = resp.getContentText();
+      let json = null;
+      try { json = JSON.parse(txt); } catch (e) { /* nie-JSON */ }
+      const err = json && json.chart && json.chart.error;
+      if (err && /730|range must be|not available for startTime/i.test(err.description || '')) return null;
+      if (resp.getResponseCode() === 200 && json && json.chart && json.chart.result && json.chart.result[0]) {
+        return { result: json.chart.result[0] };
+      }
+      lastErr = new Error(`Yahoo HTTP ${resp.getResponseCode()}` + (err ? ': ' + err.description : ''));
+    } catch (e) { lastErr = e; }
+    if (i < YAHOO_HOSTS.length - 1) Utilities.sleep(1500);
+  }
+  throw lastErr;
+}
+
+/** Zapis sesji z historii: dokumenty sesji + pola historii w podsumowaniu (lastDate bez zmian). */
+function fsWriteHistory_(symbol, bars, reachedLimit) {
+  const base = fsBase_();
+  const nowIso = new Date().toISOString();
+  const byDate = {};
+  bars.forEach(b => { (byDate[b.date] = byDate[b.date] || {})[b.slot] = b; });
+  const dates = Object.keys(byDate).sort();
+  const writes = dates.map(date => ({
+    update: { name: `${base}/${fsCollection_(symbol)}/${symbol}/sessions/${date}`, fields: sessionFields_(symbol, date, byDate[date], nowIso) },
+  }));
+  writes.push({
+    update: {
+      name: `${base}/${fsCollection_(symbol)}/${symbol}`,
+      fields: { historyFirstDate: { stringValue: dates[0] }, historyUpdatedAt: { timestampValue: nowIso },
+                historyDone: { booleanValue: !!reachedLimit } },
+    },
+    updateMask: { fieldPaths: ['historyFirstDate', 'historyUpdatedAt', 'historyDone'] },
+  });
+  for (let i = 0; i < writes.length; i += 400) firestoreCommit_(writes.slice(i, i + 400));
+  return dates.length;
 }
 
 

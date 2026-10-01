@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.8
+**Wersja:** 1.9
 **Data:** 1 października 2026
 **Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca.
 
@@ -52,7 +52,7 @@ Yahoo ──(Apps Script, co minutę)──▶ Firestore ──(ia4.sync)──�
 
 | Plik | Rola |
 |---|---|
-| `Code.gs` | automat: listy instrumentów, zbieranie na żywo, nocne odświeżenie, liczenie bazy, zapis do Firestore, arkusz STATS, menu, triggery |
+| `Code.gs` | automat: listy instrumentów, zbieranie na żywo, nocne odświeżenie, liczenie bazy, pobieranie historii doubleProof, zapis do Firestore, arkusz STATS, menu, triggery |
 | `Telemetry.gs` | stan zbierania → `telemetry/state.json` w GitHub (branch `main`) |
 | `Research.gs` | branch `research` (`status.json`, `log.jsonl`, `strategies.jsonl`) → arkusze RESEARCH i STRATEGIE |
 | `Paper.gs` | paper trading: pamięć świec, sygnały na żywo (SIGNALS-REALTIME), wirtualny inwestor (VIRTUAL-INVESTOR) |
@@ -81,15 +81,16 @@ Yahoo ──(Apps Script, co minutę)──▶ Firestore ──(ia4.sync)──�
 
 ## 4. Baza danych
 
-### Instrumenty (55)
+### Instrumenty (75)
 
 | Grupa | Kolekcja | Instrumenty |
 |---|---|---|
 | główne (3) | `stocks` | AAPL, TSLA, NVDA |
 | kontrolne (50) | `proof` | DELL, AMAT, PLTR, ORCL, XOM, V, WMT, JPM, MU, META, AVGO, MSFT, GOOGL, JNJ, MA, ABBV, BAC, CVX, MRK, PG, HD, PM, WFC, CRM, CAT, HON, UNP, RTX, AMZN, MCD, NKE, SBUX, T, VZ, NFLX, DIS, UNH, LLY, PFE, MDT, PLD, AMT, LIN, FCX, NEE, DUK, GS, AXP, KO, PEP |
 | tło rynku (2) | `context` | SPY, QQQ |
+| doubleProof (20) | `doubleProof` | AMD, INTC, QCOM, CSCO, ADBE, LRCX, C, MS, SCHW, COP, OXY, SLB, BA, GE, UBER, F, GM, COST, BMY, CMCSA |
 
-Nazwy grup i kolekcji są historyczne; zostają, żeby nie przenosić danych. Listy są w `Code.gs` (`CONFIG`) i w Firestore (`system/universe`). W Etapie 2 strategie są wspólne dla wszystkich 53 spółek (główne + kontrolne); SPY i QQQ służą tylko jako filtry tła rynku.
+Nazwy grup i kolekcji są historyczne; zostają, żeby nie przenosić danych. Listy są w `Code.gs` (`CONFIG`) i w Firestore (`system/universe`). W Etapie 2 strategie są wspólne dla wszystkich 53 spółek (główne + kontrolne); SPY i QQQ służą tylko jako filtry tła rynku. doubleProof to 20 innych spółek z S&P 500 o dużym obrocie (półprzewodniki, oprogramowanie, banki, energia, przemysł, motoryzacja, handel, farmacja, media) — wyłącznie do weryfikacji strategii przez człowieka (sekcja 6a).
 
 ### Świeca
 
@@ -112,12 +113,14 @@ stocks/{SYMBOL}                        podsumowanie: lastDate, lastSlot, lastLab
 
 proof/{SYMBOL}/sessions/{data}         kontrolne — cała sesja w jednym dokumencie
 context/{SYMBOL}/sessions/{data}       tło rynku — ten sam format
+doubleProof/{SYMBOL}/sessions/{data}   doubleProof — ten sam format
   symbol, date, bars (liczba świec), slots [1..7], o [], h [], l [], c [], v [],
   startPL, firstCandleTime, updatedAt
   (tablice slots/o/h/l/c/v są równoległe: element i = świeca nr slots[i])
 proof/{SYMBOL}, context/{SYMBOL}       podsumowanie: lastDate, liveUpdatedAt (+ pola z pobierania historii)
+doubleProof/{SYMBOL}                   podsumowanie: lastDate, liveUpdatedAt, historyFirstDate, historyUpdatedAt, historyDone
 
-system/universe                        listy instrumentów: live, proof, context
+system/universe                        listy instrumentów: live, proof, context, doubleProof
 system/status                          ostatni zapis automatu, wersja
 ```
 
@@ -132,9 +135,10 @@ Historia od połowy września 2024 (granica Yahoo: ok. 730 dni wstecz dla świec
 1. **Na żywo.** Trigger `runCollector` co minutę. Po zamknięciu każdej świecy automat pobiera z Yahoo ostatnie 5 dni i zapisuje tylko nowe, zamknięte świece. Tuż po zamknięciu ponawia co 30 s, aż spółki główne dostaną świecę. Pamięć „co już zapisane” przesuwa się dopiero po potwierdzeniu zapisu przez Firestore.
 2. **Nocne odświeżenie.** Raz na dzień sesyjny, 45 min po zamknięciu, automat przepisuje ostatnie ~5 sesji wszystkich instrumentów (~400 dokumentów). Świeca brakująca z powodu awarii wraca sama tej samej nocy. Nieudane odświeżenie jest ponawiane co 30 min.
 3. **Liczenie bazy.** Po nocnym odświeżeniu automat liczy świece i pierwszą datę każdego instrumentu (zapytania agregujące, ~110 odczytów) — widać to w STATS i w `telemetry/state.json`.
-4. **Ręcznie:** menu IA 4 → „Uzupełnij ostatni miesiąc” (po dłuższej przerwie automatu), „Nocne odświeżenie teraz”.
+4. **Ręcznie:** menu IA 4 → „Uzupełnij ostatni miesiąc” (po dłuższej przerwie automatu), „Nocne odświeżenie teraz”, „Historia doubleProof — jedna porcja teraz”.
+5. **Historia doubleProof (jednorazowo, sama się kończy).** Raz na godzinę, w wolnym przebiegu `runCollector`, jedna porcja: dla każdej spółki doubleProof bez pełnej historii kolejne 60 dni wstecz (Yahoo `period1/period2`, okna od północy do północy UTC — sesja nigdy nie jest dzielona). Zaczyna od wczoraj, kończy na granicy Yahoo (728 dni wstecz albo odpowiedź Yahoo „poza zakresem 730 dni”). Ok. 840 zapisów na porcję, ok. 10 tys. łącznie; najwyżej 8000 zapisów dziennie, więc całość trwa ok. 12–13 godzin pracy rozłożonych na 1–2 dni. Stan: Script Properties `BACKFILL_DP`, postęp w STATS („Historia doubleProof”) i w `telemetry/state.json` (`doubleProofHistory`). Dzisiejsze i ostatnie sesje zapisują zbieranie na żywo i nocne odświeżenie, jak dla pozostałych instrumentów.
 
-Limit Firestore (plan Spark): 20 000 zapisów i 50 000 odczytów dziennie. Normalny dzień to ok. 1200 zapisów.
+Limit Firestore (plan Spark): 20 000 zapisów i 50 000 odczytów dziennie. Normalny dzień (75 instrumentów) to ok. 1600 zapisów.
 
 **Raz w roku (grudzień):** dopisać święta NYSE na kolejny rok do `US_MARKET_HOLIDAYS` w `Code.gs` oraz święta i sesje skrócone do `ia4-research/ia4/lab/check.py`.
 
@@ -159,6 +163,13 @@ Wynik: `data/{SYMBOL}.parquet`, jedna tabela na instrument, kolumny `symbol, dat
 - **Zasada:** poszukiwanie (siatka, adaptacja, wszystkie sita) widzi wyłącznie wyniki grupy głównej. Skarbiec może być otwierany wielokrotnie — każde otwarcie dotyczy innej strategii i zadaje danym inne pytanie — ale tylko przez bramkę skarbca (sekcja 9.4), dla strategii obiecującej na grupie głównej, która nie jest duplikatem strategii już sprawdzonej w skarbcu. Każde otwarcie jest liczone (`vault_peeks`) i zapisywane w `research/vault.jsonl`, także gdy strategia przepadnie.
 - **Egzekwowanie kodem:** procesy robocze zerują wyniki skarbca, zanim oddadzą wynik (`worker.evaluate`). Wyniki skarbca zwraca tylko `worker.open_vault`, wołane wyłącznie przez `Lab._open_vault` w `search.py`.
 - **Przypisanie transakcji:** transakcja należy do strefy świecy wejścia. Wskaźniki liczone są na ciągłej serii instrumentu (także przez granicę skarbca).
+
+## 6a. doubleProof — druga grupa kontrolna
+
+- 20 spółek spoza grupy głównej i kontrolnej (sekcja 4), zbierane tak samo jak pozostałe: na żywo, nocne odświeżenie, pełna historia do granicy Yahoo.
+- **Poszukiwanie nigdy ich nie używa** — ani grupa główna, ani skarbiec, ani sita. `python -m ia4.lab` bierze tylko `main` + `proof` z `system/universe`; bez Firestore wyklucza doubleProof po liście w `ia4/config.py` i po polu `group` w manifeście synchronizacji.
+- Paper trading (sekcja 11a) też ich nie używa.
+- Służą człowiekowi do weryfikacji wybranych strategii na spółkach, których system nigdy nie widział. Synchronizacja (`python -m ia4.sync`) ściąga je na Maca jak pozostałe instrumenty.
 
 ---
 
@@ -466,6 +477,7 @@ git push
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.9 | 2026-10-01 | Nowa kolekcja `doubleProof` (20 spółek S&P 500: AMD, INTC, QCOM, CSCO, ADBE, LRCX, C, MS, SCHW, COP, OXY, SLB, BA, GE, UBER, F, GM, COST, BMY, CMCSA) — zbierana na żywo i w nocnym odświeżeniu, historia pobierana wstecz porcjami co godzinę do granicy Yahoo (sekcja 4 p. 5). Sekcja 6a: doubleProof wyłączona z poszukiwania i paper tradingu, tylko do weryfikacji. STATS: wiersz „Historia doubleProof”; telemetria: `doubleProofHistory`. Python: `system/universe.doubleProof`, grupa w manifeście synchronizacji. |
 | 1.8 | 2026-10-01 | Etap 3 — paper trading: `PaperEngine.gs` (język reguł w JS, zgodność z Pythonem 100% w teście 140 reguł / 13 335 sygnałów / 11 962 transakcji), `Paper.gs` (pamięć świec `_IA4_DANE`, krok po każdej świecy w `runCollector`, arkusze SIGNALS-REALTIME i VIRTUAL-INVESTOR, menu „Paper trading — przelicz teraz”), test `ia4-research/tests/`. Zasada 12: jeden język reguł, dwie implementacje. |
 | 1.7 | 2026-10-01 | Statystyki strategii: średni wynik % wg rodzaju wyjścia (`stats.exit_avg_ret_pct`: tp, sl, fc, time, all); w arkuszu STRATEGIE kolumny „Śr. wynik FC %” i „Śr. wynik transakcji %”. Przy pierwszym starcie 1.7: przeliczenie statystyk aktywnych strategii (bez liczenia jako otwarcie skarbca), przegląd wg wszystkich kryteriów, nowy dziennik od zera — stare `log.jsonl` i `vault.jsonl` w `research/archive/`, liczniki wyzerowane. |
 | 1.6 | 2026-10-01 | Najwyżej 10% transakcji może kończyć się limitem czasu (sito grupy głównej, skarbiec, przegląd zapisanych). Skuteczność w arkuszach = udział wyjść na TP. Nowy próg `min_tp_share` (domyślnie wyłączony). Przegląd strategii przy pierwszym starcie 1.6. |
