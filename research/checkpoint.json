@@ -1,6 +1,6 @@
 {
   "version": "1.8",
-  "saved_at": "2026-10-01T15:25:13Z",
+  "saved_at": "2026-10-01T15:36:25Z",
   "first_start": "2026-09-30T18:08:18Z",
   "grid": {
     "signature": "e2545a1453c7",
@@ -9,21 +9,21 @@
     "done": true
   },
   "totals": {
-    "evals": 1682020,
-    "hypotheses": 105595800,
-    "eligible": 74423,
-    "unstable": 1862,
-    "promising": 72550,
-    "duplicates": 5527,
-    "vault_peeks": 1717,
-    "accepted": 188,
-    "rejected_vault": 1416,
-    "group_full": 65473,
-    "archived": 128,
+    "evals": 1799226,
+    "hypotheses": 113752600,
+    "eligible": 78644,
+    "unstable": 1980,
+    "promising": 76648,
+    "duplicates": 5738,
+    "vault_peeks": 1783,
+    "accepted": 192,
+    "rejected_vault": 1465,
+    "group_full": 69307,
+    "archived": 132,
     "errors": 0,
-    "run_minutes": 147.6
+    "run_minutes": 158.79999999999998
   },
-  "rng_seed": 389546143,
+  "rng_seed": 355273260,
   "pool": [
     {
       "key": "cb354546cfa1379d",
@@ -8281,13 +8281,13 @@
       }
     },
     {
-      "key": "648d83ef3ab04f3b",
+      "key": "648372b92b774daa",
       "score": 99.0,
-      "n": 44,
+      "n": 33,
       "pf": 99.0,
-      "edge": 97.93,
+      "edge": 96.386,
       "best": [
-        6,
+        7,
         0
       ],
       "rule": {
@@ -8296,22 +8296,67 @@
         "lines": {
           "A": {
             "ma": "WMA",
-            "n": 30
+            "n": 31
           },
           "B": {
             "ma": "DEMA",
-            "n": 54
+            "n": 61
           }
         },
         "signal": {
           "kind": "revert",
-          "k": 2.25
+          "k": 2.5
         },
         "filters": [
           {
-            "f": "rsi",
-            "op": "<",
-            "x": 58.7
+            "f": "qqq140",
+            "op": ">",
+            "x": 2.14
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "38e7349111736dd2",
+      "score": 99.0,
+      "n": 31,
+      "pf": 99.0,
+      "edge": 96.386,
+      "best": [
+        7,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 26
+          },
+          "B": {
+            "ma": "DEMA",
+            "n": 52
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 2.5
+        },
+        "filters": [
+          {
+            "f": "d20",
+            "op": ">",
+            "x": 2.73
+          },
+          {
+            "f": "spy140",
+            "op": ">",
+            "x": -1.33
           }
         ],
         "exit": {
@@ -17541,62 +17586,13 @@
       }
     },
     {
-      "key": "3332b7996c5a6d8f",
-      "score": 1.8273,
-      "n": 51,
-      "pf": 1.926,
-      "edge": 1.694,
+      "key": "a74569e40e9af303",
+      "score": 4.9,
+      "n": 61,
+      "pf": 99.0,
+      "edge": 93.476,
       "best": [
-        6,
-        7
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "TEMA",
-            "n": 42
-          },
-          "B": {
-            "ma": "SMA",
-            "n": 90
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "any"
-        },
-        "filters": [
-          {
-            "f": "ret7",
-            "op": "<",
-            "x": -2.12
-          },
-          {
-            "f": "since",
-            "op": "<",
-            "x": 100
-          }
-        ],
-        "exit": {
-          "max_bars": 14,
-          "fc": [
-            {
-              "kind": "turn_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "7b62bd6dd7869b35",
-      "score": 1.4985,
-      "n": 73,
-      "pf": 1.72,
-      "edge": 1.787,
-      "best": [
-        4,
+        8,
         0
       ],
       "rule": {
@@ -17605,97 +17601,43 @@
         "lines": {
           "A": {
             "ma": "WMA",
-            "n": 73
+            "n": 29
           },
           "B": {
-            "ma": "WMA",
-            "n": 119
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 6,
-          "shrink": 3
-        },
-        "filters": [
-          {
-            "f": "qqq140",
-            "op": "<",
-            "x": 0.739
-          },
-          {
-            "f": "qqq35",
-            "op": "<",
-            "x": -2.31
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 3
-            },
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "b705eaab3367a7e0",
-      "score": 1.4188,
-      "n": 126,
-      "pf": 1.419,
-      "edge": 1.745,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "WMA",
-            "n": 6
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 6
+            "ma": "DEMA",
+            "n": 58
           }
         },
         "signal": {
           "kind": "revert",
-          "k": 1.75
+          "k": 2.25
         },
         "filters": [
           {
-            "f": "ret7",
+            "f": "qqq35",
             "op": "<",
-            "x": 0.0534
+            "x": 1.36
           },
           {
-            "f": "spy35",
-            "op": "<",
-            "x": -0.376
+            "f": "since",
+            "op": ">",
+            "x": 21
           }
         ],
         "exit": {
-          "max_bars": 7,
+          "max_bars": null,
           "fc": []
         }
       }
     },
     {
-      "key": "860575d066638067",
-      "score": 1.2257,
-      "n": 1928,
-      "pf": 1.262,
-      "edge": 1.085,
+      "key": "74834ddb79f3df1b",
+      "score": 2.9,
+      "n": 39,
+      "pf": 3.222,
+      "edge": 2.214,
       "best": [
-        2,
+        8,
         9
       ],
       "rule": {
@@ -17703,333 +17645,42 @@
         "direction": "long",
         "lines": {
           "A": {
-            "ma": "TEMA",
-            "n": 24
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 108
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "any"
-        },
-        "filters": [
-          {
-            "f": "qqq140",
-            "op": "<",
-            "x": 9.77
-          },
-          {
-            "f": "ret35",
-            "op": "<",
-            "x": -2.81
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "turn_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "eeff4f7ef1b6ea5a",
-      "score": 1.2126,
-      "n": 990,
-      "pf": 1.213,
-      "edge": 1.038,
-      "best": [
-        8,
-        3
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "TEMA",
-            "n": 74
-          },
-          "B": {
-            "ma": "KAMA",
-            "n": 131
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 6,
-          "shrink": 4
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 1
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "9a28b5a976f608c2",
-      "score": 1.1575,
-      "n": 1653,
-      "pf": 1.158,
-      "edge": 0.909,
-      "best": [
-        9,
-        6
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "ZLEMA",
-            "n": 40
+            "ma": "WMA",
+            "n": 31
           },
           "B": {
             "ma": "DEMA",
-            "n": 81
-          }
-        },
-        "signal": {
-          "kind": "cross"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "8f2e3f84a4eaecf5",
-      "score": 1.1553,
-      "n": 1194,
-      "pf": 1.16,
-      "edge": 1.061,
-      "best": [
-        6,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "TEMA",
-            "n": 75
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 94
-          }
-        },
-        "signal": {
-          "kind": "cross"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "46477ddbc72e1e52",
-      "score": 1.1183,
-      "n": 752,
-      "pf": 1.197,
-      "edge": 1.262,
-      "best": [
-        3,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "TEMA",
-            "n": 73
-          },
-          "B": {
-            "ma": "EMA",
-            "n": 99
+            "n": 58
           }
         },
         "signal": {
           "kind": "revert",
           "k": 2.0
         },
-        "filters": [],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "b7df86f7ef770b8c",
-      "score": 1.1024,
-      "n": 867,
-      "pf": 1.102,
-      "edge": 1.183,
-      "best": [
-        2,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "WMA",
-            "n": 59
-          },
-          "B": {
-            "ma": "VWMA",
-            "n": 102
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "below"
-        },
         "filters": [
           {
-            "f": "dow",
-            "op": ">",
-            "x": 3.5
-          }
-        ],
-        "exit": {
-          "max_bars": 14,
-          "fc": [
-            {
-              "kind": "turn_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "f8c6e03096b3ca0e",
-      "score": 1.0884,
-      "n": 798,
-      "pf": 1.107,
-      "edge": 0.978,
-      "best": [
-        0,
-        9
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "TEMA",
-            "n": 11
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 105
-          }
-        },
-        "signal": {
-          "kind": "cross"
-        },
-        "filters": [
-          {
-            "f": "spy140",
-            "op": ">",
-            "x": 5.1
+            "f": "rsi",
+            "op": "<",
+            "x": 43.5
           },
           {
             "f": "zAB",
             "op": "<",
-            "x": 0.5
+            "x": 1.0
           }
         ],
         "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "00109a4bb346a2a1",
-      "score": 1.0785,
-      "n": 778,
-      "pf": 1.135,
-      "edge": 1.083,
-      "best": [
-        3,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 24
-          },
-          "B": {
-            "ma": "VWMA",
-            "n": 37
-          },
-          "C": {
-            "ma": "TEMA",
-            "n": 132
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
-        },
-        "filters": [
-          {
-            "f": "ret7",
-            "op": ">",
-            "x": 1.39
-          }
-        ],
-        "exit": {
-          "max_bars": 70,
+          "max_bars": null,
           "fc": []
         }
       }
     },
     {
-      "key": "d67ff9ce32956bf0",
-      "score": 1.0366,
-      "n": 1000,
-      "pf": 1.074,
-      "edge": 0.947,
+      "key": "f41e61ef5ba9d039",
+      "score": 1.6236,
+      "n": 30,
+      "pf": 1.895,
+      "edge": 1.657,
       "best": [
         0,
         8
@@ -18040,1244 +17691,65 @@
         "lines": {
           "A": {
             "ma": "DEMA",
-            "n": 10
-          },
-          "B": {
-            "ma": "SMA",
-            "n": 128
-          },
-          "C": {
-            "ma": "ZLEMA",
-            "n": 131
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "b22f1c51ea7ac266",
-      "score": 1.0352,
-      "n": 7832,
-      "pf": 1.036,
-      "edge": 1.033,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "DEMA",
-            "n": 29
-          }
-        },
-        "signal": {
-          "kind": "pcross"
-        },
-        "filters": [
-          {
-            "f": "qqq35",
-            "op": "<",
-            "x": 2.67
-          }
-        ],
-        "exit": {
-          "max_bars": 14,
-          "fc": [
-            {
-              "kind": "pcross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "10e80e325f475da8",
-      "score": 1.0241,
-      "n": 2970,
-      "pf": 1.024,
-      "edge": 0.967,
-      "best": [
-        7,
-        1
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "ZLEMA",
-            "n": 11
+            "n": 110
           },
           "B": {
             "ma": "TEMA",
-            "n": 16
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 3,
-          "shrink": 3
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 1
-            },
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "8c280cd0ebb265f8",
-      "score": 1.0098,
-      "n": 1570,
-      "pf": 1.01,
-      "edge": 1.05,
-      "best": [
-        4,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 87
-          },
-          "B": {
-            "ma": "HMA",
-            "n": 93
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 3,
-          "shrink": 3
-        },
-        "filters": [
-          {
-            "f": "d20",
-            "op": "<",
-            "x": 2.73
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 3
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "a36a4d6ed65c9736",
-      "score": 1.0042,
-      "n": 1726,
-      "pf": 1.004,
-      "edge": 0.977,
-      "best": [
-        0,
-        3
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "ZLEMA",
-            "n": 11
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 63
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "below"
-        },
-        "filters": [
-          {
-            "f": "d20",
-            "op": "<",
-            "x": 0.44
-          },
-          {
-            "f": "gap",
-            "op": "<",
-            "x": -0.295
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "835e1967ebe324f9",
-      "score": 1.0029,
-      "n": 98,
-      "pf": 1.074,
-      "edge": 1.131,
-      "best": [
-        0,
-        1
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "KAMA",
-            "n": 88
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 143
-          }
-        },
-        "signal": {
-          "kind": "cross"
-        },
-        "filters": [
-          {
-            "f": "slot",
-            "op": ">",
-            "x": 6.5
-          }
-        ],
-        "exit": {
-          "max_bars": null,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "79addd497e771dad",
-      "score": 1.0002,
-      "n": 1349,
-      "pf": 1.0,
-      "edge": 1.054,
-      "best": [
-        3,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 60
-          },
-          "B": {
-            "ma": "DEMA",
-            "n": 63
-          },
-          "C": {
-            "ma": "DEMA",
-            "n": 141
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "d22e10c11be39e83",
-      "score": 0.9921,
-      "n": 1036,
-      "pf": 1.026,
-      "edge": 1.25,
-      "best": [
-        1,
-        7
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "DEMA",
-            "n": 84
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 111
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 5,
-          "shrink": 3
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 2
-            },
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "6db7073935a612db",
-      "score": 0.9826,
-      "n": 6736,
-      "pf": 0.987,
-      "edge": 0.7,
-      "best": [
-        7,
-        9
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 7
-          },
-          "B": {
-            "ma": "ZLEMA",
-            "n": 134
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "above"
-        },
-        "filters": [
-          {
-            "f": "since",
-            "op": ">",
-            "x": 7
-          }
-        ],
-        "exit": {
-          "max_bars": null,
-          "fc": [
-            {
-              "kind": "turn_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "469816f237904368",
-      "score": 0.9695,
-      "n": 691,
-      "pf": 1.0,
-      "edge": 0.881,
-      "best": [
-        0,
-        8
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "DEMA",
-            "n": 57
-          },
-          "B": {
-            "ma": "SMA",
-            "n": 131
-          }
-        },
-        "signal": {
-          "kind": "cross"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "545209a96a163c42",
-      "score": 0.9681,
-      "n": 1124,
-      "pf": 0.996,
-      "edge": 0.996,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "DEMA",
-            "n": 64
-          },
-          "B": {
-            "ma": "DEMA",
-            "n": 79
-          }
-        },
-        "signal": {
-          "kind": "cross"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "38ddb9602f25ca9b",
-      "score": 0.9517,
-      "n": 398,
-      "pf": 0.988,
-      "edge": 1.196,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "WMA",
-            "n": 33
-          },
-          "B": {
-            "ma": "KAMA",
-            "n": 101
-          }
-        },
-        "signal": {
-          "kind": "revert",
-          "k": 3.0
-        },
-        "filters": [
-          {
-            "f": "atrp",
-            "op": ">",
-            "x": 0.767
-          }
-        ],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "30d9c06dfcd171a6",
-      "score": 0.9468,
-      "n": 3824,
-      "pf": 0.974,
-      "edge": 1.168,
-      "best": [
-        0,
-        5
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 103
-          }
-        },
-        "signal": {
-          "kind": "pcross"
-        },
-        "filters": [
-          {
-            "f": "rsi",
-            "op": "<",
-            "x": 51.2
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "pcross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "721f81f7261644f8",
-      "score": 0.9158,
-      "n": 1045,
-      "pf": 0.93,
-      "edge": 1.151,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 84
-          }
-        },
-        "signal": {
-          "kind": "pcross"
-        },
-        "filters": [
-          {
-            "f": "ret35",
-            "op": "<",
-            "x": -0.618
-          },
-          {
-            "f": "spy140",
-            "op": ">",
-            "x": -0.0639
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "f3d7c36a41e43b58",
-      "score": 0.9131,
-      "n": 97,
-      "pf": 0.913,
-      "edge": 1.123,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 71
-          },
-          "B": {
-            "ma": "ZLEMA",
-            "n": 99
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "below"
-        },
-        "filters": [
-          {
-            "f": "qqq35",
-            "op": "<",
-            "x": -2.31
-          }
-        ],
-        "exit": {
-          "max_bars": 7,
-          "fc": [
-            {
-              "kind": "turn_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "fa7d5526104e8294",
-      "score": 0.9107,
-      "n": 2792,
-      "pf": 0.911,
-      "edge": 1.102,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 64
-          }
-        },
-        "signal": {
-          "kind": "pcross"
-        },
-        "filters": [
-          {
-            "f": "spy35",
-            "op": ">",
-            "x": 1.29
-          }
-        ],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "pcross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "288d072aa83165ef",
-      "score": 0.9074,
-      "n": 167,
-      "pf": 0.933,
-      "edge": 1.162,
-      "best": [
-        2,
-        6
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "ZLEMA",
-            "n": 21
-          },
-          "B": {
-            "ma": "ZLEMA",
-            "n": 33
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 5,
-          "shrink": 3
-        },
-        "filters": [
-          {
-            "f": "gap",
-            "op": "<",
-            "x": -1.06
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 3
-            },
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "514cb6bae44c5751",
-      "score": 0.9066,
-      "n": 1751,
-      "pf": 0.926,
-      "edge": 1.12,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "ZLEMA",
-            "n": 75
-          },
-          "B": {
-            "ma": "HMA",
-            "n": 130
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 5,
-          "shrink": 3
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 70,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 2
-            },
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "219777b0d53755c3",
-      "score": 0.9059,
-      "n": 2346,
-      "pf": 0.918,
-      "edge": 1.199,
-      "best": [
-        3,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "KAMA",
-            "n": 6
-          },
-          "B": {
-            "ma": "HMA",
-            "n": 95
-          }
-        },
-        "signal": {
-          "kind": "revert",
-          "k": 1.0
-        },
-        "filters": [
-          {
-            "f": "zAB",
-            "op": "<",
-            "x": 2.0
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "ab22dee670b28f5f",
-      "score": 0.8953,
-      "n": 501,
-      "pf": 0.911,
-      "edge": 1.036,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "WMA",
-            "n": 108
-          },
-          "B": {
-            "ma": "ZLEMA",
-            "n": 149
-          }
-        },
-        "signal": {
-          "kind": "cross"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "b851cff90540d1c5",
-      "score": 0.8931,
-      "n": 4029,
-      "pf": 0.94,
-      "edge": 0.97,
-      "best": [
-        1,
-        1
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "DEMA",
-            "n": 15
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 83
-          }
-        },
-        "signal": {
-          "kind": "converge",
-          "grow": 2,
-          "shrink": 2
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 14,
-          "fc": [
-            {
-              "kind": "reexpand",
-              "n": 1
-            },
-            {
-              "kind": "cross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "f10c67a2f333cbef",
-      "score": 0.8929,
-      "n": 18468,
-      "pf": 0.896,
-      "edge": 1.054,
-      "best": [
-        0,
-        1
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "ZLEMA",
-            "n": 9
-          },
-          "B": {
-            "ma": "EMA",
-            "n": 111
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "any"
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 7,
-          "fc": [
-            {
-              "kind": "turn_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "21d93a3af1c28055",
-      "score": 0.8901,
-      "n": 1869,
-      "pf": 0.89,
-      "edge": 1.07,
-      "best": [
-        0,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "KAMA",
-            "n": 43
-          },
-          "B": {
-            "ma": "HMA",
-            "n": 47
-          },
-          "C": {
-            "ma": "HMA",
-            "n": 68
-          }
-        },
-        "signal": {
-          "kind": "ribbon"
-        },
-        "filters": [
-          {
-            "f": "ret7",
-            "op": "<",
-            "x": 0.841
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "faef976a6aec04a1",
-      "score": 0.8882,
-      "n": 3068,
-      "pf": 0.904,
-      "edge": 1.142,
-      "best": [
-        4,
-        6
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "ZLEMA",
-            "n": 60
-          },
-          "B": {
-            "ma": "TEMA",
-            "n": 96
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "above"
-        },
-        "filters": [
-          {
-            "f": "atrp",
-            "op": ">",
-            "x": 0.52
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": [
-            {
-              "kind": "turn_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "67a63fda4490b793",
-      "score": 0.886,
-      "n": 2173,
-      "pf": 0.886,
-      "edge": 1.104,
-      "best": [
-        2,
-        2
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "TEMA",
-            "n": 16
-          },
-          "B": {
-            "ma": "DEMA",
-            "n": 30
-          }
-        },
-        "signal": {
-          "kind": "cross"
-        },
-        "filters": [
-          {
-            "f": "rsi",
-            "op": "<",
-            "x": 54.9
-          }
-        ],
-        "exit": {
-          "max_bars": 70,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "a0f014e695ba17fd",
-      "score": 0.885,
-      "n": 155,
-      "pf": 0.885,
-      "edge": 1.064,
-      "best": [
-        0,
-        4
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "VWMA",
-            "n": 60
-          },
-          "B": {
-            "ma": "EMA",
-            "n": 108
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "above"
-        },
-        "filters": [
-          {
-            "f": "ret7",
-            "op": ">",
-            "x": 1.39
-          },
-          {
-            "f": "spy140",
-            "op": "<",
-            "x": 2.65
-          }
-        ],
-        "exit": {
-          "max_bars": 35,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "fba9ecf10a828c56",
-      "score": 0.883,
-      "n": 4701,
-      "pf": 0.883,
-      "edge": 1.093,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "HMA",
-            "n": 7
-          },
-          "B": {
-            "ma": "SMA",
-            "n": 132
-          }
-        },
-        "signal": {
-          "kind": "turn",
-          "pos": "any"
-        },
-        "filters": [
-          {
-            "f": "atrrank",
-            "op": "<",
-            "x": 37.7
-          },
-          {
-            "f": "spy35",
-            "op": ">",
-            "x": -0.376
-          }
-        ],
-        "exit": {
-          "max_bars": null,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "cb324be5648634a8",
-      "score": 0.8816,
-      "n": 84,
-      "pf": 0.882,
-      "edge": 1.001,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "VWMA",
-            "n": 78
-          }
-        },
-        "signal": {
-          "kind": "pcross"
-        },
-        "filters": [
-          {
-            "f": "slopeA",
-            "op": "<",
-            "x": -0.2
-          },
-          {
-            "f": "spy35",
-            "op": ">",
-            "x": 2.51
-          }
-        ],
-        "exit": {
-          "max_bars": 14,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "77c33f2449939aad",
-      "score": 0.8648,
-      "n": 833,
-      "pf": 0.865,
-      "edge": 0.982,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "long",
-        "lines": {
-          "A": {
-            "ma": "VWMA",
-            "n": 82
-          },
-          "B": {
-            "ma": "VWMA",
-            "n": 119
-          }
-        },
-        "signal": {
-          "kind": "revert",
-          "k": 0.75
-        },
-        "filters": [],
-        "exit": {
-          "max_bars": 14,
-          "fc": []
-        }
-      }
-    },
-    {
-      "key": "dcde5ffd55474441",
-      "score": 0.8578,
-      "n": 3461,
-      "pf": 0.858,
-      "edge": 1.161,
-      "best": [
-        4,
-        4
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "EMA",
-            "n": 72
-          }
-        },
-        "signal": {
-          "kind": "pcross"
-        },
-        "filters": [
-          {
-            "f": "vrel",
-            "op": ">",
-            "x": 0.656
-          }
-        ],
-        "exit": {
-          "max_bars": null,
-          "fc": [
-            {
-              "kind": "pcross_back"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "key": "ced14d99916c3124",
-      "score": 0.857,
-      "n": 1313,
-      "pf": 0.868,
-      "edge": 1.075,
-      "best": [
-        0,
-        0
-      ],
-      "rule": {
-        "schema": "ia4-rule/1",
-        "direction": "short",
-        "lines": {
-          "A": {
-            "ma": "WMA",
-            "n": 145
-          },
-          "B": {
-            "ma": "EMA",
             "n": 147
           }
         },
         "signal": {
-          "kind": "turn",
-          "pos": "above"
+          "kind": "revert",
+          "k": 2.0
+        },
+        "filters": [
+          {
+            "f": "dow",
+            "op": "<",
+            "x": 1.5
+          },
+          {
+            "f": "qqq35",
+            "op": ">",
+            "x": 0.809
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "02d49b2e9c81be0e",
+      "score": 1.5179,
+      "n": 268,
+      "pf": 1.55,
+      "edge": 1.318,
+      "best": [
+        5,
+        4
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 30
+          },
+          "B": {
+            "ma": "WMA",
+            "n": 59
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 2.25
         },
         "filters": [],
         "exit": {
@@ -19287,34 +17759,78 @@
       }
     },
     {
-      "key": "ebeb06df283efc2c",
-      "score": 0.853,
-      "n": 2447,
-      "pf": 0.874,
-      "edge": 1.054,
+      "key": "da56008cc62ccbd8",
+      "score": 1.4587,
+      "n": 287,
+      "pf": 1.459,
+      "edge": 1.472,
       "best": [
-        0,
-        1
+        5,
+        0
       ],
       "rule": {
         "schema": "ia4-rule/1",
-        "direction": "short",
+        "direction": "long",
         "lines": {
           "A": {
-            "ma": "TEMA",
-            "n": 19
+            "ma": "VWMA",
+            "n": 94
           },
           "B": {
             "ma": "HMA",
-            "n": 52
+            "n": 122
           },
           "C": {
-            "ma": "KAMA",
-            "n": 111
+            "ma": "WMA",
+            "n": 146
           }
         },
         "signal": {
           "kind": "ribbon"
+        },
+        "filters": [
+          {
+            "f": "ret7",
+            "op": "<",
+            "x": -0.31
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "0aadb067bbf719c7",
+      "score": 1.3997,
+      "n": 363,
+      "pf": 1.416,
+      "edge": 0.945,
+      "best": [
+        9,
+        9
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 51
+          },
+          "B": {
+            "ma": "TEMA",
+            "n": 145
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "any"
         },
         "filters": [
           {
@@ -19324,6 +17840,139 @@
           }
         ],
         "exit": {
+          "max_bars": null,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "86d85835449f18c3",
+      "score": 1.303,
+      "n": 1463,
+      "pf": 1.329,
+      "edge": 1.172,
+      "best": [
+        0,
+        8
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "KAMA",
+            "n": 5
+          },
+          "B": {
+            "ma": "EMA",
+            "n": 76
+          }
+        },
+        "signal": {
+          "kind": "converge",
+          "grow": 4,
+          "shrink": 4
+        },
+        "filters": [
+          {
+            "f": "d5",
+            "op": "<",
+            "x": 0.736
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 3
+            },
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "917ad57787ba96ac",
+      "score": 1.2241,
+      "n": 647,
+      "pf": 1.224,
+      "edge": 1.106,
+      "best": [
+        0,
+        6
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "VWMA",
+            "n": 20
+          },
+          "B": {
+            "ma": "HMA",
+            "n": 83
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 1.5
+        },
+        "filters": [
+          {
+            "f": "rsi",
+            "op": "<",
+            "x": 58.7
+          },
+          {
+            "f": "slopeA",
+            "op": "<",
+            "x": 0.0
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "4dbe11c18c010af6",
+      "score": 1.2209,
+      "n": 62,
+      "pf": 1.475,
+      "edge": 1.434,
+      "best": [
+        0,
+        3
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "EMA",
+            "n": 92
+          },
+          "B": {
+            "ma": "TEMA",
+            "n": 129
+          }
+        },
+        "signal": {
+          "kind": "cross"
+        },
+        "filters": [
+          {
+            "f": "d20",
+            "op": "<",
+            "x": -5.57
+          }
+        ],
+        "exit": {
           "max_bars": 14,
           "fc": [
             {
@@ -19334,26 +17983,26 @@
       }
     },
     {
-      "key": "145af7d9cdebc158",
-      "score": 0.8461,
-      "n": 837,
-      "pf": 0.864,
-      "edge": 1.069,
+      "key": "13d85257a41c4e93",
+      "score": 1.2154,
+      "n": 3023,
+      "pf": 1.215,
+      "edge": 0.867,
       "best": [
-        0,
-        0
+        6,
+        9
       ],
       "rule": {
         "schema": "ia4-rule/1",
-        "direction": "short",
+        "direction": "long",
         "lines": {
           "A": {
             "ma": "SMA",
-            "n": 140
+            "n": 42
           },
           "B": {
-            "ma": "SMA",
-            "n": 141
+            "ma": "ZLEMA",
+            "n": 149
           }
         },
         "signal": {
@@ -19362,42 +18011,134 @@
         },
         "filters": [
           {
-            "f": "gap",
+            "f": "qqq140",
             "op": "<",
-            "x": -0.295
+            "x": 5.28
           }
         ],
         "exit": {
-          "max_bars": 14,
-          "fc": []
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
         }
       }
     },
     {
-      "key": "bfeef74762769703",
-      "score": 0.7798,
-      "n": 792,
-      "pf": 0.813,
-      "edge": 0.976,
+      "key": "92fdde1969179e28",
+      "score": 1.2103,
+      "n": 407,
+      "pf": 1.224,
+      "edge": 1.004,
       "best": [
-        0,
-        3
+        4,
+        9
       ],
       "rule": {
         "schema": "ia4-rule/1",
-        "direction": "short",
+        "direction": "long",
         "lines": {
           "A": {
-            "ma": "KAMA",
-            "n": 92
+            "ma": "SMA",
+            "n": 44
           },
           "B": {
-            "ma": "VWMA",
-            "n": 103
+            "ma": "HMA",
+            "n": 102
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "above"
+        },
+        "filters": [
+          {
+            "f": "d20",
+            "op": "<",
+            "x": -3.18
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "4f810c44d8efe5c0",
+      "score": 1.1694,
+      "n": 2634,
+      "pf": 1.179,
+      "edge": 0.984,
+      "best": [
+        1,
+        9
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "EMA",
+            "n": 43
+          },
+          "B": {
+            "ma": "SMA",
+            "n": 136
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "above"
+        },
+        "filters": [
+          {
+            "f": "since",
+            "op": ">",
+            "x": 3
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "d5cd7061d524aa93",
+      "score": 1.1496,
+      "n": 573,
+      "pf": 1.176,
+      "edge": 1.042,
+      "best": [
+        0,
+        7
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 13
+          },
+          "B": {
+            "ma": "DEMA",
+            "n": 79
           },
           "C": {
-            "ma": "SMA",
-            "n": 123
+            "ma": "KAMA",
+            "n": 115
           }
         },
         "signal": {
@@ -19405,9 +18146,54 @@
         },
         "filters": [
           {
-            "f": "zAB",
+            "f": "ret7",
+            "op": ">",
+            "x": 2.3
+          },
+          {
+            "f": "slot",
             "op": "<",
-            "x": 3.0
+            "x": 6.5
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "ac2bcfc5dc734e89",
+      "score": 1.1386,
+      "n": 888,
+      "pf": 1.139,
+      "edge": 1.2,
+      "best": [
+        3,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 20
+          },
+          "B": {
+            "ma": "VWMA",
+            "n": 73
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 2.5
+        },
+        "filters": [
+          {
+            "f": "slot",
+            "op": "<",
+            "x": 5.5
           }
         ],
         "exit": {
@@ -19417,11 +18203,714 @@
       }
     },
     {
-      "key": "f5e52f50c3d95e1b",
-      "score": 0.7773,
-      "n": 2017,
-      "pf": 0.838,
-      "edge": 1.014,
+      "key": "8fe9d2e6a4288188",
+      "score": 1.1115,
+      "n": 2064,
+      "pf": 1.12,
+      "edge": 0.898,
+      "best": [
+        5,
+        9
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "DEMA",
+            "n": 22
+          },
+          "B": {
+            "ma": "HMA",
+            "n": 79
+          },
+          "C": {
+            "ma": "TEMA",
+            "n": 141
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "eb5f2545a227494e",
+      "score": 1.1104,
+      "n": 1027,
+      "pf": 1.112,
+      "edge": 1.438,
+      "best": [
+        3,
+        6
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "TEMA",
+            "n": 145
+          }
+        },
+        "signal": {
+          "kind": "pcross"
+        },
+        "filters": [
+          {
+            "f": "vrel",
+            "op": ">",
+            "x": 1.73
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "pcross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "fc7bec15da34d748",
+      "score": 1.0926,
+      "n": 4431,
+      "pf": 1.093,
+      "edge": 0.977,
+      "best": [
+        0,
+        7
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 66
+          }
+        },
+        "signal": {
+          "kind": "pcross"
+        },
+        "filters": [
+          {
+            "f": "d5",
+            "op": ">",
+            "x": -3.09
+          },
+          {
+            "f": "ret35",
+            "op": ">",
+            "x": -1.6
+          }
+        ],
+        "exit": {
+          "max_bars": 35,
+          "fc": [
+            {
+              "kind": "pcross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "753c89368495ac5d",
+      "score": 1.053,
+      "n": 1095,
+      "pf": 1.056,
+      "edge": 0.829,
+      "best": [
+        9,
+        6
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 43
+          },
+          "B": {
+            "ma": "SMA",
+            "n": 62
+          },
+          "C": {
+            "ma": "WMA",
+            "n": 88
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [
+          {
+            "f": "d5",
+            "op": "<",
+            "x": 2.13
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "b9e4f7f9cb23a876",
+      "score": 1.0202,
+      "n": 8958,
+      "pf": 1.02,
+      "edge": 0.899,
+      "best": [
+        4,
+        9
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "TEMA",
+            "n": 11
+          },
+          "B": {
+            "ma": "VWMA",
+            "n": 127
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "above"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 14,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "fcea41a234dd98d9",
+      "score": 1.0051,
+      "n": 147,
+      "pf": 1.005,
+      "edge": 1.244,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "KAMA",
+            "n": 79
+          },
+          "B": {
+            "ma": "TEMA",
+            "n": 129
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 0.75
+        },
+        "filters": [
+          {
+            "f": "spy140",
+            "op": ">",
+            "x": 7.14
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "260d0d3a7be233e9",
+      "score": 0.9943,
+      "n": 864,
+      "pf": 1.049,
+      "edge": 0.929,
+      "best": [
+        0,
+        7
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 69
+          },
+          "B": {
+            "ma": "TEMA",
+            "n": 113
+          }
+        },
+        "signal": {
+          "kind": "cross"
+        },
+        "filters": [
+          {
+            "f": "spy140",
+            "op": "<",
+            "x": 5.1
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "69c942744254e5e8",
+      "score": 0.9608,
+      "n": 2676,
+      "pf": 0.961,
+      "edge": 0.968,
+      "best": [
+        6,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 22
+          },
+          "B": {
+            "ma": "KAMA",
+            "n": 150
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "above"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 70,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "18410a600ea84427",
+      "score": 0.9484,
+      "n": 583,
+      "pf": 1.006,
+      "edge": 1.055,
+      "best": [
+        0,
+        1
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "VWMA",
+            "n": 28
+          },
+          "B": {
+            "ma": "WMA",
+            "n": 108
+          }
+        },
+        "signal": {
+          "kind": "converge",
+          "grow": 5,
+          "shrink": 4
+        },
+        "filters": [
+          {
+            "f": "atrrank",
+            "op": ">",
+            "x": 26.3
+          }
+        ],
+        "exit": {
+          "max_bars": 14,
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 2
+            },
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "b6a1e5cca6a32496",
+      "score": 0.9307,
+      "n": 1523,
+      "pf": 0.946,
+      "edge": 1.212,
+      "best": [
+        3,
+        4
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "EMA",
+            "n": 119
+          },
+          "B": {
+            "ma": "WMA",
+            "n": 142
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "above"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "3ffdd87b876a73bf",
+      "score": 0.9302,
+      "n": 1031,
+      "pf": 0.93,
+      "edge": 1.056,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "DEMA",
+            "n": 37
+          },
+          "B": {
+            "ma": "EMA",
+            "n": 46
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 1.25
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 14,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "1125431c54a09226",
+      "score": 0.9212,
+      "n": 646,
+      "pf": 0.921,
+      "edge": 1.046,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "HMA",
+            "n": 105
+          },
+          "B": {
+            "ma": "WMA",
+            "n": 125
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 1.0
+        },
+        "filters": [
+          {
+            "f": "d5",
+            "op": "<",
+            "x": 3.45
+          }
+        ],
+        "exit": {
+          "max_bars": 14,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "d94c499d31ad4e96",
+      "score": 0.9175,
+      "n": 83,
+      "pf": 0.983,
+      "edge": 1.028,
+      "best": [
+        0,
+        1
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 98
+          },
+          "B": {
+            "ma": "DEMA",
+            "n": 116
+          },
+          "C": {
+            "ma": "SMA",
+            "n": 132
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [
+          {
+            "f": "atrp",
+            "op": ">",
+            "x": 0.767
+          },
+          {
+            "f": "gap",
+            "op": "<",
+            "x": -0.559
+          }
+        ],
+        "exit": {
+          "max_bars": 7,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "9dbfa72447fd1136",
+      "score": 0.9061,
+      "n": 7185,
+      "pf": 0.926,
+      "edge": 1.01,
+      "best": [
+        0,
+        8
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 10
+          },
+          "B": {
+            "ma": "HMA",
+            "n": 17
+          },
+          "C": {
+            "ma": "WMA",
+            "n": 31
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 7,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "9c28c6896d695484",
+      "score": 0.904,
+      "n": 2290,
+      "pf": 0.904,
+      "edge": 1.118,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "TEMA",
+            "n": 11
+          },
+          "B": {
+            "ma": "SMA",
+            "n": 73
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 1.0
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 14,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "86c3e85648193c71",
+      "score": 0.8992,
+      "n": 1231,
+      "pf": 0.899,
+      "edge": 1.113,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "KAMA",
+            "n": 67
+          },
+          "B": {
+            "ma": "HMA",
+            "n": 93
+          },
+          "C": {
+            "ma": "TEMA",
+            "n": 119
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 14,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "670fc81872b009d0",
+      "score": 0.8876,
+      "n": 2332,
+      "pf": 0.888,
+      "edge": 1.092,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 115
+          },
+          "B": {
+            "ma": "EMA",
+            "n": 141
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "any"
+        },
+        "filters": [
+          {
+            "f": "atrrank",
+            "op": ">",
+            "x": 49.1
+          }
+        ],
+        "exit": {
+          "max_bars": 7,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "0cd7bf0db943f8a6",
+      "score": 0.8857,
+      "n": 1357,
+      "pf": 0.922,
+      "edge": 1.109,
       "best": [
         0,
         2
@@ -19431,28 +18920,795 @@
         "direction": "short",
         "lines": {
           "A": {
+            "ma": "VWMA",
+            "n": 150
+          }
+        },
+        "signal": {
+          "kind": "pcross"
+        },
+        "filters": [
+          {
+            "f": "qqq35",
+            "op": ">",
+            "x": -0.405
+          }
+        ],
+        "exit": {
+          "max_bars": 35,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "b8d9068631fafb31",
+      "score": 0.8773,
+      "n": 840,
+      "pf": 0.877,
+      "edge": 1.061,
+      "best": [
+        0,
+        2
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "DEMA",
+            "n": 68
+          },
+          "B": {
+            "ma": "TEMA",
+            "n": 144
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 0.75
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "60860c104732ea18",
+      "score": 0.8721,
+      "n": 2040,
+      "pf": 0.886,
+      "edge": 1.084,
+      "best": [
+        1,
+        2
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "TEMA",
+            "n": 22
+          },
+          "B": {
+            "ma": "WMA",
+            "n": 62
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 1.25
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 35,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "3696ca051c3bb2fd",
+      "score": 0.8684,
+      "n": 240,
+      "pf": 0.957,
+      "edge": 0.853,
+      "best": [
+        0,
+        8
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
             "ma": "KAMA",
-            "n": 36
+            "n": 21
+          },
+          "B": {
+            "ma": "EMA",
+            "n": 66
+          }
+        },
+        "signal": {
+          "kind": "turn",
+          "pos": "below"
+        },
+        "filters": [
+          {
+            "f": "atrp",
+            "op": ">",
+            "x": 0.941
+          },
+          {
+            "f": "dow",
+            "op": "<",
+            "x": 1.5
+          }
+        ],
+        "exit": {
+          "max_bars": 35,
+          "fc": [
+            {
+              "kind": "turn_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "053b161b0f62d138",
+      "score": 0.8642,
+      "n": 1802,
+      "pf": 0.878,
+      "edge": 1.068,
+      "best": [
+        0,
+        1
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "KAMA",
+            "n": 9
+          },
+          "B": {
+            "ma": "WMA",
+            "n": 48
+          },
+          "C": {
+            "ma": "ZLEMA",
+            "n": 61
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [
+          {
+            "f": "since",
+            "op": "<",
+            "x": 21
+          }
+        ],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "4d2b4610f0ca8827",
+      "score": 0.8633,
+      "n": 3319,
+      "pf": 0.867,
+      "edge": 1.133,
+      "best": [
+        3,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 8
+          },
+          "B": {
+            "ma": "KAMA",
+            "n": 56
+          }
+        },
+        "signal": {
+          "kind": "cross"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 70,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "8828b00a52021d73",
+      "score": 0.8496,
+      "n": 1856,
+      "pf": 0.85,
+      "edge": 1.051,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "DEMA",
+            "n": 43
           },
           "B": {
             "ma": "HMA",
-            "n": 60
+            "n": 92
+          },
+          "C": {
+            "ma": "DEMA",
+            "n": 115
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 14,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "34d68075180e6165",
+      "score": 0.8432,
+      "n": 2067,
+      "pf": 0.851,
+      "edge": 1.053,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "WMA",
+            "n": 16
+          },
+          "B": {
+            "ma": "VWMA",
+            "n": 24
+          },
+          "C": {
+            "ma": "EMA",
+            "n": 66
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 14,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "1012118853a6500e",
+      "score": 0.8432,
+      "n": 1063,
+      "pf": 0.873,
+      "edge": 1.056,
+      "best": [
+        0,
+        2
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "SMA",
+            "n": 16
+          },
+          "B": {
+            "ma": "WMA",
+            "n": 150
+          }
+        },
+        "signal": {
+          "kind": "cross"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": null,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "034f37504ff33db7",
+      "score": 0.8383,
+      "n": 482,
+      "pf": 0.838,
+      "edge": 1.031,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "KAMA",
+            "n": 5
+          },
+          "B": {
+            "ma": "HMA",
+            "n": 6
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 1.75
+        },
+        "filters": [
+          {
+            "f": "since",
+            "op": "<",
+            "x": 100
+          },
+          {
+            "f": "spy35",
+            "op": "<",
+            "x": -1.13
+          }
+        ],
+        "exit": {
+          "max_bars": 7,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "934f3e591f5b1a2c",
+      "score": 0.8148,
+      "n": 557,
+      "pf": 0.815,
+      "edge": 0.925,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "EMA",
+            "n": 14
+          },
+          "B": {
+            "ma": "WMA",
+            "n": 129
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 1.0
+        },
+        "filters": [
+          {
+            "f": "atrp",
+            "op": "<",
+            "x": 1.4
+          },
+          {
+            "f": "vrel",
+            "op": ">",
+            "x": 0.954
+          }
+        ],
+        "exit": {
+          "max_bars": 14,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "36a2657436ab6ba4",
+      "score": 0.8063,
+      "n": 1383,
+      "pf": 0.806,
+      "edge": 0.998,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 48
+          },
+          "B": {
+            "ma": "ZLEMA",
+            "n": 116
           }
         },
         "signal": {
           "kind": "converge",
-          "grow": 3,
+          "grow": 6,
           "shrink": 4
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 14,
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "b8feeddb564e6bf1",
+      "score": 0.7918,
+      "n": 54,
+      "pf": 1.029,
+      "edge": 1.169,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "TEMA",
+            "n": 48
+          },
+          "B": {
+            "ma": "EMA",
+            "n": 54
+          },
+          "C": {
+            "ma": "DEMA",
+            "n": 87
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
         },
         "filters": [
           {
-            "f": "zAB",
+            "f": "d20",
+            "op": ">",
+            "x": 2.73
+          },
+          {
+            "f": "spy140",
             "op": "<",
-            "x": 3.0
+            "x": 9.37
           }
         ],
         "exit": {
-          "max_bars": null,
+          "max_bars": 14,
+          "fc": []
+        }
+      }
+    },
+    {
+      "key": "2056d1bc43f21c10",
+      "score": 0.7893,
+      "n": 979,
+      "pf": 0.789,
+      "edge": 0.977,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "DEMA",
+            "n": 43
+          },
+          "B": {
+            "ma": "EMA",
+            "n": 75
+          }
+        },
+        "signal": {
+          "kind": "cross"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 14,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "420cedb67237fa85",
+      "score": 0.7801,
+      "n": 624,
+      "pf": 0.843,
+      "edge": 1.043,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "VWMA",
+            "n": 42
+          },
+          "B": {
+            "ma": "SMA",
+            "n": 122
+          },
+          "C": {
+            "ma": "TEMA",
+            "n": 136
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 35,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "5c245e53d2469038",
+      "score": 0.7581,
+      "n": 235,
+      "pf": 0.762,
+      "edge": 0.666,
+      "best": [
+        5,
+        5
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "long",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 65
+          },
+          "B": {
+            "ma": "HMA",
+            "n": 76
+          }
+        },
+        "signal": {
+          "kind": "converge",
+          "grow": 4,
+          "shrink": 3
+        },
+        "filters": [
+          {
+            "f": "atrp",
+            "op": "<",
+            "x": 0.52
+          }
+        ],
+        "exit": {
+          "max_bars": 35,
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 2
+            },
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "db3788f8d1be5c7d",
+      "score": 0.7491,
+      "n": 636,
+      "pf": 0.756,
+      "edge": 0.93,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "VWMA",
+            "n": 15
+          },
+          "B": {
+            "ma": "KAMA",
+            "n": 129
+          }
+        },
+        "signal": {
+          "kind": "converge",
+          "grow": 6,
+          "shrink": 3
+        },
+        "filters": [
+          {
+            "f": "d20",
+            "op": ">",
+            "x": 1.51
+          },
+          {
+            "f": "slopeA",
+            "op": "<",
+            "x": 0.5
+          }
+        ],
+        "exit": {
+          "max_bars": 7,
+          "fc": [
+            {
+              "kind": "reexpand",
+              "n": 2
+            },
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "5709f574d1a074ba",
+      "score": 0.7168,
+      "n": 315,
+      "pf": 0.717,
+      "edge": 0.887,
+      "best": [
+        0,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 117
+          },
+          "B": {
+            "ma": "EMA",
+            "n": 118
+          },
+          "C": {
+            "ma": "EMA",
+            "n": 120
+          }
+        },
+        "signal": {
+          "kind": "ribbon"
+        },
+        "filters": [
+          {
+            "f": "atrrank",
+            "op": ">",
+            "x": 15.4
+          },
+          {
+            "f": "slot",
+            "op": ">",
+            "x": 1.5
+          }
+        ],
+        "exit": {
+          "max_bars": 14,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "63c9588c3ded3901",
+      "score": 0.7137,
+      "n": 177,
+      "pf": 0.776,
+      "edge": 0.933,
+      "best": [
+        0,
+        4
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "ZLEMA",
+            "n": 116
+          },
+          "B": {
+            "ma": "DEMA",
+            "n": 120
+          }
+        },
+        "signal": {
+          "kind": "converge",
+          "grow": 6,
+          "shrink": 1
+        },
+        "filters": [
+          {
+            "f": "ret35",
+            "op": "<",
+            "x": 0.29
+          },
+          {
+            "f": "ret7",
+            "op": "<",
+            "x": -2.12
+          }
+        ],
+        "exit": {
+          "max_bars": 35,
           "fc": [
             {
               "kind": "reexpand",
@@ -19461,1710 +19717,90 @@
           ]
         }
       }
+    },
+    {
+      "key": "a32a838ed739644e",
+      "score": 0.6868,
+      "n": 861,
+      "pf": 0.687,
+      "edge": 0.826,
+      "best": [
+        0,
+        4
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "KAMA",
+            "n": 93
+          },
+          "B": {
+            "ma": "VWMA",
+            "n": 109
+          }
+        },
+        "signal": {
+          "kind": "cross"
+        },
+        "filters": [],
+        "exit": {
+          "max_bars": 35,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "061ca07d5520b210",
+      "score": 0.6649,
+      "n": 55,
+      "pf": 0.912,
+      "edge": 1.195,
+      "best": [
+        3,
+        0
+      ],
+      "rule": {
+        "schema": "ia4-rule/1",
+        "direction": "short",
+        "lines": {
+          "A": {
+            "ma": "SMA",
+            "n": 14
+          },
+          "B": {
+            "ma": "EMA",
+            "n": 114
+          }
+        },
+        "signal": {
+          "kind": "revert",
+          "k": 1.0
+        },
+        "filters": [
+          {
+            "f": "since",
+            "op": "<",
+            "x": 10
+          }
+        ],
+        "exit": {
+          "max_bars": null,
+          "fc": [
+            {
+              "kind": "cross_back"
+            }
+          ]
+        }
+      }
     }
   ],
   "rejected": [
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "EMA",
-          "n": 59
-        },
-        "B": {
-          "ma": "HMA",
-          "n": 85
-        },
-        "C": {
-          "ma": "EMA",
-          "n": 133
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "gap",
-          "op": ">",
-          "x": 1.18
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 10,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "KAMA",
-          "n": 10
-        },
-        "B": {
-          "ma": "TEMA",
-          "n": 32
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.25
-      },
-      "filters": [
-        {
-          "f": "d5",
-          "op": "<",
-          "x": 3.45
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 2,
-        "tp": 2
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 35
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 53
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "d20",
-          "op": ">",
-          "x": 1.51
-        },
-        {
-          "f": "ret35",
-          "op": ">",
-          "x": -2.81
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 5,
-        "tp": 2
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "EMA",
-          "n": 85
-        },
-        "B": {
-          "ma": "WMA",
-          "n": 90
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.0
-      },
-      "filters": [
-        {
-          "f": "atrrank",
-          "op": "<",
-          "x": 60.9
-        },
-        {
-          "f": "slopeA",
-          "op": "<",
-          "x": 0.5
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 9,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 103
-        },
-        "B": {
-          "ma": "VWMA",
-          "n": 108
-        }
-      },
-      "signal": {
-        "kind": "turn",
-        "pos": "below"
-      },
-      "filters": [
-        {
-          "f": "atrp",
-          "op": ">",
-          "x": 0.52
-        },
-        {
-          "f": "d5",
-          "op": "<",
-          "x": -0.374
-        }
-      ],
-      "exit": {
-        "max_bars": 14,
-        "fc": [
-          {
-            "kind": "turn_back"
-          }
-        ],
-        "sl": 4,
-        "tp": 6
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "ZLEMA",
-          "n": 30
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 52
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "ret7",
-          "op": "<",
-          "x": -2.12
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 3,
-        "tp": 8
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "VWMA",
-          "n": 29
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 58
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "d20",
-          "op": ">",
-          "x": 0.441
-        },
-        {
-          "f": "ret7",
-          "op": ">",
-          "x": -2.12
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 10,
-        "tp": 6
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "KAMA",
-          "n": 35
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 52
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "vrel",
-          "op": ">",
-          "x": 0.954
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 7,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "DEMA",
-          "n": 27
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 58
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "ret7",
-          "op": ">",
-          "x": -2.12
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 9,
-        "tp": 4
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 30
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 60
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "atrp",
-          "op": ">",
-          "x": 0.705
-        },
-        {
-          "f": "qqq35",
-          "op": "<",
-          "x": 3.52
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 1,
-        "tp": 3
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "EMA",
-          "n": 23
-        },
-        "B": {
-          "ma": "EMA",
-          "n": 28
-        },
-        "C": {
-          "ma": "KAMA",
-          "n": 89
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "d20",
-          "op": ">",
-          "x": 6.89
-        }
-      ],
-      "exit": {
-        "max_bars": 14,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 10,
-        "tp": 5
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "short",
-      "lines": {
-        "A": {
-          "ma": "HMA",
-          "n": 134
-        },
-        "B": {
-          "ma": "TEMA",
-          "n": 136
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 3.0
-      },
-      "filters": [],
-      "exit": {
-        "max_bars": 35,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 9,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 29
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 66
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "atrp",
-          "op": ">",
-          "x": 0.589
-        },
-        {
-          "f": "slopeA",
-          "op": "<",
-          "x": 0.0
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 8,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "short",
-      "lines": {
-        "A": {
-          "ma": "SMA",
-          "n": 5
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 6
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 1.75
-      },
-      "filters": [
-        {
-          "f": "spy140",
-          "op": "<",
-          "x": 3.74
-        },
-        {
-          "f": "spy35",
-          "op": "<",
-          "x": -1.13
-        }
-      ],
-      "exit": {
-        "max_bars": 7,
-        "fc": [],
-        "sl": 2,
-        "tp": 1
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 29
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 51
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.25
-      },
-      "filters": [
-        {
-          "f": "d5",
-          "op": ">",
-          "x": -3.08
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 8,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 30
-        },
-        "B": {
-          "ma": "ZLEMA",
-          "n": 61
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "atrp",
-          "op": "<",
-          "x": 1.1
-        },
-        {
-          "f": "d20",
-          "op": ">",
-          "x": 0.441
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 10,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "EMA",
-          "n": 6
-        },
-        "B": {
-          "ma": "TEMA",
-          "n": 29
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.0
-      },
-      "filters": [
-        {
-          "f": "since",
-          "op": ">",
-          "x": 10
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 9,
-        "tp": 4
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "DEMA",
-          "n": 30
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 56
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "d20",
-          "op": ">",
-          "x": 0.441
-        },
-        {
-          "f": "since",
-          "op": ">",
-          "x": 14
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 7,
-        "tp": 3
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "ZLEMA",
-          "n": 13
-        },
-        "B": {
-          "ma": "HMA",
-          "n": 111
-        }
-      },
-      "signal": {
-        "kind": "cross"
-      },
-      "filters": [
-        {
-          "f": "ret35",
-          "op": ">",
-          "x": 3.44
-        },
-        {
-          "f": "spy140",
-          "op": ">",
-          "x": 7.14
-        }
-      ],
-      "exit": {
-        "max_bars": 70,
-        "fc": [],
-        "sl": 9,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "EMA",
-          "n": 105
-        },
-        "B": {
-          "ma": "KAMA",
-          "n": 144
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 3.0
-      },
-      "filters": [
-        {
-          "f": "rsi",
-          "op": ">",
-          "x": 68.9
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 2,
-        "tp": 6
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "SMA",
-          "n": 10
-        },
-        "B": {
-          "ma": "TEMA",
-          "n": 36
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.0
-      },
-      "filters": [
-        {
-          "f": "dow",
-          "op": ">",
-          "x": 1.5
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 8,
-        "tp": 7
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "short",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 5
-        },
-        "B": {
-          "ma": "HMA",
-          "n": 7
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 1.75
-      },
-      "filters": [
-        {
-          "f": "qqq140",
-          "op": "<",
-          "x": 5.28
-        },
-        {
-          "f": "spy35",
-          "op": "<",
-          "x": -1.13
-        }
-      ],
-      "exit": {
-        "max_bars": 7,
-        "fc": [],
-        "sl": 3,
-        "tp": 2
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 28
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 64
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "spy140",
-          "op": ">",
-          "x": 1.05
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 8,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 26
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 51
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.0
-      },
-      "filters": [
-        {
-          "f": "gap",
-          "op": "<",
-          "x": 0.372
-        },
-        {
-          "f": "rsi",
-          "op": "<",
-          "x": 58.7
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 10,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "short",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 5
-        },
-        "B": {
-          "ma": "HMA",
-          "n": 6
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 1.75
-      },
-      "filters": [
-        {
-          "f": "qqq35",
-          "op": "<",
-          "x": 2.67
-        }
-      ],
-      "exit": {
-        "max_bars": 7,
-        "fc": [],
-        "sl": 5,
-        "tp": 7
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "KAMA",
-          "n": 63
-        },
-        "B": {
-          "ma": "VWMA",
-          "n": 100
-        }
-      },
-      "signal": {
-        "kind": "converge",
-        "grow": 3,
-        "shrink": 4
-      },
-      "filters": [
-        {
-          "f": "atrp",
-          "op": ">",
-          "x": 1.1
-        },
-        {
-          "f": "since",
-          "op": ">",
-          "x": 10
-        }
-      ],
-      "exit": {
-        "max_bars": 35,
-        "fc": [
-          {
-            "kind": "reexpand",
-            "n": 3
-          },
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 9,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "SMA",
-          "n": 69
-        },
-        "B": {
-          "ma": "SMA",
-          "n": 81
-        },
-        "C": {
-          "ma": "KAMA",
-          "n": 119
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "d20",
-          "op": "<",
-          "x": -3.18
-        }
-      ],
-      "exit": {
-        "max_bars": 14,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 9,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "short",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 6
-        },
-        "B": {
-          "ma": "TEMA",
-          "n": 6
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 1.5
-      },
-      "filters": [
-        {
-          "f": "spy35",
-          "op": "<",
-          "x": -1.13
-        },
-        {
-          "f": "zAB",
-          "op": ">",
-          "x": 1.0
-        }
-      ],
-      "exit": {
-        "max_bars": 7,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 2,
-        "tp": 5
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 37
-        },
-        "B": {
-          "ma": "ZLEMA",
-          "n": 65
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "slopeA",
-          "op": "<",
-          "x": 1.0
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 8,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 8
-        },
-        "B": {
-          "ma": "WMA",
-          "n": 32
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.0
-      },
-      "filters": [
-        {
-          "f": "dow",
-          "op": ">",
-          "x": 1.5
-        },
-        {
-          "f": "spy35",
-          "op": ">",
-          "x": 0.192
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 9,
-        "tp": 5
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "HMA",
-          "n": 55
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 128
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 1.5
-      },
-      "filters": [
-        {
-          "f": "atrrank",
-          "op": ">",
-          "x": 92.0
-        }
-      ],
-      "exit": {
-        "max_bars": 14,
-        "fc": [],
-        "sl": 10,
-        "tp": 7
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "VWMA",
-          "n": 39
-        },
-        "B": {
-          "ma": "ZLEMA",
-          "n": 132
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 3.0
-      },
-      "filters": [
-        {
-          "f": "gap",
-          "op": ">",
-          "x": 0.0302
-        },
-        {
-          "f": "vrel",
-          "op": "<",
-          "x": 1.11
-        }
-      ],
-      "exit": {
-        "max_bars": 7,
-        "fc": [],
-        "sl": 4,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 34
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 58
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "rsi",
-          "op": "<",
-          "x": 63.1
-        },
-        {
-          "f": "slopeA",
-          "op": ">",
-          "x": -0.5
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 2,
-        "tp": 2
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 24
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 51
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "since",
-          "op": ">",
-          "x": 7
-        },
-        {
-          "f": "vrel",
-          "op": ">",
-          "x": 0.74
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 6,
-        "tp": 3
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "KAMA",
-          "n": 34
-        },
-        "B": {
-          "ma": "KAMA",
-          "n": 124
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 0.75
-      },
-      "filters": [
-        {
-          "f": "dow",
-          "op": ">",
-          "x": 1.5
-        },
-        {
-          "f": "gap",
-          "op": ">",
-          "x": 1.18
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 7,
-        "tp": 3
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "EMA",
-          "n": 25
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 52
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "d20",
-          "op": ">",
-          "x": 4.3
-        },
-        {
-          "f": "vrel",
-          "op": ">",
-          "x": 0.837
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 10,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "TEMA",
-          "n": 35
-        },
-        "B": {
-          "ma": "SMA",
-          "n": 118
-        }
-      },
-      "signal": {
-        "kind": "turn",
-        "pos": "any"
-      },
-      "filters": [
-        {
-          "f": "ret7",
-          "op": "<",
-          "x": -1.23
-        }
-      ],
-      "exit": {
-        "max_bars": 70,
-        "fc": [],
-        "sl": 10,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "KAMA",
-          "n": 32
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 65
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "rsi",
-          "op": ">",
-          "x": 58.7
-        },
-        {
-          "f": "slopeA",
-          "op": "<",
-          "x": 1.0
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 9,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "DEMA",
-          "n": 62
-        },
-        "B": {
-          "ma": "EMA",
-          "n": 67
-        }
-      },
-      "signal": {
-        "kind": "converge",
-        "grow": 5,
-        "shrink": 2
-      },
-      "filters": [
-        {
-          "f": "zAB",
-          "op": ">",
-          "x": -0.5
-        }
-      ],
-      "exit": {
-        "max_bars": 70,
-        "fc": [
-          {
-            "kind": "reexpand",
-            "n": 2
-          }
-        ],
-        "sl": 10,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 22
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 51
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.25
-      },
-      "filters": [
-        {
-          "f": "rsi",
-          "op": "<",
-          "x": 63.1
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 7,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "SMA",
-          "n": 32
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 54
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "since",
-          "op": ">",
-          "x": 14
-        },
-        {
-          "f": "zAB",
-          "op": "<",
-          "x": -2.0
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 9,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 30
-        },
-        "B": {
-          "ma": "ZLEMA",
-          "n": 58
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "ret7",
-          "op": ">",
-          "x": -2.12
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 10,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 10
-        },
-        "B": {
-          "ma": "TEMA",
-          "n": 37
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 1.75
-      },
-      "filters": [
-        {
-          "f": "spy140",
-          "op": ">",
-          "x": -2.89
-        },
-        {
-          "f": "spy35",
-          "op": ">",
-          "x": 0.192
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 10,
-        "tp": 8
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 27
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 63
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "since",
-          "op": ">",
-          "x": 14
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 6,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "VWMA",
-          "n": 68
-        },
-        "B": {
-          "ma": "VWMA",
-          "n": 133
-        }
-      },
-      "signal": {
-        "kind": "turn",
-        "pos": "below"
-      },
-      "filters": [
-        {
-          "f": "atrp",
-          "op": ">",
-          "x": 1.1
-        }
-      ],
-      "exit": {
-        "max_bars": 35,
-        "fc": [],
-        "sl": 10,
-        "tp": 9
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "ZLEMA",
-          "n": 44
-        },
-        "B": {
-          "ma": "WMA",
-          "n": 147
-        }
-      },
-      "signal": {
-        "kind": "converge",
-        "grow": 4,
-        "shrink": 4
-      },
-      "filters": [
-        {
-          "f": "atrp",
-          "op": ">",
-          "x": 1.1
-        }
-      ],
-      "exit": {
-        "max_bars": 70,
-        "fc": [
-          {
-            "kind": "reexpand",
-            "n": 1
-          },
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 10,
-        "tp": 10
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "WMA",
-          "n": 21
-        },
-        "B": {
-          "ma": "DEMA",
-          "n": 52
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.5
-      },
-      "filters": [
-        {
-          "f": "d20",
-          "op": ">",
-          "x": 4.3
-        },
-        {
-          "f": "vrel",
-          "op": ">",
-          "x": 0.837
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 8,
-        "tp": 3
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "DEMA",
-          "n": 110
-        },
-        "B": {
-          "ma": "TEMA",
-          "n": 150
-        }
-      },
-      "signal": {
-        "kind": "revert",
-        "k": 2.25
-      },
-      "filters": [
-        {
-          "f": "ret7",
-          "op": "<",
-          "x": -0.711
-        }
-      ],
-      "exit": {
-        "max_bars": null,
-        "fc": [],
-        "sl": 5,
-        "tp": 2
-      }
-    },
-    {
-      "schema": "ia4-rule/1",
-      "direction": "long",
-      "lines": {
-        "A": {
-          "ma": "EMA",
-          "n": 38
-        },
-        "B": {
-          "ma": "TEMA",
-          "n": 75
-        },
-        "C": {
-          "ma": "VWMA",
-          "n": 140
-        }
-      },
-      "signal": {
-        "kind": "ribbon"
-      },
-      "filters": [
-        {
-          "f": "ret35",
-          "op": "<",
-          "x": 3.44
-        },
-        {
-          "f": "spy140",
-          "op": ">",
-          "x": -1.33
-        }
-      ],
-      "exit": {
-        "max_bars": 35,
-        "fc": [
-          {
-            "kind": "cross_back"
-          }
-        ],
-        "sl": 9,
-        "tp": 10
-      }
-    },
     {
       "schema": "ia4-rule/1",
       "direction": "long",
@@ -93739,6 +92375,1857 @@
         ],
         "sl": 2,
         "tp": 1
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 33
+        },
+        "B": {
+          "ma": "DEMA",
+          "n": 65
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 2.5
+      },
+      "filters": [
+        {
+          "f": "gap",
+          "op": ">",
+          "x": -0.107
+        },
+        {
+          "f": "slopeA",
+          "op": "<",
+          "x": 1.0
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 8,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "VWMA",
+          "n": 108
+        },
+        "B": {
+          "ma": "VWMA",
+          "n": 149
+        }
+      },
+      "signal": {
+        "kind": "converge",
+        "grow": 5,
+        "shrink": 3
+      },
+      "filters": [
+        {
+          "f": "rsi",
+          "op": ">",
+          "x": 68.9
+        },
+        {
+          "f": "spy140",
+          "op": ">",
+          "x": 2.65
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [
+          {
+            "kind": "reexpand",
+            "n": 2
+          }
+        ],
+        "sl": 5,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "TEMA",
+          "n": 76
+        },
+        "B": {
+          "ma": "ZLEMA",
+          "n": 139
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 1.5
+      },
+      "filters": [
+        {
+          "f": "since",
+          "op": ">",
+          "x": 21
+        },
+        {
+          "f": "spy140",
+          "op": "<",
+          "x": -2.89
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 4,
+        "tp": 6
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 33
+        }
+      },
+      "signal": {
+        "kind": "pcross"
+      },
+      "filters": [
+        {
+          "f": "ret7",
+          "op": "<",
+          "x": -2.12
+        }
+      ],
+      "exit": {
+        "max_bars": 35,
+        "fc": [
+          {
+            "kind": "pcross_back"
+          }
+        ],
+        "sl": 6,
+        "tp": 10
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "VWMA",
+          "n": 118
+        },
+        "B": {
+          "ma": "EMA",
+          "n": 135
+        }
+      },
+      "signal": {
+        "kind": "converge",
+        "grow": 5,
+        "shrink": 4
+      },
+      "filters": [
+        {
+          "f": "d20",
+          "op": "<",
+          "x": -5.57
+        }
+      ],
+      "exit": {
+        "max_bars": 7,
+        "fc": [
+          {
+            "kind": "reexpand",
+            "n": 1
+          }
+        ],
+        "sl": 1,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "SMA",
+          "n": 5
+        },
+        "B": {
+          "ma": "TEMA",
+          "n": 6
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 2.0
+      },
+      "filters": [
+        {
+          "f": "atrp",
+          "op": ">",
+          "x": 0.839
+        },
+        {
+          "f": "spy35",
+          "op": "<",
+          "x": -1.13
+        }
+      ],
+      "exit": {
+        "max_bars": 7,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 2,
+        "tp": 1
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 12
+        },
+        "B": {
+          "ma": "HMA",
+          "n": 86
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 1.5
+      },
+      "filters": [
+        {
+          "f": "spy35",
+          "op": ">",
+          "x": 3.41
+        },
+        {
+          "f": "vrel",
+          "op": "<",
+          "x": 0.74
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [],
+        "sl": 1,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "SMA",
+          "n": 54
+        },
+        "B": {
+          "ma": "TEMA",
+          "n": 76
+        },
+        "C": {
+          "ma": "WMA",
+          "n": 91
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "d5",
+          "op": ">",
+          "x": 3.45
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 3,
+        "tp": 9
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "EMA",
+          "n": 20
+        },
+        "B": {
+          "ma": "EMA",
+          "n": 117
+        }
+      },
+      "signal": {
+        "kind": "turn",
+        "pos": "above"
+      },
+      "filters": [
+        {
+          "f": "gap",
+          "op": ">",
+          "x": 0.636
+        },
+        {
+          "f": "ret35",
+          "op": "<",
+          "x": -0.618
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [],
+        "sl": 5,
+        "tp": 2
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "KAMA",
+          "n": 69
+        },
+        "B": {
+          "ma": "ZLEMA",
+          "n": 109
+        }
+      },
+      "signal": {
+        "kind": "cross"
+      },
+      "filters": [
+        {
+          "f": "atrrank",
+          "op": ">",
+          "x": 82.3
+        },
+        {
+          "f": "qqq140",
+          "op": ">",
+          "x": 7.0
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [],
+        "sl": 2,
+        "tp": 1
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "VWMA",
+          "n": 5
+        },
+        "B": {
+          "ma": "TEMA",
+          "n": 5
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 1.75
+      },
+      "filters": [
+        {
+          "f": "spy35",
+          "op": "<",
+          "x": -2.13
+        },
+        {
+          "f": "vrel",
+          "op": ">",
+          "x": 1.34
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 3,
+        "tp": 4
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 55
+        },
+        "B": {
+          "ma": "SMA",
+          "n": 142
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 3.0
+      },
+      "filters": [
+        {
+          "f": "qqq35",
+          "op": ">",
+          "x": 3.52
+        }
+      ],
+      "exit": {
+        "max_bars": 35,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 1,
+        "tp": 2
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "VWMA",
+          "n": 57
+        },
+        "B": {
+          "ma": "TEMA",
+          "n": 93
+        },
+        "C": {
+          "ma": "SMA",
+          "n": 103
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "d20",
+          "op": "<",
+          "x": -3.18
+        },
+        {
+          "f": "vrel",
+          "op": ">",
+          "x": 0.575
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 4,
+        "tp": 2
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "ZLEMA",
+          "n": 42
+        },
+        "B": {
+          "ma": "EMA",
+          "n": 92
+        }
+      },
+      "signal": {
+        "kind": "converge",
+        "grow": 4,
+        "shrink": 3
+      },
+      "filters": [
+        {
+          "f": "d5",
+          "op": ">",
+          "x": 3.45
+        }
+      ],
+      "exit": {
+        "max_bars": 35,
+        "fc": [
+          {
+            "kind": "reexpand",
+            "n": 3
+          },
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 3,
+        "tp": 2
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "VWMA",
+          "n": 64
+        },
+        "B": {
+          "ma": "HMA",
+          "n": 67
+        },
+        "C": {
+          "ma": "HMA",
+          "n": 143
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "qqq140",
+          "op": ">",
+          "x": 5.28
+        },
+        {
+          "f": "spy140",
+          "op": "<",
+          "x": 5.1
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 8,
+        "tp": 6
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 25
+        },
+        "B": {
+          "ma": "DEMA",
+          "n": 51
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 2.25
+      },
+      "filters": [
+        {
+          "f": "rsi",
+          "op": "<",
+          "x": 58.7
+        },
+        {
+          "f": "spy35",
+          "op": "<",
+          "x": 2.51
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 7,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "KAMA",
+          "n": 14
+        },
+        "B": {
+          "ma": "SMA",
+          "n": 61
+        },
+        "C": {
+          "ma": "KAMA",
+          "n": 110
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "since",
+          "op": ">",
+          "x": 100
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 9,
+        "tp": 10
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "KAMA",
+          "n": 45
+        },
+        "B": {
+          "ma": "ZLEMA",
+          "n": 134
+        }
+      },
+      "signal": {
+        "kind": "converge",
+        "grow": 5,
+        "shrink": 3
+      },
+      "filters": [
+        {
+          "f": "atrrank",
+          "op": "<",
+          "x": 26.3
+        },
+        {
+          "f": "slopeA",
+          "op": ">",
+          "x": 0.5
+        }
+      ],
+      "exit": {
+        "max_bars": 7,
+        "fc": [
+          {
+            "kind": "reexpand",
+            "n": 3
+          }
+        ],
+        "sl": 1,
+        "tp": 1
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 52
+        },
+        "B": {
+          "ma": "ZLEMA",
+          "n": 61
+        },
+        "C": {
+          "ma": "VWMA",
+          "n": 143
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "d20",
+          "op": ">",
+          "x": 4.3
+        },
+        {
+          "f": "slopeA",
+          "op": "<",
+          "x": 0.0
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 8,
+        "tp": 6
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 38
+        },
+        "B": {
+          "ma": "WMA",
+          "n": 102
+        }
+      },
+      "signal": {
+        "kind": "turn",
+        "pos": "any"
+      },
+      "filters": [
+        {
+          "f": "atrrank",
+          "op": "<",
+          "x": 6.0
+        },
+        {
+          "f": "since",
+          "op": "<",
+          "x": 35
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 10,
+        "tp": 4
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "VWMA",
+          "n": 77
+        },
+        "B": {
+          "ma": "VWMA",
+          "n": 134
+        },
+        "C": {
+          "ma": "KAMA",
+          "n": 150
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "d20",
+          "op": "<",
+          "x": -3.18
+        },
+        {
+          "f": "vrel",
+          "op": ">",
+          "x": 0.74
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 5,
+        "tp": 6
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "EMA",
+          "n": 43
+        },
+        "B": {
+          "ma": "SMA",
+          "n": 92
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 1.25
+      },
+      "filters": [
+        {
+          "f": "spy35",
+          "op": ">",
+          "x": 3.41
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 1,
+        "tp": 1
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 84
+        },
+        "B": {
+          "ma": "KAMA",
+          "n": 116
+        }
+      },
+      "signal": {
+        "kind": "converge",
+        "grow": 4,
+        "shrink": 2
+      },
+      "filters": [
+        {
+          "f": "spy140",
+          "op": "<",
+          "x": -1.33
+        },
+        {
+          "f": "vrel",
+          "op": "<",
+          "x": 0.656
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [
+          {
+            "kind": "reexpand",
+            "n": 2
+          }
+        ],
+        "sl": 2,
+        "tp": 6
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 68
+        }
+      },
+      "signal": {
+        "kind": "pcross"
+      },
+      "filters": [
+        {
+          "f": "d20",
+          "op": "<",
+          "x": -3.18
+        },
+        {
+          "f": "qqq140",
+          "op": ">",
+          "x": 9.77
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 7,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "VWMA",
+          "n": 76
+        },
+        "B": {
+          "ma": "ZLEMA",
+          "n": 150
+        }
+      },
+      "signal": {
+        "kind": "converge",
+        "grow": 5,
+        "shrink": 3
+      },
+      "filters": [
+        {
+          "f": "spy35",
+          "op": ">",
+          "x": 2.51
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "reexpand",
+            "n": 1
+          },
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 6,
+        "tp": 4
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "TEMA",
+          "n": 58
+        },
+        "B": {
+          "ma": "WMA",
+          "n": 121
+        }
+      },
+      "signal": {
+        "kind": "turn",
+        "pos": "below"
+      },
+      "filters": [
+        {
+          "f": "d20",
+          "op": ">",
+          "x": 1.51
+        },
+        {
+          "f": "dow",
+          "op": ">",
+          "x": 4.5
+        }
+      ],
+      "exit": {
+        "max_bars": 14,
+        "fc": [
+          {
+            "kind": "turn_back"
+          }
+        ],
+        "sl": 1,
+        "tp": 2
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "SMA",
+          "n": 101
+        },
+        "B": {
+          "ma": "DEMA",
+          "n": 126
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 0.75
+      },
+      "filters": [
+        {
+          "f": "qqq140",
+          "op": ">",
+          "x": 9.77
+        },
+        {
+          "f": "rsi",
+          "op": ">",
+          "x": 32.7
+        }
+      ],
+      "exit": {
+        "max_bars": 35,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 1,
+        "tp": 1
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 112
+        },
+        "B": {
+          "ma": "TEMA",
+          "n": 127
+        }
+      },
+      "signal": {
+        "kind": "converge",
+        "grow": 6,
+        "shrink": 2
+      },
+      "filters": [
+        {
+          "f": "slot",
+          "op": ">",
+          "x": 4.5
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [
+          {
+            "kind": "reexpand",
+            "n": 1
+          }
+        ],
+        "sl": 9,
+        "tp": 4
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 104
+        },
+        "B": {
+          "ma": "TEMA",
+          "n": 115
+        },
+        "C": {
+          "ma": "EMA",
+          "n": 128
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "spy140",
+          "op": ">",
+          "x": 5.1
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 1,
+        "tp": 2
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 32
+        },
+        "B": {
+          "ma": "DEMA",
+          "n": 59
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 2.5
+      },
+      "filters": [
+        {
+          "f": "qqq140",
+          "op": ">",
+          "x": -1.77
+        },
+        {
+          "f": "slopeA",
+          "op": "<",
+          "x": 1.0
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 8,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "SMA",
+          "n": 55
+        },
+        "B": {
+          "ma": "TEMA",
+          "n": 60
+        },
+        "C": {
+          "ma": "SMA",
+          "n": 138
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "atrp",
+          "op": "<",
+          "x": 1.4
+        },
+        {
+          "f": "d20",
+          "op": ">",
+          "x": 4.3
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 6,
+        "tp": 6
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 25
+        },
+        "B": {
+          "ma": "KAMA",
+          "n": 32
+        },
+        "C": {
+          "ma": "EMA",
+          "n": 81
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "atrp",
+          "op": ">",
+          "x": 1.1
+        },
+        {
+          "f": "atrrank",
+          "op": "<",
+          "x": 37.7
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 3,
+        "tp": 8
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "EMA",
+          "n": 39
+        },
+        "B": {
+          "ma": "HMA",
+          "n": 141
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 2.0
+      },
+      "filters": [
+        {
+          "f": "spy140",
+          "op": ">",
+          "x": 9.37
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 2,
+        "tp": 6
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "TEMA",
+          "n": 32
+        },
+        "B": {
+          "ma": "WMA",
+          "n": 97
+        },
+        "C": {
+          "ma": "HMA",
+          "n": 145
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "spy140",
+          "op": ">",
+          "x": 9.37
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 1,
+        "tp": 1
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "SMA",
+          "n": 28
+        },
+        "B": {
+          "ma": "EMA",
+          "n": 45
+        }
+      },
+      "signal": {
+        "kind": "converge",
+        "grow": 6,
+        "shrink": 2
+      },
+      "filters": [
+        {
+          "f": "atrrank",
+          "op": "<",
+          "x": 6.0
+        },
+        {
+          "f": "d20",
+          "op": ">",
+          "x": 1.51
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [
+          {
+            "kind": "reexpand",
+            "n": 3
+          },
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 5,
+        "tp": 2
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "VWMA",
+          "n": 42
+        },
+        "B": {
+          "ma": "VWMA",
+          "n": 97
+        }
+      },
+      "signal": {
+        "kind": "converge",
+        "grow": 6,
+        "shrink": 2
+      },
+      "filters": [
+        {
+          "f": "spy140",
+          "op": "<",
+          "x": -2.89
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "reexpand",
+            "n": 2
+          },
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 5,
+        "tp": 4
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "ZLEMA",
+          "n": 35
+        },
+        "B": {
+          "ma": "WMA",
+          "n": 111
+        },
+        "C": {
+          "ma": "WMA",
+          "n": 148
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "dow",
+          "op": "<",
+          "x": 1.5
+        },
+        {
+          "f": "slopeA",
+          "op": ">",
+          "x": -0.2
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 6,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "KAMA",
+          "n": 8
+        },
+        "B": {
+          "ma": "KAMA",
+          "n": 47
+        },
+        "C": {
+          "ma": "KAMA",
+          "n": 76
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "qqq35",
+          "op": ">",
+          "x": 3.52
+        },
+        {
+          "f": "vrel",
+          "op": ">",
+          "x": 1.73
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 10,
+        "tp": 10
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "ZLEMA",
+          "n": 26
+        },
+        "B": {
+          "ma": "DEMA",
+          "n": 53
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 2.5
+      },
+      "filters": [
+        {
+          "f": "d20",
+          "op": ">",
+          "x": 1.51
+        },
+        {
+          "f": "since",
+          "op": ">",
+          "x": 35
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 7,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "SMA",
+          "n": 83
+        }
+      },
+      "signal": {
+        "kind": "pcross"
+      },
+      "filters": [
+        {
+          "f": "d5",
+          "op": ">",
+          "x": 2.13
+        },
+        {
+          "f": "ret35",
+          "op": "<",
+          "x": 1.2
+        }
+      ],
+      "exit": {
+        "max_bars": 14,
+        "fc": [
+          {
+            "kind": "pcross_back"
+          }
+        ],
+        "sl": 5,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "SMA",
+          "n": 30
+        },
+        "B": {
+          "ma": "WMA",
+          "n": 79
+        }
+      },
+      "signal": {
+        "kind": "converge",
+        "grow": 2,
+        "shrink": 3
+      },
+      "filters": [
+        {
+          "f": "gap",
+          "op": ">",
+          "x": 0.372
+        },
+        {
+          "f": "slot",
+          "op": ">",
+          "x": 6.5
+        }
+      ],
+      "exit": {
+        "max_bars": 14,
+        "fc": [
+          {
+            "kind": "reexpand",
+            "n": 2
+          }
+        ],
+        "sl": 2,
+        "tp": 1
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "EMA",
+          "n": 70
+        },
+        "B": {
+          "ma": "WMA",
+          "n": 77
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 2.25
+      },
+      "filters": [],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 8,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "EMA",
+          "n": 34
+        },
+        "B": {
+          "ma": "KAMA",
+          "n": 111
+        },
+        "C": {
+          "ma": "WMA",
+          "n": 130
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "gap",
+          "op": "<",
+          "x": -1.06
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 10,
+        "tp": 6
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 75
+        },
+        "B": {
+          "ma": "HMA",
+          "n": 102
+        }
+      },
+      "signal": {
+        "kind": "turn",
+        "pos": "above"
+      },
+      "filters": [
+        {
+          "f": "ret7",
+          "op": "<",
+          "x": -2.12
+        }
+      ],
+      "exit": {
+        "max_bars": 35,
+        "fc": [],
+        "sl": 5,
+        "tp": 2
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 32
+        },
+        "B": {
+          "ma": "HMA",
+          "n": 51
+        },
+        "C": {
+          "ma": "TEMA",
+          "n": 149
+        }
+      },
+      "signal": {
+        "kind": "ribbon"
+      },
+      "filters": [
+        {
+          "f": "gap",
+          "op": ">",
+          "x": 0.372
+        },
+        {
+          "f": "ret35",
+          "op": "<",
+          "x": -2.81
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [],
+        "sl": 6,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "ZLEMA",
+          "n": 31
+        },
+        "B": {
+          "ma": "HMA",
+          "n": 110
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 2.5
+      },
+      "filters": [
+        {
+          "f": "gap",
+          "op": "<",
+          "x": 0.372
+        },
+        {
+          "f": "rsi",
+          "op": "<",
+          "x": 32.7
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 4,
+        "tp": 10
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "VWMA",
+          "n": 38
+        },
+        "B": {
+          "ma": "WMA",
+          "n": 60
+        }
+      },
+      "signal": {
+        "kind": "cross"
+      },
+      "filters": [
+        {
+          "f": "qqq140",
+          "op": ">",
+          "x": -3.23
+        },
+        {
+          "f": "spy140",
+          "op": "<",
+          "x": -2.89
+        }
+      ],
+      "exit": {
+        "max_bars": 70,
+        "fc": [
+          {
+            "kind": "cross_back"
+          }
+        ],
+        "sl": 5,
+        "tp": 3
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "short",
+      "lines": {
+        "A": {
+          "ma": "DEMA",
+          "n": 24
+        },
+        "B": {
+          "ma": "ZLEMA",
+          "n": 125
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 3.0
+      },
+      "filters": [
+        {
+          "f": "atrp",
+          "op": "<",
+          "x": 0.52
+        },
+        {
+          "f": "qqq140",
+          "op": ">",
+          "x": 5.28
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 4,
+        "tp": 2
+      }
+    },
+    {
+      "schema": "ia4-rule/1",
+      "direction": "long",
+      "lines": {
+        "A": {
+          "ma": "WMA",
+          "n": 28
+        },
+        "B": {
+          "ma": "DEMA",
+          "n": 52
+        }
+      },
+      "signal": {
+        "kind": "revert",
+        "k": 2.25
+      },
+      "filters": [
+        {
+          "f": "spy140",
+          "op": "<",
+          "x": 9.37
+        },
+        {
+          "f": "vrel",
+          "op": ">",
+          "x": 0.954
+        }
+      ],
+      "exit": {
+        "max_bars": null,
+        "fc": [],
+        "sl": 8,
+        "tp": 3
       }
     }
   ]
