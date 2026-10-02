@@ -1,6 +1,6 @@
 """
 IA 4 — weryfikacja strategii na doubleProof (instrukcja, sekcja 6a).
-Wersja projektu: 1.12 (2026-10-02) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.13 (2026-10-02) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Bierze strategie aktywne (research/strategies/) i liczy je backtestowo — tym samym
 silnikiem i tymi samymi zasadami (sekcja 8) — na 20 spółkach doubleProof, których
@@ -38,6 +38,19 @@ def dp_symbols() -> list[str]:
         return list(base_config.universe()["doubleProof"]) or list(base_config.DOUBLE_PROOF_FALLBACK)
     except Exception:
         return list(base_config.DOUBLE_PROOF_FALLBACK)
+
+
+def refresh(data_dir: Path, sync_first: bool = True, log=print):
+    """Dociąga z Firestore świece doubleProof (+ SPY, QQQ do filtrów) i wczytuje je od nowa."""
+    if sync_first:
+        try:
+            import contextlib, io
+            from .. import sync
+            with contextlib.redirect_stdout(io.StringIO()):
+                sync.sync(dp_symbols() + list(data.CONTEXT))
+        except Exception as e:
+            log(f"doubleProof: synchronizacja nieudana ({type(e).__name__}) — liczę na kopii lokalnej.")
+    return load_dp_market(data_dir)
 
 
 def load_dp_market(data_dir: Path):
@@ -127,9 +140,9 @@ def _active_records(repo_dir: Path) -> list[dict]:
     return out
 
 
-def run(repo, m, log=print, force: bool = False) -> bool:
-    """Przelicza aktywne strategie na doubleProof. Zwraca True, gdy plik wyników się zmienił.
-    Liczy tylko wtedy, gdy zmienił się zestaw strategii albo dane (ostatnia data), chyba że force."""
+def run(repo, m, log=print, force: bool = True) -> bool:
+    """Przelicza WSZYSTKIE aktywne strategie na doubleProof (na aktualnie wczytanych danych).
+    force=False — tylko gdy zmienił się zestaw strategii albo dane."""
     if m is None:
         log("doubleProof: brak danych na Macu (python -m ia4.sync) — weryfikacja pominięta.")
         return False

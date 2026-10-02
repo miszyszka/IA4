@@ -1,6 +1,6 @@
 """
 IA 4 — pętla poszukiwania strategii (instrukcja, sekcja 9).
-Wersja projektu: 1.12 (2026-10-02) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.13 (2026-10-02) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kolejność dla każdej reguły:
   1. symulacja na grupie głównej, wszystkie hipotezy SL × TP,
@@ -86,6 +86,7 @@ class Lab:
         self.hours = hours
         self.log = log
         self.dp = dp_market              # doubleProof — tylko do weryfikacji (instrukcja 6a)
+        self._dp_at = 0.0                # kiedy ostatnio odświeżono dane doubleProof
         self.cfg = settings.merged(repo.read_json("config.json"))
         self.workers = workers or self.cfg["workers"] or max(1, (os.cpu_count() or 2) - 1)
         self.th = space.thresholds(market)
@@ -485,8 +486,14 @@ class Lab:
             "pool": sorted(self.pool.values(), key=lambda e: -e["score"]),
             "rejected": self.rejected[-2000:]})
         self._flush_tested()
-        try:                              # weryfikacja na doubleProof, gdy zmieniły się strategie
-            verify.run(self.repo, self.dp, self.log)
+        try:                              # weryfikacja na doubleProof (instrukcja 6a)
+            if time.time() - self._dp_at >= self.cfg["dp_refresh_min"] * 60:
+                # co godzinę: nowe świece doubleProof z Firestore + przeliczenie wszystkich aktywnych
+                self.dp = verify.refresh(self.data_dir, sync_first=self._dp_at > 0, log=self.log) or self.dp
+                self._dp_at = time.time()
+                verify.run(self.repo, self.dp, self.log, force=True)
+            else:                         # między odświeżeniami — tylko gdy zmieniły się strategie
+                verify.run(self.repo, self.dp, self.log, force=False)
         except Exception as e:
             self.log(f"doubleProof: weryfikacja nieudana — {type(e).__name__}: {e}")
         ok = self.repo.commit_push(f"research: log {_pl(now)} — {self.phase()}, "

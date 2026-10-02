@@ -1,5 +1,5 @@
 """
-IA 4 — ustawienia poszukiwania (domyślne). Wersja projektu: 1.12 (2026-10-02)
+IA 4 — ustawienia poszukiwania (domyślne). Wersja projektu: 1.13 (2026-10-02)
 
 Wartości domyślne są tu. Claude (albo człowiek) nadpisuje je plikiem
 research/config.json na branchu `research` — Python czyta go przy starcie
@@ -63,6 +63,7 @@ DEFAULTS = {
 
     # --- praca -------------------------------------------------------------
     "log_every_min": 30,
+    "dp_refresh_min": 60,         # co ile minut dociągać świece doubleProof i przeliczać weryfikację
     "workers": 0,                 # 0 = liczba rdzeni − 1
     "paused_kinds": [],           # np. ["revert"] — Claude może wyłączać rodzaje sygnałów
 }

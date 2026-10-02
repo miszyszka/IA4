@@ -1,6 +1,6 @@
 """
 IA 4 — kontrola kompletności kopii lokalnej (instrukcja, sekcja 7).
-Wersja projektu: 1.12 (2026-10-02) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.13 (2026-10-02) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Porównuje każdy instrument z kalendarzem NYSE: czy są wszystkie dni sesyjne
 od pierwszej daty instrumentu i czy każda sesja ma komplet świec (7, a w dni

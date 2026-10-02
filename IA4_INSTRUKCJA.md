@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.12
+**Wersja:** 1.13
 **Data:** 2 października 2026
 **Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca.
 
@@ -180,7 +180,7 @@ Wynik: `data/{SYMBOL}.parquet`, jedna tabela na instrument, kolumny `symbol, dat
 - strategie aktywne (`research/strategies/`) liczone tym samym silnikiem i na tych samych zasadach (sekcja 8) na wszystkich 20 spółkach doubleProof, bez skarbca — każda transakcja się liczy; instrument z historią krótszą niż 200 świec jest pomijany; SPY/QQQ jak zwykle tylko do filtrów,
 - dla każdej strategii: liczba transakcji, PF, PF na ślepo i przewaga (na doubleProof), skuteczność (TP), udziały wyjść SL / FC / limit, średni wynik FC i całej transakcji, PF w 4 okresach (podział historii doubleProof na 4 równe części), liczba spółek z transakcjami i z PF > 1, wyniki każdej spółki, a obok PF ważony z poszukiwania (8.6 p. 11) do porównania,
 - **tylko informacja:** wynik nie przyjmuje, nie odrzuca i nie zmienia strategii i nie wraca do poszukiwania,
-- kiedy: `python -m ia4.lab` przy starcie i przy każdym logu co 30 min, ale liczy tylko wtedy, gdy zmienił się zestaw strategii aktywnych albo dane doubleProof (ostatnia data, liczba świec); ręcznie: `python -m ia4.lab.verify` (synchronizacja + przeliczenie + push),
+- kiedy: `python -m ia4.lab` przy starcie, a potem **co godzinę** (`dp_refresh_min` = 60): dociąga z Firestore nowe świece doubleProof (+ SPY, QQQ; ok. 250 odczytów) i przelicza **wszystkie** aktywne strategie na pełnych, aktualnych danych. Przy logach co 30 min pomiędzy odświeżeniami — przelicza tylko, gdy zmienił się zestaw strategii. Ręcznie: `python -m ia4.lab.verify` (synchronizacja + przeliczenie wszystkich + push),
 - wynik: `research/doubleproof.json` (branch `research`); wyniki strategii, które wypadły z aktywnych, zostają w pliku z `active: false`,
 - arkusz STRATEGIE DOUBLEPROOF (sekcja 11).
 
@@ -485,6 +485,7 @@ Opcje: `--hours N`, `--workers N` (domyślnie rdzenie − 1), `--check` (tylko s
 | „Konfiguruj” / „Uzupełnij ostatni miesiąc” | ok. 2500 / raz | — |
 | paper trading | — | pierwsze zbudowanie pamięci ok. 19 000 (raz), potem ok. 150 / świecę + ok. 650 raz dziennie |
 | Mac: `ia4.sync` przyrostowo | — | kilkaset / start |
+| Mac: odświeżanie doubleProof w `ia4.lab` | — | ok. 250 / godzinę pracy |
 | Mac: pierwsza synchronizacja nowych instrumentów (doubleProof) | — | ok. 10 000 (raz) |
 | Mac: `ia4.sync --full` | — | ok. 48 000 — nie łączyć tego samego dnia z innymi dużymi odczytami |
 
@@ -508,6 +509,7 @@ cd ~/Desktop/IA4 && git pull
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.13 | 2026-10-02 | Weryfikacja doubleProof: co godzinę pracy `ia4.lab` dociąga nowe świece doubleProof z Firestore i przelicza wszystkie aktywne strategie (wcześniej dane wczytywane tylko przy starcie). |
 | 1.12 | 2026-10-02 | Weryfikacja strategii aktywnych na doubleProof: `ia4/lab/verify.py` (w `ia4.lab` przy starcie i co 30 min, gdy zmieniły się strategie albo dane; ręcznie `python -m ia4.lab.verify`) → `research/doubleproof.json` → arkusz STRATEGIE DOUBLEPROOF (te same strategie i kolejność co STRATEGIE). Tylko informacja, bez wpływu na poszukiwanie. |
 | 1.11 | 2026-10-01 | Przegląd całości. Poprawka: szybkie ponawianie pobrań po zamknięciu świecy liczy czas następnej próby (przy 75 instrumentach groziło przekroczeniem 6 min Apps Script). Instrukcja uporządkowana: cele 3–4, kolejność 8.6 i 9.3, skuteczność (8.6 p. 12), status w STATS, zużycie Firestore przy 75 instrumentach, sekcja 12 (skład Apps Script, aktualizacja, Mac na co dzień z `--workers 4`, limity), etapy 2–3. Telemetria: etap „2 + 3”. |
 | 1.10 | 2026-10-01 | Wirtualny inwestor bierze strategie zaznaczone checkboxem „for VI” w arkuszu STRATEGIE (bez limitu) zamiast listy 20 ID w VIRTUAL-INVESTOR; zaznaczenia w `VI_IDS`, zaznaczone nieaktywne zostają w STRATEGIE jako „(archiwum)”. Python: wersje porównywane liczbowo. |
