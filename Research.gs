@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — POSZUKIWANIE STRATEGII  (GitHub, branch `research` → arkusz RESEARCH)
  *
- *  Wersja projektu: 1.11 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.12 (2026-10-02) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Program `python -m ia4.lab` na Macu co 30 minut zapisuje na branchu
  *  `research` pliki research/status.json i research/log.jsonl. Ten plik co
@@ -19,6 +19,8 @@ const RESEARCH = {
   STATUS: 'research/status.json',
   LOG: 'research/log.jsonl',
   INDEX: 'research/strategies.jsonl',   // indeks strategii aktywnych
+  DP: 'research/doubleproof.json',       // strategie przeliczone na doubleProof (Python, verify.py)
+  DP_SHEET: 'STRATEGIE DOUBLEPROOF',
   SHEET: 'RESEARCH',
   STRAT_SHEET: 'STRATEGIE',
   LOG_ROWS: 500,          // ile ostatnich wpisów dziennika pokazujemy
@@ -61,7 +63,9 @@ function researchUpdate_(interactive) {
     researchWrite_(status, log);
     const idx = (researchRaw_(RESEARCH.INDEX) || '').split('\n').filter(l => l.trim())
       .map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(x => x);
-    strategiesWrite_(idx);
+    const order = strategiesWrite_(idx);
+    const dpTxt = researchRaw_(RESEARCH.DP);
+    dpWrite_(order, dpTxt ? JSON.parse(dpTxt) : null);
     return { ok: true };
   } catch (e) {
     console.error('RESEARCH: ' + e.message);
@@ -270,4 +274,64 @@ function strategiesWrite_(idx) {
   sh.setColumnWidth(1, 110);
   sh.setColumnWidth(2, 170);
   sh.setColumnWidth(4, 560);
+  return list.map(s => ({ id: s.id, desc: s.desc, group: s.group, pf_w: s.pf_w, vi: !!selSet[s.id] }));
+}
+
+// ============================================================================
+//  ARKUSZ STRATEGIE DOUBLEPROOF — te same strategie i ta sama kolejność co w
+//  STRATEGIE, policzone przez Pythona na 20 spółkach doubleProof (instrukcja 6a).
+//  Tylko do odczytu; przepisywany w całości przy każdym odświeżeniu.
+// ============================================================================
+const DP_COLS = ['Id', 'Grupa', 'Opis (reguła)', 'SL %', 'TP %', 'for VI',
+  'PF ważony (poszukiwanie)', 'PF doubleProof', 'Transakcji', 'Spółek z transakcjami', 'Spółek z PF > 1',
+  'Okresy z PF > 1 (z 4)', 'PF na ślepo', 'Przewaga', 'Skuteczność (TP)', '% SL', '% FC', '% limit',
+  'Śr. wynik FC %', 'Śr. wynik transakcji %', 'Stan'];
+
+function dpWrite_(order, dp) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(RESEARCH.DP_SHEET) || ss.insertSheet(RESEARCH.DP_SHEET);
+  sh.clear();
+  sh.clearConditionalFormatRules();
+  sh.setTabColor('#a50e0e');
+  if (sh.getMaxColumns() < DP_COLS.length) sh.insertColumnsAfter(sh.getMaxColumns(), DP_COLS.length - sh.getMaxColumns());
+  const v = x => (x === undefined || x === null) ? '' : x;
+  const res = {};
+  ((dp && dp.results) || []).forEach(r => { res[r.id] = r; });
+  const d = (dp && dp.data) || {};
+  const fmtD = x => x ? String(x).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') : '?';
+  const title = dp
+    ? `IA 4 — STRATEGIE NA doubleProof: ${d.instruments} spółek, ${fmtD(d.first_date)} – ${fmtD(d.last_date)} · przeliczono ${dp.updatedAtPL}`
+    : 'IA 4 — STRATEGIE NA doubleProof: brak wyników — uruchom program na Macu (ia4) po synchronizacji doubleProof';
+  sh.getRange(1, 1, 1, DP_COLS.length).merge().setValue(title)
+    .setFontSize(13).setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
+  sh.getRange(2, 1, 1, DP_COLS.length).setValues([DP_COLS]).setFontWeight('bold').setBackground('#f1f3f4');
+  const rows = order.map(s => {
+    const r = res[s.id];
+    if (!r) return [s.id, v(s.group), v(s.desc), '', '', s.vi, v(s.pf_w), '', '', '', '', '', '', '', '', '', '', '', '', '',
+                    dp ? 'jeszcze nie przeliczona' : 'brak wyników'];
+    const nInst = (d.instruments || 20);
+    return [s.id, v(s.group), v(s.desc), r.sl, r.tp, s.vi, v(r.search_pf_w !== null ? r.search_pf_w : s.pf_w),
+      r.trades ? r.pf : '', r.trades, `${r.instruments_traded} / ${nInst}`, r.instruments_pf_gt1, r.folds_pf_gt1,
+      v(r.blind_pf), r.trades ? r.edge : '', r.tp_pct, r.sl_pct, r.fc_pct, r.time_pct, v(r.fc_avg), r.avg_ret_pct,
+      !r.trades ? 'brak transakcji' : (r.trades < 10 ? 'mało transakcji (< 10)' : (r.active ? 'aktualna' : 'wynik z czasu, gdy była aktywna'))];
+  });
+  if (rows.length) {
+    const need = rows.length + 2;
+    if (sh.getMaxRows() < need) sh.insertRowsAfter(sh.getMaxRows(), need - sh.getMaxRows());
+    sh.getRange(3, 1, rows.length, DP_COLS.length).setValues(rows);
+    [7, 8, 13, 14].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('0.00'));
+    sh.getRange(3, 15, rows.length, 4).setNumberFormat('0.0%');
+    sh.getRange(3, 19, rows.length, 2).setNumberFormat('+0.00;-0.00;0.00');
+    const pfR = sh.getRange(3, 8, rows.length, 1);
+    const rule = () => SpreadsheetApp.newConditionalFormatRule();
+    sh.setConditionalFormatRules([
+      rule().whenNumberGreaterThanOrEqualTo(1.5).setBackground('#ceead6').setRanges([pfR]).build(),
+      rule().whenNumberLessThan(1).setBackground('#fad2cf').setRanges([pfR]).build(),
+      rule().whenNumberBetween(1, 1.5).setBackground('#fef7e0').setRanges([pfR]).build(),
+    ]);
+  }
+  sh.setFrozenRows(2);
+  sh.setColumnWidth(1, 110);
+  sh.setColumnWidth(2, 130);
+  sh.setColumnWidth(3, 520);
 }

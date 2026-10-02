@@ -1,6 +1,6 @@
 """
 IA 4 — pętla poszukiwania strategii (instrukcja, sekcja 9).
-Wersja projektu: 1.11 (2026-10-01) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.12 (2026-10-02) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kolejność dla każdej reguły:
   1. symulacja na grupie głównej, wszystkie hipotezy SL × TP,
@@ -27,7 +27,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 
 from .. import __version__
-from . import rules, settings, space, worker
+from . import rules, settings, space, verify, worker
 
 PL = ZoneInfo("Europe/Warsaw")
 
@@ -75,7 +75,7 @@ def _pl(dt):
 class Lab:
     def __init__(self, market, repo, data_dir: Path, traded: list, vault_bars: int,
                  state_dir: Path, check_report: dict, workers: int | None = None,
-                 hours: float | None = None, log=print):
+                 hours: float | None = None, log=print, dp_market=None):
         self.m = market
         self.repo = repo
         self.data_dir = data_dir
@@ -85,6 +85,7 @@ class Lab:
         self.check = check_report
         self.hours = hours
         self.log = log
+        self.dp = dp_market              # doubleProof — tylko do weryfikacji (instrukcja 6a)
         self.cfg = settings.merged(repo.read_json("config.json"))
         self.workers = workers or self.cfg["workers"] or max(1, (os.cpu_count() or 2) - 1)
         self.th = space.thresholds(market)
@@ -484,6 +485,10 @@ class Lab:
             "pool": sorted(self.pool.values(), key=lambda e: -e["score"]),
             "rejected": self.rejected[-2000:]})
         self._flush_tested()
+        try:                              # weryfikacja na doubleProof, gdy zmieniły się strategie
+            verify.run(self.repo, self.dp, self.log)
+        except Exception as e:
+            self.log(f"doubleProof: weryfikacja nieudana — {type(e).__name__}: {e}")
         ok = self.repo.commit_push(f"research: log {_pl(now)} — {self.phase()}, "
                                    f"{self.totals['evals']} reguł, skarbiec {self.totals['vault_peeks']}, "
                                    f"strategii {self.totals['accepted']}")

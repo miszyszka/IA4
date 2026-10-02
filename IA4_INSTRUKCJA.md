@@ -1,7 +1,7 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.11
-**Data:** 1 października 2026
+**Wersja:** 1.12
+**Data:** 2 października 2026
 **Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca.
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jeśli kod, arkusz albo telemetria się z nim rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba naprawić.
@@ -57,7 +57,7 @@ Yahoo ──(Apps Script, co minutę)──▶ Firestore ──(ia4.sync)──�
 |---|---|
 | `Code.gs` | automat: listy instrumentów, zbieranie na żywo, nocne odświeżenie, liczenie bazy, pobieranie historii doubleProof, zapis do Firestore, arkusz STATS, menu, triggery |
 | `Telemetry.gs` | stan zbierania → `telemetry/state.json` w GitHub (branch `main`) |
-| `Research.gs` | branch `research` (`status.json`, `log.jsonl`, `strategies.jsonl`) → arkusze RESEARCH i STRATEGIE |
+| `Research.gs` | branch `research` (`status.json`, `log.jsonl`, `strategies.jsonl`, `doubleproof.json`) → arkusze RESEARCH, STRATEGIE i STRATEGIE DOUBLEPROOF |
 | `Paper.gs` | paper trading: pamięć świec, sygnały na żywo (SIGNALS-REALTIME), wirtualny inwestor (VIRTUAL-INVESTOR) |
 | `PaperEngine.gs` | język reguł `ia4-rule/1` w JavaScript — wierna kopia `indicators/data/rules/sim.py` |
 | `ia4-research/tests/` | test zgodności PaperEngine.gs z Pythonem (`parity_dump.py`, `parity.js`) |
@@ -75,6 +75,7 @@ Yahoo ──(Apps Script, co minutę)──▶ Firestore ──(ia4.sync)──�
 | `ia4-research/ia4/lab/worker.py` | obliczenia w procesach roboczych; wyniki skarbca tylko przez bramkę |
 | `ia4-research/ia4/lab/store.py` | klon brancha `research` w `ia4-research/research-repo/`, commit + push |
 | `ia4-research/ia4/lab/settings.py` | domyślne ustawienia poszukiwania (nadpisuje je `research/config.json`) |
+| `ia4-research/ia4/lab/verify.py` | weryfikacja strategii aktywnych na doubleProof → `research/doubleproof.json` (sekcja 6a) |
 | `ia4-research/ia4/lab/selftest.py` | test silnika na danych syntetycznych |
 | `ia4-research/README.md` | instalacja i użycie |
 | `telemetry/state.json` | stan automatu, generowany — nie edytować |
@@ -173,7 +174,15 @@ Wynik: `data/{SYMBOL}.parquet`, jedna tabela na instrument, kolumny `symbol, dat
 - 20 spółek spoza grupy głównej i kontrolnej (sekcja 4), zbierane tak samo jak pozostałe: na żywo, nocne odświeżenie, pełna historia do granicy Yahoo.
 - **Poszukiwanie nigdy ich nie używa** — ani grupa główna, ani skarbiec, ani sita. `python -m ia4.lab` bierze tylko `main` + `proof` z `system/universe`; bez Firestore wyklucza doubleProof po liście w `ia4/config.py` i po polu `group` w manifeście synchronizacji.
 - Paper trading (sekcja 11a) też ich nie używa.
-- Służą człowiekowi do weryfikacji wybranych strategii na spółkach, których system nigdy nie widział. Synchronizacja (`python -m ia4.sync`) ściąga je na Maca jak pozostałe instrumenty.
+- Służą do weryfikacji strategii na spółkach, których system nigdy nie widział. Synchronizacja (`python -m ia4.sync`) ściąga je na Maca jak pozostałe instrumenty.
+
+**Weryfikacja (`ia4/lab/verify.py`):**
+- strategie aktywne (`research/strategies/`) liczone tym samym silnikiem i na tych samych zasadach (sekcja 8) na wszystkich 20 spółkach doubleProof, bez skarbca — każda transakcja się liczy; instrument z historią krótszą niż 200 świec jest pomijany; SPY/QQQ jak zwykle tylko do filtrów,
+- dla każdej strategii: liczba transakcji, PF, PF na ślepo i przewaga (na doubleProof), skuteczność (TP), udziały wyjść SL / FC / limit, średni wynik FC i całej transakcji, PF w 4 okresach (podział historii doubleProof na 4 równe części), liczba spółek z transakcjami i z PF > 1, wyniki każdej spółki, a obok PF ważony z poszukiwania (8.6 p. 11) do porównania,
+- **tylko informacja:** wynik nie przyjmuje, nie odrzuca i nie zmienia strategii i nie wraca do poszukiwania,
+- kiedy: `python -m ia4.lab` przy starcie i przy każdym logu co 30 min, ale liczy tylko wtedy, gdy zmienił się zestaw strategii aktywnych albo dane doubleProof (ostatnia data, liczba świec); ręcznie: `python -m ia4.lab.verify` (synchronizacja + przeliczenie + push),
+- wynik: `research/doubleproof.json` (branch `research`); wyniki strategii, które wypadły z aktywnych, zostają w pliku z `active: false`,
+- arkusz STRATEGIE DOUBLEPROOF (sekcja 11).
 
 ---
 
@@ -387,13 +396,14 @@ research/strategies/S-*.json  strategie aktywne
 research/strategies.jsonl     indeks strategii aktywnych
 research/archive/S-*.json     strategie zarchiwizowane (z polem archived)
 research/archive.jsonl        dziennik archiwizacji (id, czas, powód)
+research/doubleproof.json     strategie przeliczone na doubleProof (sekcja 6a)
 ```
 
 Lokalnie (poza gitem): `ia4-research/state/tested.txt` — reguły już przetestowane.
 
 ---
 
-## 11. Arkusze RESEARCH i STRATEGIE (`Research.gs`)
+## 11. Arkusze RESEARCH, STRATEGIE i STRATEGIE DOUBLEPROOF (`Research.gs`)
 
 Trigger `researchSync` co 30 min (i menu IA 4 → „🔬 Odśwież RESEARCH teraz”) czyta z GitHub `research/status.json` i `research/log.jsonl` (branch `research`, token `GITHUB_TOKEN`) i przepisuje arkusz RESEARCH:
 - stan: ostatni log, czy program liczy (brak logu > 45 min = nie liczy), komputer, etap i postęp siatki, liczniki z 9.6, strategie aktywne, tempo, łączny czas pracy, stan bazy na Macu, kryteria,
@@ -401,6 +411,8 @@ Trigger `researchSync` co 30 min (i menu IA 4 → „🔬 Odśwież RESEARCH ter
 - dziennik: ostatnie 500 wpisów, najnowsze na górze.
 
 Przy tym samym odświeżeniu arkusz **STRATEGIE** dostaje wszystkie strategie aktywne z `research/strategies.jsonl`, od najwyższego PF ważonego: id, grupa, kierunek, opis reguły, SL %, TP %, PF i liczba transakcji grupy głównej, PF i liczba transakcji skarbca, PF ważony, PF wejścia na ślepo, przewaga, **skuteczność = udział transakcji zamkniętych na TP**, udział wyjść na SL / FC / limit czasu, średni wynik % transakcji zamkniętych przez FC, średni wynik % wszystkich transakcji (wszystko z transakcji grupy głównej i skarbca), data znalezienia. Arkusz jest przepisywany w całości — jedyne, co się w nim zmienia ręcznie, to checkbox „for VI” w ostatniej kolumnie (sekcja 11a), który przetrwa przepisanie. Pełna reguła i statystyki: plik `research/strategies/{id}.json`.
+
+Przy tym samym odświeżeniu arkusz **STRATEGIE DOUBLEPROOF** dostaje dokładnie te same strategie i w tej samej kolejności co STRATEGIE, policzone na doubleProof (`research/doubleproof.json`, sekcja 6a): id, grupa, opis, SL, TP, for VI (podgląd, zmienia się tylko w STRATEGIE), PF ważony z poszukiwania, **PF doubleProof** (zielony ≥ 1,5, żółty 1–1,5, czerwony < 1), transakcji, spółek z transakcjami / 20, spółek z PF > 1, okresów z PF > 1 (z 4), PF na ślepo, przewaga, skuteczność (TP), % SL, % FC, % limit, średni wynik FC i transakcji, stan („aktualna”, „mało transakcji (< 10)”, „brak transakcji”, „jeszcze nie przeliczona”, „wynik z czasu, gdy była aktywna”). Tytuł arkusza podaje zakres dat doubleProof i czas przeliczenia. Tylko do odczytu.
 
 ---
 
@@ -440,7 +452,7 @@ Wynik musi brzmieć „rozbieżności: sygnały 0, transakcje 0”.
 
 ### Apps Script — skład
 
-Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min. Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY` i inne — nie edytować). Arkusze: STATS, RESEARCH, STRATEGIE, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
+Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min. Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY` i inne — nie edytować). Arkusze: STATS, RESEARCH, STRATEGIE, STRATEGIE DOUBLEPROOF, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
 
 ### Aktualizacja do nowej wersji
 
@@ -458,6 +470,7 @@ source ~/.zshrc
 
 ia4                 # liczy do Ctrl+C (zapisuje stan i wysyła log przed końcem)
 ia4 --hours 4       # liczy 4 godziny
+python -m ia4.lab.verify   # tylko przeliczenie strategii na doubleProof (bez szukania)
 ```
 
 Opcje: `--hours N`, `--workers N` (domyślnie rdzenie − 1), `--check` (tylko synchronizacja i kontrola bazy), `--no-sync`, `--no-push`. Program można przerwać w dowolnym momencie — wznawia od ostatniego punktu (twarde zamknięcie traci najwyżej 30 min pracy; strategie są wysyłane od razu). Test silnika: `python -m ia4.lab.selftest`.
@@ -495,6 +508,7 @@ cd ~/Desktop/IA4 && git pull
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.12 | 2026-10-02 | Weryfikacja strategii aktywnych na doubleProof: `ia4/lab/verify.py` (w `ia4.lab` przy starcie i co 30 min, gdy zmieniły się strategie albo dane; ręcznie `python -m ia4.lab.verify`) → `research/doubleproof.json` → arkusz STRATEGIE DOUBLEPROOF (te same strategie i kolejność co STRATEGIE). Tylko informacja, bez wpływu na poszukiwanie. |
 | 1.11 | 2026-10-01 | Przegląd całości. Poprawka: szybkie ponawianie pobrań po zamknięciu świecy liczy czas następnej próby (przy 75 instrumentach groziło przekroczeniem 6 min Apps Script). Instrukcja uporządkowana: cele 3–4, kolejność 8.6 i 9.3, skuteczność (8.6 p. 12), status w STATS, zużycie Firestore przy 75 instrumentach, sekcja 12 (skład Apps Script, aktualizacja, Mac na co dzień z `--workers 4`, limity), etapy 2–3. Telemetria: etap „2 + 3”. |
 | 1.10 | 2026-10-01 | Wirtualny inwestor bierze strategie zaznaczone checkboxem „for VI” w arkuszu STRATEGIE (bez limitu) zamiast listy 20 ID w VIRTUAL-INVESTOR; zaznaczenia w `VI_IDS`, zaznaczone nieaktywne zostają w STRATEGIE jako „(archiwum)”. Python: wersje porównywane liczbowo. |
 | 1.9 | 2026-10-01 | Nowa kolekcja `doubleProof` (20 spółek S&P 500: AMD, INTC, QCOM, CSCO, ADBE, LRCX, C, MS, SCHW, COP, OXY, SLB, BA, GE, UBER, F, GM, COST, BMY, CMCSA) — zbierana na żywo i w nocnym odświeżeniu, historia pobierana wstecz porcjami co godzinę do granicy Yahoo (sekcja 4 p. 5). Sekcja 6a: doubleProof wyłączona z poszukiwania i paper tradingu, tylko do weryfikacji. STATS: wiersz „Historia doubleProof”; telemetria: `doubleProofHistory`. Python: `system/universe.doubleProof`, grupa w manifeście synchronizacji. |
