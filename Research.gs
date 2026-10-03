@@ -2,13 +2,15 @@
  * ============================================================================
  *  IA 4 — POSZUKIWANIE STRATEGII  (GitHub, branch `research` → arkusz RESEARCH)
  *
- *  Wersja projektu: 1.13 (2026-10-02) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.14 (2026-10-03) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Program `python -m ia4.lab` na Macu co 30 minut zapisuje na branchu
  *  `research` pliki research/status.json i research/log.jsonl. Ten plik co
  *  30 minut (trigger researchSync) czyta je i przepisuje do arkusza RESEARCH:
  *  stan, ostatnie znalezione strategie i dziennik (najnowsze na górze),
- *  a do arkusza STRATEGIE — wszystkie strategie aktywne z wynikami.
+ *  a do arkusza STRATEGIE — wszystkie strategie aktywne z wynikami,
+ *  do STRATEGIE DOUBLEPROOF — te same strategie przeliczone na doubleProof,
+ *  do BACKTEST DOUBLEPROOF — zapisany jednorazowy backtest (raz, przy nowym pliku).
  *
  *  Tylko odczyt z GitHub — ten sam token co telemetria (GITHUB_TOKEN).
  * ============================================================================
@@ -21,6 +23,8 @@ const RESEARCH = {
   INDEX: 'research/strategies.jsonl',   // indeks strategii aktywnych
   DP: 'research/doubleproof.json',       // strategie przeliczone na doubleProof (Python, verify.py)
   DP_SHEET: 'STRATEGIE DOUBLEPROOF',
+  BT: 'research/backtest-doubleproof.json',   // jednorazowy backtest na doubleProof (Python, backtest_dp.py)
+  BT_SHEET: 'BACKTEST DOUBLEPROOF',
   SHEET: 'RESEARCH',
   STRAT_SHEET: 'STRATEGIE',
   LOG_ROWS: 500,          // ile ostatnich wpisów dziennika pokazujemy
@@ -66,6 +70,7 @@ function researchUpdate_(interactive) {
     const order = strategiesWrite_(idx);
     const dpTxt = researchRaw_(RESEARCH.DP);
     dpWrite_(order, dpTxt ? JSON.parse(dpTxt) : null);
+    btSync_();
     return { ok: true };
   } catch (e) {
     console.error('RESEARCH: ' + e.message);
@@ -122,7 +127,7 @@ function researchWrite_(st, log) {
   const t = st.totals || {};
   const lastAt = st.updatedAt ? new Date(st.updatedAt) : null;
   const staleMin = lastAt ? (Date.now() - lastAt.getTime()) / 60000 : 1e9;
-  const running = staleMin <= RESEARCH.STALE_MIN && st.note !== 'zatrzymano' && st.note !== 'koniec zadanego czasu';
+  const running = staleMin <= RESEARCH.STALE_MIN && st.note !== 'zatrzymano' && st.note !== 'koniec zadanego czasu' && st.note !== 'poszukiwanie zamknięte';
   const g = st.grid || {};
   const chk = (st.data && st.data.check) || {};
   const c = st.config || {};
@@ -334,4 +339,89 @@ function dpWrite_(order, dp) {
   sh.setColumnWidth(1, 110);
   sh.setColumnWidth(2, 130);
   sh.setColumnWidth(3, 520);
+}
+
+// ============================================================================
+//  ARKUSZ BACKTEST DOUBLEPROOF — jednorazowy backtest strategii aktywnych na
+//  doubleProof (research/backtest-doubleproof.json, python -m ia4.lab.backtest_dp).
+//  Zapisane wyniki: arkusz powstaje tylko wtedy, gdy pojawi się nowy plik backtestu
+//  (createdAt pamiętany w Script Properties BT_DP_AT), potem się nie zmienia.
+//  Tylko do odczytu.
+// ============================================================================
+const BT_COLS = ['Id', 'Grupa', 'Opis (reguła)', 'SL %', 'TP %', 'PF ważony (poszukiwanie)',
+  'PF doubleProof', 'Transakcji', 'Suma wyników %', 'Śr. wynik transakcji %', 'Skuteczność (TP)',
+  '% SL', '% FC', '% limit', 'Śr. wynik FC %', 'PF na ślepo', 'Przewaga',
+  'Spółek z transakcjami', 'Spółek z PF > 1', 'Okresy z PF > 1 (z 4)',
+  'PF okres 1', 'PF okres 2', 'PF okres 3', 'PF okres 4'];
+
+function btSync_() {
+  const txt = researchRaw_(RESEARCH.BT);
+  if (txt === null) return;                                     // backtestu jeszcze nie było
+  const bt = JSON.parse(txt);
+  const props = PropertiesService.getScriptProperties();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (props.getProperty('BT_DP_AT') === bt.createdAt && ss.getSheetByName(RESEARCH.BT_SHEET)) return;
+  btWrite_(bt);
+  props.setProperty('BT_DP_AT', bt.createdAt);
+}
+
+function btWrite_(bt) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(RESEARCH.BT_SHEET) || ss.insertSheet(RESEARCH.BT_SHEET);
+  sh.clear();
+  sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).clearNote();
+  sh.clearConditionalFormatRules();
+  sh.setTabColor('#5f6368');
+  const d = bt.data || {};
+  const syms = d.symbols || [];
+  const cols = BT_COLS.concat(syms.map(s => s + ' %'));
+  if (sh.getMaxColumns() < cols.length) sh.insertColumnsAfter(sh.getMaxColumns(), cols.length - sh.getMaxColumns());
+  const v = x => (x === undefined || x === null) ? '' : x;
+  const fmtD = x => x ? String(x).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') : '?';
+  const res = bt.results || [];
+  sh.getRange(1, 1, 1, cols.length).setBackground('#202124');   // bez scalania: kolumna A jest zamrożona
+  sh.getRange(1, 1)
+    .setValue(`IA 4 — BACKTEST NA doubleProof (jednorazowy, zapisany ${bt.createdAtPL}): ${res.length} strategii · ` +
+      `${d.instruments} spółek, ${fmtD(d.first_date)} – ${fmtD(d.last_date)}, ${Number(d.candles || 0).toLocaleString('pl-PL')} świec` +
+      ((bt.errors || []).length ? ` · błędów: ${bt.errors.length}` : ''))
+    .setFontSize(13).setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
+  sh.getRange(2, 1, 1, cols.length).setValues([cols]).setFontWeight('bold').setBackground('#f1f3f4').setWrap(true);
+  const rows = res.map(r => {
+    const f = r.folds || [];
+    const inst = r.instruments || {};
+    return [r.id, v(r.group), v(r.desc), r.sl, r.tp, v(r.search_pf_w), r.trades ? r.pf : '', r.trades,
+      v(r.sum_ret_pct), r.avg_ret_pct, r.tp_pct, r.sl_pct, r.fc_pct, r.time_pct, v(r.fc_avg),
+      v(r.blind_pf), r.trades ? r.edge : '', `${r.instruments_traded} / ${d.instruments || 20}`,
+      r.instruments_pf_gt1, r.folds_pf_gt1, v(f[0]), v(f[1]), v(f[2]), v(f[3])]
+      .concat(syms.map(s => inst[s] ? inst[s].sum_ret_pct : ''));
+  });
+  if (!rows.length) return;
+  const need = rows.length + 2;
+  if (sh.getMaxRows() < need) sh.insertRowsAfter(sh.getMaxRows(), need - sh.getMaxRows());
+  sh.getRange(3, 1, rows.length, cols.length).setValues(rows);
+  // notatki przy wynikach spółek: liczba transakcji i PF
+  sh.getRange(3, BT_COLS.length + 1, rows.length, syms.length).setNotes(res.map(r => syms.map(s => {
+    const x = (r.instruments || {})[s];
+    return x ? `${s}: transakcji ${x.trades}, PF ${x.pf}` : '';
+  })));
+  [6, 7, 16, 17, 21, 22, 23, 24].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('0.00'));
+  sh.getRange(3, 11, rows.length, 4).setNumberFormat('0.0%');
+  [9, 10, 15].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('+0.00;-0.00;0.00'));
+  sh.getRange(3, BT_COLS.length + 1, rows.length, syms.length).setNumberFormat('+0.0;-0.0;0.0');
+  const rule = () => SpreadsheetApp.newConditionalFormatRule();
+  const pfR = sh.getRange(3, 7, rows.length, 1);
+  const symR = sh.getRange(3, BT_COLS.length + 1, rows.length, syms.length);
+  sh.setConditionalFormatRules([
+    rule().whenNumberGreaterThanOrEqualTo(1.5).setBackground('#ceead6').setRanges([pfR]).build(),
+    rule().whenNumberLessThan(1).setBackground('#fad2cf').setRanges([pfR]).build(),
+    rule().whenNumberBetween(1, 1.5).setBackground('#fef7e0').setRanges([pfR]).build(),
+    rule().whenNumberGreaterThan(0).setFontColor('#188038').setRanges([symR]).build(),
+    rule().whenNumberLessThan(0).setFontColor('#c5221f').setRanges([symR]).build(),
+  ]);
+  sh.setFrozenRows(2);
+  sh.setFrozenColumns(1);
+  sh.setColumnWidth(1, 110);
+  sh.setColumnWidth(2, 130);
+  sh.setColumnWidth(3, 520);
+  for (let c = BT_COLS.length + 1; c <= cols.length; c++) sh.setColumnWidth(c, 62);
 }

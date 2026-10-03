@@ -1,6 +1,6 @@
 """
 IA 4 — pętla poszukiwania strategii (instrukcja, sekcja 9).
-Wersja projektu: 1.13 (2026-10-02) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.14 (2026-10-03) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kolejność dla każdej reguły:
   1. symulacja na grupie głównej, wszystkie hipotezy SL × TP,
@@ -610,6 +610,10 @@ class Lab:
                     self._write_status(started)
                     self._reload_config()
                     batch = self.cfg["batch"] or 24 * self.workers
+                    if self.cfg.get("search_closed"):
+                        self.log("Poszukiwanie zamknięte (search_closed w config.json) — kończę.")
+                        note = "poszukiwanie zamknięte"
+                        break
                 if deadline and time.time() >= deadline:
                     note = "koniec zadanego czasu"
                     break

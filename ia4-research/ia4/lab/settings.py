@@ -1,5 +1,5 @@
 """
-IA 4 — ustawienia poszukiwania (domyślne). Wersja projektu: 1.13 (2026-10-02)
+IA 4 — ustawienia poszukiwania (domyślne). Wersja projektu: 1.14 (2026-10-03)
 
 Wartości domyślne są tu. Claude (albo człowiek) nadpisuje je plikiem
 research/config.json na branchu `research` — Python czyta go przy starcie
@@ -66,6 +66,9 @@ DEFAULTS = {
     "dp_refresh_min": 60,         # co ile minut dociągać świece doubleProof i przeliczać weryfikację
     "workers": 0,                 # 0 = liczba rdzeni − 1
     "paused_kinds": [],           # np. ["revert"] — Claude może wyłączać rodzaje sygnałów
+    # true = poszukiwanie zamknięte: python -m ia4.lab tylko synchronizuje, sprawdza bazę
+    # i przelicza weryfikację doubleProof, nie szuka i nie zmienia strategii (sekcja 9.7)
+    "search_closed": False,
 }
 
 

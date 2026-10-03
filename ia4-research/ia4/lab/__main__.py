@@ -1,6 +1,6 @@
 """
 IA 4 — poszukiwanie strategii na Macu (Etap 2).
-Wersja projektu: 1.13 (2026-10-02) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.14 (2026-10-03) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Uruchomienie (w folderze ia4-research/, z aktywnym .venv):
   python -m ia4.lab                 # liczy bez końca (Ctrl+C — zapisuje stan i kończy)
@@ -26,7 +26,7 @@ import sys
 
 from .. import __version__
 from .. import config as base_config
-from . import check, data, search, store, verify
+from . import check, data, search, settings, store, verify
 
 
 def _traded_symbols() -> list[str]:
@@ -84,6 +84,12 @@ def main() -> int:
 
     repo = store.ResultsRepo(base_config.RESEARCH_DIR / "research-repo", push=not a.no_push)
     repo.ensure()
+    if settings.merged(repo.read_json("config.json")).get("search_closed"):
+        print("\nPoszukiwanie zamknięte (search_closed w research/config.json) — "
+              "nie szukam; przeliczam tylko weryfikację doubleProof.")
+        if verify.run(repo, verify.load_dp_market(base_config.CACHE_DIR), force=False):
+            repo.commit_push("research: doubleProof — weryfikacja strategii aktywnych")
+        return 0
     print("\nWczytuję dane…")
     m = data.load_local(traded, base_config.CACHE_DIR)
     print(f"  {len(m.symbols)} instrumentów, {m.n:,} świec, skarbiec: {data.VAULT_BARS} najstarszych "

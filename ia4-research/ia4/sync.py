@@ -1,6 +1,6 @@
 """
 IA 4 — synchronizacja Firestore → lokalna kopia (parquet).
-Wersja projektu: 1.13 (2026-10-02) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.14 (2026-10-03) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Firestore jest jedynym źródłem prawdy. Pliki w data/ to kopia robocza na Macu —
 można je skasować i odtworzyć.

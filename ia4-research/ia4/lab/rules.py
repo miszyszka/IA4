@@ -1,6 +1,6 @@
 """
 IA 4 — reguła strategii: linie → sygnał → filtry → wyjście (instrukcja, sekcja 8).
-Wersja projektu: 1.13 (2026-10-02) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.14 (2026-10-03) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 To jest implementacja wzorcowa języka reguł `ia4-rule/1`. Każdy zapisany plik
 strategii da się odtworzyć tym kodem (albo dowolnym innym, który trzyma się
