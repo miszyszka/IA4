@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — TELEMETRIA  (stan zbierania → telemetry/state.json w GitHub)
  *
- *  Wersja projektu: 1.14 (2026-10-03) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.15 (2026-10-04) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Claude widzi tylko repozytorium, nie arkusz. Ten plik raz na godzinę
  *  publikuje krótki stan bazy: etap, wersję, stan automatu i dla każdego
@@ -18,7 +18,7 @@ const TELEMETRY = {
   REPO: 'miszyszka/IA4',
   BRANCH: 'main',
   PATH: 'telemetry/state.json',
-  STAGE: 'Etap 2 — poszukiwanie strategii · Etap 3 — paper trading',   // zmieniać razem z nagłówkiem instrukcji
+  STAGE: 'Etap 2 — poszukiwanie strategii (wstrzymane) · Etap 3 — paper trading · moduł EURUSD — zbieranie',   // zmieniać razem z nagłówkiem instrukcji
   MIN_GAP_MIN: 10,
 };
 
@@ -85,6 +85,8 @@ function telemetryCollect_() {
     },
     nightly: JSON.parse(p.getProperty('NIGHTLY_INFO') || 'null'),
     doubleProofHistory: backfillLabel_(),
+    lastCandle: telemetryCandle_(p),
+    fx: fxTelemetry_(),
     base: counts ? { countedAt: counts.at, totalCandles: counts.total } : null,
     instruments: allSymbols_().map(s => {
       const st = live[s] || {};
@@ -100,6 +102,16 @@ function telemetryCollect_() {
       };
     }),
   };
+}
+
+/** Ostatnia świeca z tabeli STATS: czasy od zamknięcia w sekundach (instrukcja, sekcja 4a). */
+function telemetryCandle_(p) {
+  const r = JSON.parse(p.getProperty('CANDLE_LOG') || 'null');
+  if (!r) return null;
+  const rel = t => t ? Math.round((t - r.closeAt) / 1000) : null;
+  return { key: r.key, start: rel(r.start), main3: rel(r.main), traded53: rel(r.d53), all75: rel(r.all),
+           signals: rel(r.sig), sheets: rel(r.sheets), written: r.written || 0, missing: r.missing || [],
+           rounds: r.rounds || 0, stagesMs: r.stages || {} };
 }
 
 /** Suma kontrolna treści bez pól, które zmieniają się przy każdym uruchomieniu. */

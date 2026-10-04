@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — POSZUKIWANIE STRATEGII  (GitHub, branch `research` → arkusz RESEARCH)
  *
- *  Wersja projektu: 1.14 (2026-10-03) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.15 (2026-10-04) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Program `python -m ia4.lab` na Macu co 30 minut zapisuje na branchu
  *  `research` pliki research/status.json i research/log.jsonl. Ten plik co
@@ -10,7 +10,10 @@
  *  stan, ostatnie znalezione strategie i dziennik (najnowsze na górze),
  *  a do arkusza STRATEGIE — wszystkie strategie aktywne z wynikami,
  *  do STRATEGIE DOUBLEPROOF — te same strategie przeliczone na doubleProof,
- *  do BACKTEST DOUBLEPROOF — zapisany jednorazowy backtest (raz, przy nowym pliku).
+ *  do BACKTEST DOUBLEPROOF — zapisany jednorazowy backtest (raz, przy nowym pliku),
+ *  do BACKTEST PORTFELA — zapisany backtest portfela (raz, przy nowym pliku).
+ *  Zapisuje też w Script Properties listę strategii aktywnych (ACTIVE_IDS) i ich
+ *  pierwszeństwo (PRIORITY) — paper trading nie pyta GitHuba przy każdej świecy.
  *
  *  Tylko odczyt z GitHub — ten sam token co telemetria (GITHUB_TOKEN).
  * ============================================================================
@@ -25,6 +28,8 @@ const RESEARCH = {
   DP_SHEET: 'STRATEGIE DOUBLEPROOF',
   BT: 'research/backtest-doubleproof.json',   // jednorazowy backtest na doubleProof (Python, backtest_dp.py)
   BT_SHEET: 'BACKTEST DOUBLEPROOF',
+  PF: 'research/portfolio-backtest.json',     // jednorazowy backtest portfela (Python, portfolio.py)
+  PF_SHEET: 'BACKTEST PORTFELA',
   SHEET: 'RESEARCH',
   STRAT_SHEET: 'STRATEGIE',
   LOG_ROWS: 500,          // ile ostatnich wpisów dziennika pokazujemy
@@ -67,16 +72,32 @@ function researchUpdate_(interactive) {
     researchWrite_(status, log);
     const idx = (researchRaw_(RESEARCH.INDEX) || '').split('\n').filter(l => l.trim())
       .map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(x => x);
-    const order = strategiesWrite_(idx);
     const dpTxt = researchRaw_(RESEARCH.DP);
-    dpWrite_(order, dpTxt ? JSON.parse(dpTxt) : null);
+    const dp = dpTxt ? JSON.parse(dpTxt) : null;
+    const order = strategiesWrite_(idx, dp);
+    dpWrite_(order, dp);
     btSync_();
+    const pf = pfSync_();
+    paperListsSave_(idx, pf);
     return { ok: true };
   } catch (e) {
     console.error('RESEARCH: ' + e.message);
     if (interactive) throw e;
     return { ok: false, reason: e.message };
   }
+}
+
+/**
+ * Lista strategii aktywnych i ich pierwszeństwo dla paper tradingu (Script Properties).
+ * Pierwszeństwo: lista `priority` z backtestu portfela (instrukcja 6b); bez niego — PF ważony.
+ */
+function paperListsSave_(idx, pf) {
+  if (!idx.length) return;
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('ACTIVE_IDS', JSON.stringify(idx.map(s => s.id)));
+  const byPf = idx.slice().sort((a, b) => (b.pf_w || 0) - (a.pf_w || 0)).map(s => s.id);
+  const pri = (pf && pf.priority) ? pf.priority.concat(byPf.filter(id => pf.priority.indexOf(id) < 0)) : byPf;
+  props.setProperty('PRIORITY', JSON.stringify(pri));
 }
 
 /** Surowa treść pliku z brancha research (null = brak pliku/brancha). */
@@ -177,7 +198,7 @@ function researchWrite_(st, log) {
 const S_COLS = ['Id', 'Grupa', 'Kierunek', 'Opis (reguła)', 'SL %', 'TP %',
   'PF główna', 'Transakcji główna', 'PF skarbiec', 'Transakcji skarbiec', 'PF ważony',
   'PF na ślepo', 'Przewaga', 'Skuteczność (TP)', '% SL', '% FC', '% limit',
-  'Śr. wynik FC %', 'Śr. wynik transakcji %', 'Znaleziona'];
+  'Śr. wynik FC %', 'Śr. wynik transakcji %', 'Mediana świec w pozycji', 'Znaleziona'];
 
 const S_VI_HEAD = 'for VI';
 const S_VI_COL = S_COLS.length + 1;          // ostatnia kolumna: checkbox dla wirtualnego inwestora
@@ -231,7 +252,9 @@ function strategySummaryFromRec_(rec) {
   };
 }
 
-function strategiesWrite_(idx) {
+function strategiesWrite_(idx, dp) {
+  const hold = {};
+  ((dp && dp.results) || []).forEach(r => { if (r.search_hold_median !== undefined) hold[r.id] = r.search_hold_median; });
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sel = viSelectedIds_();                  // PRZED przepisaniem — zachowuje checkboxy
   const selSet = {};
@@ -256,7 +279,7 @@ function strategiesWrite_(idx) {
     s.id, v(s.group), /^SHORT/.test(s.desc || '') ? 'short' : 'long', v(s.desc), v(s.sl), v(s.tp),
     v(s.main_pf), v(s.main_trades), v(s.vault_pf), v(s.vault_trades), v(s.pf_w),
     v(s.blind_pf), v(s.edge), v(s.tp_pct), v(s.sl_pct), v(s.fc_pct), v(s.time_pct),
-    v(s.fc_avg), v(s.avg_ret),
+    v(s.fc_avg), v(s.avg_ret), v(hold[s.id]),
     s.found_at ? Utilities.formatDate(new Date(s.found_at), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm') : '',
     !!selSet[s.id]]);
   sh.getRange(1, 1, 1, S_COLS.length).merge()
@@ -288,7 +311,7 @@ function strategiesWrite_(idx) {
 //  Tylko do odczytu; przepisywany w całości przy każdym odświeżeniu.
 // ============================================================================
 const DP_COLS = ['Id', 'Grupa', 'Opis (reguła)', 'SL %', 'TP %', 'for VI',
-  'PF ważony (poszukiwanie)', 'PF doubleProof', 'Transakcji', 'Spółek z transakcjami', 'Spółek z PF > 1',
+  'PF ważony (poszukiwanie)', 'PF doubleProof', 'Transakcji', 'Mediana świec w pozycji', 'Spółek z transakcjami', 'Spółek z PF > 1',
   'Okresy z PF > 1 (z 4)', 'PF na ślepo', 'Przewaga', 'Skuteczność (TP)', '% SL', '% FC', '% limit',
   'Śr. wynik FC %', 'Śr. wynik transakcji %', 'Stan'];
 
@@ -312,11 +335,11 @@ function dpWrite_(order, dp) {
   sh.getRange(2, 1, 1, DP_COLS.length).setValues([DP_COLS]).setFontWeight('bold').setBackground('#f1f3f4');
   const rows = order.map(s => {
     const r = res[s.id];
-    if (!r) return [s.id, v(s.group), v(s.desc), '', '', s.vi, v(s.pf_w), '', '', '', '', '', '', '', '', '', '', '', '', '',
+    if (!r) return [s.id, v(s.group), v(s.desc), '', '', s.vi, v(s.pf_w), '', '', '', '', '', '', '', '', '', '', '', '', '', '',
                     dp ? 'jeszcze nie przeliczona' : 'brak wyników'];
     const nInst = (d.instruments || 20);
     return [s.id, v(s.group), v(s.desc), r.sl, r.tp, s.vi, v(r.search_pf_w !== null ? r.search_pf_w : s.pf_w),
-      r.trades ? r.pf : '', r.trades, `${r.instruments_traded} / ${nInst}`, r.instruments_pf_gt1, r.folds_pf_gt1,
+      r.trades ? r.pf : '', r.trades, v(r.hold_median), `${r.instruments_traded} / ${nInst}`, r.instruments_pf_gt1, r.folds_pf_gt1,
       v(r.blind_pf), r.trades ? r.edge : '', r.tp_pct, r.sl_pct, r.fc_pct, r.time_pct, v(r.fc_avg), r.avg_ret_pct,
       !r.trades ? 'brak transakcji' : (r.trades < 10 ? 'mało transakcji (< 10)' : (r.active ? 'aktualna' : 'wynik z czasu, gdy była aktywna'))];
   });
@@ -324,9 +347,9 @@ function dpWrite_(order, dp) {
     const need = rows.length + 2;
     if (sh.getMaxRows() < need) sh.insertRowsAfter(sh.getMaxRows(), need - sh.getMaxRows());
     sh.getRange(3, 1, rows.length, DP_COLS.length).setValues(rows);
-    [7, 8, 13, 14].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('0.00'));
-    sh.getRange(3, 15, rows.length, 4).setNumberFormat('0.0%');
-    sh.getRange(3, 19, rows.length, 2).setNumberFormat('+0.00;-0.00;0.00');
+    [7, 8, 14, 15].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('0.00'));
+    sh.getRange(3, 16, rows.length, 4).setNumberFormat('0.0%');
+    sh.getRange(3, 20, rows.length, 2).setNumberFormat('+0.00;-0.00;0.00');
     const pfR = sh.getRange(3, 8, rows.length, 1);
     const rule = () => SpreadsheetApp.newConditionalFormatRule();
     sh.setConditionalFormatRules([
@@ -349,7 +372,7 @@ function dpWrite_(order, dp) {
 //  Tylko do odczytu.
 // ============================================================================
 const BT_COLS = ['Id', 'Grupa', 'Opis (reguła)', 'SL %', 'TP %', 'PF ważony (poszukiwanie)',
-  'PF doubleProof', 'Transakcji', 'Suma wyników %', 'Śr. wynik transakcji %', 'Skuteczność (TP)',
+  'PF doubleProof', 'Transakcji', 'Mediana świec w pozycji', 'Suma wyników %', 'Śr. wynik transakcji %', 'Skuteczność (TP)',
   '% SL', '% FC', '% limit', 'Śr. wynik FC %', 'PF na ślepo', 'Przewaga',
   'Spółek z transakcjami', 'Spółek z PF > 1', 'Okresy z PF > 1 (z 4)',
   'PF okres 1', 'PF okres 2', 'PF okres 3', 'PF okres 4'];
@@ -390,7 +413,7 @@ function btWrite_(bt) {
     const f = r.folds || [];
     const inst = r.instruments || {};
     return [r.id, v(r.group), v(r.desc), r.sl, r.tp, v(r.search_pf_w), r.trades ? r.pf : '', r.trades,
-      v(r.sum_ret_pct), r.avg_ret_pct, r.tp_pct, r.sl_pct, r.fc_pct, r.time_pct, v(r.fc_avg),
+      v(r.hold_median), v(r.sum_ret_pct), r.avg_ret_pct, r.tp_pct, r.sl_pct, r.fc_pct, r.time_pct, v(r.fc_avg),
       v(r.blind_pf), r.trades ? r.edge : '', `${r.instruments_traded} / ${d.instruments || 20}`,
       r.instruments_pf_gt1, r.folds_pf_gt1, v(f[0]), v(f[1]), v(f[2]), v(f[3])]
       .concat(syms.map(s => inst[s] ? inst[s].sum_ret_pct : ''));
@@ -404,9 +427,9 @@ function btWrite_(bt) {
     const x = (r.instruments || {})[s];
     return x ? `${s}: transakcji ${x.trades}, PF ${x.pf}` : '';
   })));
-  [6, 7, 16, 17, 21, 22, 23, 24].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('0.00'));
-  sh.getRange(3, 11, rows.length, 4).setNumberFormat('0.0%');
-  [9, 10, 15].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('+0.00;-0.00;0.00'));
+  [6, 7, 17, 18, 22, 23, 24, 25].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('0.00'));
+  sh.getRange(3, 12, rows.length, 4).setNumberFormat('0.0%');
+  [10, 11, 16].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('+0.00;-0.00;0.00'));
   sh.getRange(3, BT_COLS.length + 1, rows.length, syms.length).setNumberFormat('+0.0;-0.0;0.0');
   const rule = () => SpreadsheetApp.newConditionalFormatRule();
   const pfR = sh.getRange(3, 7, rows.length, 1);
@@ -424,4 +447,95 @@ function btWrite_(bt) {
   sh.setColumnWidth(2, 130);
   sh.setColumnWidth(3, 520);
   for (let c = BT_COLS.length + 1; c <= cols.length; c++) sh.setColumnWidth(c, 62);
+}
+
+// ============================================================================
+//  ARKUSZ BACKTEST PORTFELA — jednorazowy backtest wirtualnego inwestora na
+//  historii (research/portfolio-backtest.json, python -m ia4.lab.portfolio,
+//  instrukcja 6b). Powstaje tylko przy nowym pliku (createdAt w BT_PF_AT).
+//  Tylko do odczytu.
+// ============================================================================
+const PF_COLS = ['Wariant', 'Strategii', 'Zbiór', 'Transakcji', 'PF', 'Śr. wynik % (netto)', 'Wynik $',
+  'Max obsunięcie $', 'Wynik / obsunięcie', 'Skuteczność (TP)', '% SL', '% FC', '% limit',
+  'Mediana świec w pozycji', 'Wynik $ long', 'Wynik $ short', 'Transakcji long / short', 'Spółek'];
+const PF_RANK_COLS = ['Miejsce', 'Id', 'Grupa', 'Transakcji doubleProof', 'Śr. wynik doubleProof %',
+  'Mediana świec w pozycji (doubleProof)', 'Szacunek przewagi % (po ściągnięciu do średniej)', 'Waga własnego wyniku', 'Wybrana'];
+
+function pfSync_() {
+  const txt = researchRaw_(RESEARCH.PF);
+  if (txt === null) return null;
+  const pf = JSON.parse(txt);
+  const props = PropertiesService.getScriptProperties();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (props.getProperty('BT_PF_AT') !== pf.createdAt || !ss.getSheetByName(RESEARCH.PF_SHEET)) {
+    pfWrite_(pf);
+    props.setProperty('BT_PF_AT', pf.createdAt);
+  }
+  return pf;
+}
+
+function pfWrite_(pf) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(RESEARCH.PF_SHEET) || ss.insertSheet(RESEARCH.PF_SHEET);
+  sh.clear();
+  sh.clearConditionalFormatRules();
+  sh.setTabColor('#5f6368');
+  const W = Math.max(PF_COLS.length, PF_RANK_COLS.length);
+  if (sh.getMaxColumns() < W) sh.insertColumnsAfter(sh.getMaxColumns(), W - sh.getMaxColumns());
+  const fmtD = x => x ? String(x).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') : '?';
+  const d = pf.data || {}, pr = pf.params || {}, sel = pf.selection || {};
+  const v = x => (x === undefined || x === null) ? '' : x;
+  sh.getRange(1, 1, 1, W).merge()
+    .setValue(`IA 4 — BACKTEST PORTFELA (jednorazowy, zapisany ${pf.createdAtPL}) · główna: ${d.main.instruments} spółek ` +
+      `${fmtD(d.main.first_date)} – ${fmtD(d.main.last_date)} · doubleProof: ${d.dp.instruments} spółek ` +
+      `${fmtD(d.dp.first_date)} – ${fmtD(d.dp.last_date)} · stawka ${pr.stake_usd} $, koszt ${pr.cost_pct_per_side}% za stronę`)
+    .setFontSize(12).setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
+  sh.getRange(2, 1, 1, W).merge()
+    .setValue('„Wybrane” wybrano według wyników na doubleProof — ich wynik na doubleProof jest więc zawyżony; ' +
+      'uczciwa ocena wyboru: grupa główna i skarbiec. Stawka wg SL = 100 $ × 5 / SL% (strata na SL ok. 5 $).')
+    .setFontStyle('italic').setWrap(true);
+  sh.getRange(3, 1, 1, PF_COLS.length).setValues([PF_COLS]).setFontWeight('bold').setBackground('#f1f3f4').setWrap(true);
+  const names = { main: 'grupa główna (okresy 1–4)', vault: 'skarbiec', dp: 'doubleProof — całość',
+                  dp_fold1: 'doubleProof — okres 1', dp_fold2: 'doubleProof — okres 2', dp_fold3: 'doubleProof — okres 3', dp_fold4: 'doubleProof — okres 4' };
+  const rows = [];
+  (pf.variants || []).forEach(vr => {
+    Object.keys(names).forEach(u => {
+      const x = (vr.universes || {})[u] || {};
+      rows.push([vr.name, vr.strategies, names[u], v(x.trades), v(x.pf), x.trades ? x.avg_ret_pct / 100 : '', v(x.sum_usd),
+        v(x.max_dd_usd), v(x.ret_to_dd), x.trades ? x.tp_pct : '', x.trades ? x.sl_pct : '', x.trades ? x.fc_pct : '',
+        x.trades ? x.time_pct : '', v(x.hold_median), v(x.sum_usd_long), v(x.sum_usd_short),
+        x.trades ? `${x.trades_long} / ${x.trades_short}` : '', v(x.instruments)]);
+    });
+  });
+  if (rows.length) {
+    sh.getRange(4, 1, rows.length, PF_COLS.length).setValues(rows);
+    sh.getRange(4, 6, rows.length, 1).setNumberFormat('+0.00%;-0.00%;0.00%');
+    sh.getRange(4, 10, rows.length, 4).setNumberFormat('0.0%');
+    [5, 9].forEach(c => sh.getRange(4, c, rows.length, 1).setNumberFormat('0.00'));
+    [7, 8, 15, 16].forEach(c => sh.getRange(4, c, rows.length, 1).setNumberFormat('#,##0.00'));
+    for (let i = 0; i < rows.length; i += 7) sh.getRange(4 + i, 1, 1, PF_COLS.length).setFontWeight('bold');
+  }
+  let r0 = 4 + rows.length + 2;
+  const rank = sel.ranking || [];
+  sh.getRange(r0, 1, 1, W).merge()
+    .setValue(`PIERWSZEŃSTWO STRATEGII (to samo w wirtualnym inwestorze) · wybrane: ${sel.selected} — szacunek przewagi ≥ ${sel.select_min_pct}% ` +
+      `· średnia ${sel.mean_pct}%, rozrzut prawdziwych przewag ${sel.tau_pct}%, rozrzut pojedynczej transakcji ${sel.pooled_sd_pct}%`)
+    .setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff').setWrap(true);
+  sh.getRange(r0 + 1, 1, 1, PF_RANK_COLS.length).setValues([PF_RANK_COLS]).setFontWeight('bold').setBackground('#f1f3f4').setWrap(true);
+  if (rank.length) {
+    sh.getRange(r0 + 2, 1, rank.length, PF_RANK_COLS.length).setValues(rank.map((x, i) => [i + 1, x.id, x.group, x.dp_trades,
+      x.dp_avg_ret_pct / 100, v(x.dp_hold_median), x.shrunk_pct / 100, x.weight, x.selected ? '✓' : '']));
+    sh.getRange(r0 + 2, 5, rank.length, 1).setNumberFormat('+0.00%;-0.00%;0.00%');
+    sh.getRange(r0 + 2, 7, rank.length, 1).setNumberFormat('+0.00%;-0.00%;0.00%');
+  }
+  const rule = () => SpreadsheetApp.newConditionalFormatRule();
+  const usd = sh.getRange(4, 7, Math.max(rows.length, 1), 1);
+  sh.setConditionalFormatRules([
+    rule().whenNumberGreaterThan(0).setFontColor('#188038').setRanges([usd]).build(),
+    rule().whenNumberLessThan(0).setFontColor('#c5221f').setRanges([usd]).build(),
+  ]);
+  sh.setFrozenRows(3);
+  sh.setColumnWidth(1, 330);
+  sh.setColumnWidth(2, 110);
+  sh.setColumnWidth(3, 190);
 }

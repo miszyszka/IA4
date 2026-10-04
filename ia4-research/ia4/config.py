@@ -1,6 +1,6 @@
 """
 IA 4 — konfiguracja kopii lokalnej.
-Wersja projektu: 1.14 (2026-10-03) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.15 (2026-10-04) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 KLUCZ SERWISOWY nigdy nie leży w repozytorium (instrukcja, zasada 5).
 Domyślna ścieżka to ~/.ia4/serviceAccount.json, poza folderem ia4-research/.

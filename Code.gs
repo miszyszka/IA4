@@ -2,18 +2,24 @@
  * ============================================================================
  *  IA 4 — zbieranie świec 1h  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 1.14 (2026-10-03) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.15 (2026-10-04) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Jedyne zadanie tego pliku: żeby baza świec w Firestore była kompletna
  *  i rosła każdego dnia. Zasady i format bazy: IA4_INSTRUKCJA.md.
  *
  *  • Trigger uruchamia runCollector() co minutę, całą dobę.
  *  • W czasie sesji, zaraz po zamknięciu każdej świecy godzinowej, pobiera
- *    dane z Yahoo i zapisuje WYŁĄCZNIE zamknięte świece, których jeszcze nie ma.
+ *    dane z Yahoo (wszystkie spółki naraz, równolegle) i zapisuje jednym
+ *    zapisem do Firestore WYŁĄCZNIE zamknięte świece, których jeszcze nie ma;
+ *    brakujące spółki ponawia co 10 s, a gdy jest komplet 53 spółek, od razu
+ *    uruchamia paper trading (Paper.gs). Uruchomienie, które wypada tuż przed
+ *    zamknięciem świecy, czeka na nie i pobiera 15 s po zamknięciu.
+ *  • W każdym uruchomieniu moduł EURUSD (Fx.gs) dociąga świece 5-minutowe.
  *  • Raz na dobę, po sesji, przepisuje ostatnie 5 sesji wszystkich instrumentów
  *    (nocne odświeżenie) — dziura z dowolnego dnia łata się sama następnej nocy.
  *    Zaraz potem liczy, ile świec ma w bazie każdy instrument.
- *  • Arkusz STATS pokazuje tylko stan automatu. Dane są wyłącznie w Firestore.
+ *  • Arkusz STATS: blok stanu + tabela świec (czasy od zamknięcia świecy).
+ *    Dane są wyłącznie w Firestore.
  *
  *  Plik współpracuje z Telemetry.gs (stan → telemetry/state.json w GitHub)
  *  i Research.gs (wyniki poszukiwania z brancha `research` → arkusz RESEARCH)
@@ -25,7 +31,7 @@
 //  KONFIGURACJA
 // ============================================================================
 const CONFIG = {
-  VERSION: '1.14',
+  VERSION: '1.15',
 
   // Trzy grupy instrumentów — nazwy kolekcji w Firestore są historyczne
   // i zostają bez zmian (instrukcja, sekcja 4).
@@ -62,23 +68,24 @@ const CONFIG = {
 
   TRIGGER_EVERY_MIN: 1,        // co ile minut działa automat
   POLL_AFTER_CLOSE_MIN: 45,    // jak długo po zamknięciu sesji jeszcze dociągamy braki
-  // Yahoo publikuje świecę z opóźnieniem kilkunastu–kilkudziesięciu sekund.
-  // Tuż po zamknięciu świecy jedno uruchomienie ponawia próbę co 30 s.
-  FAST_RETRY_SEC: 30,
-  FAST_MAX_TRIES: 8,
-  FAST_WINDOW_MIN: 5,
-  FAST_MAX_RUN_SEC: 240,       // ponawianie musi się zakończyć przed upływem tylu sekund
+  // Szybka ścieżka po zamknięciu świecy (instrukcja, sekcja 4 p. 1):
+  FIRST_FETCH_SEC: 15,         // pierwsze pobranie tyle sekund po zamknięciu (Yahoo domyka świecę)
+  ARM_MAX_SEC: 60,             // uruchomienie czeka na zamknięcie świecy, jeśli wypada w ciągu tylu sekund
+  POLL_SEC: 10,                // ponowienia — tylko spółki, którym brakuje świecy
+  FAST_WINDOW_MIN: 4,          // jak długo po zamknięciu świecy ponawiamy w jednym uruchomieniu
+  FAST_MAX_RUN_SEC: 270,       // całe uruchomienie musi się skończyć przed tyloma sekundami (limit 6 min)
+  YAHOO_BATCH: 25,             // tyle zapytań do Yahoo równolegle (UrlFetchApp.fetchAll)
+  YAHOO_BATCH_PAUSE_MS: 300,   // przerwa między paczkami
+  CANDLE_LOG_DAYS: 90,         // ile dni trzyma tabela świec w STATS (7 wierszy na dzień)
 
   LIVE_RANGE: '5d',            // zakres pobierania na żywo
   CATCHUP_RANGE: '1mo',        // „Uzupełnij ostatni miesiąc” (ręcznie)
   NIGHTLY_RANGE: '5d',         // nocne odświeżenie: ostatnie ~5 sesji
   NIGHTLY_RETRY_MIN: 30,       // odstęp ponowienia, gdy nocne odświeżenie się nie udało
-  FETCH_PAUSE_MS: 700,         // odstęp między zapytaniami do Yahoo
+  FETCH_PAUSE_MS: 700,         // odstęp między zapytaniami do Yahoo (historia doubleProof, pojedynczo)
 
   FIREBASE_PROJECT_ID: 'ia-4-ff7af',
   FIRESTORE_DATABASE: '(default)',
-
-  LOG_MAX_ROWS: 60,
 };
 
 // Dni bez sesji NYSE (poza weekendami). Świece z tych dni nigdy nie trafiają
@@ -103,19 +110,23 @@ const YAHOO_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
   'Accept': 'application/json',
 };
-const GROUP_LABELS = { main: 'główna', proof: 'kontrolna', context: 'tło rynku', doubleProof: 'doubleProof' };
 const GROUP_COLLECTION = { main: 'stocks', proof: 'proof', context: 'context', doubleProof: 'doubleProof' };
 
-// Układ arkusza STATS: blok statusu od wiersza 3, potem tabela instrumentów, potem dziennik.
+// Układ arkusza STATS (instrukcja, sekcja 4a): blok stanu od wiersza 3, pod nim tabela świec.
+const STATS_LAYOUT = 'stats-1.15';           // znacznik układu w komórce A2 — inny = arkusz budowany od nowa
 const STATUS_LABELS = [
-  'Status', 'Ostatnie uruchomienie (PL)', 'Ostatnia akcja', 'Ostatni zapis świecy (PL)',
-  'Czas w Nowym Jorku (ET)', 'Sesja USA', 'Automat (trigger)', 'Zapisanych świec dziś',
-  'Błędów dziś', 'Ostatni błąd', 'Nocne odświeżenie', 'Świec w bazie', 'Historia doubleProof',
+  'Status', 'Ostatnie uruchomienie (PL)', 'Ostatnia akcja', 'Czas w Nowym Jorku (ET)', 'Sesja USA',
+  'Automat (trigger)', 'Czas pracy automatu dziś', 'Zapisanych świec dziś', 'Błędów dziś', 'Ostatni błąd',
+  'Nocne odświeżenie', 'Świec w bazie', 'EURUSD 5m — ostatnia świeca', 'EURUSD 5m — opóźnienie', 'EURUSD 5m — dziś',
 ];
 const STATS_FIRST = 3;
-const SYM_HEADER = STATS_FIRST + STATUS_LABELS.length + 1;
-const SYM_FIRST = SYM_HEADER + 1;
-const SYM_COLS = 7;
+const CANDLE_TITLE = STATS_FIRST + STATUS_LABELS.length + 1;
+const CANDLE_HEADER = CANDLE_TITLE + 1;
+const CANDLE_FIRST = CANDLE_HEADER + 1;
+const CANDLE_COLS = ['Data', 'Świeca', 'Zamknięcie (PL)', 'Start automatu', '3 główne zapisane',
+  '53 spółki zapisane', '75 spółek zapisane', 'Strategie policzone', 'Arkusze SIGNALS i VI gotowe',
+  'Świec zapisanych', 'Brakujące / błędy', 'Sygnałów', 'VI otwarto / zamknięto', 'Rund Yahoo',
+  'Czasy etapów (s)'];
 
 /** Wszystkie instrumenty: główne, kontrolne, tło rynku, doubleProof. */
 function allSymbols_() {
@@ -133,7 +144,8 @@ function fsCollection_(symbol) { return GROUP_COLLECTION[symbolGroup_(symbol)]; 
 /** Klucz świecy do porównań „która nowsza”: RRRRMMDD * 10 + numer świecy (1…7). */
 function barKey_(b) { return Number(b.date.replace(/-/g, '')) * 10 + b.slot + 1; }
 
-function logFirstRow_() { return SYM_FIRST + allSymbols_().length + 3; }
+/** Spółki handlowane (główne + kontrolne) — te bierze paper trading. */
+function tradedSymbols_() { return CONFIG.SYMBOLS.concat(CONFIG.PROOF_SYMBOLS); }
 
 
 // ============================================================================
@@ -145,6 +157,7 @@ function onOpen() {
     .addItem('▶️ Uzupełnij ostatni miesiąc', 'runNow')
     .addItem('⏪ Historia doubleProof — jedna porcja teraz', 'backfillNow')
     .addItem('🌙 Nocne odświeżenie teraz', 'nightlyNow')
+    .addItem('💱 EURUSD — pobierz teraz', 'fxNow')
     .addItem('🔥 Test połączenia z Firestore', 'testFirestore')
     .addSeparator()
     .addItem('📡 Wyślij stan do GitHub teraz', 'telemetryPublishNow')
@@ -203,15 +216,17 @@ let RUN_ = null; // stan bieżącego uruchomienia
 
 function execute_(mode, initMessage) {
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(30 * 1000)) return null;
+  // automat co minutę: gdy poprzednie uruchomienie jeszcze pracuje (szybka ścieżka), nie czekamy
+  if (!lock.tryLock(mode === 'auto' ? 1000 : 30 * 1000)) return null;
   let ctx = null, summary = null, action = '';
-  const t0 = Date.now();
   try {
     startRun_();
     if (initMessage) log_('INFO', 'SYSTEM', initMessage);
     ctx = marketContext_(new Date());
 
     if (mode === 'auto') {
+      try { fxIfDue_(); } catch (e) { recordError_('EURUSD', e.message || String(e)); }   // Fx.gs
+      if (armIfDue_(ctx)) ctx = marketContext_(new Date());     // czeka na zamknięcie świecy
       const gate = gate_(ctx);
       if (gate.fetch) {
         summary = fastCollect_(ctx);
@@ -228,17 +243,18 @@ function execute_(mode, initMessage) {
     }
     if (summary && !action) {
       action = `Pobrano ${summary.fetched}/${allSymbols_().length}, zapisano ${summary.written} świec` +
-               (summary.skipped ? `, aktualnych: ${summary.skipped}` : '');
+               (summary.skipped ? `, aktualnych: ${summary.skipped}` : '') +
+               (summary.rounds > 1 ? `, rund ${summary.rounds}` : '');
     }
     if (mode === 'auto') {
-      // paper trading: sygnały i wirtualny inwestor po zamknięciu świecy (Paper.gs)
-      try { const p = paperIfDue_(ctx, t0); if (p) action = (action ? action + ' · ' : '') + p; }
-      catch (e) { recordError_('PAPER', e.message || String(e)); }
+      // paper trading: jeśli nie poszedł w szybkiej pętli (np. czekał na spóźnioną spółkę)
+      try { paperTry_(); } catch (e) { recordError_('PAPER', e.message || String(e)); }
+      if (RUN_.paperMsg) action = (action ? action + ' · ' : '') + RUN_.paperMsg;
     }
   } catch (e) {
     if (!RUN_) startRun_();
     recordError_('SYSTEM', e.message || String(e));
-    action = 'Błąd krytyczny — szczegóły w dzienniku';
+    action = 'Błąd krytyczny — szczegóły w „Ostatni błąd”';
   } finally {
     try { finishRun_(ctx || marketContext_(new Date()), action); }
     catch (e2) { console.error('STATS: ' + e2); }
@@ -247,36 +263,63 @@ function execute_(mode, initMessage) {
   return summary;
 }
 
+/** Paper trading (Paper.gs), najwyżej raz na uruchomienie; zapisuje opis do RUN_.paperMsg. */
+function paperTry_() {
+  if (RUN_.paperMsg) return;
+  if (Date.now() - RUN_.t0 > 280 * 1000) return;           // za mało czasu w tym uruchomieniu (limit 6 min)
+  const p = paperIfDue_();
+  if (p) RUN_.paperMsg = p;
+}
+
 /**
- * Tuż po zamknięciu świecy ponawia pobranie co FAST_RETRY_SEC, aż trzy spółki
- * główne dostaną nową świecę. Pozostałe instrumenty dociągną się przy
- * kolejnych uruchomieniach.
+ * Jeśli zamknięcie którejś świecy dzisiejszej sesji (+ FIRST_FETCH_SEC) wypada w ciągu
+ * ARM_MAX_SEC — czeka na nie. Trigger startuje w losowej sekundzie minuty, więc bez tego
+ * pierwsze pobranie następowałoby 0–60 s po zamknięciu świecy.
+ */
+function armIfDue_(ctx) {
+  if (!ctx.weekday) return false;
+  const session = getSession_();
+  if (isHolidayToday_(ctx, session)) return false;
+  const closeMin = sessionCloseFor_(session, ctx.etDate);
+  for (let s = 0; s < slotsInSession_(closeMin); s++) {
+    const wait = etDateTime_(ctx.etDate, slotEnd_(s, closeMin)).getTime() + CONFIG.FIRST_FETCH_SEC * 1000 - Date.now();
+    if (wait > 0 && wait <= CONFIG.ARM_MAX_SEC * 1000) {
+      Utilities.sleep(wait);
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Szybka ścieżka po zamknięciu świecy: runda = równoległe pobranie z Yahoo spółek bez tej
+ * świecy + jeden zapis do Firestore. Po każdej rundzie: tabela świec w STATS, a gdy jest
+ * komplet 53 spółek handlowanych — paper trading od razu. Rundy co POLL_SEC, aż będzie
+ * wszystkie 75 instrumentów, najdłużej FAST_WINDOW_MIN od zamknięcia świecy.
  */
 function fastCollect_(ctx) {
   const closeMin = sessionCloseFor_(getSession_(), ctx.etDate);
-  const expectedKey = liveExpectedKey_(ctx, closeMin);
   const expected = expectedSlots_(ctx.etMin, closeMin);
-  const sinceClose = expected ? ctx.etMin - slotEnd_(expected - 1, closeMin) : null;
-  const t0 = Date.now();
-  const summary = collectAll_(CONFIG.LIVE_RANGE, ctx, false);
-  let lastDur = Date.now() - t0;                 // ile trwało ostatnie pobranie (75 instrumentów ~1,5 min)
-  if (!expectedKey || sinceClose === null || sinceClose >= CONFIG.FAST_WINDOW_MIN) return summary;
-
-  for (let i = 1; i < CONFIG.FAST_MAX_TRIES; i++) {
-    const live = liveLoad_();
-    if (CONFIG.SYMBOLS.every(s => live[s] && live[s].k >= expectedKey)) break;
-    // Limit Apps Script to 6 min na uruchomienie: kolejna próba (pauza + pobranie)
-    // musi się zmieścić w FAST_MAX_RUN_SEC — zostaje zapas na STATS i paper trading.
-    if (Date.now() - t0 + CONFIG.FAST_RETRY_SEC * 1000 + lastDur > CONFIG.FAST_MAX_RUN_SEC * 1000) break;
-    Utilities.sleep(CONFIG.FAST_RETRY_SEC * 1000);
-    const t1 = Date.now();
-    const s2 = collectAll_(CONFIG.LIVE_RANGE, ctx, false);
-    lastDur = Date.now() - t1;
-    summary.fetched += s2.fetched;
-    summary.written += s2.written;
-    summary.symbolsWritten += s2.symbolsWritten;
+  const expectedKey = liveExpectedKey_(ctx, closeMin);
+  const closeAt = expected ? etDateTime_(ctx.etDate, slotEnd_(expected - 1, closeMin)).getTime() : 0;
+  if (expectedKey) candleLogStart_(expectedKey, closeAt);
+  const total = { fetched: 0, skipped: 0, written: 0, symbolsWritten: 0, errors: 0, rounds: 0 };
+  for (;;) {
+    const s = collectAll_(CONFIG.LIVE_RANGE, ctx, false);
+    total.rounds++;
+    ['fetched', 'written', 'symbolsWritten', 'errors'].forEach(k => { total[k] += s[k]; });
+    total.skipped = s.skipped;
+    if (expectedKey) candleLogCaught_(expectedKey, RUN_.live, s);
+    try { paperTry_(); } catch (e) { recordError_('PAPER', e.message || String(e)); }
+    const live = RUN_.live;
+    if (!expectedKey || allSymbols_().every(x => live[x] && live[x].k >= expectedKey)) break;
+    if (Date.now() - closeAt > CONFIG.FAST_WINDOW_MIN * 60000) break;
+    if (Date.now() - RUN_.t0 + (CONFIG.POLL_SEC + 20) * 1000 > CONFIG.FAST_MAX_RUN_SEC * 1000) break;
+    Utilities.sleep(CONFIG.POLL_SEC * 1000);
+    try { fxIfDue_(); } catch (e) { recordError_('EURUSD', e.message || String(e)); }
+    ctx = marketContext_(new Date());
   }
-  return summary;
+  return total;
 }
 
 /** Czy w trybie automatycznym w ogóle warto pytać Yahoo? */
@@ -306,9 +349,10 @@ function liveExpectedKey_(ctx, closeMin) {
 }
 
 /**
- * Pobiera świece wszystkich instrumentów i zapisuje je do Firestore.
- * force = false: tylko świece nowsze niż ostatnia zapisana (praca na żywo).
- * force = true:  wszystkie zamknięte świece z zakresu (uzupełnianie, nocne odświeżenie).
+ * Jedna runda: pobiera z Yahoo (równolegle) i zapisuje do Firestore (jednym zapisem,
+ * w paczkach ≤ 400 dokumentów, nigdy nie dzieląc spółki między paczki).
+ * force = false: tylko spółki bez oczekiwanej świecy i tylko świece nowsze niż ostatnia zapisana (praca na żywo).
+ * force = true:  wszystkie instrumenty, wszystkie zamknięte świece z zakresu (uzupełnianie, nocne odświeżenie).
  * Pamięć „co już zapisane” przesuwa się dopiero po potwierdzeniu zapisu.
  */
 function collectAll_(range, ctx, force) {
@@ -316,52 +360,78 @@ function collectAll_(range, ctx, force) {
   const live = liveLoad_();
   let session = getSession_();
   const nowIso = new Date().toISOString();
+  const expectedKey = force ? 0 : liveExpectedKey_(ctx, sessionCloseFor_(session, ctx.etDate));
 
+  const todo = [];
   allSymbols_().forEach(symbol => {
     const st = live[symbol] || (live[symbol] = {});
-    try {
-      if (!force) {
-        const expectedKey = liveExpectedKey_(ctx, sessionCloseFor_(session, ctx.etDate));
-        if (expectedKey && st.k >= expectedKey) { summary.skipped++; st.st = '✓ aktualne'; return; }
-      }
-      if (summary.fetched) Utilities.sleep(CONFIG.FETCH_PAUSE_MS);
-      const r = fetchYahoo_(symbol, range);
-      summary.fetched++;
-      st.t = nowIso;
-
-      const bars = parseBars_(r.result).filter(b => isoWeekday_(b.date) <= 5 && !US_MARKET_HOLIDAYS[b.date]);
-      session = updateSessionFromMeta_(r.result.meta, ctx, bars.some(b => b.date === ctx.etDate)) || session;
-
-      const done = bars.filter(b => isComplete_(b, ctx, session));
-      const fresh = force ? done : done.filter(b => barKey_(b) > (st.k || 0));
-      if (!fresh.length) { st.st = '✓ brak nowych'; clearError_(symbol); return; }
-      fresh.forEach(b => { b.symbol = symbol; });
-
-      if (isMain_(symbol)) fsWriteMainCandles_(symbol, fresh);
-      else fsWriteSessions_(symbol, done, fresh);
-
-      const last = fresh.reduce((a, b) => barKey_(b) > barKey_(a) ? b : a);
-      if (!st.k || barKey_(last) >= st.k) {
-        st.k = barKey_(last); st.d = last.date; st.s = last.slot; st.c = last.close;
-      }
-      st.st = `✓ zapisano ${fresh.length}`;
-      summary.written += fresh.length;
-      summary.symbolsWritten++;
-      RUN_.counters.candles += fresh.length;
-      RUN_.props.setProperty('LAST_WRITE', nowIso);
-      clearError_(symbol);
-    } catch (e) {
-      const msg = e.message || String(e);
-      st.st = '✗ ' + msg.slice(0, 120);
-      summary.errors++;
-      recordError_(symbol, msg);
-    }
+    if (expectedKey && st.k >= expectedKey) { summary.skipped++; st.st = '✓ aktualne'; return; }
+    todo.push(symbol);
   });
 
-  if (summary.written) {
-    try { firestoreCommit_([{ update: { name: `${fsBase_()}/system/status`, fields: statusFields_(summary.written) } }]); }
-    catch (e) { console.warn('system/status: ' + e.message); }
+  const t0 = Date.now();
+  const res = fetchYahooMany_(todo, `interval=1h&range=${range}&includePrePost=false`);
+  timing_('yahoo', Date.now() - t0);
+
+  const pending = [];       // { symbol, fresh, writes }
+  todo.forEach(symbol => {
+    const st = live[symbol];
+    const r = res[symbol];
+    if (r.error) {
+      st.st = '✗ ' + r.error.slice(0, 120);
+      summary.errors++;
+      recordError_(symbol, r.error);
+      return;
+    }
+    summary.fetched++;
+    st.t = nowIso;
+    const bars = parseBars_(r.result).filter(b => isoWeekday_(b.date) <= 5 && !US_MARKET_HOLIDAYS[b.date]);
+    session = updateSessionFromMeta_(r.result.meta, ctx, bars.some(b => b.date === ctx.etDate)) || session;
+    const done = bars.filter(b => isComplete_(b, ctx, session));
+    const fresh = force ? done : done.filter(b => barKey_(b) > (st.k || 0));
+    if (!fresh.length) { st.st = '✓ brak nowych'; clearError_(symbol); return; }
+    fresh.forEach(b => { b.symbol = symbol; });
+    pending.push({ symbol, fresh,
+      writes: isMain_(symbol) ? mainCandleWrites_(symbol, fresh, nowIso) : sessionWrites_(symbol, done, fresh, nowIso) });
+  });
+
+  const t1 = Date.now();
+  for (let i = 0; i < pending.length;) {
+    let j = i, n = 0;
+    while (j < pending.length && (j === i || n + pending[j].writes.length <= 400)) { n += pending[j].writes.length; j++; }
+    const batch = pending.slice(i, j);
+    const writes = [].concat.apply([], batch.map(p => p.writes));
+    if (j === pending.length) {
+      const nNew = pending.reduce((a, p) => a + p.fresh.length, 0);
+      writes.push({ update: { name: `${fsBase_()}/system/status`, fields: statusFields_(nNew) } });
+    }
+    try {
+      firestoreCommit_(writes);
+      batch.forEach(p => {
+        const st = live[p.symbol];
+        const last = p.fresh.reduce((a, b) => barKey_(b) > barKey_(a) ? b : a);
+        if (!st.k || barKey_(last) >= st.k) {
+          st.k = barKey_(last); st.d = last.date; st.s = last.slot; st.c = last.close;
+        }
+        st.st = `✓ zapisano ${p.fresh.length}`;
+        summary.written += p.fresh.length;
+        summary.symbolsWritten++;
+        RUN_.counters.candles += p.fresh.length;
+        clearError_(p.symbol);
+      });
+      RUN_.props.setProperty('LAST_WRITE', nowIso);
+    } catch (e) {
+      const msg = e.message || String(e);
+      batch.forEach(p => {
+        live[p.symbol].st = '✗ ' + msg.slice(0, 120);
+        summary.errors++;
+        recordError_(p.symbol, msg);
+      });
+    }
+    i = j;
   }
+  if (pending.length) timing_('zapis', Date.now() - t1);
+
   liveSave_(live);
   RUN_.live = live;
   return summary;
@@ -372,6 +442,92 @@ function liveLoad_() {
 }
 function liveSave_(live) {
   PropertiesService.getScriptProperties().setProperty('LIVE_STATE', JSON.stringify(live));
+}
+
+/** Czas etapu (ms) do tabeli świec — sumowany w obrębie uruchomienia. */
+function timing_(name, ms) {
+  if (!RUN_) return;
+  RUN_.timing[name] = (RUN_.timing[name] || 0) + ms;
+}
+
+
+// ============================================================================
+//  TABELA ŚWIEC W STATS (instrukcja, sekcja 4a)
+//  Bieżący wiersz w Script Properties (CANDLE_LOG), w arkuszu wpisywany przez
+//  finishRun_: jeden wiersz na świecę, najnowsze na górze. Czasy w ms (epoch),
+//  w arkuszu jako +m:ss od zamknięcia świecy.
+// ============================================================================
+function candleLogLoad_() {
+  if (!RUN_.candle) RUN_.candle = JSON.parse(RUN_.props.getProperty('CANDLE_LOG') || 'null');
+  return RUN_.candle;
+}
+
+function candleLogSave_(row) {
+  RUN_.candle = row;
+  RUN_.candleDirty = true;
+  RUN_.props.setProperty('CANDLE_LOG', JSON.stringify(row));
+}
+
+function candleLogStart_(key, closeAt) {
+  const cur = candleLogLoad_();
+  if (cur && cur.key === key) return;
+  candleLogSave_({ key, closeAt, start: Date.now(), rounds: 0, stages: {} });
+}
+
+function candleLogCaught_(key, live, roundSummary) {
+  const row = candleLogLoad_();
+  if (!row || row.key !== key) return;
+  const has = s => live[s] && live[s].k >= key;
+  const now = Date.now();
+  if (!row.main && CONFIG.SYMBOLS.every(has)) row.main = now;
+  if (!row.d53 && tradedSymbols_().every(has)) row.d53 = now;
+  if (!row.all && allSymbols_().every(has)) row.all = now;
+  row.written = allSymbols_().filter(has).length;
+  row.missing = allSymbols_().filter(s => !has(s));
+  row.errors = roundSummary.errors ? (row.errors || 0) + roundSummary.errors : (row.errors || 0);
+  row.rounds++;
+  Object.keys(RUN_.timing).forEach(k => { row.stages[k] = RUN_.timing[k]; });
+  candleLogSave_(row);
+}
+
+/** Wołane z Paper.gs po przeliczeniu świecy K. */
+function candleLogPaper_(key, info) {
+  if (!RUN_) return;
+  const row = candleLogLoad_();
+  if (!row || row.key !== key) return;
+  Object.assign(row, info);
+  Object.keys(RUN_.timing).forEach(k => { row.stages[k] = RUN_.timing[k]; });
+  candleLogSave_(row);
+}
+
+function fmtDelay_(ms) {
+  if (ms === undefined || ms === null || !isFinite(ms)) return '';
+  const neg = ms < 0;
+  const t = Math.round(Math.abs(ms) / 1000);
+  return `${neg ? '−' : '+'}${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+}
+
+function candleLogRow_(r) {
+  const d = String(Math.floor(r.key / 10));
+  const slot = r.key % 10;
+  const rel = t => t ? fmtDelay_(t - r.closeAt) : '';
+  const st = r.stages || {};
+  const sec = k => st[k] ? (st[k] / 1000).toFixed(1) : null;
+  const stages = [['Yahoo', sec('yahoo')], ['zapis', sec('zapis')], ['pamięć', sec('pamiec')],
+    ['sygnały', sec('sygnaly')], ['arkusze', sec('arkusze')], ['zapis pamięci', sec('magazyn')]]
+    .filter(x => x[1] !== null).map(x => `${x[0]} ${x[1]}`).join(' · ');
+  const miss = (r.missing || []);
+  return [
+    `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`, slot,
+    Utilities.formatDate(new Date(r.closeAt), CONFIG.LOCAL_TZ, 'HH:mm'),
+    rel(r.start), rel(r.main), rel(r.d53), rel(r.all), rel(r.sig), rel(r.sheets),
+    `${r.written || 0} / ${allSymbols_().length}`,
+    (miss.length ? miss.slice(0, 12).join(', ') + (miss.length > 12 ? ` … +${miss.length - 12}` : '') : '') +
+      (r.errors ? `${miss.length ? ' · ' : ''}błędów pobrania ${r.errors}` : ''),
+    r.signals !== undefined ? r.signals : '',
+    r.opened !== undefined ? `${r.opened} / ${r.closed}` : '',
+    r.rounds || '', stages,
+  ];
 }
 
 
@@ -507,28 +663,52 @@ function isComplete_(bar, ctx, session) {
 // ============================================================================
 //  YAHOO FINANCE
 // ============================================================================
-function fetchYahoo_(symbol, range) {
-  let lastErr = null;
-  for (let i = 0; i < YAHOO_HOSTS.length; i++) {
-    const url = `https://${YAHOO_HOSTS[i]}/v8/finance/chart/${encodeURIComponent(symbol)}` +
-                `?interval=1h&range=${range}&includePrePost=false`;
-    try {
-      const resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true, headers: YAHOO_HEADERS });
-      if (resp.getResponseCode() !== 200) {
-        lastErr = new Error(`Yahoo HTTP ${resp.getResponseCode()} (${YAHOO_HOSTS[i]})`);
-      } else {
-        const json = JSON.parse(resp.getContentText());
-        const result = json && json.chart && json.chart.result && json.chart.result[0];
-        if (result) return { result };
-        const err = json && json.chart && json.chart.error;
-        lastErr = new Error('Yahoo: ' + (err ? err.description : 'pusta odpowiedź'));
+function yahooUrl_(host, symbol, query) {
+  return `https://${host}/v8/finance/chart/${encodeURIComponent(symbol)}?${query}`;
+}
+
+/** Odpowiedź HTTP Yahoo → { result } albo { error }. */
+function yahooParse_(resp, host) {
+  const code = resp.getResponseCode();
+  if (code !== 200) return { error: `Yahoo HTTP ${code} (${host})` };
+  let json = null;
+  try { json = JSON.parse(resp.getContentText()); } catch (e) { return { error: `Yahoo: odpowiedź nie-JSON (${host})` }; }
+  const result = json && json.chart && json.chart.result && json.chart.result[0];
+  if (result) return { result };
+  const err = json && json.chart && json.chart.error;
+  return { error: 'Yahoo: ' + (err ? err.description : 'pusta odpowiedź') };
+}
+
+/**
+ * Pobiera wiele instrumentów równolegle (UrlFetchApp.fetchAll), w paczkach po YAHOO_BATCH.
+ * Nieudane powtarza raz przez drugi serwer Yahoo. Zwraca { symbol: { result } | { error } }.
+ */
+function fetchYahooMany_(symbols, query) {
+  const out = {};
+  let todo = symbols.slice();
+  for (let h = 0; h < YAHOO_HOSTS.length && todo.length; h++) {
+    const host = YAHOO_HOSTS[h];
+    const failed = [];
+    for (let i = 0; i < todo.length; i += CONFIG.YAHOO_BATCH) {
+      if (i) Utilities.sleep(CONFIG.YAHOO_BATCH_PAUSE_MS);
+      const part = todo.slice(i, i + CONFIG.YAHOO_BATCH);
+      let resps = null;
+      try {
+        resps = UrlFetchApp.fetchAll(part.map(s => ({ url: yahooUrl_(host, s, query), muteHttpExceptions: true, headers: YAHOO_HEADERS })));
+      } catch (e) {
+        part.forEach(s => { out[s] = { error: `Yahoo: ${e.message || e} (${host})` }; failed.push(s); });
+        continue;
       }
-    } catch (e) {
-      lastErr = e;
+      part.forEach((s, k) => {
+        out[s] = yahooParse_(resps[k], host);
+        if (out[s].error) failed.push(s);
+      });
     }
-    if (i < YAHOO_HOSTS.length - 1) Utilities.sleep(1500);
+    if (RUN_) RUN_.yahooRequests = (RUN_.yahooRequests || 0) + todo.length;
+    todo = failed;
+    if (todo.length && h < YAHOO_HOSTS.length - 1) Utilities.sleep(1000);
   }
-  throw lastErr;
+  return out;
 }
 
 /** Odpowiedź Yahoo → lista świec przypisanych do slotów sesji (0…6). */
@@ -572,10 +752,9 @@ function fsBase_() {
   return `projects/${CONFIG.FIREBASE_PROJECT_ID}/databases/${CONFIG.FIRESTORE_DATABASE}/documents`;
 }
 
-/** Spółka główna: dokument na świecę + podsumowanie stocks/{SYMBOL}. */
-function fsWriteMainCandles_(symbol, bars) {
+/** Spółka główna: dokument na świecę + podsumowanie stocks/{SYMBOL} — lista zapisów. */
+function mainCandleWrites_(symbol, bars, nowIso) {
   const base = fsBase_();
-  const nowIso = new Date().toISOString();
   const writes = bars.map(b => ({
     update: { name: `${base}/stocks/${symbol}/candles/${b.date}_${b.slot + 1}`, fields: candleFields_(b, nowIso) },
   }));
@@ -593,17 +772,16 @@ function fsWriteMainCandles_(symbol, bars) {
       },
     },
   });
-  for (let i = 0; i < writes.length; i += 400) firestoreCommit_(writes.slice(i, i + 400));
+  return writes;
 }
 
 /**
- * Pozostałe instrumenty: przepisuje cały dokument sesji dla każdego dnia
- * z nową świecą — sesja to jedna tablica, więc trafiają do niej wszystkie
- * zamknięte świece tego dnia, nie tylko nowe.
+ * Pozostałe instrumenty: cały dokument sesji dla każdego dnia z nową świecą — sesja to
+ * jedna tablica, więc trafiają do niej wszystkie zamknięte świece tego dnia, nie tylko nowe.
+ * Zwraca listę zapisów.
  */
-function fsWriteSessions_(symbol, doneBars, freshBars) {
+function sessionWrites_(symbol, doneBars, freshBars, nowIso) {
   const base = fsBase_();
-  const nowIso = new Date().toISOString();
   const dates = {};
   freshBars.forEach(b => { dates[b.date] = 1; });
   const byDate = {};
@@ -621,7 +799,7 @@ function fsWriteSessions_(symbol, doneBars, freshBars) {
     },
     updateMask: { fieldPaths: ['lastDate', 'liveUpdatedAt'] },
   });
-  for (let i = 0; i < writes.length; i += 400) firestoreCommit_(writes.slice(i, i + 400));
+  return writes;
 }
 
 function sessionFields_(symbol, date, bySlot, nowIso) {
@@ -719,105 +897,111 @@ function firestorePost_(path, body) {
 // ============================================================================
 function setupStatsSheet_(ss) {
   const sh = ss.getSheetByName(CONFIG.STATS_SHEET) || ss.insertSheet(CONFIG.STATS_SHEET);
+  const W = CANDLE_COLS.length;
   sh.clear();
   sh.clearConditionalFormatRules();
-  const needRows = logFirstRow_() + CONFIG.LOG_MAX_ROWS;
+  if (sh.getMaxColumns() < W) sh.insertColumnsAfter(sh.getMaxColumns(), W - sh.getMaxColumns());
+  const needRows = CANDLE_FIRST + CONFIG.CANDLE_LOG_DAYS * SLOTS + 5;
   if (sh.getMaxRows() < needRows) sh.insertRowsAfter(sh.getMaxRows(), needRows - sh.getMaxRows());
-  sh.getRange(1, 1, sh.getMaxRows(), Math.max(SYM_COLS, sh.getMaxColumns())).breakApart();
+  sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).breakApart();
   sh.setTabColor('#1a73e8');
 
-  sh.getRange(1, 1, 1, SYM_COLS).merge().setValue(`IA 4 — ZBIERANIE DANYCH (wersja ${CONFIG.VERSION})`)
+  sh.getRange(1, 1, 1, 8).merge().setValue(`IA 4 — ZBIERANIE DANYCH (wersja ${CONFIG.VERSION})`)
     .setFontSize(14).setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
+  sh.getRange(2, 1).setValue(STATS_LAYOUT).setFontColor('#9aa0a6').setFontSize(8);
   sh.getRange(STATS_FIRST, 1, STATUS_LABELS.length, 1).setValues(STATUS_LABELS.map(x => [x]))
     .setFontWeight('bold').setBackground('#f1f3f4');
   sh.getRange(STATS_FIRST, 2, STATUS_LABELS.length, 1).setNumberFormat('@');
   sh.getRange(STATS_FIRST + 1, 2).setNumberFormat('yyyy-mm-dd hh:mm:ss');
-  sh.getRange(STATS_FIRST + 3, 2).setNumberFormat('yyyy-mm-dd hh:mm:ss');
   // Watchdog: działa także wtedy, gdy skrypt przestał się uruchamiać.
   const lr = STATS_FIRST + 1;
   sh.getRange(lr, 3).setFormula(`=IF(B${lr}="","",IF(NOW()-B${lr}>15/1440,"⚠ brak uruchomień >15 min — sprawdź trigger","✓ automat żyje"))`);
 
-  const symbols = allSymbols_();
-  sh.getRange(SYM_HEADER, 1, 1, SYM_COLS)
-    .setValues([['Instrument', 'Grupa', 'Ostatnia świeca', 'Godzina (PL)', 'Close', 'Świec w bazie', 'Status']])
+  sh.getRange(CANDLE_TITLE, 1, 1, 8).merge()
+    .setValue('ŚWIECE — czasy od zamknięcia świecy (+m:ss), najnowsze na górze · 7 wierszy na dzień')
     .setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
-  sh.getRange(SYM_FIRST, 1, symbols.length, SYM_COLS).setNumberFormat('@');
-  sh.getRange(SYM_FIRST, 5, symbols.length, 1).setNumberFormat('#,##0.00');
-  sh.getRange(SYM_FIRST, 6, symbols.length, 1).setNumberFormat('#,##0');
+  sh.getRange(CANDLE_HEADER, 1, 1, W).setValues([CANDLE_COLS])
+    .setFontWeight('bold').setBackground('#f1f3f4').setWrap(true).setVerticalAlignment('middle');
+  sh.getRange(CANDLE_FIRST, 1, needRows - CANDLE_FIRST + 1, W).setNumberFormat('@');
 
-  const lt = logFirstRow_() - 2;
-  sh.getRange(lt, 1, 1, SYM_COLS).merge().setValue('DZIENNIK (najnowsze na górze)')
-    .setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
-  sh.getRange(lt + 1, 1, 1, 4).setValues([['Czas (PL)', 'Poziom', 'Źródło', 'Wiadomość']])
-    .setFontWeight('bold').setBackground('#f1f3f4');
-  sh.getRange(logFirstRow_(), 1, CONFIG.LOG_MAX_ROWS, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
-
-  sh.setColumnWidth(1, 200);
-  sh.setColumnWidth(2, 260);
-  sh.setColumnWidths(3, 5, 120);
+  sh.setColumnWidth(1, 210);
+  sh.setColumnWidth(2, 330);
+  sh.setColumnWidths(3, 8, 95);
+  sh.setColumnWidth(11, 200);
+  sh.setColumnWidth(15, 360);
   sh.setFrozenRows(1);
 
   const rule = () => SpreadsheetApp.newConditionalFormatRule();
   const status = sh.getRange(STATS_FIRST, 2);
-  const symStatus = sh.getRange(SYM_FIRST, SYM_COLS, symbols.length, 1);
   sh.setConditionalFormatRules([
     rule().whenTextEqualTo('OK').setBackground('#ceead6').setFontColor('#0d652d').setRanges([status]).build(),
     rule().whenTextEqualTo('BŁĄD').setBackground('#fad2cf').setFontColor('#a50e0e').setRanges([status]).build(),
     rule().whenTextStartsWith('⚠').setBackground('#fad2cf').setFontColor('#a50e0e').setRanges([sh.getRange(lr, 3)]).build(),
-    rule().whenTextStartsWith('✗').setFontColor('#a50e0e').setRanges([symStatus]).build(),
   ]);
   ss.setActiveSheet(sh);
   ss.moveActiveSheet(1);
+  return sh;
+}
+
+function statsSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(CONFIG.STATS_SHEET);
+  if (sh && sh.getRange(2, 1).getValue() === STATS_LAYOUT) return sh;
+  return setupStatsSheet_(ss);                    // nowy układ (1.15) — budowany sam przy pierwszym uruchomieniu
 }
 
 function finishRun_(ctx, action) {
   const p = RUN_.props;
+  RUN_.counters.runMs = (RUN_.counters.runMs || 0) + (Date.now() - RUN_.t0);
+  RUN_.counters.runs = (RUN_.counters.runs || 0) + 1;
   p.setProperty('COUNTERS', JSON.stringify(RUN_.counters));
   p.setProperty('ERR_SEEN', JSON.stringify(RUN_.errSeen));
   p.setProperty('LAST_RUN', JSON.stringify({ at: ctx.now.toISOString(), action: action || '—', ok: !RUN_.errors.length }));
 
-  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.STATS_SHEET);
-  if (!sh || sh.getRange(SYM_HEADER, 1).getValue() !== 'Instrument') return;  // czeka na „Konfiguruj”
-
-  const lastWrite = p.getProperty('LAST_WRITE');
+  const sh = statsSheet_();
   const lastErr = JSON.parse(p.getProperty('LAST_ERROR') || 'null');
   const nightly = JSON.parse(p.getProperty('NIGHTLY_INFO') || 'null');
   const counts = JSON.parse(p.getProperty('BASE_COUNTS') || 'null');
   const fmt = iso => Utilities.formatDate(new Date(iso), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm');
-  const nTrig = ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'runCollector').length;
+  let nTrig = RUN_.props.getProperty('TRIGGERS_OK');
+  if (nTrig === null || RUN_.counters.runs % 60 === 1) {    // getProjectTriggers jest wolne — raz na godzinę
+    nTrig = String(ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'runCollector').length);
+    p.setProperty('TRIGGERS_OK', nTrig);
+  }
+  const fx = fxStatusRows_();                                // Fx.gs: 3 wiersze
 
   sh.getRange(STATS_FIRST, 2, STATUS_LABELS.length, 1).setValues([
     [RUN_.errors.length ? 'BŁĄD' : 'OK'],
     [ctx.now],
     [action || '—'],
-    [lastWrite ? new Date(lastWrite) : ''],
     [`${ctx.etDate} ${fmtMin_(ctx.etMin)} (${DAY_NAMES_PL[ctx.dow - 1]})`],
     [sessionLabel_(ctx)],
-    [nTrig ? `AKTYWNY (co ${CONFIG.TRIGGER_EVERY_MIN} min)` : 'BRAK — uruchom IA 4 → Konfiguruj'],
+    [Number(nTrig) ? `AKTYWNY (co ${CONFIG.TRIGGER_EVERY_MIN} min)` : 'BRAK — uruchom IA 4 → Konfiguruj'],
+    [`${(RUN_.counters.runMs / 60000).toFixed(1)} min w ${RUN_.counters.runs} uruchomieniach (limit Google dla konta Gmail: 90 min dziennie)`],
     [RUN_.counters.candles],
     [RUN_.counters.errors],
     [lastErr ? `${fmt(lastErr.at)} — ${lastErr.text}` : 'brak'],
     [nightly ? `${nightly.date} (${fmt(nightly.at)}), ${nightly.written} świec` : 'jeszcze nie było'],
     [counts ? `${counts.total.toLocaleString('pl-PL')} (policzone ${fmt(counts.at)})` : 'po pierwszym nocnym odświeżeniu'],
-    [backfillLabel_()],
+    [fx[0]], [fx[1]], [fx[2]],
   ]);
 
-  const live = RUN_.live || liveLoad_();
-  const rows = allSymbols_().map(s => {
-    const st = live[s] || {};
-    const n = counts && counts.items[s] ? counts.items[s].candles : '';
-    return [s, GROUP_LABELS[symbolGroup_(s)], st.d || '—', st.d ? CONFIG.SLOT_LABELS_PL[st.s] : '—',
-            st.c !== undefined ? st.c : '', n, st.st || '—'];
-  });
-  sh.getRange(SYM_FIRST, 1, rows.length, SYM_COLS).setValues(rows);
+  if (RUN_.candleDirty && RUN_.candle) candleLogWrite_(sh, RUN_.candle);
+}
 
-  if (RUN_.logs.length) {
-    const range = sh.getRange(logFirstRow_(), 1, CONFIG.LOG_MAX_ROWS, 4);
-    const existing = range.getValues().filter(r => r.some(x => x !== ''));
-    const out = RUN_.logs.slice().reverse().concat(existing).slice(0, CONFIG.LOG_MAX_ROWS);
-    while (out.length < CONFIG.LOG_MAX_ROWS) out.push(['', '', '', '']);
-    range.setValues(out);
+/** Wiersz bieżącej świecy w tabeli: nadpisuje górny wiersz tej samej świecy albo wstawia nowy na górze. */
+function candleLogWrite_(sh, r) {
+  const W = CANDLE_COLS.length;
+  const row = candleLogRow_(r);
+  const top = sh.getRange(CANDLE_FIRST, 1, 1, 2).getValues()[0];
+  if (!(String(top[0]) === row[0] && Number(top[1]) === row[1])) {
+    sh.insertRowsBefore(CANDLE_FIRST, 1);
+    sh.getRange(CANDLE_FIRST, 1, 1, W).setFontWeight('normal').setBackground(null).setFontColor(null)
+      .setWrap(false).setNumberFormat('@');
+    const maxRows = CANDLE_FIRST + CONFIG.CANDLE_LOG_DAYS * SLOTS;
+    if (sh.getMaxRows() > maxRows + 5) sh.deleteRows(maxRows + 1, sh.getMaxRows() - maxRows);
   }
+  sh.getRange(CANDLE_FIRST, 1, 1, W).setValues([row.map(x => typeof x === 'number' ? String(x) : x)]);
 }
 
 function sessionLabel_(ctx) {
@@ -840,9 +1024,9 @@ function startRun_() {
   const today = Utilities.formatDate(new Date(), CONFIG.LOCAL_TZ, 'yyyy-MM-dd');
   const c = JSON.parse(props.getProperty('COUNTERS') || '{}');
   RUN_ = {
-    props,
-    counters: c.date === today && c.candles !== undefined ? c : { date: today, candles: 0, errors: 0 },
-    logs: [], errors: [], live: null,
+    props, t0: Date.now(),
+    counters: c.date === today && c.candles !== undefined ? c : { date: today, candles: 0, errors: 0, runMs: 0, runs: 0 },
+    logs: [], errors: [], live: null, timing: {}, candle: null, candleDirty: false, paperMsg: '',
     errSeen: JSON.parse(props.getProperty('ERR_SEEN') || '{}'),
   };
 }
@@ -1023,6 +1207,11 @@ function fsWriteHistory_(symbol, bars, reachedLimit) {
 function minutesOf_(date, tz) {
   const p = Utilities.formatDate(date, tz, 'HH:mm').split(':');
   return Number(p[0]) * 60 + Number(p[1]);
+}
+
+/** Data (RRRR-MM-DD) + minuta dnia w czasie Nowego Jorku → Date. */
+function etDateTime_(date, min) {
+  return Utilities.parseDate(`${date} ${fmtMin_(min)}`, CONFIG.MARKET_TZ, 'yyyy-MM-dd HH:mm');
 }
 
 function fmtMin_(m) {

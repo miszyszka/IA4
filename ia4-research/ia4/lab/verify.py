@@ -1,6 +1,6 @@
 """
 IA 4 — weryfikacja strategii na doubleProof (instrukcja, sekcja 6a).
-Wersja projektu: 1.14 (2026-10-03) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.15 (2026-10-04) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Bierze strategie aktywne (research/strategies/) i liczy je backtestowo — tym samym
 silnikiem i tymi samymi zasadami (sekcja 8) — na 20 spółkach doubleProof, których
@@ -106,6 +106,7 @@ def evaluate(rec: dict, m, blind_cache: dict) -> dict:
         for code, name in ((sim.K_FC, "fc_avg"), (sim.K_TP, "tp_avg"), (sim.K_SL, "sl_avg")):
             r = tr[tr[:, 4] == code, 3]
             out[name] = round(float(r.mean()), 4) if r.size else None
+        out["hold_median"] = float(np.median(tr[:, 2] - tr[:, 1] + 1))   # świec w pozycji (wejście…wyjście)
         inst = np.searchsorted(m.seg_end, tr[:, 0].astype(np.int64), side="right")
         per = {}
         for i in np.unique(inst):
@@ -117,7 +118,7 @@ def evaluate(rec: dict, m, blind_cache: dict) -> dict:
         out["instruments_traded"] = len(per)
         out["instruments_pf_gt1"] = sum(1 for v in per.values() if v["pf"] > 1)
     else:
-        out.update({"fc_avg": None, "tp_avg": None, "sl_avg": None, "instruments": {},
+        out.update({"fc_avg": None, "tp_avg": None, "sl_avg": None, "hold_median": None, "instruments": {},
                     "instruments_traded": 0, "instruments_pf_gt1": 0})
     out["blind_pf"] = _blind_pf(m, rule, blind_cache)
     out["edge"] = round(out["pf"] / max(out["blind_pf"], 0.01), 3) if out["trades"] else 0.0
@@ -125,6 +126,7 @@ def evaluate(rec: dict, m, blind_cache: dict) -> dict:
     st = rec.get("stats", {})
     mm, vv = st.get("main", {}), st.get("vault", {})
     n0 = mm.get("trades", 0) + vv.get("trades", 0)
+    out["search_hold_median"] = (st.get("breakdown", {}).get("hold_bars") or {}).get("median")
     out["search_pf_w"] = round((mm.get("trades", 0) * min(mm.get("pf", 0), 10)
                                 + vv.get("trades", 0) * min(vv.get("pf", 0), 10)) / n0, 3) if n0 else None
     return out

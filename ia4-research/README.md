@@ -1,6 +1,6 @@
 # IA 4 — Python na Macu: kopia bazy i poszukiwanie strategii
 
-**Wersja projektu: 1.14 (2026-10-03)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.15 (2026-10-04)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Dwie rzeczy:
 1. `python -m ia4.sync` — ściąga świece z Firestore na dysk (`data/*.parquet`), przy
@@ -60,6 +60,10 @@ weryfikacji strategii (instrukcja, sekcja 6a).
 `python -m ia4.lab` sam przelicza strategie aktywne na 20 spółkach doubleProof (przy starcie
 i co 30 min, gdy zmieniły się strategie albo dane) i zapisuje `research/doubleproof.json`.
 Ręcznie, bez szukania: `python -m ia4.lab.verify`. Wynik w arkuszu STRATEGIE DOUBLEPROOF.
+
+Jednorazowo (wyniki zapisane raz, nowe tylko z `--force`):
+- `python -m ia4.lab.backtest_dp` — backtest strategii aktywnych na doubleProof → arkusz BACKTEST DOUBLEPROOF,
+- `python -m ia4.lab.portfolio` — backtest portfela (wirtualny inwestor na historii) → arkusz BACKTEST PORTFELA i pierwszeństwo strategii w wirtualnym inwestorze (instrukcja, sekcja 6b).
 
 ## Test zgodności z paper tradingiem
 

@@ -2,17 +2,19 @@
  * ============================================================================
  *  IA 4 — PAPER TRADING  (sygnały na żywo + wirtualny inwestor)
  *
- *  Wersja projektu: 1.14 (2026-10-03) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.15 (2026-10-04) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Po zamknięciu każdej świecy, gdy automat zapisał ją do Firestore:
  *   1. dociąga nowe świece z Firestore do pamięci (ukryty arkusz _IA4_DANE,
  *      ostatnie PAPER.CACHE_BARS świec każdego instrumentu),
- *   2. sprawdza na tej świecy wszystkie strategie aktywne (research/strategies.jsonl)
- *      oraz strategie wpisane w VIRTUAL-INVESTOR — silnik: PaperEngine.gs,
+ *   2. sprawdza na tej świecy wszystkie strategie aktywne (lista: Script Properties
+ *      ACTIVE_IDS, zapisuje ją Research.gs) oraz zaznaczone „for VI” — silnik: PaperEngine.gs,
  *   3. dopisuje wiersz do SIGNALS-REALTIME (każdy sygnał: ID + ticker),
  *   4. wirtualny inwestor: prowadzi otwarte pozycje (luka/FC/SL/TP/limit — jak
- *      w backteście) i otwiera nowe dla sygnałów strategii z jego listy.
- *  Uruchamia go runCollector (Code.gs) — bez osobnego triggera.
+ *      w backteście) i otwiera nowe dla sygnałów strategii z jego listy —
+ *      najwyżej jedna pozycja na spółkę (pierwszeństwo: Script Properties PRIORITY),
+ *      koszt transakcyjny COST_PCT przy wejściu i przy wyjściu.
+ *  Uruchamia go runCollector (Code.gs) zaraz po zapisie kompletu 53 spółek — bez osobnego triggera.
  * ============================================================================
  */
 
@@ -28,7 +30,8 @@ const PAPER = {
   TRADES_HEADER_ROW: 27,
   SIGNALS_MAX_ROWS: 3000,
   MAX_CATCHUP: 21,             // najwięcej świec nadrabianych naraz (3 sesje)
-  WAIT_AFTER_WRITE_MIN: 8,     // gdy brakuje świecy części spółek — czekamy tyle od ostatniego zapisu
+  WAIT_AFTER_CLOSE_MIN: 3,     // gdy brakuje świecy części spółek — czekamy najwyżej tyle od zamknięcia świecy
+  COST_PCT: 0.005,             // koszt transakcyjny: % wartości pozycji przy wejściu i przy wyjściu (instrukcja 11a)
   CHUNK: 45000,                // znaków w jednej komórce magazynu
 };
 
@@ -36,19 +39,26 @@ const PAPER = {
 //  WEJŚCIE: z runCollector (Code.gs) i z menu
 // ============================================================================
 /** Czy jest nowa, zamknięta świeca do przeliczenia — i przelicza. Zwraca opis albo ''. */
-function paperIfDue_(ctx, t0) {
-  if (Date.now() - t0 > 150 * 1000) return '';               // za mało czasu w tym uruchomieniu
+function paperIfDue_() {
   const props = PropertiesService.getScriptProperties();
-  const live = liveLoad_();
-  const traded = CONFIG.SYMBOLS.concat(CONFIG.PROOF_SYMBOLS);
-  const keys = traded.map(s => (live[s] && live[s].k) || 0);
+  const live = (RUN_ && RUN_.live) || liveLoad_();
+  const keys = tradedSymbols_().map(s => (live[s] && live[s].k) || 0);
   const newest = Math.max.apply(null, keys);
   const last = Number(props.getProperty('PAPER_LAST_KEY') || 0);
   if (!newest || newest <= last) return '';
   const allIn = keys.every(k => k >= newest);
-  const lastWrite = Date.parse(props.getProperty('LAST_WRITE') || '') || 0;
-  if (!allIn && Date.now() - lastWrite < PAPER.WAIT_AFTER_WRITE_MIN * 60000) return '';
+  if (!allIn && Date.now() - pp_closeAt_(newest) < PAPER.WAIT_AFTER_CLOSE_MIN * 60000) return '';
   return paperStep_();
+}
+
+/** Chwila zamknięcia świecy o kluczu K = RRRRMMDD·10 + numer (ms). */
+function pp_closeAt_(K) {
+  const ds = String(Math.floor(K / 10)), s = K % 10;
+  const iso = `${ds.slice(0, 4)}-${ds.slice(4, 6)}-${ds.slice(6, 8)}`;
+  let closeMin = Math.min(OPEN + s * 60, CLOSE);
+  const sess = getSession_();
+  if (sess && sess.date === iso && sess.closeMin) closeMin = Math.min(closeMin, sess.closeMin);
+  return etDateTime_(iso, closeMin).getTime();
 }
 
 function paperNow() {
@@ -64,8 +74,10 @@ function paperNow() {
 // ============================================================================
 function paperStep_() {
   const props = PropertiesService.getScriptProperties();
+  const tm = (name, t) => { if (typeof timing_ === 'function') timing_(name, Date.now() - t); return Date.now(); };
+  let t = Date.now();
   const store = pp_storeLoad_();
-  const traded = CONFIG.SYMBOLS.concat(CONFIG.PROOF_SYMBOLS);
+  const traded = tradedSymbols_();
   const all = traded.concat(CONFIG.CONTEXT_SYMBOLS);
   const state = store.state || { lastKey: 0, positions: [], seq: 0, rules: {}, refreshDay: '' };
   state.rules = state.rules || {};
@@ -81,11 +93,13 @@ function paperStep_() {
     pp_refreshCache_(store.cache, all, back);
     state.refreshDay = today;
   }
+  t = tm('pamiec', t);
 
   // 2. Strategie: aktywne + lista inwestora
   const active = pp_activeIds_();
   const sh = pp_investorSheet_();
   const invIds = viSelectedIds_();               // checkboxy „for VI” w arkuszu STRATEGIE (Research.gs)
+  const prio = pp_priority_();                    // pierwszeństwo, gdy kilka strategii daje sygnał na tej samej spółce
   const ids = Array.from(new Set(active.concat(invIds)));
   ids.forEach(id => { if (!state.rules[id]) { const r = pp_fetchRule_(id); if (r) state.rules[id] = r; } });
   const rules = ids.filter(id => state.rules[id]).map(id => ({ id, rule: state.rules[id].rule }));
@@ -146,9 +160,12 @@ function paperStep_() {
         p.fcPending = pos.fcPending; p.crossed = pos.crossed;
         p.lastKey = k; p.bars = i - pos.e + 1; p.price = x.c[i];
         p.retNow = p.dir > 0 ? (x.c[i] / p.entry - 1) * 100 : (p.entry - x.c[i]) / p.entry * 100;
+        if (p.cost === undefined && p.v15) p.cost = 2 * PAPER.COST_PCT;
+        if (p.cost) p.retNow -= p.cost;              // wynik netto: koszt przy wejściu i przy wyjściu
         if (r) {
           p.status = 'zamknięta'; p.exitKey = k; p.exitPx = round_(r.price); p.exitKind = r.kind;
-          p.ret = r.ret; p.pnl = PAPER.STAKE * r.ret / 100; p.price = r.price; p.retNow = r.ret;
+          p.retGross = r.ret; p.ret = r.ret - (p.cost || 0); p.pnl = PAPER.STAKE * p.ret / 100;
+          p.price = r.price; p.retNow = p.ret;
           closed++;
           break;
         }
@@ -160,35 +177,52 @@ function paperStep_() {
     traded.forEach(s => {
       const x = X[s];
       if (!x || x.idx[K] === undefined) return;
-      const t = x.idx[K];
+      const ti = x.idx[K];
+      const cand = [];
       rules.forEach(R => {
         let hit = false;
-        try { hit = pe_signalAt_(R.rule, x, t, CTX); } catch (e) { console.warn(R.id + ': ' + e.message); }
+        try { hit = pe_signalAt_(R.rule, x, ti, CTX); } catch (e) { console.warn(R.id + ': ' + e.message); }
         if (!hit) return;
         fired.push([R.id, s]);
-        if (!invSet[R.id]) return;
-        const busy = state.positions.some(p => p.id === R.id && p.sym === s && p.status !== 'zamknięta');
-        if (busy) return;                               // jedna pozycja naraz (instrukcja 8.6 p. 5)
-        state.seq++;
-        state.positions.push({
-          no: state.seq, id: R.id, sym: s, dir: R.rule.direction === 'long' ? 1 : -1,
-          sl: R.rule.exit.sl, tp: R.rule.exit.tp, maxBars: R.rule.exit.max_bars || 0,
-          sigKey: K, lastKey: K, status: 'oczekuje', fcPending: false, crossed: false,
-        });
-        opened++;
+        if (invSet[R.id]) cand.push(R);
       });
+      if (!cand.length) return;
+      // najwyżej jedna pozycja na spółkę (instrukcja 11a): spółka zajęta → bez nowej pozycji;
+      // kilka sygnałów naraz → strategia z najwyższym pierwszeństwem
+      if (state.positions.some(p => p.sym === s && p.status !== 'zamknięta')) return;
+      const rank = id => (prio[id] === undefined ? 1e6 : prio[id]);
+      cand.sort((a, b) => rank(a.id) - rank(b.id) || (a.id < b.id ? -1 : 1));
+      const R = cand[0];
+      state.seq++;
+      state.positions.push({
+        no: state.seq, id: R.id, sym: s, dir: R.rule.direction === 'long' ? 1 : -1,
+        sl: R.rule.exit.sl, tp: R.rule.exit.tp, maxBars: R.rule.exit.max_bars || 0,
+        sigKey: K, lastKey: K, status: 'oczekuje', fcPending: false, crossed: false,
+        v15: true, cost: 2 * PAPER.COST_PCT,
+      });
+      opened++;
     });
     nSig += fired.length;
     sigRows.push([K, fired]);
     state.lastKey = K;
   });
 
-  // 5. Zapis
+  t = tm('sygnaly', t);
+  const tSig = Date.now();
+
+  // 5. Arkusze (najpierw to, co widzi człowiek), potem zapis pamięci
+  pp_writeSignals_(sigRows, X);
+  pp_writeInvestor_(sh, state, invIds, X);
+  t = tm('arkusze', t);
+  const tSheets = Date.now();
   store.state = state;
   pp_storeSave_(store);
   props.setProperty('PAPER_LAST_KEY', String(state.lastKey));
-  pp_writeSignals_(sigRows, X);
-  pp_writeInvestor_(sh, state, invIds, X);
+  tm('magazyn', t);
+  if (keys.length && typeof candleLogPaper_ === 'function') {
+    const lastRow = sigRows[sigRows.length - 1];
+    candleLogPaper_(state.lastKey, { sig: tSig, sheets: tSheets, signals: lastRow ? lastRow[1].length : 0, opened, closed });
+  }
   return `paper: świec ${keys.length}, sygnałów ${nSig}, otwarto ${opened}, zamknięto ${closed}` + (note ? ` (${note})` : '');
 }
 
@@ -310,10 +344,20 @@ function pp_refreshCache_(cache, symbols, back) {
 //  STRATEGIE Z GITHUB (branch research)
 // ============================================================================
 function pp_activeIds_() {
+  const cached = PropertiesService.getScriptProperties().getProperty('ACTIVE_IDS');   // zapisuje Research.gs
+  if (cached) return JSON.parse(cached);
   try {
     return (researchRaw_(RESEARCH.INDEX) || '').split('\n').filter(l => l.trim())
       .map(l => { try { return JSON.parse(l).id; } catch (e) { return null; } }).filter(x => x);
   } catch (e) { console.warn('paper: lista strategii — ' + e.message); return []; }
+}
+
+/** Pierwszeństwo strategii: { id: miejsce } z Script Properties PRIORITY (zapisuje Research.gs). */
+function pp_priority_() {
+  const list = JSON.parse(PropertiesService.getScriptProperties().getProperty('PRIORITY') || '[]');
+  const out = {};
+  list.forEach((id, i) => { out[id] = i; });
+  return out;
 }
 
 /** Reguła strategii (raz pobrana jest pamiętana — reguła o danym ID nigdy się nie zmienia). */
@@ -387,7 +431,7 @@ const INV_STATS = [
   'Stan konta, gdyby teraz zamknąć wszystko ($)', 'Wynik całkowity (% kapitału)',
   'Wolna gotówka ($)', 'Pozycji otwartych / oczekujących', 'Transakcji zamkniętych',
   'Zamknięte: TP / SL / FC / limit', 'Skuteczność (TP)', 'Średni wynik zamkniętej (%)',
-  'Ostatnia przeliczona świeca',
+  'Ostatnia przeliczona świeca', 'Mediana świec w pozycji (zamknięte)', 'Koszty transakcyjne ($)',
 ];
 const INV_COLS = ['Nr', 'Strategia', 'Ticker', 'Kierunek', 'Sygnał (zamknięcie PL)', 'Wejście (PL)',
   'Cena wejścia', 'SL', 'TP', 'Status', 'Ostatnia świeca (PL)', 'Cena aktualna', 'Wynik %', 'Wynik $',
@@ -418,6 +462,11 @@ function pp_investorSheet_() {
 
 
 function pp_usd_(x) { return Math.round(x * 100) / 100; }
+function pp_median_(a) {
+  if (!a.length) return '';
+  const s = a.slice().sort((x, y) => x - y), m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
 
 function pp_writeInvestor_(sh, state, invIds, X) {
   // podgląd listy „for VI” (wybór: checkboxy w arkuszu STRATEGIE)
@@ -446,7 +495,10 @@ function pp_writeInvestor_(sh, state, invIds, X) {
     [closed.length ? cnt('TP') / closed.length : ''],
     [closed.length ? closed.reduce((a, p) => a + p.ret, 0) / closed.length / 100 : ''],
     [lab(state.lastKey)],
+    [pp_median_(closed.map(p => p.bars || 0))],
+    [pp_usd_(closed.reduce((a, p) => a + PAPER.STAKE * (p.cost || 0) / 100, 0))],
   ]);
+  sh.getRange(4, 4, INV_STATS.length, 1).setValues(INV_STATS.map(x => [x])).setFontWeight('bold');
   sh.getRange(8, 5).setNumberFormat('0.000%');
   sh.getRange(11, 5).setNumberFormat('0.000%');
   sh.getRange(16, 5).setNumberFormat('0.0%');
