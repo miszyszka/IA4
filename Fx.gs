@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — MODUŁ EURUSD  (Yahoo EURUSD=X, świece 5 min → Firestore fx/EURUSD)
  *
- *  Wersja projektu: 1.15 (2026-10-04) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.16 (2026-10-05) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Osobny moduł (instrukcja, sekcja 4b): na razie tylko zbiera dane. Nie bierze
  *  udziału w poszukiwaniu, weryfikacji ani paper tradingu.

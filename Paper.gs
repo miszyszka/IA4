@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — PAPER TRADING  (sygnały na żywo + wirtualny inwestor)
  *
- *  Wersja projektu: 1.15 (2026-10-04) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.16 (2026-10-05) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Po zamknięciu każdej świecy, gdy automat zapisał ją do Firestore:
  *   1. dociąga nowe świece z Firestore do pamięci (ukryty arkusz _IA4_DANE,
@@ -32,6 +32,7 @@ const PAPER = {
   MAX_CATCHUP: 21,             // najwięcej świec nadrabianych naraz (3 sesje)
   WAIT_AFTER_CLOSE_MIN: 3,     // gdy brakuje świecy części spółek — czekamy najwyżej tyle od zamknięcia świecy
   COST_PCT: 0.005,             // koszt transakcyjny: % wartości pozycji przy wejściu i przy wyjściu (instrukcja 11a)
+  MAX_PER_TICKER: 1,           // najwięcej otwartych/oczekujących pozycji na spółkę (0 = bez limitu)
   CHUNK: 45000,                // znaków w jednej komórce magazynu
 };
 
@@ -187,20 +188,27 @@ function paperStep_() {
         if (invSet[R.id]) cand.push(R);
       });
       if (!cand.length) return;
-      // najwyżej jedna pozycja na spółkę (instrukcja 11a): spółka zajęta → bez nowej pozycji;
-      // kilka sygnałów naraz → strategia z najwyższym pierwszeństwem
-      if (state.positions.some(p => p.sym === s && p.status !== 'zamknięta')) return;
+      // najwyżej MAX_PER_TICKER pozycji na spółkę (instrukcja 11a): spółka zajęta → bez nowej pozycji;
+      // kilka sygnałów naraz → strategie w kolejności pierwszeństwa
+      const busy = state.positions.filter(p => p.sym === s && p.status !== 'zamknięta');
+      if (PAPER.MAX_PER_TICKER && busy.length >= PAPER.MAX_PER_TICKER) return;
+      const free = cand.filter(R => !busy.some(p => p.id === R.id));   // jedna pozycja naraz w strategii (8.6 p. 5)
+      if (!free.length) return;
       const rank = id => (prio[id] === undefined ? 1e6 : prio[id]);
-      cand.sort((a, b) => rank(a.id) - rank(b.id) || (a.id < b.id ? -1 : 1));
-      const R = cand[0];
-      state.seq++;
-      state.positions.push({
-        no: state.seq, id: R.id, sym: s, dir: R.rule.direction === 'long' ? 1 : -1,
-        sl: R.rule.exit.sl, tp: R.rule.exit.tp, maxBars: R.rule.exit.max_bars || 0,
-        sigKey: K, lastKey: K, status: 'oczekuje', fcPending: false, crossed: false,
-        v15: true, cost: 2 * PAPER.COST_PCT,
-      });
-      opened++;
+      free.sort((a, b) => rank(a.id) - rank(b.id) || (a.id < b.id ? -1 : 1));
+      let nBusy = busy.length;
+      for (const R of free) {
+        if (PAPER.MAX_PER_TICKER && nBusy >= PAPER.MAX_PER_TICKER) break;
+        state.seq++;
+        state.positions.push({
+          no: state.seq, id: R.id, sym: s, dir: R.rule.direction === 'long' ? 1 : -1,
+          sl: R.rule.exit.sl, tp: R.rule.exit.tp, maxBars: R.rule.exit.max_bars || 0,
+          sigKey: K, lastKey: K, status: 'oczekuje', fcPending: false, crossed: false,
+          v15: true, cost: 2 * PAPER.COST_PCT,
+        });
+        opened++;
+        nBusy++;
+      }
     });
     nSig += fired.length;
     sigRows.push([K, fired]);
@@ -218,6 +226,7 @@ function paperStep_() {
   store.state = state;
   pp_storeSave_(store);
   props.setProperty('PAPER_LAST_KEY', String(state.lastKey));
+  pp_saveSummary_(state);
   tm('magazyn', t);
   if (keys.length && typeof candleLogPaper_ === 'function') {
     const lastRow = sigRows[sigRows.length - 1];
@@ -432,6 +441,7 @@ const INV_STATS = [
   'Wolna gotówka ($)', 'Pozycji otwartych / oczekujących', 'Transakcji zamkniętych',
   'Zamknięte: TP / SL / FC / limit', 'Skuteczność (TP)', 'Średni wynik zamkniętej (%)',
   'Ostatnia przeliczona świeca', 'Mediana świec w pozycji (zamknięte)', 'Koszty transakcyjne ($)',
+  'Średni wynik zamkniętej — przedział 95%', 'Liczy od',
 ];
 const INV_COLS = ['Nr', 'Strategia', 'Ticker', 'Kierunek', 'Sygnał (zamknięcie PL)', 'Wejście (PL)',
   'Cena wejścia', 'SL', 'TP', 'Status', 'Ostatnia świeca (PL)', 'Cena aktualna', 'Wynik %', 'Wynik $',
@@ -462,6 +472,53 @@ function pp_investorSheet_() {
 
 
 function pp_usd_(x) { return Math.round(x * 100) / 100; }
+
+/** Wyniki wirtualnego inwestora dla arkusza STRATEGIE (VI_BY_STRAT) i telemetrii (VI_SUMMARY). */
+function pp_saveSummary_(state) {
+  const by = {};
+  state.positions.forEach(p => {
+    const b = by[p.id] || (by[p.id] = { n: 0, sum: 0, usd: 0, open: 0 });
+    if (p.status === 'zamknięta') { b.n++; b.sum += p.ret; b.usd += p.pnl; } else b.open++;
+  });
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('VI_BY_STRAT', JSON.stringify(by));
+  const c = pp_closedStats_(state.positions);
+  props.setProperty('VI_SUMMARY', JSON.stringify({ since: state.startedAt || null, closed: c.n,
+    open: state.positions.length - c.n, avgPct: c.avg, ci95Pct: c.ci, sumUsd: pp_usd_(c.usd), tpShare: c.tp }));
+}
+
+/** Zamknięte: liczba, średni wynik %, połowa przedziału 95% (2 × odchylenie / √n), wynik $, udział TP. */
+function pp_closedStats_(P) {
+  const r = P.filter(p => p.status === 'zamknięta').map(p => p.ret);
+  const n = r.length;
+  if (!n) return { n: 0, avg: null, ci: null, usd: 0, tp: null };
+  const avg = r.reduce((a, x) => a + x, 0) / n;
+  const sd = n > 1 ? Math.sqrt(r.reduce((a, x) => a + (x - avg) * (x - avg), 0) / (n - 1)) : null;
+  return { n, avg, ci: sd === null ? null : 2 * sd / Math.sqrt(n),
+           usd: P.filter(p => p.status === 'zamknięta').reduce((a, p) => a + p.pnl, 0),
+           tp: P.filter(p => p.status === 'zamknięta' && p.exitKind === 'TP').length / n };
+}
+
+/** Menu: wirtualny inwestor od zera (pozycje i statystyki), np. po zmianie zasad albo listy strategii. */
+function viResetNow() {
+  const ui = SpreadsheetApp.getUi();
+  if (ui.alert('Wirtualny inwestor od nowa: wszystkie pozycje (otwarte i zamknięte) zostaną skasowane, ' +
+      'statystyki zaczną się od zera. Sygnały i strategie bez zmian. Kontynuować?', ui.ButtonSet.OK_CANCEL) !== ui.Button.OK) return;
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30 * 1000)) { toast_('Automat właśnie pracuje — spróbuj za minutę.'); return; }
+  try {
+    const store = pp_storeLoad_();
+    const state = store.state || { lastKey: 0, positions: [], seq: 0, rules: {}, refreshDay: '' };
+    state.positions = [];
+    state.seq = 0;
+    state.startedAt = new Date().toISOString();
+    store.state = state;
+    pp_storeSave_(store);
+    pp_saveSummary_(state);
+    pp_writeInvestor_(pp_investorSheet_(), state, viSelectedIds_(), {});
+    toast_('Wirtualny inwestor zaczyna od zera.');
+  } finally { lock.releaseLock(); }
+}
 function pp_median_(a) {
   if (!a.length) return '';
   const s = a.slice().sort((x, y) => x - y), m = Math.floor(s.length / 2);
@@ -485,6 +542,7 @@ function pp_writeInvestor_(sh, state, invIds, X) {
   const realized = closed.reduce((a, p) => a + p.pnl, 0);
   const unreal = open.reduce((a, p) => a + PAPER.STAKE * (p.retNow || 0) / 100, 0);
   const cnt = k => closed.filter(p => p.exitKind === k).length;
+  const cs = pp_closedStats_(P);
   const lab = K => K ? pp_closeLabel_(K, X).pl : '';
   sh.getRange(4, 5, INV_STATS.length, 1).setValues([
     [PAPER.CAPITAL], [PAPER.STAKE], [pp_usd_(PAPER.CAPITAL + realized)],
@@ -497,6 +555,8 @@ function pp_writeInvestor_(sh, state, invIds, X) {
     [lab(state.lastKey)],
     [pp_median_(closed.map(p => p.bars || 0))],
     [pp_usd_(closed.reduce((a, p) => a + PAPER.STAKE * (p.cost || 0) / 100, 0))],
+    [cs.ci === null ? '' : `${(cs.avg - cs.ci).toFixed(2)}% … ${(cs.avg + cs.ci).toFixed(2)}%`],
+    [state.startedAt ? Utilities.formatDate(new Date(state.startedAt), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm') : 'początku paper tradingu'],
   ]);
   sh.getRange(4, 4, INV_STATS.length, 1).setValues(INV_STATS.map(x => [x])).setFontWeight('bold');
   sh.getRange(8, 5).setNumberFormat('0.000%');

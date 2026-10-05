@@ -1,8 +1,8 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.15
-**Data:** 4 października 2026
-**Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca. Poszukiwanie wstrzymane 3.10.2026 (`search_closed: true`) — zostaje 60 aktywnych strategii. Od 4.10.2026 moduł EURUSD zbiera świece 5-minutowe (sekcja 4b).
+**Wersja:** 1.16
+**Data:** 5 października 2026
+**Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca. Poszukiwanie wstrzymane 3.10.2026 (`search_closed: true`) — zostaje 60 aktywnych strategii. Od 4.10.2026 moduł EURUSD zbiera świece 5-minutowe (sekcja 4b). Jak czytać arkusze i wyciągać wnioski: `PRZEWODNIK.md`.
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jeśli kod, arkusz albo telemetria się z nim rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -51,7 +51,7 @@ Yahoo ──(Apps Script, co minutę)──▶ Firestore ──(ia4.sync)──�
                   ├──▶ arkusz STATS                                     ▼
                   ├──▶ GitHub main: telemetry/state.json      python -m ia4.lab (bez końca)
                   │                                                     │
-                  ├──◀ arkusz RESEARCH ◀──(Research.gs, co 30 min)──── GitHub research: research/*
+                  ├──◀ arkusze STRATEGIE, BACKTEST PORTFELA ◀──(Research.gs, co 30 min)── GitHub research: research/*
                   └──▶ po każdej świecy: Paper.gs (Firestore → pamięć _IA4_DANE → sygnały, inwestor)
 Yahoo EURUSD=X ──(Fx.gs, w tym samym triggerze)──▶ Firestore fx/EURUSD (moduł EURUSD, sekcja 4b)
 ```
@@ -61,7 +61,7 @@ Yahoo EURUSD=X ──(Fx.gs, w tym samym triggerze)──▶ Firestore fx/EURUSD
 | `Code.gs` | automat: listy instrumentów, zbieranie na żywo (szybka ścieżka po zamknięciu świecy), nocne odświeżenie, liczenie bazy, pobieranie historii doubleProof, zapis do Firestore, arkusz STATS, menu, triggery |
 | `Fx.gs` | moduł EURUSD: świece 5 min z Yahoo → Firestore `fx/EURUSD`, opóźnienia w STATS (sekcja 4b) |
 | `Telemetry.gs` | stan zbierania → `telemetry/state.json` w GitHub (branch `main`) |
-| `Research.gs` | branch `research` (`status.json`, `log.jsonl`, `strategies.jsonl`, `doubleproof.json`, `backtest-doubleproof.json`) → arkusze RESEARCH, STRATEGIE, STRATEGIE DOUBLEPROOF i BACKTEST DOUBLEPROOF |
+| `Research.gs` | branch `research` (`strategies.jsonl`, `backtest-doubleproof.json`, `portfolio-backtest.json`) → arkusze STRATEGIE i BACKTEST PORTFELA; listy `ACTIVE_IDS` i `PRIORITY` dla paper tradingu |
 | `Paper.gs` | paper trading: pamięć świec, sygnały na żywo (SIGNALS-REALTIME), wirtualny inwestor (VIRTUAL-INVESTOR) |
 | `PaperEngine.gs` | język reguł `ia4-rule/1` w JavaScript — wierna kopia `indicators/data/rules/sim.py` |
 | `ia4-research/tests/` | test zgodności PaperEngine.gs z Pythonem (`parity_dump.py`, `parity.js`) |
@@ -86,6 +86,7 @@ Yahoo EURUSD=X ──(Fx.gs, w tym samym triggerze)──▶ Firestore fx/EURUSD
 | `ia4-research/README.md` | instalacja i użycie |
 | `telemetry/state.json` | stan automatu, generowany — nie edytować |
 | `IA4_INSTRUKCJA.md` | ten plik |
+| `PRZEWODNIK.md` | prosty przewodnik dla człowieka: co jest gdzie, jak czytać, jakie wnioski |
 
 ---
 
@@ -236,13 +237,13 @@ Wynik: `data/{SYMBOL}.parquet`, jedna tabela na instrument, kolumny `symbol, dat
 - **tylko informacja:** wynik nie przyjmuje, nie odrzuca i nie zmienia strategii i nie wraca do poszukiwania,
 - kiedy: `python -m ia4.lab` przy starcie, a potem **co godzinę** (`dp_refresh_min` = 60): dociąga z Firestore nowe świece doubleProof (+ SPY, QQQ; ok. 250 odczytów) i przelicza **wszystkie** aktywne strategie na pełnych, aktualnych danych. Przy logach co 30 min pomiędzy odświeżeniami — przelicza tylko, gdy zmienił się zestaw strategii. Ręcznie: `python -m ia4.lab.verify` (synchronizacja + przeliczenie wszystkich + push),
 - wynik: `research/doubleproof.json` (branch `research`); wyniki strategii, które wypadły z aktywnych, zostają w pliku z `active: false`,
-- arkusz STRATEGIE DOUBLEPROOF (sekcja 11).
+- od wersji 1.16 bez osobnego arkusza (plik zostaje na branchu `research`).
 
 **Jednorazowy backtest (`ia4/lab/backtest_dp.py`):**
 - `python -m ia4.lab.backtest_dp` — synchronizacja doubleProof (+ SPY, QQQ), potem wszystkie strategie aktywne liczone dokładnie tak jak w weryfikacji (te same funkcje, te same wyniki na strategię, plus suma wyników %), zapis i push,
 - wynik: `research/backtest-doubleproof.json` (branch `research`) — **zapisany raz**: data backtestu, zakres danych, wyniki wszystkich strategii i każdej spółki. Weryfikacja go nie przelicza; istniejący zapis zmienia tylko ponowne uruchomienie z `--force`,
 - tylko informacja, jak weryfikacja: nie zmienia strategii ani poszukiwania,
-- arkusz BACKTEST DOUBLEPROOF (sekcja 11).
+- wynik każdej strategii pokazuje arkusz STRATEGIE (sekcja 11).
 
 ## 6b. Backtest portfela (`ia4/lab/portfolio.py`)
 
@@ -269,7 +270,7 @@ Wersja 1.0 wdrożona w Apps Script, triggery `runCollector` i `telemetryHourly`,
 
 ### Etap 2 — Poszukiwanie strategii 🟨
 
-Program `python -m ia4.lab` na Macu (sekcje 8–10), wyniki na branchu `research`, podgląd w arkuszu RESEARCH (sekcja 11). Etap trwa bez końca; Claude okresowo przegląda wyniki i proponuje zmiany ustawień w `research/config.json`.
+Program `python -m ia4.lab` na Macu (sekcje 8–10), wyniki na branchu `research` (arkusz RESEARCH usunięty w 1.16 — poszukiwanie wstrzymane). Etap trwa bez końca; Claude okresowo przegląda wyniki i proponuje zmiany ustawień w `research/config.json`.
 
 Wdrożony 30.09.2026: triggery `runCollector`, `telemetryHourly`, `researchSync`; `python -m ia4.lab.selftest` kończy się „WYNIK: OK”; branch `research` ma `status.json` i `log.jsonl`; arkusze RESEARCH i STRATEGIE się odświeżają. Siatka zakończona 1.10.2026, od tego czasu adaptacja. **3.10.2026 poszukiwanie wstrzymane** (`search_closed: true` w `research/config.json`): zostaje 60 aktywnych strategii, `python -m ia4.lab` tylko synchronizuje, sprawdza bazę i przelicza weryfikację doubleProof.
 
@@ -478,22 +479,22 @@ Lokalnie (poza gitem): `ia4-research/state/tested.txt` — reguły już przetest
 
 ---
 
-## 11. Arkusze RESEARCH, STRATEGIE, STRATEGIE DOUBLEPROOF, BACKTEST DOUBLEPROOF i BACKTEST PORTFELA (`Research.gs`)
+## 11. Arkusze STRATEGIE i BACKTEST PORTFELA (`Research.gs`)
 
-Trigger `researchSync` co 30 min (i menu IA 4 → „🔬 Odśwież RESEARCH teraz”) czyta z GitHub `research/status.json` i `research/log.jsonl` (branch `research`, token `GITHUB_TOKEN`) i przepisuje arkusz RESEARCH:
-- stan: ostatni log, czy program liczy (brak logu > 45 min = nie liczy), komputer, etap i postęp siatki, liczniki z 9.6, strategie aktywne, tempo, łączny czas pracy, stan bazy na Macu, kryteria,
-- ostatnie 20 aktywnych strategii: id, data, opis, PF grupy głównej, PF na ślepo, PF skarbca, PF ważony, transakcji, skuteczność,
-- dziennik: ostatnie 500 wpisów, najnowsze na górze.
+Trigger `researchSync` co 30 min (i menu IA 4 → „🔬 Odśwież STRATEGIE teraz”) czyta z GitHub (branch `research`, token `GITHUB_TOKEN`) `strategies.jsonl`, `backtest-doubleproof.json` i `portfolio-backtest.json`.
 
-Przy tym samym odświeżeniu arkusz **STRATEGIE** dostaje wszystkie strategie aktywne z `research/strategies.jsonl`, od najwyższego PF ważonego: id, grupa, kierunek, opis reguły, SL %, TP %, PF i liczba transakcji grupy głównej, PF i liczba transakcji skarbca, PF ważony, PF wejścia na ślepo, przewaga, **skuteczność = udział transakcji zamkniętych na TP**, udział wyjść na SL / FC / limit czasu, średni wynik % transakcji zamkniętych przez FC, średni wynik % wszystkich transakcji (wszystko z transakcji grupy głównej i skarbca), mediana świec w pozycji (grupa główna, z `doubleproof.json` → `search_hold_median`), data znalezienia. Arkusz jest przepisywany w całości — jedyne, co się w nim zmienia ręcznie, to checkbox „for VI” w ostatniej kolumnie (sekcja 11a), który przetrwa przepisanie. Pełna reguła i statystyki: plik `research/strategies/{id}.json`.
+**STRATEGIE** — jedyny arkusz o strategiach, przepisywany w całości; wszystkie strategie aktywne w kolejności pierwszeństwa (sekcja 6b), na dole zaznaczone „for VI” spoza aktywnych („(archiwum)”). Kolumny:
+- Id (zawsze kolumna A), miejsce (pierwszeństwo), wybrana (✓ = wybrana w backteście portfela), grupa, opis reguły, SL %, TP %,
+- **backtest doubleProof** (`backtest-doubleproof.json`): PF (zielony ≥ 1,5, żółty 1–1,5, czerwony < 1), transakcji, średni wynik %, skuteczność (TP), mediana świec w pozycji; **szacunek przewagi %** z backtestu portfela,
+- **na żywo** (wirtualny inwestor, `VI_BY_STRAT`, od ostatniego „zacznij od nowa”): zamkniętych, średni wynik % netto, wynik $, otwarte,
+- PF ważony z poszukiwania (do porównania — zawyżony),
+- **for VI** — checkbox (jedyne, co się zmienia ręcznie; przetrwa przepisanie, sekcja 11a).
 
-Przy tym samym odświeżeniu arkusz **STRATEGIE DOUBLEPROOF** dostaje dokładnie te same strategie i w tej samej kolejności co STRATEGIE, policzone na doubleProof (`research/doubleproof.json`, sekcja 6a): id, grupa, opis, SL, TP, for VI (podgląd, zmienia się tylko w STRATEGIE), PF ważony z poszukiwania, **PF doubleProof** (zielony ≥ 1,5, żółty 1–1,5, czerwony < 1), transakcji, mediana świec w pozycji, spółek z transakcjami / 20, spółek z PF > 1, okresów z PF > 1 (z 4), PF na ślepo, przewaga, skuteczność (TP), % SL, % FC, % limit, średni wynik FC i transakcji, stan („aktualna”, „mało transakcji (< 10)”, „brak transakcji”, „jeszcze nie przeliczona”, „wynik z czasu, gdy była aktywna”). Tytuł arkusza podaje zakres dat doubleProof i czas przeliczenia. Tylko do odczytu.
-
-Arkusz **BACKTEST DOUBLEPROOF** pokazuje zapisany jednorazowy backtest (`research/backtest-doubleproof.json`, sekcja 6a). Powstaje przy tym samym odświeżeniu, ale tylko gdy pojawi się nowy plik backtestu (czas backtestu pamiętany w Script Properties `BT_DP_AT`) — potem się nie zmienia. Strategie od najwyższego PF doubleProof (mniej niż 10 transakcji — na dole): id, grupa, opis, SL, TP, PF ważony z poszukiwania, PF doubleProof (kolory jak wyżej), transakcji, mediana świec w pozycji, suma wyników %, średni wynik transakcji %, skuteczność (TP), % SL, % FC, % limit, średni wynik FC, PF na ślepo, przewaga, spółek z transakcjami / 20, spółek z PF > 1, okresów z PF > 1, PF w każdym z 4 okresów, a dalej po jednej kolumnie na spółkę doubleProof: suma wyników % (w notatce komórki: liczba transakcji i PF). Tytuł podaje datę backtestu i zakres danych. Tylko do odczytu.
-
-Arkusz **BACKTEST PORTFELA** pokazuje zapisany backtest portfela (`research/portfolio-backtest.json`, sekcja 6b), tworzony tylko przy nowym pliku (Script Properties `BT_PF_AT`): dla każdego wariantu 7 wierszy (grupa główna, skarbiec, doubleProof całość i okresy 1–4) z miarami z 6b, pod spodem pierwszeństwo strategii (miejsce, id, grupa, transakcji i średni wynik na doubleProof, mediana świec w pozycji, szacunek przewagi, waga własnego wyniku, wybrana). Tylko do odczytu.
+**BACKTEST PORTFELA** — zapisany backtest portfela (sekcja 6b), tworzony tylko przy nowym pliku (Script Properties `BT_PF_AT`); usunięty ręcznie nie wraca do czasu nowego backtestu. Dla każdego wariantu 7 wierszy: doubleProof całość i okresy 1–4 (uczciwy obraz), grupa główna i skarbiec (zawyżone).
 
 Przy każdym odświeżeniu `Research.gs` zapisuje też w Script Properties listę strategii aktywnych (`ACTIVE_IDS`) i pierwszeństwo (`PRIORITY`: lista `priority` z backtestu portfela, a bez niego — kolejność wg PF ważonego) — paper trading nie pyta GitHuba przy każdej świecy.
+
+Usunięte w 1.16: arkusze RESEARCH (poszukiwanie wstrzymane), STRATEGIE DOUBLEPROOF i BACKTEST DOUBLEPROOF (ich dane są w STRATEGIE; pliki zostają na branchu `research`).
 
 ---
 
@@ -510,7 +511,7 @@ Przy każdym odświeżeniu `Research.gs` zapisuje też w Script Properties list�
 **Kolejność na każdej nowej świecy K** (świece po kolei, najwyżej 21 naraz przy nadrabianiu; spółka, której świeca K dotarła dopiero po przeliczeniu, nie dostaje sygnału na tej świecy — jej pozycje są prowadzone dalej normalnie):
 1. pozycje inwestora — każda świeca instrumentu po ostatniej obsłużonej: wejście (open świecy po sygnale), potem luka SL/TP → FC → SL → TP → limit (8.6), na koniec FC na zamknięciu,
 2. sygnały wszystkich strategii na świecy K na 53 spółkach,
-3. inwestor otwiera pozycję „oczekuje” dla sygnału strategii z jego listy, jeśli **spółka nie ma żadnej otwartej ani oczekującej pozycji** (dowolnej strategii) — najwyżej jedna pozycja na spółkę; przy kilku sygnałach na tej samej spółce i świecy wygrywa strategia z najwyższym pierwszeństwem (`PRIORITY`, sekcja 6b; strategia spoza listy — na końcu, potem wg ID).
+3. inwestor otwiera pozycję „oczekuje” dla sygnału strategii z jego listy, jeśli spółka ma mniej niż `MAX_PER_TICKER` otwartych/oczekujących pozycji (dowolnych strategii; ustawione: **1**, 0 = bez limitu) i ta strategia nie ma już pozycji na tej spółce; przy kilku sygnałach na tej samej spółce i świecy — w kolejności pierwszeństwa (`PRIORITY`, sekcja 6b; strategia spoza listy — na końcu, potem wg ID).
 4. Kolejność zapisu: SIGNALS-REALTIME i VIRTUAL-INVESTOR, potem pamięć `_IA4_DANE`. Czasy: tabela świec w STATS (4a).
 
 **SIGNALS-REALTIME:** wiersz na każdą przeliczoną świecę, najnowsze na górze: data, numer świecy, zamknięcie (PL), liczba sygnałów, potem pary kolumn ID strategii + ticker. Najwyżej 3000 wierszy.
@@ -518,8 +519,10 @@ Przy każdym odświeżeniu `Research.gs` zapisuje też w Script Properties list�
 **VIRTUAL-INVESTOR:**
 - **wybór strategii: checkbox „for VI” w ostatniej kolumnie arkusza STRATEGIE, bez limitu liczby.** Zaznaczenia są zapamiętywane w Script Properties (`VI_IDS`), bo STRATEGIE jest przepisywany w całości; strategia zaznaczona, która wypadła z aktywnych, zostaje na dole STRATEGIE z dopiskiem „(archiwum)” i dalej działa, dopóki nie odznaczysz. Odznaczenie nie zamyka otwartych pozycji, tylko blokuje nowe. Pierwsze użycie (wersja 1.10) przejmuje ID wpisane ręcznie w VIRTUAL-INVESTOR,
 - A4:B23 — podgląd listy „for VI” (pierwsze 19 + „… i N więcej”), tylko do odczytu,
-- statystyki (D4:E20): kapitał 100 000 $, stawka 100 $ na transakcję, stan konta = kapitał + wynik zamkniętych, wynik zamkniętych $ i % kapitału, wynik otwartych $, stan konta gdyby teraz zamknąć wszystko, wynik całkowity %, wolna gotówka, liczba pozycji, wyjścia TP/SL/FC/limit, skuteczność (TP), średni wynik zamkniętej, mediana świec w pozycji (zamknięte), koszty transakcyjne $,
+- statystyki (D4:E22): kapitał 100 000 $, stawka 100 $ na transakcję, stan konta = kapitał + wynik zamkniętych, wynik zamkniętych $ i % kapitału, wynik otwartych $, stan konta gdyby teraz zamknąć wszystko, wynik całkowity %, wolna gotówka, liczba pozycji, wyjścia TP/SL/FC/limit, skuteczność (TP), średni wynik zamkniętej, mediana świec w pozycji (zamknięte), koszty transakcyjne $, **średni wynik zamkniętej — przedział 95%** (średnia ± 2 × odchylenie / √n), liczy od (data ostatniego „zacznij od nowa”),
 - transakcje od wiersza 28: nr, strategia, ticker, kierunek, sygnał, wejście, cena wejścia, SL, TP, status (oczekuje / otwarta / zamknięta), ostatnia świeca, cena aktualna, wynik % i $, wyjście, cena wyjścia, powód, świec w pozycji. Otwarte na górze.
+- **Menu:** „✅ for VI = strategie wybrane w backteście portfela” — zaznacza dokładnie wybrane (✓ w STRATEGIE), resztę odznacza; „🔄 Wirtualny inwestor — zacznij od nowa” — kasuje wszystkie pozycje i statystyki (po potwierdzeniu), sygnały i strategie bez zmian; data startu w `startedAt`.
+- Po każdym przeliczeniu: wyniki każdej strategii (`VI_BY_STRAT` → STRATEGIE) i podsumowanie (`VI_SUMMARY` → telemetria, pole `vi`).
 - Wynik % jak w 8.6 p. 6 minus koszt: 2 × `COST_PCT` (0,005% przy wejściu i 0,005% przy wyjściu) — dla pozycji otwartych od wersji 1.15 (starsze bez kosztu); wynik $ = 100 $ × wynik %. Pozycje otwarte pokazują wynik netto (po obu kosztach).
 
 **Test zgodności** (po każdej zmianie sekcji 8, `PaperEngine.gs` albo `ia4/lab`):
@@ -534,7 +537,7 @@ Wynik musi brzmieć „rozbieżności: sygnały 0, transakcje 0”.
 
 ### Apps Script — skład
 
-Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `Fx.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min. Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY`, `BT_DP_AT`, `BT_PF_AT`, `CANDLE_LOG`, `FX_STATE`, `ACTIVE_IDS`, `PRIORITY` i inne — nie edytować). Arkusze: STATS, RESEARCH, STRATEGIE, STRATEGIE DOUBLEPROOF, BACKTEST DOUBLEPROOF, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
+Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `Fx.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min. Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY`, `BT_DP_AT`, `BT_PF_AT`, `CANDLE_LOG`, `FX_STATE`, `ACTIVE_IDS`, `PRIORITY`, `VI_BY_STRAT`, `VI_SUMMARY` i inne — nie edytować). Arkusze: STATS, STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
 
 ### Aktualizacja do nowej wersji
 
@@ -545,19 +548,16 @@ Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `
 
 ### Mac — na co dzień
 
-```bash
-# raz: skrót ia4 (4 procesy = ok. połowa mocy M2, Mac się nie przegrzewa)
-echo "alias ia4='cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && python -m ia4.lab --workers 4'" >> ~/.zshrc
-source ~/.zshrc
+Przy wstrzymanym poszukiwaniu Mac **nie jest potrzebny na co dzień** — zbieranie, sygnały i wirtualny inwestor działają w Apps Script. Mac tylko do jednorazowych przeliczeń:
 
-ia4                 # liczy do Ctrl+C (zapisuje stan i wysyła log przed końcem)
-ia4 --hours 4       # liczy 4 godziny
-python -m ia4.lab.verify   # tylko przeliczenie strategii na doubleProof (bez szukania)
-python -m ia4.lab.backtest_dp   # jednorazowy backtest na doubleProof → arkusz BACKTEST DOUBLEPROOF
-python -m ia4.lab.portfolio     # jednorazowy backtest portfela → arkusz BACKTEST PORTFELA + pierwszeństwo w VI
+```bash
+cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate
+python -m ia4.lab.backtest_dp --force   # backtest strategii na doubleProof → kolumny doubleProof w STRATEGIE
+python -m ia4.lab.portfolio --force     # backtest portfela → BACKTEST PORTFELA, pierwszeństwo, „wybrane”
+python -m ia4.lab.selftest              # test silnika
 ```
 
-Opcje: `--hours N`, `--workers N` (domyślnie rdzenie − 1), `--check` (tylko synchronizacja i kontrola bazy), `--no-sync`, `--no-push`. Program można przerwać w dowolnym momencie — wznawia od ostatniego punktu (twarde zamknięcie traci najwyżej 30 min pracy; strategie są wysyłane od razu). Test silnika: `python -m ia4.lab.selftest`.
+Poszukiwanie (gdy zostanie wznowione, `search_closed: false`): `python -m ia4.lab --workers 4` (alias `ia4`); opcje: `--hours N`, `--workers N`, `--check`, `--no-sync`, `--no-push`.
 
 ### Limity Firestore (plan Spark: 20 000 zapisów i 50 000 odczytów na dzień)
 
@@ -598,6 +598,7 @@ cd ~/Desktop/IA4 && git pull
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.16 | 2026-10-05 | Uproszczenie: jeden arkusz STRATEGIE (pierwszeństwo, wybrane, backtest doubleProof, szacunek przewagi, wyniki na żywo, for VI); usunięte arkusze RESEARCH, STRATEGIE DOUBLEPROOF, BACKTEST DOUBLEPROOF; BACKTEST PORTFELA bez listy strategii. Wirtualny inwestor: `MAX_PER_TICKER` (1), przedział 95% średniego wyniku, data startu, menu „for VI = wybrane” i „zacznij od nowa”; wyniki strategii na żywo (`VI_BY_STRAT`) i podsumowanie w telemetrii (`vi`). Mac niepotrzebny na co dzień. Nowy `PRZEWODNIK.md`. |
 | 1.15 | 2026-10-04 | Szybka ścieżka po zamknięciu świecy: czekanie na zamknięcie (+15 s), równoległe pobieranie z Yahoo, jeden zapis do Firestore na rundę, ponowienia brakujących co 10 s, paper trading od razu po komplecie 53 spółek (najpóźniej 3 min po zamknięciu), lista strategii z Script Properties. STATS: blok stanu + tabela świec z czasami od zamknięcia (sekcja 4a), bez tabeli instrumentów i dziennika; czas pracy automatu. Wirtualny inwestor: najwyżej 1 pozycja na spółkę, pierwszeństwo strategii, koszt 0,005% przy wejściu i wyjściu, mediana świec w pozycji, koszty $. Mediana świec w pozycji we wszystkich wynikach (zasada 13). Backtest portfela `python -m ia4.lab.portfolio` → arkusz BACKTEST PORTFELA (sekcja 6b). Nowy moduł EURUSD 5 min (`Fx.gs`, `fx/EURUSD`, sekcja 4b). |
 | 1.14 | 2026-10-03 | Poszukiwanie wstrzymane: nowy klucz `search_closed` w `research/config.json` (ustawiony na `true`) — `ia4.lab` tylko synchronizuje, sprawdza bazę i przelicza weryfikację doubleProof; zostaje 60 aktywnych strategii. Jednorazowy backtest strategii aktywnych na doubleProof: `python -m ia4.lab.backtest_dp` → `research/backtest-doubleproof.json` (zapisany raz) → nowy arkusz BACKTEST DOUBLEPROOF z wynikami każdej strategii i każdej spółki. |
 | 1.13 | 2026-10-02 | Weryfikacja doubleProof: co godzinę pracy `ia4.lab` dociąga nowe świece doubleProof z Firestore i przelicza wszystkie aktywne strategie (wcześniej dane wczytywane tylko przy starcie). |

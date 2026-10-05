@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — zbieranie świec 1h  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 1.15 (2026-10-04) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.16 (2026-10-05) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Jedyne zadanie tego pliku: żeby baza świec w Firestore była kompletna
  *  i rosła każdego dnia. Zasady i format bazy: IA4_INSTRUKCJA.md.
@@ -22,7 +22,7 @@
  *    Dane są wyłącznie w Firestore.
  *
  *  Plik współpracuje z Telemetry.gs (stan → telemetry/state.json w GitHub)
- *  i Research.gs (wyniki poszukiwania z brancha `research` → arkusz RESEARCH)
+ *  i Research.gs (strategie z brancha `research` → arkusze STRATEGIE i BACKTEST PORTFELA)
  *  oraz Paper.gs + PaperEngine.gs (sygnały na żywo i wirtualny inwestor).
  * ============================================================================
  */
@@ -31,7 +31,7 @@
 //  KONFIGURACJA
 // ============================================================================
 const CONFIG = {
-  VERSION: '1.15',
+  VERSION: '1.16',
 
   // Trzy grupy instrumentów — nazwy kolekcji w Firestore są historyczne
   // i zostają bez zmian (instrukcja, sekcja 4).
@@ -162,8 +162,10 @@ function onOpen() {
     .addSeparator()
     .addItem('📡 Wyślij stan do GitHub teraz', 'telemetryPublishNow')
     .addItem('🔑 Ustaw token GitHub', 'telemetrySetToken')
-    .addItem('🔬 Odśwież RESEARCH teraz', 'researchSyncNow')
+    .addItem('🔬 Odśwież STRATEGIE teraz', 'researchSyncNow')
     .addItem('📈 Paper trading — przelicz teraz', 'paperNow')
+    .addItem('✅ for VI = strategie wybrane w backteście portfela', 'viSelectFromBacktest')
+    .addItem('🔄 Wirtualny inwestor — zacznij od nowa', 'viResetNow')
     .addSeparator()
     .addItem('⏹ Zatrzymaj automat', 'stopCollector')
     .addToUi();

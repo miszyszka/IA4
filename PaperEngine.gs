@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — SILNIK REGUŁ ia4-rule/1 w JavaScript (paper trading na żywo)
  *
- *  Wersja projektu: 1.15 (2026-10-04) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.16 (2026-10-05) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Wierne przeniesienie ia4-research/ia4/lab/{indicators,data,rules,sim}.py
  *  (instrukcja, sekcja 8). Każda zmiana tu wymaga tej samej zmiany w Pythonie
