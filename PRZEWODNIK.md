@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.16 (2026-10-05)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.17 (2026-10-07)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
@@ -18,6 +18,7 @@ Mac jest potrzebny tylko do jednorazowych przeliczeń, kiedy Claude o to poprosi
 | **VIRTUAL-INVESTOR** | wynik strategii na żywo — **najważniejszy** | raz dziennie / raz w tygodniu |
 | **STRATEGIE** | lista strategii: wynik w backteście i na żywo, wybór „for VI” | raz w tygodniu |
 | **STATS** | czy automat działa i jak szybko | gdy coś wygląda dziwnie |
+| **FX** | EURUSD: czy działa, ostatni zapis, lista dni (ile świec, czego brakuje) | gdy chcesz sprawdzić EURUSD |
 | SIGNALS-REALTIME | które strategie dały sygnał na której świecy | podgląd, niepotrzebny do decyzji |
 | BACKTEST PORTFELA | jednorazowy raport, z którego wzięły się obecne ustawienia | przeczytać raz; można usunąć |
 | `_IA4_DANE` (ukryty) | pamięć świec i stan inwestora | nie ruszać |
@@ -34,6 +35,14 @@ Pod spodem jest tabela świec: 7 wierszy na dzień, czasy od zamknięcia świecy
 - „75 spółek zapisane” ok. **+0:35**, „Arkusze SIGNALS i VI gotowe” ok. **+0:45** to stan normalny.
 - +3:00 zdarza się, gdy Yahoo spóźni się z jedną spółką (widać ją w kolumnie „Brakujące / błędy”).
 - Jeśli +3:00 lub więcej pojawia się w większości wierszy przez kilka dni, napisz do Claude.
+
+## 3a. FX — EURUSD
+
+- **Działa?** u góry: „✓ TAK” znaczy, że świece przychodzą co 5 min. „⚠ NIE” pojawia się, gdy nowa świeca nie przyszła 5 min po czasie; wtedy sprawdź STATS. W weekend jest „✓”, bo nowa świeca jest spodziewana dopiero w niedzielę wieczorem.
+- **Lista dni:** pełny dzień ma **288** świec. Piątek ma 252, niedziela 36, sobota 0, bo rynek walutowy działa od niedzieli 23:00 do piątku 23:00 czasu polskiego.
+- Dzień, któremu brakuje świec, ma status **„braki — próba n z 3”**. System 3 razy co godzinę próbuje pobrać je ponownie.
+- Jeśli Yahoo ich nie odda, braki są **uśredniane** (kolumna „Uśrednionych”, status „uzupełniony”). Te świece są oznaczone w bazie i nie pochodzą z Yahoo, więc przy analizie można je pominąć.
+- Kilka uśrednionych świec dziennie jest normalne (Yahoo ma przerwy w danych). Dziesiątki uśrednionych świec przez kilka dni z rzędu oznaczają problem; napisz wtedy do Claude.
 
 ## 4. VIRTUAL-INVESTOR — jak czytać wynik
 

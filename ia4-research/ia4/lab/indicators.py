@@ -1,6 +1,6 @@
 """
 IA 4 — średnie kroczące i wskaźniki (definicje: IA4_INSTRUKCJA.md, sekcja 8.2).
-Wersja projektu: 1.16 (2026-10-05) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.17 (2026-10-07) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Każda funkcja dostaje jedną ciągłą serię jednego instrumentu (świece w kolejności
 (date, slot), przez noce i weekendy bez przerw) i zwraca tablicę tej samej

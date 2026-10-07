@@ -1,6 +1,6 @@
 # telemetry/
 
-**Wersja projektu: 1.16 (2026-10-05)**
+**Wersja projektu: 1.17 (2026-10-07)**
 
 `state.json` — najnowszy stan zbierania danych. Zapisuje go `Telemetry.gs`
 z Apps Script (co godzinę, tylko gdy coś się zmieniło). Nie edytuj ręcznie.
@@ -13,5 +13,6 @@ base               łączna liczba świec w Firestore (liczona po nocnym odświe
 doubleProofHistory postęp pobierania historii doubleProof (instrukcja, sekcja 4 p. 5)
 instruments        dla każdego: grupa, ostatnia świeca, close, liczba świec, pierwsza data, status
 lastCandle         ostatnia świeca z tabeli STATS: czasy od zamknięcia (s), zapisanych, brakujące, rundy, czasy etapów (ms)
-fx                 moduł EURUSD: ostatnia świeca, opóźnienia (s) dziś, brakujące, od kiedy baza (instrukcja 4b)
+fx                 moduł EURUSD: ostatnia świeca i zapis, opóźnienia (s) dziś, brakujące, wczoraj, kolejka kontroli dni (instrukcja 4b)
+vi                 wirtualny inwestor: od kiedy, zamkniętych, otwartych, średni wynik, przedział 95%, wynik $
 ```

@@ -1,7 +1,7 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.16
-**Data:** 5 października 2026
+**Wersja:** 1.17
+**Data:** 7 października 2026
 **Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca. Poszukiwanie wstrzymane 3.10.2026 (`search_closed: true`) — zostaje 60 aktywnych strategii. Od 4.10.2026 moduł EURUSD zbiera świece 5-minutowe (sekcja 4b). Jak czytać arkusze i wyciągać wnioski: `PRZEWODNIK.md`.
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jeśli kod, arkusz albo telemetria się z nim rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba naprawić.
@@ -23,7 +23,7 @@ Historia wcześniejszych prac (strategie S1/S2, backtesty, etapy 0–5) jest w h
 ## 2. Żelazne zasady
 
 1. **Firestore jest jedynym źródłem danych.** Kopia na Macu (`ia4-research/data/`) to tylko kopia robocza — można ją skasować i odtworzyć. Python nigdy nie pobiera świec z Yahoo i nigdy nie pisze do Firestore.
-2. **Baza tylko rośnie.** Zapisujemy wyłącznie zamknięte świece. Niczego nie kasujemy. Wolno przepisać sesję tylko danymi pobranymi ponownie z Yahoo (nocne odświeżenie, „Uzupełnij ostatni miesiąc”).
+2. **Baza tylko rośnie.** Zapisujemy wyłącznie zamknięte świece. Niczego nie kasujemy. Wolno przepisać sesję tylko danymi pobranymi ponownie z Yahoo (nocne odświeżenie, „Uzupełnij ostatni miesiąc”). Jedyny wyjątek: moduł EURUSD uzupełnia świece, których Yahoo nie oddało po 3 próbach, uśrednieniem — zawsze oznaczonym w dokumencie (`fillT`, sekcja 4b).
 3. **Format bazy (sekcja 4) jest stały.** Każda jego zmiana wymaga najpierw zmiany tej instrukcji, zgody człowieka i opisu migracji istniejących danych.
 4. **Skarbiec = najstarsze 800 świec każdego instrumentu** (sekcja 6). Poszukiwanie nigdy nie widzi wyników skarbca. Skarbiec otwiera wyłącznie bramka skarbca, dla strategii, która przeszła wszystkie sita grupy głównej. Każde otwarcie jest liczone i zapisywane.
 5. **Sekrety nigdy nie trafiają do repozytorium:** klucz serwisowy Firebase (`~/.ia4/serviceAccount.json`) i token GitHub (Script Properties → `GITHUB_TOKEN`).
@@ -181,26 +181,38 @@ Spółka, której świeca dojdzie w późniejszym uruchomieniu, uzupełnia ten s
 
 ### 4b. Moduł EURUSD (`Fx.gs`)
 
-Osobny moduł: na razie **tylko zbiera** świece 5-minutowe kursu EURUSD. Nie bierze udziału w poszukiwaniu, weryfikacji, paper tradingu ani w kopii na Macu. Obowiązują go zasady 2.1–2.3 (Firestore jedynym źródłem, baza tylko rośnie, format stały).
+Osobny moduł: **zbiera** świece 5-minutowe kursu EURUSD. Nie bierze udziału w poszukiwaniu, weryfikacji, paper tradingu ani w kopii na Macu. Obowiązują go zasady 2.1–2.3 z jednym wyjątkiem (uśrednione świece, niżej).
 
-- **Źródło:** Yahoo `EURUSD=X`, `interval=5m`. Yahoo trzyma świece 5 min tylko 60 dni wstecz, więc historia zaczyna się 59 dni przed startem modułu i rośnie od tego dnia. Ceny Yahoo dla walut są orientacyjne; wolumen Yahoo podaje zawsze 0 — nie jest zapisywany.
+- **Źródło:** Yahoo `EURUSD=X`, `interval=5m`. Yahoo trzyma świece 5 min tylko 60 dni wstecz, więc historia zaczyna się 59 dni przed startem modułu (pierwszy dzień bazy jest niepełny) i rośnie od tego dnia. Ceny Yahoo dla walut są orientacyjne; wolumen Yahoo podaje zawsze 0 — nie jest zapisywany.
 - **Świeca:** 5 minut, opisana czasem początku w UTC (wielokrotność 5 min). Zapisujemy tylko świece zamknięte. Ceny zaokrąglone do 6 miejsc.
+- **Godziny rynku:** od niedzieli 17:00 do piątku 17:00 czasu Nowego Jorku. **Oczekiwane świece dnia (UTC)** = świece, których początek wypada w tych godzinach: pon.–czw. **288**, piątek 252 (latem; zimą 264), niedziela 36 (zimą 24), sobota 0.
 - **Format w Firestore:**
   ```
   fx/EURUSD/days/{RRRR-MM-DD}     jeden dokument na dzień UTC
-    symbol ("EURUSD"), date, bars (liczba świec), t [] (minuta dnia UTC początku świecy: 0, 5, … 1435),
-    o [], h [], l [], c [], updatedAt          (tablice równoległe)
+    symbol ("EURUSD"), date, bars (świec razem, z uśrednionymi),
+    t [] (minuta dnia UTC początku świecy: 0, 5, … 1435), o [], h [], l [], c []   (tablice równoległe),
+    expected (oczekiwanych), missing (brakujących), filled (uśrednionych),
+    fillT [] (minuty świec uśrednionych — NIE pochodzą z Yahoo), tries (próby kontroli),
+    status ("dzień trwa", "do kontroli", "braki — próba n z 3", "kompletny",
+            "uzupełniony: N świec uśrednionych", "brak danych z Yahoo — nie uzupełniono",
+            "pierwszy dzień bazy — od HH:MM UTC"), updatedAt
   fx/EURUSD                       podsumowanie: symbol, yahoo ("EURUSD=X"), interval ("5m"),
                                   lastDate, lastTime (HH:MM UTC), lastClose, liveUpdatedAt
   ```
-- **Kiedy:** w każdym uruchomieniu `runCollector` (co minutę) i co 10 s w szybkiej ścieżce akcji — jeden trigger dla całego automatu (dzienny limit czasu triggerów). Yahoo jest pytane tylko wtedy, gdy powinna już być zamknięta świeca nowsza niż ostatnia zapisana (+5 s), i tylko w godzinach rynku walutowego: niedziela 17:00 – piątek 17:00 czasu Nowego Jorku (z zapasem). Pobranie od początku dnia UTC ostatniej zapisanej świecy; dokument dnia z nową świecą przepisywany w całości.
-- **Historia:** przy pierwszym uruchomieniu jedno pobranie ostatnich 59 dni (po błędzie — ponowienie co 30 min).
-- **Dzienne odświeżenie:** raz na dobę po 00:20 UTC cały wczorajszy dzień od nowa (łapie poprawki i braki Yahoo).
-- **Opóźnienie świecy** = chwila potwierdzenia zapisu w Firestore − zamknięcie świecy (początek + 5 min). Zależy od sekundy, w której startuje trigger (0–60 s) i od Yahoo. **Brakujące świece** = przerwy dłuższe niż 5 min w obrębie dnia (bez przerwy weekendowej).
-- **STATS** (3 wiersze bloku stanu): ostatnia świeca (UTC i PL, close); opóźnienie ostatniej świecy oraz dziś (UTC): mediana, 90. percentyl, maksimum; dziś: świec, brakujących, wczoraj (po odświeżeniu), od kiedy baza. Telemetria: pole `fx`.
-- Stan: Script Properties `FX_STATE`. Ręcznie: menu IA 4 → „EURUSD — pobierz teraz”.
-
-**Raz w roku (grudzień):** dopisać święta NYSE na kolejny rok do `US_MARKET_HOLIDAYS` w `Code.gs` oraz święta i sesje skrócone do `ia4-research/ia4/lab/check.py`.
+  Dokumenty sprzed 1.17 nie mają pól `expected`…`status` — pierwsze uruchomienie 1.17 przelicza je w rejestrze (niżej) i planuje kontrolę dni z brakami.
+- **Na żywo:** w każdym uruchomieniu `runCollector` (co minutę) i co 10 s w szybkiej ścieżce akcji — jeden trigger dla całego automatu (dzienny limit czasu triggerów). Yahoo jest pytane tylko wtedy, gdy powinna już być zamknięta świeca nowsza niż ostatnia zapisana (+5 s), i tylko w godzinach rynku (z zapasem 5 min). Pobranie od początku dnia UTC ostatniej zapisanej świecy; dokument dnia z nową świecą przepisywany w całości (status „dzień trwa”).
+- **Kontrola zakończonego dnia** (zamiast dawnego dziennego odświeżenia): od 00:20 UTC wczorajszy dzień trafia do kolejki (`FX_CHECK`; sobota — nie). **Próba** = świece z Firestore + cały dzień pobrany z Yahoo na nowo (z zapasem ±1 h; świeże z Yahoo wygrywają) → braki liczone od nowa. Do **3 prób co 60 min**; najwyżej 2 dni na jedno uruchomienie.
+  - brak braków → „kompletny”,
+  - po 3 próbach z brakami → **uśrednienie**, jeśli dzień ma co najmniej połowę oczekiwanych świec z Yahoo; inaczej „brak danych z Yahoo — nie uzupełniono” (np. święto),
+  - dni starsze niż 58 dni (Yahoo ich już nie odda) — od razu uśrednienie,
+  - dzień z wynikiem końcowym wypada z kolejki i nie jest już zmieniany.
+- **Uśrednienie** (interpolacja liniowa): dla brakującej świecy t — najbliższa świeca przed (P) i po (N), także z sąsiedniego dnia. Cena biegnie liniowo od zamknięcia P do otwarcia N: open = wartość w chwili t, close = w chwili t + 5 min, high/low = większa/mniejsza z nich. Tylko P albo tylko N — świeca płaska na tej cenie. Świece uśrednione są zawsze w `fillT`; analiza może je pominąć.
+- **Opóźnienie świecy** = chwila potwierdzenia zapisu w Firestore − zamknięcie świecy (początek + 5 min).
+- **Arkusz FX** (zapisywany tylko przy zmianie — nowa świeca albo próba kontroli; układ budowany sam):
+  - stan: **Działa?** — formuła arkusza, liczona co minutę także wtedy, gdy skrypt stanął: „✓ TAK”, a gdy świeca nie przyszła 5 min po spodziewanym czasie — „⚠ NIE”; ostatnia świeca (UTC i PL, close), ostatni zapis (PL), następna świeca spodziewana do (zamknięcie kolejnej świecy + 2 min; przy zamkniętym rynku — od otwarcia w niedzielę), opóźnienie zapisu (ostatnia, dziś: mediana i maksimum), dziś (świec / oczekiwanych do teraz / brakuje), dni w bazie i dni czekające na kolejną próbę,
+  - **lista dni** (UTC, najnowsze na górze, każdy dzień od pierwszego dnia bazy, także soboty): data, dzień tygodnia, świec z Yahoo, uśrednionych, razem, oczekiwanych, brakuje, próby pobrania, status, aktualizacja.
+- **STATS** (3 wiersze bloku stanu) i telemetria (pole `fx`: ostatnia świeca i zapis, opóźnienia, wczoraj, kolejka kontroli).
+- Stan: Script Properties `FX_STATE`, `FX_CHECK`. Ręcznie: menu IA 4 → „EURUSD — pobierz teraz”, „EURUSD — przelicz arkusz FX” (rejestr dni i arkusz od nowa z Firestore, ok. 1 odczyt na dzień bazy).
 
 ---
 
@@ -537,7 +549,7 @@ Wynik musi brzmieć „rozbieżności: sygnały 0, transakcje 0”.
 
 ### Apps Script — skład
 
-Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `Fx.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min. Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY`, `BT_DP_AT`, `BT_PF_AT`, `CANDLE_LOG`, `FX_STATE`, `ACTIVE_IDS`, `PRIORITY`, `VI_BY_STRAT`, `VI_SUMMARY` i inne — nie edytować). Arkusze: STATS, STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
+Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `Fx.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min. Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY`, `BT_DP_AT`, `BT_PF_AT`, `CANDLE_LOG`, `FX_STATE`, `FX_CHECK`, `ACTIVE_IDS`, `PRIORITY`, `VI_BY_STRAT`, `VI_SUMMARY` i inne — nie edytować). Arkusze: STATS, FX, STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
 
 ### Aktualizacja do nowej wersji
 
@@ -564,7 +576,7 @@ Poszukiwanie (gdy zostanie wznowione, `search_closed: false`): `python -m ia4.la
 | Część | Zapisy | Odczyty |
 |---|---|---|
 | zbieranie na żywo (75 instrumentów, 7 świec) | ok. 1100 / dzień | — |
-| moduł EURUSD (świeca 5 min: dokument dnia + podsumowanie) | ok. 580 / dzień (rynek otwarty), historia ok. 60 raz | — |
+| moduł EURUSD (świeca 5 min: dokument dnia + podsumowanie; kontrola dnia) | ok. 580 / dzień (rynek otwarty) + do 3 na dzień kontroli, historia ok. 60 raz | do 3 / dzień; „przelicz arkusz FX” ok. 1 na dzień bazy |
 | nocne odświeżenie + liczenie bazy | ok. 550 / noc | ok. 150 / noc |
 | historia doubleProof (do zakończenia) | najwyżej 8000 / dzień | — |
 | „Konfiguruj” / „Uzupełnij ostatni miesiąc” | ok. 2500 / raz | — |
@@ -598,6 +610,7 @@ cd ~/Desktop/IA4 && git pull
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.17 | 2026-10-07 | Moduł EURUSD: oczekiwane świece dnia wg godzin rynku (288 / pt 252 / nd 36 / sob 0); kontrola każdego zakończonego dnia — do 3 prób pobrania braków co 60 min, potem uśrednienie (interpolacja liniowa, oznaczone w `fillT`) — wyjątek w zasadzie 2; nowe pola dokumentu dnia (`expected`, `missing`, `filled`, `fillT`, `tries`, `status`); nowy arkusz FX (czy działa, ostatni zapis, lista wszystkich dni); menu „EURUSD — przelicz arkusz FX”; dzienne odświeżenie wczorajszego dnia zastąpione kontrolą. |
 | 1.16 | 2026-10-05 | Uproszczenie: jeden arkusz STRATEGIE (pierwszeństwo, wybrane, backtest doubleProof, szacunek przewagi, wyniki na żywo, for VI); usunięte arkusze RESEARCH, STRATEGIE DOUBLEPROOF, BACKTEST DOUBLEPROOF; BACKTEST PORTFELA bez listy strategii. Wirtualny inwestor: `MAX_PER_TICKER` (1), przedział 95% średniego wyniku, data startu, menu „for VI = wybrane” i „zacznij od nowa”; wyniki strategii na żywo (`VI_BY_STRAT`) i podsumowanie w telemetrii (`vi`). Mac niepotrzebny na co dzień. Nowy `PRZEWODNIK.md`. |
 | 1.15 | 2026-10-04 | Szybka ścieżka po zamknięciu świecy: czekanie na zamknięcie (+15 s), równoległe pobieranie z Yahoo, jeden zapis do Firestore na rundę, ponowienia brakujących co 10 s, paper trading od razu po komplecie 53 spółek (najpóźniej 3 min po zamknięciu), lista strategii z Script Properties. STATS: blok stanu + tabela świec z czasami od zamknięcia (sekcja 4a), bez tabeli instrumentów i dziennika; czas pracy automatu. Wirtualny inwestor: najwyżej 1 pozycja na spółkę, pierwszeństwo strategii, koszt 0,005% przy wejściu i wyjściu, mediana świec w pozycji, koszty $. Mediana świec w pozycji we wszystkich wynikach (zasada 13). Backtest portfela `python -m ia4.lab.portfolio` → arkusz BACKTEST PORTFELA (sekcja 6b). Nowy moduł EURUSD 5 min (`Fx.gs`, `fx/EURUSD`, sekcja 4b). |
 | 1.14 | 2026-10-03 | Poszukiwanie wstrzymane: nowy klucz `search_closed` w `research/config.json` (ustawiony na `true`) — `ia4.lab` tylko synchronizuje, sprawdza bazę i przelicza weryfikację doubleProof; zostaje 60 aktywnych strategii. Jednorazowy backtest strategii aktywnych na doubleProof: `python -m ia4.lab.backtest_dp` → `research/backtest-doubleproof.json` (zapisany raz) → nowy arkusz BACKTEST DOUBLEPROOF z wynikami każdej strategii i każdej spółki. |

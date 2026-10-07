@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — PAPER TRADING  (sygnały na żywo + wirtualny inwestor)
  *
- *  Wersja projektu: 1.16 (2026-10-05) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.17 (2026-10-07) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Po zamknięciu każdej świecy, gdy automat zapisał ją do Firestore:
  *   1. dociąga nowe świece z Firestore do pamięci (ukryty arkusz _IA4_DANE,
