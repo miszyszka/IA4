@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — MODUŁ EURUSD  (Yahoo EURUSD=X, świece 5 min → Firestore fx/EURUSD → arkusz FX)
  *
- *  Wersja projektu: 1.17 (2026-10-07) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.18 (2026-10-08) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Osobny moduł (instrukcja, sekcja 4b): zbiera dane. Nie bierze udziału
  *  w poszukiwaniu, weryfikacji ani paper tradingu.
@@ -15,8 +15,9 @@
  *    jest przepisywany w całości przy każdej nowej świecy.
  *  • Kontrola dnia (po jego końcu, od 00:20 UTC): do 3 prób pobrania całego dnia
  *    co 60 min; braki, których Yahoo nie odda, są uzupełniane interpolacją liniową
- *    między sąsiednimi świecami i oznaczane (fillT) — dzień jest wtedy zamknięty.
- *  • Arkusz FX: stan (czy działa, ostatni zapis) + lista wszystkich dni.
+ *    między sąsiednimi świecami i oznaczane (fillT) — każdy dzień kończy się kompletny.
+ *  • Arkusz FX: jeden wiersz na dzień — oczekiwanych, zapisanych, w tym uśrednionych —
+ *    dopisywany po kontroli zakończonego dnia.
  *  Stan: Script Properties FX_STATE (bieżący) i FX_CHECK (dni czekające na kolejną próbę).
  * ============================================================================
  */
@@ -32,19 +33,13 @@ const FX = {
   CHECK_TRIES: 3,               // tyle prób pobrania brakujących świec
   CHECK_EVERY_MIN: 60,          // odstęp między próbami
   CHECK_PER_RUN: 2,             // najwyżej tyle dni kontrolowanych w jednym uruchomieniu
-  FILL_MIN_SHARE: 0.5,          // uzupełniamy tylko dzień, który ma co najmniej połowę świec z Yahoo
   OPEN_DOW: 7, OPEN_MIN: 17 * 60,         // rynek walutowy: od niedzieli 17:00 ET…
   CLOSE_DOW: 5, CLOSE_MIN: 17 * 60,       // …do piątku 17:00 ET
   MARGIN_MIN: 5,                // zapas przy pytaniu Yahoo na granicach tygodnia
-  STALE_MIN: 5,                 // arkusz FX: „⚠”, gdy świeca nie przyszła tyle minut po spodziewanym zapisie
   SHEET: 'FX',
-  TABLE_ROW: 13,                // nagłówek listy dni
 };
 
-const FX_STATUS_LABELS = ['Działa?', 'Ostatnia świeca (UTC)', 'Ostatnia świeca (PL)', 'Ostatni zapis (PL)',
-  'Następna świeca spodziewana do (PL)', 'Opóźnienie zapisu', 'Dziś (UTC)', 'Dni w bazie'];
-const FX_COLS = ['Data (UTC)', 'Dzień', 'Świec z Yahoo', 'Uśrednionych', 'Razem', 'Oczekiwanych',
-  'Brakuje', 'Próby pobrania', 'Status', 'Aktualizacja (PL)'];
+const FX_COLS = ['Data (UTC)', 'Dzień', 'Oczekiwanych świec', 'Zapisanych świec', 'w tym uśrednionych'];
 const FX_DOW = ['', 'pn', 'wt', 'śr', 'czw', 'pt', 'sob', 'nd'];
 
 function fxStateLoad_() { return JSON.parse(PropertiesService.getScriptProperties().getProperty('FX_STATE') || '{}'); }
@@ -73,7 +68,7 @@ function fxMarketOpen_(now) { return fxSlotOpen_(now.getTime() / 1000, FX.MARGIN
  * liczone raz na dzień (w południe UTC) — zmiana czasu w USA przypada na niedzielę rano,
  * gdy rynek walutowy jest zamknięty. upTo — tylko świece zamknięte przed tą chwilą (s).
  */
-function fxExpected_(date, upTo) {
+function fxExpected_(date, upTo, fromT) {
   const t0 = fxDayStart_(date);
   const noon = new Date((t0 + 43200) * 1000);
   const off = minutesOf_(noon, CONFIG.MARKET_TZ) - 12 * 60;            // ET − UTC w minutach (−240 / −300)
@@ -82,6 +77,7 @@ function fxExpected_(date, upTo) {
   for (let i = 0; i < 288; i++) {
     const t = t0 + i * FX.STEP_SEC;
     if (upTo && t + FX.STEP_SEC > upTo) break;
+    if (fromT && t < fromT) continue;                         // pierwszy dzień bazy: od pierwszej świecy
     let min = i * 5 + off, dow = dowUtc;
     if (min < 0) { min += 1440; dow = dow === 1 ? 7 : dow - 1; }
     let open = true;
@@ -94,12 +90,12 @@ function fxExpected_(date, upTo) {
 }
 
 /** Podsumowanie dnia: świece z Yahoo, uśrednione, oczekiwane, brakujące. */
-function fxDayInfo_(date, realT, fillT, upTo) {
+function fxDayInfo_(date, realT, fillT, upTo, fromT) {
   const have = {};
   realT.forEach(t => { have[t] = 1; });
   fillT.forEach(t => { have[t] = 1; });
-  const fullExp = fxExpected_(date).length;
-  const exp = upTo ? fxExpected_(date, upTo) : fxExpected_(date);
+  const fullExp = fxExpected_(date, 0, fromT).length;
+  const exp = fxExpected_(date, upTo || 0, fromT);
   return { real: realT.length, filled: fillT.length, total: realT.length + fillT.length, expected: fullExp,
            missing: exp.filter(t => !have[t]).length, missingT: exp.filter(t => !have[t]) };
 }
@@ -117,7 +113,7 @@ function fxIfDue_(force) {
     return fxHistory_(st);
   }
   const msgs = [];
-  if (st.scanV !== 2) { msgs.push(fxScan_(st)); }          // 1.17: rejestr dni i arkusz FX z istniejących danych
+  if (st.scanV !== 3) { msgs.push(fxScan_(st)); }          // 1.18: rejestr dni i arkusz FX z istniejących danych
   const nextClose = (st.last + 2 * FX.STEP_SEC) * 1000;    // zamknięcie świecy następnej po ostatniej zapisanej
   const due = now >= nextClose + FX.FIRST_FETCH_SEC * 1000 && fxMarketOpen_(new Date(now));
   if (force || due) msgs.push(fxLive_(st));
@@ -159,7 +155,7 @@ function fxDocName_(date) { return `${fsBase_()}/fx/${FX.NAME}/days/${date}`; }
 function fxDayWrite_(date, real, fill, meta, nowIso) {
   const all = real.concat(fill).sort((a, b) => a.t - b.t);
   const t0 = fxDayStart_(date);
-  const info = fxDayInfo_(date, real.map(b => b.t), fill.map(b => b.t), meta.upTo);
+  const info = fxDayInfo_(date, real.map(b => b.t), fill.map(b => b.t), meta.upTo, meta.fromT);
   const arr = (vals, int) => ({ arrayValue: { values: vals.map(v => int ? { integerValue: String(v) } : { doubleValue: v }) } });
   const write = {
     update: {
@@ -274,10 +270,6 @@ function fxLive_(st) {
   st.lastClose = fresh[fresh.length - 1].c;
   st.lastWriteAt = new Date(at).toISOString();
   fxStateSave_(st);
-  try {
-    res.forEach(r => fxSheetRow_(r.write.update.fields.date.stringValue, r.info, 0, r.write.update.fields.status.stringValue));
-    fxSheetStatus_(st);
-  } catch (e) { console.warn('FX arkusz: ' + e.message); }
   return `EURUSD: +${fresh.length} świec`;
 }
 
@@ -292,7 +284,7 @@ function fxCheckIfDue_(st) {
   if (st.checkedDay !== today && now.getUTCHours() * 60 + now.getUTCMinutes() >= FX.CHECK_AFTER_MIN) {
     const y = fxDay_(now.getTime() / 1000 - 86400);
     if (fxExpected_(y).length) { if (!chk[y]) chk[y] = { tries: 0, next: 0 }; }       // sobota: bez kontroli i bez dokumentu
-    else { try { fxSheetRow_(y, fxDayInfo_(y, [], []), 0, 'weekend — brak handlu'); } catch (e) { console.warn('FX arkusz: ' + e.message); } }
+    else { try { fxSheetRow_(y, fxDayInfo_(y, [], [])); } catch (e) { console.warn('FX arkusz: ' + e.message); } }
     st.checkedDay = today;
     fxStateSave_(st);
     fxCheckSave_(chk);
@@ -309,14 +301,14 @@ function fxCheckIfDue_(st) {
     }
   });
   fxCheckSave_(chk);
-  try { fxSheetStatus_(fxStateLoad_()); } catch (e) { console.warn('FX arkusz: ' + e.message); }
   return out.filter(x => x).join(' · ');
 }
 
 /**
  * Jedna próba dla dnia d: świece z Firestore + świeże z Yahoo (Yahoo wygrywa), braki liczone na nowo.
- * Brak braków → „kompletny”. Po CHECK_TRIES próbach z brakami → uśrednienie (gdy jest co najmniej
- * połowa świec z Yahoo) albo „brak danych z Yahoo”. Dzień zamknięty wypada z FX_CHECK.
+ * Brak braków → „kompletny”. Po CHECK_TRIES próbach z brakami → uśrednienie, tak żeby dzień był
+ * kompletny. Dzień zamknięty wypada z FX_CHECK i dopiero wtedy dostaje wiersz w arkuszu FX.
+ * Pierwszy dzień bazy (zaczyna się w połowie — granica historii Yahoo) liczony od swojej pierwszej świecy.
  */
 function fxCheckDay_(d, chk) {
   const c = chk[d];
@@ -333,35 +325,29 @@ function fxCheckDay_(d, chk) {
     anchors = got.filter(b => b.t < t0 || b.t >= t0 + 86400);
   }
   const real = Object.keys(byT).map(Number).sort((a, b) => a - b).map(t => byT[t]);
-  c.tries = old ? FX.CHECK_TRIES : c.tries + 1;
-  let info = fxDayInfo_(d, real.map(b => b.t), []);
+  c.tries = old ? Math.max(c.tries + 1, FX.CHECK_TRIES) : c.tries + 1;
+  const fromT = (d === fxStateLoad_().first && real.length) ? real[0].t : 0;
+  const info = fxDayInfo_(d, real.map(b => b.t), [], 0, fromT);
   let fill = [], status;
-  const first = fxStateLoad_().first;
   if (!info.expected) status = 'weekend — brak handlu';
-  else if (d === first && real.length) status = fxFirstDayStatus_(real[0].t);
   else if (!info.missing) status = 'kompletny';
   else if (c.tries < FX.CHECK_TRIES) {
     status = `braki — próba ${c.tries} z ${FX.CHECK_TRIES}`;
     c.next = Date.now() + FX.CHECK_EVERY_MIN * 60000;
-  } else if (real.length >= FX.FILL_MIN_SHARE * info.expected) {
-    fill = fxFill_(real.concat(anchors), info.missingT);
-    status = `uzupełniony: ${fill.length} świec uśrednionych`;
   } else {
-    status = 'brak danych z Yahoo — nie uzupełniono';
+    fill = fxFill_(real.concat(anchors), info.missingT);
+    status = fill.length === info.missing ? `uzupełniony: ${fill.length} świec uśrednionych`
+      : 'brak danych z Yahoo — nie da się uśrednić (brak świec obok)';
   }
   const nowIso = new Date().toISOString();
-  const res = fxDayWrite_(d, real, fill, { tries: c.tries, status }, nowIso);
+  const res = fxDayWrite_(d, real, fill, { tries: c.tries, status, fromT }, nowIso);
   firestoreCommit_([res.write]);
-  if (status.indexOf('braki') !== 0) delete chk[d];
+  const final = status.indexOf('braki') !== 0;
+  if (final) delete chk[d];
   const st = fxStateLoad_();
   if (d === fxDay_(nowSec - 86400)) { st.yesterday = { date: d, bars: res.info.total, missing: res.info.missing, filled: fill.length, status }; fxStateSave_(st); }
-  try { fxSheetRow_(d, res.info, c.tries, status); } catch (e) { console.warn('FX arkusz: ' + e.message); }
+  if (final) { try { fxSheetRow_(d, res.info); } catch (e) { console.warn('FX arkusz: ' + e.message); } }
   return `EURUSD ${d}: ${status}`;
-}
-
-/** Pierwszy dzień bazy zaczyna się w połowie (granica historii Yahoo) — nie jest ani kontrolowany, ani uzupełniany. */
-function fxFirstDayStatus_(t) {
-  return `pierwszy dzień bazy — od ${Utilities.formatDate(new Date(t * 1000), 'UTC', 'HH:mm')} UTC`;
 }
 
 /**
@@ -393,7 +379,10 @@ function fxFill_(known, missingT) {
 // ============================================================================
 //  REJESTR DNI Z FIRESTORE (pierwsze uruchomienie 1.17 i menu „przelicz arkusz FX”)
 // ============================================================================
-/** Czyta wszystkie dni z Firestore, buduje arkusz FX i planuje kontrolę dni z brakami bez statusu końcowego. */
+/**
+ * Czyta wszystkie dni z Firestore, buduje arkusz FX (tylko dni zakończone i sprawdzone) i planuje kontrolę
+ * dni, które nie są kompletne: bez statusu końcowego, z brakami albo bez dokumentu.
+ */
 function fxScan_(st) {
   const res = firestorePost_(`${fsBase_()}/fx/${FX.NAME}:runQuery`, { structuredQuery: {
     from: [{ collectionId: 'days' }],
@@ -406,31 +395,32 @@ function fxScan_(st) {
     const f = it.document && it.document.fields;
     if (!f) return;
     const d = f.date.stringValue;
+    if (d >= today) return;
     const t0 = fxDayStart_(d);
     const num = v => Number(v.integerValue !== undefined ? v.integerValue : v.doubleValue);
     const arr = k => ((f[k] && f[k].arrayValue && f[k].arrayValue.values) || []).map(num);
     const fillT = arr('fillT').map(m => t0 + m * 60);
     const isFill = {};
     fillT.forEach(t => { isFill[t] = 1; });
-    const realT = arr('t').map(m => t0 + m * 60).filter(t => !isFill[t]);
-    const info = fxDayInfo_(d, realT, fillT, d === today ? nowSec : 0);
-    let status = f.status ? f.status.stringValue : '';
+    const realT = arr('t').map(m => t0 + m * 60).filter(t => !isFill[t]).sort((a, b) => a - b);
+    const fromT = (d === st.first && realT.length) ? realT[0] : 0;
+    const info = fxDayInfo_(d, realT, fillT, 0, fromT);
     const tries = f.tries ? num(f.tries) : 0;
-    const final = /^(kompletny|uzupełniony|weekend|brak danych)/.test(status);
-    if (d === today) status = 'dzień trwa';
-    else if (d === st.first && realT.length) status = fxFirstDayStatus_(realT[0]);
-    else if (!final) {
-      if (!info.expected) status = 'weekend — brak handlu';
-      else if (!info.missing) status = 'kompletny';
-      else { status = status || 'do kontroli'; if (!chk[d]) chk[d] = { tries, next: 0 }; }
-    }
-    days[d] = { info, tries, status };
+    if (info.missing) { if (!chk[d]) chk[d] = { tries, next: 0 }; return; }
+    days[d] = info;
   });
+  // dni robocze bez dokumentu — też do kontroli; soboty — wiersz 0 / 0
+  const last = fxDay_(nowSec - 86400);
+  for (let t = fxDayStart_(st.first || last); fxDay_(t) <= last; t += 86400) {
+    const d = fxDay_(t);
+    if (days[d] || chk[d]) continue;
+    if (fxExpected_(d).length) chk[d] = { tries: 0, next: 0 };
+    else days[d] = fxDayInfo_(d, [], []);
+  }
   fxCheckSave_(chk);
-  fxSheetRebuild_(days, st.first);
-  st.scanV = 2;
+  fxSheetRebuild_(days);
+  st.scanV = 3;
   fxStateSave_(st);
-  fxSheetStatus_(st);
   const n = Object.keys(chk).length;
   return `EURUSD: rejestr ${Object.keys(days).length} dni` + (n ? `, do kontroli ${n}` : '');
 }
@@ -468,118 +458,50 @@ function fxNow() {
 function fxSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sh = ss.getSheetByName(FX.SHEET);
-  if (sh && sh.getRange(FX.TABLE_ROW, 1).getValue() === FX_COLS[0]) return sh;
+  if (sh && sh.getRange(1, 1).getValue() === FX_COLS[0] && sh.getRange(1, FX_COLS.length).getValue() === FX_COLS[FX_COLS.length - 1]) return sh;
   if (!sh) sh = ss.insertSheet(FX.SHEET);
   sh.clear();
   sh.clearConditionalFormatRules();
-  const W = FX_COLS.length;
-  if (sh.getMaxColumns() < W) sh.insertColumnsAfter(sh.getMaxColumns(), W - sh.getMaxColumns());
+  sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).breakApart();
   sh.setTabColor('#0b8043');
-  sh.getRange(1, 1, 1, W).merge().setValue('IA 4 — EURUSD 5 min (Yahoo EURUSD=X → Firestore fx/EURUSD)')
-    .setFontSize(14).setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff');
-  sh.getRange(3, 1, FX_STATUS_LABELS.length, 1).setValues(FX_STATUS_LABELS.map(x => [x])).setFontWeight('bold').setBackground('#f1f3f4');
-  sh.getRange(3, 2, FX_STATUS_LABELS.length, 1).setNumberFormat('@');
-  sh.getRange(6, 2, 2, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
-  // „Działa?” liczy arkusz sam (co minutę), więc pokazuje problem także wtedy, gdy skrypt stanął
-  sh.getRange(3, 2).setFormula(`=IF(B7="","",IF(NOW()>B7+${FX.STALE_MIN}/1440,"⚠ NIE — brak nowej świecy od "&TEXT(NOW()-B6,"[h]:mm")&" (sprawdź STATS i trigger)","✓ TAK — świece przychodzą na bieżąco"))`);
-  sh.getRange(FX.TABLE_ROW - 1, 1, 1, W).merge()
-    .setValue('DNI (UTC) — najnowsze na górze. Pełny dzień ma 288 świec; piątek i niedziela mniej (rynek otwarty od niedzieli 17:00 do piątku 17:00 czasu Nowego Jorku), sobota — 0.')
-    .setFontWeight('bold').setBackground('#202124').setFontColor('#ffffff').setWrap(true);
-  sh.getRange(FX.TABLE_ROW, 1, 1, W).setValues([FX_COLS]).setFontWeight('bold').setBackground('#f1f3f4').setWrap(true);
-  sh.setColumnWidth(1, 270);
-  sh.setColumnWidth(2, 330);
-  sh.setColumnWidth(9, 280);
-  sh.setColumnWidth(10, 130);
-  sh.setFrozenRows(FX.TABLE_ROW);
-  const rule = () => SpreadsheetApp.newConditionalFormatRule();
-  sh.setConditionalFormatRules([
-    rule().whenTextStartsWith('✓').setBackground('#ceead6').setFontColor('#0d652d').setRanges([sh.getRange(3, 2)]).build(),
-    rule().whenTextStartsWith('⚠').setBackground('#fad2cf').setFontColor('#a50e0e').setRanges([sh.getRange(3, 2)]).build(),
-    rule().whenNumberGreaterThan(0).setBackground('#fad2cf').setRanges([sh.getRange(FX.TABLE_ROW + 1, 7, 2000, 1)]).build(),
-    rule().whenNumberGreaterThan(0).setBackground('#fef7e0').setRanges([sh.getRange(FX.TABLE_ROW + 1, 4, 2000, 1)]).build(),
-  ]);
+  sh.getRange(1, 1, 1, FX_COLS.length).setValues([FX_COLS]).setFontWeight('bold').setBackground('#f1f3f4');
+  sh.setFrozenRows(1);
+  sh.setColumnWidth(1, 110);
+  sh.setColumnWidths(2, 4, 140);
+  sh.setConditionalFormatRules([SpreadsheetApp.newConditionalFormatRule().whenNumberGreaterThan(0)
+    .setBackground('#fef7e0').setRanges([sh.getRange(2, 5, 3000, 1)]).build()]);
   return sh;
 }
 
-function fxRowValues_(d, info, tries, status) {
-  return [d, FX_DOW[isoWeekday_(d)], info.real, info.filled, info.total, info.expected, info.missing, tries,
-    status, Utilities.formatDate(new Date(), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm')];
+function fxRowValues_(d, info) {
+  return [d, FX_DOW[isoWeekday_(d)], info.expected, info.total, info.filled];
 }
 
-/** Wiersz dnia: nadpisuje istniejący albo wstawia nowy (dni malejąco, najnowszy na górze). */
-function fxSheetRow_(d, info, tries, status) {
+/** Jeden wiersz na dzień: nadpisuje wiersz tego dnia albo wstawia nowy (dni malejąco, najnowszy na górze). */
+function fxSheetRow_(d, info) {
   const sh = fxSheet_();
-  const first = FX.TABLE_ROW + 1;
-  const n = Math.max(sh.getLastRow() - FX.TABLE_ROW, 0);
-  const dates = n ? sh.getRange(first, 1, n, 1).getValues().map(r => String(r[0])) : [];
-  const row = fxRowValues_(d, info, tries, status);
+  const n = Math.max(sh.getLastRow() - 1, 0);
+  const dates = n ? sh.getRange(2, 1, n, 1).getDisplayValues().map(r => r[0]) : [];
+  const row = fxRowValues_(d, info);
   const i = dates.indexOf(d);
-  if (i >= 0) { sh.getRange(first + i, 1, 1, row.length).setValues([row]); return; }
-  let pos = dates.findIndex(x => x < d);                   // pierwszy starszy dzień
+  if (i >= 0) { sh.getRange(2 + i, 1, 1, row.length).setValues([row]); return; }
+  let pos = dates.findIndex(x => x < d);
   if (pos < 0) pos = dates.length;
-  // dni bez dokumentu (sobota) między nowym dniem a następnym w tabeli
-  const rows = [row];
-  const next = dates[pos - 1];                             // nowszy sąsiad (jeśli wstawiamy w środek)
-  if (pos === 0 && dates.length) {
-    for (let t = fxDayStart_(d) - 86400; fxDay_(t) > dates[0]; t -= 86400) {
-      const dd = fxDay_(t);
-      rows.push(fxRowValues_(dd, fxDayInfo_(dd, [], []), 0, fxExpected_(dd).length ? 'brak danych' : 'weekend — brak handlu'));
-    }
-  }
-  if (next === undefined || pos === 0) {
-    sh.insertRowsBefore(first + pos, rows.length);
-    sh.getRange(first + pos, 1, rows.length, row.length).setValues(rows).setFontWeight('normal').setBackground(null);
-  } else {
-    sh.insertRowsBefore(first + pos, 1);
-    sh.getRange(first + pos, 1, 1, row.length).setValues([row]).setFontWeight('normal').setBackground(null);
-  }
+  sh.insertRowsBefore(2 + pos, 1);
+  sh.getRange(2 + pos, 1, 1, row.length).setNumberFormat('@').setValues([row]).setFontWeight('normal').setBackground(null);
+  sh.getRange(2 + pos, 3, 1, 3).setNumberFormat('0');
 }
 
-/** Cała lista dni od pierwszego dnia bazy do dziś (także soboty bez dokumentu). */
-function fxSheetRebuild_(days, firstDay) {
+/** Cała lista od nowa (dni zakończone i sprawdzone), najnowszy na górze. */
+function fxSheetRebuild_(days) {
   const sh = fxSheet_();
-  const first = FX.TABLE_ROW + 1;
-  const n = Math.max(sh.getLastRow() - FX.TABLE_ROW, 0);
-  if (n) sh.getRange(first, 1, n, FX_COLS.length).clearContent();
-  const known = Object.keys(days).sort();
-  if (!known.length) return;
-  const start = firstDay && firstDay < known[0] ? firstDay : known[0];
-  const rows = [];
-  for (let t = fxDayStart_(fxDay_(Date.now() / 1000)); fxDay_(t) >= start; t -= 86400) {
-    const d = fxDay_(t);
-    const x = days[d];
-    rows.push(x ? fxRowValues_(d, x.info, x.tries, x.status)
-      : fxRowValues_(d, fxDayInfo_(d, [], []), 0, fxExpected_(d).length ? 'brak danych' : 'weekend — brak handlu'));
-  }
-  if (sh.getMaxRows() < first + rows.length) sh.insertRowsAfter(sh.getMaxRows(), first + rows.length - sh.getMaxRows());
-  sh.getRange(first, 1, rows.length, FX_COLS.length).setValues(rows);
-}
-
-/** Blok stanu arkusza FX. */
-function fxSheetStatus_(st) {
-  if (!st.last) return;
-  const sh = fxSheet_();
-  const tz = CONFIG.LOCAL_TZ;
-  const t = new Date(st.last * 1000), t2 = new Date((st.last + FX.STEP_SEC) * 1000);
-  // następna świeca: zamknięcie kolejnej + zapas na opóźnienie; przy zamkniętym rynku — od otwarcia
-  let nextT = st.last + FX.STEP_SEC;
-  for (let i = 0; i < 2 * 24 * 12 * 3 && !fxSlotOpen_(nextT); i++) nextT += FX.STEP_SEC;
-  const expectBy = new Date((nextT + FX.STEP_SEC + 120) * 1000);
-  const d = (st.today && st.today.delays) || [];
-  const sec = s => (s === null || s === undefined) ? '—' : fmtDelay_(s * 1000);
-  const chk = fxCheckLoad_();
-  const nCheck = Object.keys(chk).length;
-  const td = st.today || {};
-  sh.getRange(4, 2, FX_STATUS_LABELS.length - 1, 1).setValues([
-    [`${fxDay_(st.last)} ${Utilities.formatDate(t, 'UTC', 'HH:mm')}–${Utilities.formatDate(t2, 'UTC', 'HH:mm')} · close ${st.lastClose}`],
-    [`${Utilities.formatDate(t, tz, 'yyyy-MM-dd HH:mm')}–${Utilities.formatDate(t2, tz, 'HH:mm')}`],
-    [st.lastWriteAt ? new Date(st.lastWriteAt) : ''],
-    [expectBy],
-    [`ostatnia ${sec(st.lastDelay)}` + (d.length ? ` · dziś: mediana ${sec(fxQuantile_(d, 0.5))}, max ${sec(Math.max.apply(null, d))}` : '')],
-    [`${td.date || '—'}: świec ${td.bars || 0} z ${td.expectedSoFar || 0} oczekiwanych do teraz, brakuje ${td.missing || 0}` +
-      (fxMarketOpen_(new Date()) ? '' : ' · rynek zamknięty')],
-    [`od ${st.first || '?'}` + (nCheck ? ` · dni czekających na kolejną próbę pobrania: ${nCheck}` : ' · wszystkie zakończone dni sprawdzone')],
-  ]);
+  const n = Math.max(sh.getLastRow() - 1, 0);
+  if (n) sh.getRange(2, 1, n, FX_COLS.length).clearContent();
+  const rows = Object.keys(days).sort().reverse().map(d => fxRowValues_(d, days[d]));
+  if (!rows.length) return;
+  if (sh.getMaxRows() < rows.length + 1) sh.insertRowsAfter(sh.getMaxRows(), rows.length + 1 - sh.getMaxRows());
+  sh.getRange(2, 1, rows.length, 2).setNumberFormat('@');
+  sh.getRange(2, 1, rows.length, FX_COLS.length).setValues(rows);
 }
 
 // ============================================================================

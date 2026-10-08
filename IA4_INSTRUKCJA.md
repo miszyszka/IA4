@@ -1,7 +1,7 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.17
-**Data:** 7 października 2026
+**Wersja:** 1.18
+**Data:** 8 października 2026
 **Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca. Poszukiwanie wstrzymane 3.10.2026 (`search_closed: true`) — zostaje 60 aktywnych strategii. Od 4.10.2026 moduł EURUSD zbiera świece 5-minutowe (sekcja 4b). Jak czytać arkusze i wyciągać wnioski: `PRZEWODNIK.md`.
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jeśli kod, arkusz albo telemetria się z nim rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba naprawić.
@@ -203,16 +203,15 @@ Osobny moduł: **zbiera** świece 5-minutowe kursu EURUSD. Nie bierze udziału w
 - **Na żywo:** w każdym uruchomieniu `runCollector` (co minutę) i co 10 s w szybkiej ścieżce akcji — jeden trigger dla całego automatu (dzienny limit czasu triggerów). Yahoo jest pytane tylko wtedy, gdy powinna już być zamknięta świeca nowsza niż ostatnia zapisana (+5 s), i tylko w godzinach rynku (z zapasem 5 min). Pobranie od początku dnia UTC ostatniej zapisanej świecy; dokument dnia z nową świecą przepisywany w całości (status „dzień trwa”).
 - **Kontrola zakończonego dnia** (zamiast dawnego dziennego odświeżenia): od 00:20 UTC wczorajszy dzień trafia do kolejki (`FX_CHECK`; sobota — nie). **Próba** = świece z Firestore + cały dzień pobrany z Yahoo na nowo (z zapasem ±1 h; świeże z Yahoo wygrywają) → braki liczone od nowa. Do **3 prób co 60 min**; najwyżej 2 dni na jedno uruchomienie.
   - brak braków → „kompletny”,
-  - po 3 próbach z brakami → **uśrednienie**, jeśli dzień ma co najmniej połowę oczekiwanych świec z Yahoo; inaczej „brak danych z Yahoo — nie uzupełniono” (np. święto),
+  - po 3 próbach z brakami → **uśrednienie wszystkich braków** — każdy dzień kończy się kompletny (zapisanych = oczekiwanych); „brak danych z Yahoo — nie da się uśrednić” tylko wtedy, gdy w dniu i godzinę obok nie ma żadnej świecy,
+  - pierwszy dzień bazy (zaczyna się w połowie — granica historii Yahoo): oczekiwane świece liczone od jego pierwszej świecy,
   - dni starsze niż 58 dni (Yahoo ich już nie odda) — od razu uśrednienie,
   - dzień z wynikiem końcowym wypada z kolejki i nie jest już zmieniany.
 - **Uśrednienie** (interpolacja liniowa): dla brakującej świecy t — najbliższa świeca przed (P) i po (N), także z sąsiedniego dnia. Cena biegnie liniowo od zamknięcia P do otwarcia N: open = wartość w chwili t, close = w chwili t + 5 min, high/low = większa/mniejsza z nich. Tylko P albo tylko N — świeca płaska na tej cenie. Świece uśrednione są zawsze w `fillT`; analiza może je pominąć.
 - **Opóźnienie świecy** = chwila potwierdzenia zapisu w Firestore − zamknięcie świecy (początek + 5 min).
-- **Arkusz FX** (zapisywany tylko przy zmianie — nowa świeca albo próba kontroli; układ budowany sam):
-  - stan: **Działa?** — formuła arkusza, liczona co minutę także wtedy, gdy skrypt stanął: „✓ TAK”, a gdy świeca nie przyszła 5 min po spodziewanym czasie — „⚠ NIE”; ostatnia świeca (UTC i PL, close), ostatni zapis (PL), następna świeca spodziewana do (zamknięcie kolejnej świecy + 2 min; przy zamkniętym rynku — od otwarcia w niedzielę), opóźnienie zapisu (ostatnia, dziś: mediana i maksimum), dziś (świec / oczekiwanych do teraz / brakuje), dni w bazie i dni czekające na kolejną próbę,
-  - **lista dni** (UTC, najnowsze na górze, każdy dzień od pierwszego dnia bazy, także soboty): data, dzień tygodnia, świec z Yahoo, uśrednionych, razem, oczekiwanych, brakuje, próby pobrania, status, aktualizacja.
+- **Arkusz FX — jeden wiersz na dzień** (UTC, najnowszy na górze, także soboty): data, dzień tygodnia, **oczekiwanych świec**, **zapisanych świec**, **w tym uśrednionych**. Wiersz pojawia się, gdy kontrola zakończy dzień (zwykle 00:20–02:20 UTC następnego dnia; sobota — 0 / 0 / 0), i już się nie zmienia. Dzień, który trwa albo czeka na kolejną próbę, nie ma jeszcze wiersza. Czy zbieranie działa i opóźnienia — STATS.
 - **STATS** (3 wiersze bloku stanu) i telemetria (pole `fx`: ostatnia świeca i zapis, opóźnienia, wczoraj, kolejka kontroli).
-- Stan: Script Properties `FX_STATE`, `FX_CHECK`. Ręcznie: menu IA 4 → „EURUSD — pobierz teraz”, „EURUSD — przelicz arkusz FX” (rejestr dni i arkusz od nowa z Firestore, ok. 1 odczyt na dzień bazy).
+- Stan: Script Properties `FX_STATE`, `FX_CHECK`. Ręcznie: menu IA 4 → „EURUSD — pobierz teraz”, „EURUSD — przelicz arkusz FX” (arkusz od nowa z Firestore, ok. 1 odczyt na dzień bazy; dni niekompletne i dni robocze bez dokumentu trafiają do kontroli).
 
 ---
 
@@ -610,6 +609,7 @@ cd ~/Desktop/IA4 && git pull
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.18 | 2026-10-08 | Arkusz FX: tylko jeden wiersz na zakończony dzień (oczekiwanych, zapisanych, w tym uśrednionych), bez bloku stanu i bez zapisów przy każdej świecy. Każdy dzień kończy się kompletny: uśrednienie wszystkich braków po 3 próbach (bez progu „połowa świec”), pierwszy dzień bazy liczony od jego pierwszej świecy; przy pierwszym uruchomieniu 1.18 dni niekompletne (także dawny „brak danych”) i dni robocze bez dokumentu wracają do kontroli. |
 | 1.17 | 2026-10-07 | Moduł EURUSD: oczekiwane świece dnia wg godzin rynku (288 / pt 252 / nd 36 / sob 0); kontrola każdego zakończonego dnia — do 3 prób pobrania braków co 60 min, potem uśrednienie (interpolacja liniowa, oznaczone w `fillT`) — wyjątek w zasadzie 2; nowe pola dokumentu dnia (`expected`, `missing`, `filled`, `fillT`, `tries`, `status`); nowy arkusz FX (czy działa, ostatni zapis, lista wszystkich dni); menu „EURUSD — przelicz arkusz FX”; dzienne odświeżenie wczorajszego dnia zastąpione kontrolą. |
 | 1.16 | 2026-10-05 | Uproszczenie: jeden arkusz STRATEGIE (pierwszeństwo, wybrane, backtest doubleProof, szacunek przewagi, wyniki na żywo, for VI); usunięte arkusze RESEARCH, STRATEGIE DOUBLEPROOF, BACKTEST DOUBLEPROOF; BACKTEST PORTFELA bez listy strategii. Wirtualny inwestor: `MAX_PER_TICKER` (1), przedział 95% średniego wyniku, data startu, menu „for VI = wybrane” i „zacznij od nowa”; wyniki strategii na żywo (`VI_BY_STRAT`) i podsumowanie w telemetrii (`vi`). Mac niepotrzebny na co dzień. Nowy `PRZEWODNIK.md`. |
 | 1.15 | 2026-10-04 | Szybka ścieżka po zamknięciu świecy: czekanie na zamknięcie (+15 s), równoległe pobieranie z Yahoo, jeden zapis do Firestore na rundę, ponowienia brakujących co 10 s, paper trading od razu po komplecie 53 spółek (najpóźniej 3 min po zamknięciu), lista strategii z Script Properties. STATS: blok stanu + tabela świec z czasami od zamknięcia (sekcja 4a), bez tabeli instrumentów i dziennika; czas pracy automatu. Wirtualny inwestor: najwyżej 1 pozycja na spółkę, pierwszeństwo strategii, koszt 0,005% przy wejściu i wyjściu, mediana świec w pozycji, koszty $. Mediana świec w pozycji we wszystkich wynikach (zasada 13). Backtest portfela `python -m ia4.lab.portfolio` → arkusz BACKTEST PORTFELA (sekcja 6b). Nowy moduł EURUSD 5 min (`Fx.gs`, `fx/EURUSD`, sekcja 4b). |
