@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.18
+**Wersja:** 1.19
 **Data:** 8 października 2026
 **Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca. Poszukiwanie wstrzymane 3.10.2026 (`search_closed: true`) — zostaje 60 aktywnych strategii. Od 4.10.2026 moduł EURUSD zbiera świece 5-minutowe (sekcja 4b). Jak czytać arkusze i wyciągać wnioski: `PRZEWODNIK.md`.
 
@@ -498,7 +498,7 @@ Trigger `researchSync` co 30 min (i menu IA 4 → „🔬 Odśwież STRATEGIE te
 - Id (zawsze kolumna A), miejsce (pierwszeństwo), wybrana (✓ = wybrana w backteście portfela), grupa, opis reguły, SL %, TP %,
 - **backtest doubleProof** (`backtest-doubleproof.json`): PF (zielony ≥ 1,5, żółty 1–1,5, czerwony < 1), transakcji, średni wynik %, skuteczność (TP), mediana świec w pozycji; **szacunek przewagi %** z backtestu portfela,
 - **na żywo** (wirtualny inwestor, `VI_BY_STRAT`, od ostatniego „zacznij od nowa”): zamkniętych, średni wynik % netto, wynik $, otwarte,
-- PF ważony z poszukiwania (do porównania — zawyżony),
+- **poszukiwanie** (`strategies.jsonl`, do porównania — zawyżone, bo na tych danych strategie były wybierane): PF i liczba transakcji grupy głównej, PF i liczba transakcji skarbca, PF ważony, skuteczność (TP) i średni wynik % (grupa główna + skarbiec),
 - **for VI** — checkbox (jedyne, co się zmienia ręcznie; przetrwa przepisanie, sekcja 11a).
 
 **BACKTEST PORTFELA** — zapisany backtest portfela (sekcja 6b), tworzony tylko przy nowym pliku (Script Properties `BT_PF_AT`); usunięty ręcznie nie wraca do czasu nowego backtestu. Dla każdego wariantu 7 wierszy: doubleProof całość i okresy 1–4 (uczciwy obraz), grupa główna i skarbiec (zawyżone).
@@ -609,6 +609,7 @@ cd ~/Desktop/IA4 && git pull
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.19 | 2026-10-08 | Arkusz STRATEGIE: wróciły wyniki z poszukiwania — PF i transakcje grupy głównej i skarbca, PF ważony, skuteczność i średni wynik (obok doubleProof i wyników na żywo). |
 | 1.18 | 2026-10-08 | Arkusz FX: tylko jeden wiersz na zakończony dzień (oczekiwanych, zapisanych, w tym uśrednionych), bez bloku stanu i bez zapisów przy każdej świecy. Każdy dzień kończy się kompletny: uśrednienie wszystkich braków po 3 próbach (bez progu „połowa świec”), pierwszy dzień bazy liczony od jego pierwszej świecy; przy pierwszym uruchomieniu 1.18 dni niekompletne (także dawny „brak danych”) i dni robocze bez dokumentu wracają do kontroli. |
 | 1.17 | 2026-10-07 | Moduł EURUSD: oczekiwane świece dnia wg godzin rynku (288 / pt 252 / nd 36 / sob 0); kontrola każdego zakończonego dnia — do 3 prób pobrania braków co 60 min, potem uśrednienie (interpolacja liniowa, oznaczone w `fillT`) — wyjątek w zasadzie 2; nowe pola dokumentu dnia (`expected`, `missing`, `filled`, `fillT`, `tries`, `status`); nowy arkusz FX (czy działa, ostatni zapis, lista wszystkich dni); menu „EURUSD — przelicz arkusz FX”; dzienne odświeżenie wczorajszego dnia zastąpione kontrolą. |
 | 1.16 | 2026-10-05 | Uproszczenie: jeden arkusz STRATEGIE (pierwszeństwo, wybrane, backtest doubleProof, szacunek przewagi, wyniki na żywo, for VI); usunięte arkusze RESEARCH, STRATEGIE DOUBLEPROOF, BACKTEST DOUBLEPROOF; BACKTEST PORTFELA bez listy strategii. Wirtualny inwestor: `MAX_PER_TICKER` (1), przedział 95% średniego wyniku, data startu, menu „for VI = wybrane” i „zacznij od nowa”; wyniki strategii na żywo (`VI_BY_STRAT`) i podsumowanie w telemetrii (`vi`). Mac niepotrzebny na co dzień. Nowy `PRZEWODNIK.md`. |

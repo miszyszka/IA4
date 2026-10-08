@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STRATEGIE  (GitHub, branch `research` → arkusze STRATEGIE i BACKTEST PORTFELA)
  *
- *  Wersja projektu: 1.18 (2026-10-08) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.19 (2026-10-08) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Trigger researchSync (co 30 min) i menu „Odśwież STRATEGIE teraz”:
  *   • STRATEGIE — wszystkie strategie aktywne w kolejności pierwszeństwa: wynik
@@ -83,7 +83,9 @@ function researchRaw_(path) {
 const S_COLS = ['Id', 'Miejsce', 'Wybrana', 'Grupa', 'Opis (reguła)', 'SL %', 'TP %',
   'PF doubleProof', 'Transakcji doubleProof', 'Śr. wynik doubleProof %', 'Szacunek przewagi %',
   'Skuteczność TP (doubleProof)', 'Mediana świec w pozycji (doubleProof)',
-  'VI: zamkniętych', 'VI: śr. wynik %', 'VI: wynik $', 'VI: otwarte', 'PF ważony (poszukiwanie)'];
+  'VI: zamkniętych', 'VI: śr. wynik %', 'VI: wynik $', 'VI: otwarte',
+  'PF grupa główna', 'Transakcji grupa główna', 'PF skarbiec', 'Transakcji skarbiec', 'PF ważony',
+  'Skuteczność TP (główna + skarbiec)', 'Śr. wynik % (główna + skarbiec)'];
 const S_VI_HEAD = 'for VI';
 const S_VI_COL = S_COLS.length + 1;          // ostatnia kolumna: checkbox dla wirtualnego inwestora
 const S_ID_RE = /^S-[0-9a-f]{10}$/;
@@ -121,7 +123,9 @@ function strategiesWrite_(idx, bt, pf) {
   ((pf && pf.selection && pf.selection.ranking) || []).forEach((r, i) => { rank[r.id] = Object.assign({ place: i + 1 }, r); });
   const vi = JSON.parse(PropertiesService.getScriptProperties().getProperty('VI_BY_STRAT') || '{}');
 
-  const list = idx.map(s => ({ id: s.id, group: s.group, desc: s.desc, sl: s.sl, tp: s.tp, pf_w: s.pf_w }));
+  const list = idx.map(s => ({ id: s.id, group: s.group, desc: s.desc, sl: s.sl, tp: s.tp, pf_w: s.pf_w,
+    main_pf: s.main_pf, main_trades: s.main_trades, vault_pf: s.vault_pf, vault_trades: s.vault_trades,
+    tp_pct: s.tp_pct, avg_ret: s.avg_ret }));
   list.sort((a, b) => ((rank[a.id] || {}).place || 999) - ((rank[b.id] || {}).place || 999) || (b.pf_w || 0) - (a.pf_w || 0));
   const shown = {};
   list.forEach(s => { shown[s.id] = 1; });
@@ -135,7 +139,9 @@ function strategiesWrite_(idx, bt, pf) {
     return [s.id, v(r.place), r.selected ? '✓' : '', v(s.group), v(s.desc), v(s.sl), v(s.tp),
       b.trades ? b.pf : '', v(b.trades), b.trades ? b.avg_ret_pct / 100 : '',
       r.shrunk_pct !== undefined ? r.shrunk_pct / 100 : '', b.trades ? b.tp_pct : '', v(b.hold_median),
-      v(w.n), w.n ? w.sum / w.n / 100 : '', w.n ? Math.round(w.usd * 100) / 100 : '', v(w.open), v(s.pf_w),
+      v(w.n), w.n ? w.sum / w.n / 100 : '', w.n ? Math.round(w.usd * 100) / 100 : '', v(w.open),
+      v(s.main_pf), v(s.main_trades), v(s.vault_pf), v(s.vault_trades), v(s.pf_w),
+      v(s.tp_pct), s.avg_ret !== undefined && s.avg_ret !== null ? s.avg_ret / 100 : '',
       !!selSet[s.id]];
   });
 
@@ -154,6 +160,7 @@ function strategiesWrite_(idx, bt, pf) {
     .setFontWeight('bold').setBackground('#f1f3f4').setWrap(true).setVerticalAlignment('middle');
   sh.getRange(2, 8, 1, 6).setBackground('#e8f0fe');             // backtest doubleProof
   sh.getRange(2, 14, 1, 4).setBackground('#fef7e0');            // na żywo
+  sh.getRange(2, 18, 1, 7).setBackground('#f3e8fd');            // poszukiwanie: grupa główna i skarbiec (zawyżone)
   sh.getRange(2, S_VI_COL).setBackground('#ceead6');
   if (rows.length) {
     const need = rows.length + 2;
@@ -161,9 +168,9 @@ function strategiesWrite_(idx, bt, pf) {
     sh.getRange(3, 1, rows.length, S_VI_COL).setValues(rows);
     sh.getRange(3, S_VI_COL, rows.length, 1).insertCheckboxes();
     sh.getRange(3, S_VI_COL, rows.length, 1).setValues(rows.map(r => [r[S_VI_COL - 1]]));
-    [8, 18].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('0.00'));
-    [10, 11, 15].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('+0.00%;-0.00%;0.00%'));
-    sh.getRange(3, 12, rows.length, 1).setNumberFormat('0%');
+    [8, 18, 20, 22].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('0.00'));
+    [10, 11, 15, 24].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('+0.00%;-0.00%;0.00%'));
+    [12, 23].forEach(c => sh.getRange(3, c, rows.length, 1).setNumberFormat('0%'));
     sh.getRange(3, 16, rows.length, 1).setNumberFormat('+0.00;-0.00;0.00');
     const rule = () => SpreadsheetApp.newConditionalFormatRule();
     const pfR = sh.getRange(3, 8, rows.length, 1), viR = sh.getRange(3, 15, rows.length, 1);

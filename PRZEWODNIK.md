@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.18 (2026-10-08)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.19 (2026-10-08)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
@@ -77,7 +77,7 @@ Kolejność wierszy to **pierwszeństwo**. Gdy kilka strategii daje sygnał na t
 - **Kolumny niebieskie (doubleProof)**: wynik w backteście na nowych spółkach. Uczciwy, ale z małej próby (zwykle 20–50 transakcji), więc pojedyncze PF bardzo się wahają.
 - **Szacunek przewagi %**: wynik doubleProof „ściągnięty” do średniej wszystkich strategii. To ostrożniejsza liczba niż PF.
 - **Kolumny żółte (VI)**: wynik tej strategii na żywo.
-- **PF ważony (poszukiwanie)**: wynik z szukania. Jest mocno zawyżony (średnio ok. 4,7, podczas gdy na nowych spółkach ok. 1,4), więc nie decyduj na jego podstawie.
+- **Kolumny fioletowe (poszukiwanie: grupa główna i skarbiec)**: wynik na danych, na których strategie były szukane i wybierane. Jest mocno zawyżony (PF ważony średnio ok. 4,7, a na nowych spółkach ok. 1,4), więc nie decyduj na jego podstawie. Przydaje się do porównania: duży spadek od poszukiwania do doubleProof oznacza strategię dopasowaną do przeszłości.
 
 **Kiedy odznaczyć strategię:** dopiero gdy ma **co najmniej 30 zamkniętych transakcji na żywo** i średni wynik wyraźnie poniżej zera (np. < −1%). Pojedyncza strategia robi ok. 1–2 transakcje w miesiącu, więc to sprawa na wiele miesięcy. Wcześniej decyduj na poziomie całego portfela (punkt 4).
 
