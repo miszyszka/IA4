@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — MODUŁ EURUSD  (Yahoo EURUSD=X, świece 5 min → Firestore fx/EURUSD → arkusz FX)
  *
- *  Wersja projektu: 1.25 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.26 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Osobny moduł (instrukcja, sekcja 4b): zbiera dane. Nie bierze udziału
  *  w poszukiwaniu, weryfikacji ani paper tradingu.
@@ -564,10 +564,11 @@ const FXR = {
   COND: 'fx/conditions.json',
   RUNS: 'fx/runs.jsonl',
   SHEET: 'OKOLICZNOSCI_FX',
-  MARK: 'okol-1',                       // znacznik układu (G1); inny — arkusz budowany od nowa
-  HEAD: 6,                              // wiersz nagłówków kolumn; okoliczności od wiersza 7
+  MARK: 'okol-2',                       // znacznik układu (G1); inny — arkusz budowany od nowa
+  HEAD: 9,                              // wiersz nagłówków kolumn (= 2 + liczba RUN_LABELS); okoliczności od wiersza 10
   FIX: ['ID', 'Rodzina', 'Kierunek', 'Para', 'Okoliczność', 'Próg', 'Częstość przy kalibracji %'],
-  RUN_LABELS: ['Przeliczenie', 'Data (PL)', 'Świec', 'Przewaga sprawdzianu %'],   // wiersze 2–5, etykiety w kolumnie G
+  RUN_LABELS: ['Przeliczenie', 'Data (PL)', 'Świec', 'Model na żywo (λ środka)', 'Stożek 80% — trafność (cel 80%)',
+               'Kierunek: Brier k=48 (0,25 = moneta)', 'Błąd prognozy zakresu 4 h'],   // wiersze 2–8, etykiety w kolumnie G
   GRAY: '#d9d9d9',
 };
 
@@ -604,8 +605,8 @@ function fxOkolNow() {
 
 /**
  * Czysta funkcja (bez Apps Script): katalog + przeliczenia → wartości, tła, liczba kolumn.
- * Wiersz 1: tytuł (A) i znacznik (G). Wiersze 2–5: nagłówki przeliczeń (etykiety w G).
- * Wiersz 6: nagłówki kolumn. Od wiersza 7: okoliczności w kolejności ID.
+ * Wiersz 1: tytuł (A) i znacznik (G). Wiersze 2–8: nagłówki przeliczeń (etykiety w G).
+ * Wiersz 9: nagłówki kolumn. Od wiersza 10: okoliczności w kolejności ID.
  * Komórka przeliczenia: „rating/wystąpienia” (tekst); szara, gdy częstość poza 10–50%.
  */
 function fxOkolBuild_(cond, runs, fmtDate) {
@@ -624,9 +625,12 @@ function fxOkolBuild_(cond, runs, fmtDate) {
     const row = blank();
     row[F - 1] = lab;
     runs.forEach((r, i) => {
-      const ch = r.check || {}, S = ch.S || {};
+      const sc = r.scenario || {};
+      const pc = x => (x === null || x === undefined) ? '—' : Math.round(100 * x) + '%';
+      const num = (x, d) => (x === null || x === undefined) ? '—' : x.toFixed(d).replace('.', ',');
       row[F + i] = [r.run, fmtDate(r.at), String((r.data || {}).candles || ''),
-                    (S.all === null || S.all === undefined) ? '—' : (100 * S.all).toFixed(2).replace('.', ',')][j];
+                    sc.model ? `${sc.model} (λ ${String(sc.lambda).replace('.', ',')})` : '—',
+                    pc(sc.cov80_48), num(sc.brier48, 3), pc(sc.rangeErr)][j];
     });
     values.push(row);
   });

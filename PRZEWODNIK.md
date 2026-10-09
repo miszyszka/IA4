@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.25 (2026-10-09)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.26 (2026-10-09)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
@@ -49,14 +49,21 @@ Jeden wiersz na dzień (UTC): **oczekiwanych świec**, **zapisanych świec**, **
 
 **Dashboard:** https://miszyszka.github.io/IA4/ — działa tylko, gdy na Macu chodzi `python -m ia4.fx.live`
 (Terminal: `cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && python -m ia4.fx.live`; Ctrl+C kończy).
-- Zielone „Mac połączony” — prognoza jest świeża. Czerwone „Mac offline” albo „program zatrzymany” — widzisz ostatnią prognozę (szara linia), nie bieżącą.
-- Niebieska linia = średnia tego, co historycznie działo się z ceną po okolicznościach prawdziwych teraz, ważona ratingiem.
-- **Sprawdzian systemu** mówi, czy prognoza w ogóle coś umie: wynik między −1% a +1% = tyle co przypadek. Dopóki tak jest, linia jest ciekawostką, nie sygnałem.
 
-**Arkusz OKOLICZNOSCI_FX:** 1000 okoliczności, a w kolumnach kolejne przeliczenia: `rating/wystąpienia`.
-- Nowa kolumna pojawia się po `python -m ia4.fx.research` na Macu (ręcznie — np. raz w tygodniu, gdy przybyło danych).
-- Patrz, czy te same okoliczności trzymają wysoki rating w kolejnych kolumnach. Jednorazowy wysoki rating przy małej liczbie danych to zwykle przypadek.
-- Szara komórka = okoliczność wypadła poza 10–50% świec (rynek zmienił charakter) — tylko informacja.
+Prognoza to **rozkład, nie jedna linia** — bo jedna uśredniona linia dla EURUSD zawsze wychodzi prawie pozioma:
+- **Stożek** (niebieskie pasma): ciemny — gdzie cena była w 50% podobnych przypadków, jasny — w 80%. Szeroki stożek = spodziewane duże wahania (np. otwarcie Nowego Jorku), wąski = spokój (wieczór).
+- **Scenariusze** (cienkie linie zielona / szara / czerwona): prawdziwe 4-godzinne ścieżki ceny z najbardziej podobnych chwil w historii — tak realnie wyglądają skoki i wahania. To przykłady, nie przepowiednia.
+- **Oczekiwany zakres 4 h**: o ile pipsów typowo rozjedzie się maksimum i minimum — to model przewiduje najlepiej (błąd ok. 27–29%).
+- **Kierunek**: P(wzrost) i ile z 80 podobnych chwil skończyło się wzrostem. Werdykt „brak przewagi (jak rzut monetą)” = nie traktuj tego jako sygnału.
+- **Linia środkowa** odchyla się od ceny tylko wtedy, gdy sprawdzian udowodnił, że to pomaga. Płaska linia = model uczciwie mówi „kierunku nie wiem”.
+- **Sprawdzian**: „stożek 78%” przy celu 80% = stożek trafny. Brier poniżej 0,245 = przewaga w kierunku; 0,25 = moneta.
+- Zielone „Mac połączony” — prognoza świeża; czerwone — widzisz ostatnią prognozę (wyblakłą).
+
+**Arkusz OKOLICZNOSCI_FX:** 1000 okoliczności, w kolumnach kolejne przeliczenia: `rating/wystąpienia`; nad nimi model na żywo,
+trafność stożka, Brier i błąd zakresu każdego przeliczenia.
+- Nowa kolumna po `python -m ia4.fx.research` na Macu (ręcznie, np. raz w tygodniu; ok. 2 min). FX-real-time sam weźmie nowy model.
+- Patrz, czy te same okoliczności trzymają wysoki rating w kolejnych kolumnach i czy Brier zaczyna schodzić poniżej 0,245.
+- Szara komórka = okoliczność wypadła poza 10–50% świec — tylko informacja.
 
 ## 4. VIRTUAL-INVESTOR — jak czytać wynik
 

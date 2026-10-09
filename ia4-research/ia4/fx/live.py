@@ -1,6 +1,6 @@
 """
 IA 4 — FX-real-time: prognoza EURUSD na żywo (instrukcja, sekcje 4c.6, 4c.9, 4c.10).
-Wersja projektu: 1.25 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.26 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.live              # działa do Ctrl+C
   python -m ia4.fx.live --no-push    # bez GitHub (test: forecast.json tylko w fx-live-repo/)
@@ -35,7 +35,7 @@ import pandas as pd
 
 from . import catalog as cat
 from . import series as sr
-from .research import H, forecast_from
+from .research import H
 
 NY = ZoneInfo("America/New_York")
 PL = ZoneInfo("Europe/Warsaw")
@@ -47,6 +47,7 @@ LATE_EVERY_SEC = 120
 ALIVE_EVERY_SEC = 120         # sygnał życia
 SHOW = 48                     # świec wstecz na dashboardzie
 TOP = 5                       # okoliczności o najwyższym ratingu wśród prawdziwych (na dashboard)
+DEFAULT_MODEL = {"method": "pora", "f": 1.15, "lambda": 0.0}   # tylko gdy ratings.json nie ma jeszcze sprawdzianu 1.26
 DASHBOARD = Path(__file__).resolve().parent / "dashboard" / "index.html"
 
 
@@ -102,7 +103,11 @@ class Model:
         self.conds = cond["conditions"]
         self.ratings = np.array([r["rating"] for r in rows], dtype=np.float64)
         self.profiles = np.array([[np.nan if v is None else v for v in r["profile"]] for r in rows], dtype=np.float64)
-        self.run, self.run_at, self.check = doc["run"], doc["at"], doc.get("check", {})
+        self.run, self.run_at = doc["run"], doc["at"]
+        sc_ = doc.get("scenario") or {}
+        self.model = sc_.get("model") or dict(DEFAULT_MODEL)     # przeliczenie sprzed 1.26 — ustawienia domyślne
+        self.default = not sc_.get("model")
+        self.check = ((sc_.get("methods") or {}).get(self.model["method"]) or {}).get("B") or {}
         self.mtime = self.path.stat().st_mtime
 
     def reload_if_changed(self) -> bool:
@@ -123,43 +128,66 @@ def iso(t: float) -> str:
 
 
 def compute(df: pd.DataFrame, model: Model) -> dict:
-    """Okoliczności na ostatniej świecy i prognoza (4c.6) — ten sam kod co FX-research."""
+    """Prognoza rozkładu na ostatniej świecy (4c.6) — ten sam silnik co sprawdzian w FX-research."""
+    from . import scenario as sc
+    from .research import forecast_from, future_changes, occurrence_ok
+    from ..lab import indicators as ind
     Sp, Sm = sr.pair_of(df)
     M = cat.evaluate(model.conds, Sp, Sm)
-    active = M[:, -1]
-    pips = forecast_from(active, model.ratings, model.profiles)
-    t_last = int(df["time"].iloc[-1])
-    c_last = float(df["c"].iloc[-1])
-    fc = []
-    for k in range(1, H + 1):
+    R = future_changes(Sp.c, Sp.filled)
+    ok = occurrence_ok(Sp.time, Sp.filled)
+    eng = sc.Engine(Sp.time, R, ok, M, model.ratings, Sp.U, ind.atr(Sp.h, Sp.l, Sp.c, 12))
+    T = Sp.n
+    t_last, c_last = int(Sp.time[-1]), float(Sp.c[-1])
+    mdl = model.model
+    a = eng.select(T - 1, T, mdl["method"])
+    times = []
+    for k in range(1, H + 1):                   # prognoza kończy się na zamknięciu rynku (piątek 17:00 NY)
         t = t_last + k * STEP
-        if not candle_in_market(t):            # prognoza kończy się na zamknięciu rynku (piątek 17:00 NY)
+        if not candle_in_market(t):
             break
-        if np.isfinite(pips[k - 1]):
-            fc.append([t, round(c_last + sr.PIP * float(pips[k - 1]), 6)])
+        times.append(t)
+    n = len(times)
+    price = lambda pips: [round(c_last + sr.PIP * float(v), 6) for v in pips[:n]]
+    out = {"lastCandle": iso(t_last), "lastClose": c_last,
+           "candles": [[int(r.time), r.o, r.h, r.l, r.c] for r in df.iloc[-SHOW:].itertuples()],
+           "times": times, "model": {**mdl, "K": int(a.size), "default": model.default}}
+    if a.size >= 10:
+        P = eng.paths(T - 1, a)
+        center = mdl["lambda"] * np.nan_to_num(forecast_from(M[:, -1], model.ratings, model.profiles), nan=0.0)
+        d = sc.distribution(P, center, mdl["f"])
+        out.update({
+            "center": price(d["center"]), **{f"q{q}": price(d["q"][q]) for q in d["q"]},
+            "pUp": {str(k): round(float(d["pUp"][k - 1]), 3) for k in (12, 48) if k <= n},
+            "upCount": {str(k): [int((d["X"][:, k - 1] > 0).sum()), int(P.shape[0])] for k in (12, 48) if k <= n},
+            "range": {"high": round(c_last + sr.PIP * d["high"], 6), "low": round(c_last + sr.PIP * d["low"], 6),
+                      "pips": round(d["range"], 1)},
+            "scenarios": [{"name": nm, "from": iso(int(Sp.time[i])), "path": price(path)}
+                          for nm, i, path in sc.scenarios(d["X"], a)],
+            "forecast": [[t, p] for t, p in zip(times, price(d["center"]))],
+            "forecastPips": {str(k): (round(float(d["center"][k - 1]), 2) if k <= n else None) for k in (12, 48)},
+        })
+    else:
+        out.update({"forecast": [], "forecastPips": {"12": None, "48": None}, "scenarios": []})
+    active = M[:, -1]
     idx = np.flatnonzero(active)
     top = sorted(idx, key=lambda i: (-model.ratings[i], model.conds[i]["id"]))[:TOP]
-    tail = df.iloc[-SHOW:]
-    return {
-        "lastCandle": iso(t_last), "lastClose": c_last,
-        "candles": [[int(r.time), r.o, r.h, r.l, r.c] for r in tail.itertuples()],
-        "forecast": fc,
-        "forecastPips": {str(k): (None if not (np.isfinite(pips[k - 1]) and candle_in_market(t_last + k * STEP))
-                                  else round(float(pips[k - 1]), 2)) for k in (1, 6, 12, 24, 48)},
-        "active": int(idx.size), "activeRatingSum": int(model.ratings[idx].sum()),
-        "activeTop": [{"id": model.conds[i]["id"], "rating": int(model.ratings[i]), "desc": model.conds[i]["desc"]}
-                      for i in top],
-    }
+    out.update({"active": int(idx.size), "activeRatingSum": int(model.ratings[idx].sum()),
+                "activeTop": [{"id": model.conds[i]["id"], "rating": int(model.ratings[i]), "desc": model.conds[i]["desc"]}
+                              for i in top]})
+    return out
 
 
 def document(state: dict, model: Model, now: float, stopped: bool = False) -> dict:
     from .. import __version__
+    from .scenario import verdict
     ch = model.check or {}
     doc = {"version": __version__, "aliveAt": iso(now), "generatedAt": state.get("generatedAt"),
            "marketOpen": market_open_now(now),
-           "ratings": {"run": model.run, "at": model.run_at,
-                       "checkS": (ch.get("S") or {}).get("all"), "checkHit12": (ch.get("hit") or {}).get("12"),
-                       "checkHit48": (ch.get("hit") or {}).get("48")},
+           "ratings": {"run": model.run, "at": model.run_at},
+           "check": {k: ch.get(k) for k in ("n", "cov80_12", "cov80_48", "cov50_48", "brier12", "brier48",
+                                             "rangeErr", "pinball48")},
+           "verdict": verdict(ch or None),
            "firestoreReadsToday": state.get("reads", 0)}
     doc.update(state.get("fc") or {})
     if stopped:
@@ -312,10 +340,11 @@ class Live:
                     self.log(f"  nowe ratingi: {self.model.run}")
                 self.recompute(now)
                 self.publish(now)
-                fc = self.state["fc"]["forecastPips"]
+                fc = self.state["fc"]
+                rg = (fc.get("range") or {}).get("pips")
                 self.log(f"  {datetime.fromtimestamp(now, PL):%H:%M:%S}  świeca "
                          f"{datetime.fromtimestamp(self.last_t, timezone.utc):%H:%M} UTC · "
-                         f"okoliczności {self.state['fc']['active']} · prognoza k=12 {fc['12']} k=48 {fc['48']} pips · "
+                         f"okoliczności {fc['active']} · zakres 4 h {rg} pips · P(wzrost) {fc.get('pUp')} · "
                          f"odczytów Firestore dziś {self.src.reads}")
                 new = True
                 self.next_check = 0.0
@@ -357,8 +386,11 @@ def main() -> None:
     live.recompute(now)
     live.publish(now)
     fc = live.state["fc"]
-    print(f"  ratingi {model.run} ({model.run_at}), ostatnia świeca {fc['lastCandle']}, okoliczności {fc['active']}, "
-          f"prognoza k=48 {fc['forecastPips']['48']} pips")
+    if model.default:
+        print("  ! ratings.json bez sprawdzianu rozkładu (sprzed 1.26) — model domyślny; uruchom python -m ia4.fx.research")
+    print(f"  ratingi {model.run} ({model.run_at}), model {model.model['method']} (×{model.model['f']}, "
+          f"λ {model.model['lambda']}), ostatnia świeca {fc['lastCandle']}, okoliczności {fc['active']}, "
+          f"zakres 4 h {(fc.get('range') or {}).get('pips')} pips")
     print(f"  dashboard: https://miszyszka.github.io/IA4/  (Ctrl+C kończy)\n")
     try:
         while True:

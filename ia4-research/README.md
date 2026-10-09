@@ -1,6 +1,6 @@
 # IA 4 — Python na Macu: kopia bazy i poszukiwanie strategii
 
-**Wersja projektu: 1.25 (2026-10-09)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.26 (2026-10-09)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Dwie rzeczy:
 1. `python -m ia4.sync` — ściąga świece z Firestore na dysk (`data/*.parquet`), przy
@@ -107,11 +107,11 @@ Format bazy, skarbiec, język reguł i kryteria: `IA4_INSTRUKCJA.md`.
 
 ```bash
 source .venv/bin/activate
-python -m ia4.fx.selftest            # test modułu na danych syntetycznych — musi być „WYNIK: OK”
+python -m ia4.fx.selftest            # test modułu na danych syntetycznych (ok. 7 min) — musi być „WYNIK: OK”
 python -m ia4.fx.sync                # kopia świec EURUSD 5 min → data/fx/EURUSD.parquet (przyrostowo)
 python -m ia4.fx.catalog             # kalibracja PRÓBNA 1000 okoliczności → data/fx/catalog-preview.csv
 python -m ia4.fx.catalog --commit    # kalibracja WŁAŚCIWA → fx/conditions.json na branchu fx — tylko raz
-python -m ia4.fx.research            # przeliczenie: ratingi, profile, sprawdzian → fx/ratings.json, fx/runs.jsonl
+python -m ia4.fx.research            # przeliczenie (ok. 2 min): ratingi, sprawdzian rozkładu, model na żywo → branch fx
 python -m ia4.fx.live                # prognoza na żywo co 30 s → branch fx-live → https://miszyszka.github.io/IA4/
 ```
 

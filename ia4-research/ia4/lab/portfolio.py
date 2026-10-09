@@ -1,6 +1,6 @@
 """
 IA 4 — jednorazowy backtest portfela (instrukcja, sekcja 6b).
-Wersja projektu: 1.25 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.26 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Symuluje wirtualnego inwestora na historii: wszystkie strategie aktywne naraz, na
 spółkach grupy głównej (53, z podziałem na skarbiec i okresy) i na doubleProof (20).

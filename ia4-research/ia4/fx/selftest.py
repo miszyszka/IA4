@@ -1,6 +1,6 @@
 """
 IA 4 — test modułu prognozy EURUSD na danych syntetycznych (bez Firestore i GitHub).
-Wersja projektu: 1.25 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.26 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.selftest
 
@@ -12,11 +12,12 @@ Sprawdza:
   3. kalibracja — dokładnie 500 par, każda okoliczność w 10–50%, ID i pary poprawne,
   4. powtarzalność — druga kalibracja na tych samych danych daje ten sam katalog,
   5. synchronizacja — dokument dnia w formacie 4b → tabela świec (z fillT), scalanie dni,
-  6. FX-research — wystąpienia i profile = liczenie ręczne, rating i sprawdzian nie zaglądają
-     w przyszłość, zasiany sygnał jest wykryty, czysty szum nie daje przewagi,
+  6. FX-research — wystąpienia i profile = liczenie ręczne, ratingi, profile i dobór ścieżek nie zaglądają
+     w przyszłość; prognoza rozkładu (4c.6–4c.7): czysty szum → płaski środek (λ = 0) i trafny stożek,
+     zasiany sygnał → środek się wychyla (λ > 0), Brier < 0,25,
   7. FX-real-time — symulacja piątku wieczór → niedziela (atrapa Firestore i zegara): każda świeca
      wykryta, 2 odczyty na świecę, zero odczytów przy zamkniętym rynku, prognoza nie wychodzi poza
-     zamknięcie, prognoza na żywo = prognoza z pełnego przeliczenia.
+     zamknięcie, dane na żywo (przyrostowo) = dane z pełnego pobrania, prognoza = prognoza z pełnego przeliczenia.
 """
 
 from __future__ import annotations
@@ -166,13 +167,12 @@ def live_check() -> bool:
     lim = int(datetime(2026, 10, 9, 21, 0, tzinfo=timezone.utc).timestamp())
     good &= check("prognoza kończy się na zamknięciu rynku (pt 21:00 UTC)",
                   bool(fri) and all(f[0] < lim for d in fri for f in d["forecast"]) and fri[-1]["forecast"] == [])
-    Sp, Sm = sr.pair_of(L.df)                          # prognoza na żywo = to samo z pełnego przeliczenia
-    M = cat.evaluate(model.conds, Sp, Sm)
-    ref = rs.forecast_from(M[:, -1], model.ratings, model.profiles)
-    got = lv.compute(L.df, model)["forecast"]
-    c = float(L.df["c"].iloc[-1])
-    good &= check("prognoza na żywo = przeliczenie od zera",
-                  all(abs(p - round(c + sr.PIP * ref[i], 6)) < 1e-9 for i, (_, p) in enumerate(got)), f"{len(got)} punktów")
+    direct = full[full["time"] <= L.last_t].reset_index(drop=True)      # dane na żywo = pełne pobranie
+    same_df = L.df.reset_index(drop=True)[["time", "o", "h", "l", "c"]].equals(direct[["time", "o", "h", "l", "c"]])
+    a, b = lv.compute(L.df, model), lv.compute(direct, model)
+    good &= check("dane na żywo = pełne pobranie, prognoza = przeliczenie od zera",
+                  same_df and a["q10"] == b["q10"] and a["center"] == b["center"] and len(a["scenarios"]) == 3,
+                  f"{len(a['times'])} punktów, zakres {a['range']['pips']} pips")
     return good
 
 
@@ -271,24 +271,37 @@ def main() -> None:
     ok &= check("wystąpienia i profile = liczenie ręczne (4 okoliczności)", good)
     T = len(df)
     s70 = int(rs.SPLIT_CHECK * T)
-    rat1, prof1 = rs.check_model(M, R, okm, s70)
+    rat1, prof1 = rs.model_until(M, R, okm, s70)
     R2 = R.copy()
     R2[:] = np.where(np.arange(T)[:, None] + np.arange(1, 49)[None, :] >= s70, R2 + 37.0, R2)  # zmiana przyszłości
-    rat2, prof2 = rs.check_model(M, R2, okm, s70)
+    rat2, prof2 = rs.model_until(M, R2, okm, s70)
     ok &= check("sprawdzian: ratingi i profile nie widzą świec po 70%",
                 bool((rat1 == rat2).all() and np.array_equal(np.isnan(prof1), np.isnan(prof2))
                      and np.allclose(np.nan_to_num(prof1), np.nan_to_num(prof2))))
+    from . import scenario as sc
+    from ..lab import indicators as ind
+    eng = sc.Engine(Sp.time, R, okm, M, rat1, Sp.U, ind.atr(Sp.h, Sp.l, Sp.c, 12))
+    bad = 0
+    for t in np.random.default_rng(1).choice(np.flatnonzero(eng.cand[s70:]) + s70, 25, replace=False):
+        for m in ("analogi", "pora"):
+            a = eng.select(int(t), int(t) + 1, m)
+            dh = np.abs(eng.hour[a] - eng.hour[t])
+            bad += int((a + 48 > t).any() or (np.minimum(dh, 24 - dh) > 1).any() or a.size < 10
+                       or (np.diff(np.sort(a)) < 12).any())
+    ok &= check("dobór ścieżek: tylko przeszłość, ta sama pora ±1 h, odstęp ≥ 12 świec", bad == 0, f"błędów {bad}")
     for name, data in (("czysty szum", synthetic(seed=21, trend=0.0)), ("zasiany sygnał", planted())):
         cs = cat.calibrate(*sr.pair_of(data), log=lambda *a: None)
         rr = rs.run(data, cs, log=lambda *a: None)
-        rt = np.array([r["rating"] for r in rr["rows"]])
-        S = rr["check"]["S"]["all"]
-        info = (f"ratingi > 50: {int((rt > 50).sum())}, sprawdzian: przewaga {100*S:.2f}%, "
-                f"kierunek k=12 {100*rr['check']['hit']['12']:.1f}%")
+        mdl = rr["scenario"]["model"]
+        B = rr["scenario"]["methods"][mdl["method"]]["B"]
+        info = (f"model {mdl['method']}, λ {mdl['lambda']}, ×{mdl['f']}; ocena: pokrycie 80% {100*B['cov80_48']:.0f}%, "
+                f"Brier k=48 {B['brier48']:.4f}, błąd zakresu {100*B['rangeErr']:.0f}%")
         if name == "czysty szum":
-            ok &= check("czysty szum: brak przewagi", S < 0.005 and (rt > 50).sum() <= 10, info)
+            ok &= check("czysty szum: płaski środek, trafny stożek",
+                        mdl["lambda"] == 0 and B["brier48"] >= 0.245 and 0.70 <= B["cov80_48"] <= 0.90, info)
         else:
-            ok &= check("zasiany sygnał: wykryty", S > 0.02 and (rt > 50).sum() >= 100, info)
+            ok &= check("zasiany sygnał: środek wykryty, kierunek lepszy niż moneta",
+                        mdl["lambda"] >= 0.5 and B["brier48"] < 0.25 and B["centerS"] > 0, info)
 
     # 7. FX-real-time
     print("  FX-real-time:")

@@ -1,6 +1,6 @@
 """
 IA 4 — kopia lokalna świec EURUSD 5 min (instrukcja, sekcja 4c.1).
-Wersja projektu: 1.25 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.26 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Firestore fx/EURUSD/days/{RRRR-MM-DD} (format: sekcja 4b) → data/fx/EURUSD.parquet
   kolumny: time (początek świecy, sekundy UTC), o, h, l, c, filled (świeca z fillT)
