@@ -1,6 +1,6 @@
 """
 IA 4 — test modułu prognozy EURUSD na danych syntetycznych (bez Firestore i GitHub).
-Wersja projektu: 1.24 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.25 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.selftest
 
@@ -13,7 +13,10 @@ Sprawdza:
   4. powtarzalność — druga kalibracja na tych samych danych daje ten sam katalog,
   5. synchronizacja — dokument dnia w formacie 4b → tabela świec (z fillT), scalanie dni,
   6. FX-research — wystąpienia i profile = liczenie ręczne, rating i sprawdzian nie zaglądają
-     w przyszłość, zasiany sygnał jest wykryty, czysty szum nie daje przewagi.
+     w przyszłość, zasiany sygnał jest wykryty, czysty szum nie daje przewagi,
+  7. FX-real-time — symulacja piątku wieczór → niedziela (atrapa Firestore i zegara): każda świeca
+     wykryta, 2 odczyty na świecę, zero odczytów przy zamkniętym rynku, prognoza nie wychodzi poza
+     zamknięcie, prognoza na żywo = prognoza z pełnego przeliczenia.
 """
 
 from __future__ import annotations
@@ -92,6 +95,85 @@ def planted(seed: int = 5, thr: float = 6.0, drift: float = 0.35, span: int = 24
     df["h"] = np.maximum(df["h"] + sh, np.maximum(df["o"], df["c"]))
     df["l"] = np.minimum(df["l"] + sh, np.minimum(df["o"], df["c"]))
     return df
+
+
+def live_check() -> bool:
+    import json
+    import tempfile
+    from pathlib import Path
+    from . import live as lv
+    full = synthetic(days=66, seed=9)
+    cut = int(datetime(2026, 10, 9, 18, 0, tzinfo=timezone.utc).timestamp())       # piątek 18:00 UTC
+    hist = full[full["time"] < cut].reset_index(drop=True)
+    conds = cat.calibrate(*sr.pair_of(hist), log=lambda *a: None)
+    root = Path(tempfile.mkdtemp()) / "fx-repo"
+    (root / "fx").mkdir(parents=True)
+    (root / "fx" / "conditions.json").write_text(json.dumps(cat.document(conds, hist, "selftest")), encoding="utf-8")
+    res = rs.run(hist, conds, log=lambda *a: None)
+    rs.write_ratings(root / "fx" / "ratings.json", rs.documents(res, {"catalog": cat.CATALOG}, "R-001")[0])
+    model = lv.Model(root)
+
+    class Src:
+        def __init__(s):
+            s.reads, s.now, s.closed_reads = 0, 0, 0
+        def _vis(s):
+            return full[full["time"] + 300 + 21 <= s.now]
+        def _count(s):
+            s.reads += 1
+            s.closed_reads += 0 if lv.market_open_now(s.now) else 1
+        def last_time(s):
+            s._count()
+            return int(s._vis()["time"].iloc[-1])
+        def days(s, dates):
+            v, out = s._vis(), {}
+            for d in dates:
+                s._count()
+                t0 = int(datetime.fromisoformat(d).replace(tzinfo=timezone.utc).timestamp())
+                out[d] = v[(v["time"] >= t0) & (v["time"] < t0 + 86400)].reset_index(drop=True)
+            return out
+
+    class Out:
+        def __init__(s):
+            s.docs, s.last_error = [], ""
+        def publish(s, d):
+            s.docs.append(d)
+            return True
+
+    src, out, clock = Src(), Out(), {"t": cut + 60}
+    def now():
+        src.now = clock["t"]
+        return clock["t"]
+    L = lv.Live(hist, model, src, out, clock=now, log=lambda *a: None)
+    L.recompute(now())
+    end = int(datetime(2026, 10, 11, 22, 30, tzinfo=timezone.utc).timestamp())      # niedziela 22:30 UTC
+    weekend = (int(datetime(2026, 10, 10, 6, 0, tzinfo=timezone.utc).timestamp()),
+               int(datetime(2026, 10, 11, 12, 0, tzinfo=timezone.utc).timestamp()))
+    new, lags = 0, []
+    while clock["t"] < end:
+        if weekend[0] <= clock["t"] < weekend[1]:          # środek weekendu — przeskok (nic się nie dzieje)
+            clock["t"] = weekend[1]
+        if L.step():
+            new += 1
+            lags.append(clock["t"] - (L.last_t + 300))
+        clock["t"] += 30
+    exp = full[(full["time"] >= cut) & (full["time"] + 300 + 21 <= end)]
+    good = check("każda świeca wykryta, ok. 30 s po zamknięciu",
+                 new == len(exp) and L.last_t == int(exp["time"].iloc[-1]) and max(lags) <= 31,
+                 f"{new} z {len(exp)}, opóźnienie ≤ {max(lags)} s")
+    good &= check("ok. 2 odczyty na świecę; przy zamkniętym rynku tylko ostatnia świeca piątku",
+                  2 * len(exp) <= src.reads <= 2 * len(exp) + 3 and src.closed_reads <= 2, f"odczytów {src.reads}, przy zamkniętym {src.closed_reads}, oczekiwanych {2 * len(exp)}")
+    fri = [d for d in out.docs if d.get("lastCandle", "").startswith("2026-10-09T20:")]
+    lim = int(datetime(2026, 10, 9, 21, 0, tzinfo=timezone.utc).timestamp())
+    good &= check("prognoza kończy się na zamknięciu rynku (pt 21:00 UTC)",
+                  bool(fri) and all(f[0] < lim for d in fri for f in d["forecast"]) and fri[-1]["forecast"] == [])
+    Sp, Sm = sr.pair_of(L.df)                          # prognoza na żywo = to samo z pełnego przeliczenia
+    M = cat.evaluate(model.conds, Sp, Sm)
+    ref = rs.forecast_from(M[:, -1], model.ratings, model.profiles)
+    got = lv.compute(L.df, model)["forecast"]
+    c = float(L.df["c"].iloc[-1])
+    good &= check("prognoza na żywo = przeliczenie od zera",
+                  all(abs(p - round(c + sr.PIP * ref[i], 6)) < 1e-9 for i, (_, p) in enumerate(got)), f"{len(got)} punktów")
+    return good
 
 
 def check(name: str, ok: bool, info: str = "") -> bool:
@@ -207,6 +289,10 @@ def main() -> None:
             ok &= check("czysty szum: brak przewagi", S < 0.005 and (rt > 50).sum() <= 10, info)
         else:
             ok &= check("zasiany sygnał: wykryty", S > 0.02 and (rt > 50).sum() >= 100, info)
+
+    # 7. FX-real-time
+    print("  FX-real-time:")
+    ok &= live_check()
 
     print("\nWYNIK:", "OK" if ok else "BŁĄD")
     sys.exit(0 if ok else 1)

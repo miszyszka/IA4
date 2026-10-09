@@ -1,7 +1,7 @@
 """
 IA 4 — FX-research: wystąpienia, profile, ratingi i sprawdzian okoliczności EURUSD
 (instrukcja, sekcje 4c.4–4c.8).
-Wersja projektu: 1.24 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.25 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.research              # synchronizacja, przeliczenie od zera, zapis i push na branch fx
   python -m ia4.fx.research --no-sync    # bez Firestore (kopia lokalna)
@@ -326,6 +326,9 @@ def main() -> None:
         print("Brak fx/conditions.json na branchu fx — najpierw kalibracja: python -m ia4.fx.catalog --commit")
         sys.exit(1)
     conds = doc["conditions"]
+    from .live import publish_dashboard
+    if publish_dashboard(repo):
+        print("  dashboard zaktualizowany na branchu fx (index.html)")
     df = load() if a.no_sync else sync()
     runs_path = repo.dir / "runs.jsonl"
     n_runs = sum(1 for _ in runs_path.open(encoding="utf-8")) if runs_path.exists() else 0

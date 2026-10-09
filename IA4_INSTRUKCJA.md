@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.24
+**Wersja:** 1.25
 **Data:** 9 października 2026
 **Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca. Poszukiwanie wstrzymane 3.10.2026 (`search_closed: true`) — zostaje 60 aktywnych strategii. Od 4.10.2026 moduł EURUSD zbiera świece 5-minutowe (sekcja 4b). 🟨 Etap 4 — prognoza EURUSD na 48 świec 5-minutowych (sekcja 4c), w przygotowaniu. Jak czytać arkusze i wyciągać wnioski: `PRZEWODNIK.md`.
 
@@ -323,20 +323,24 @@ Tylko ręcznie. Kolejno: synchronizacja (4c.1) → klon brancha `fx` w `ia4-rese
 
 #### 4c.9 FX-real-time — `python -m ia4.fx.live`
 
-- **Start:** synchronizacja (4c.1), profile i ratingi z `fx-repo/fx/ratings.json` (bez tego pliku program się nie uruchamia — najpierw FX-research), prognoza na ostatniej świecy, publikacja.
+- **Start:** `caffeinate` (Mac nie zaśnie, dopóki program działa), klon brancha `fx` i katalog + ratingi z `fx-repo/fx/` (bez `ratings.json` program się nie uruchamia — najpierw FX-research), dashboard na branchu `fx` (gdy się zmienił), synchronizacja (4c.1), prognoza na ostatniej świecy, publikacja.
 - **Pętla co 30 s:**
-  - poza godzinami rynku (4b) — żadnych odczytów Firestore,
-  - gdy minęło zamknięcie świecy nowszej niż ostatnia znana + 20 s: 1 odczyt `fx/EURUSD` (podsumowanie); jeśli `lastTime` jest nowszy — odczyt dokumentu dnia (przy zmianie dnia UTC — dwóch), nowe świece do kopii lokalnej, prognoza, publikacja; jeśli nie — kolejna próba za 30 s,
-  - co 2 min sygnał życia (`aliveAt`), także bez nowej świecy i przy zamkniętym rynku,
-  - gdy `fx-repo/fx/ratings.json` się zmienił (nowe przeliczenie FX-research w trakcie pracy) — przy następnej świecy program bierze nowe ratingi.
-- **Publikacja:** `forecast.json` na branchu `fx-live` — zawsze jeden commit bez historii (force push), klon w `ia4-research/fx-live-repo/`. Zawartość: wersja, `aliveAt`, `generatedAt`, przeliczenie ratingów (ID, data), ostatnie 48 świec (czas, o, h, l, c), prognoza (czas, cena) dla k = 1…48, liczba okoliczności prawdziwych i suma ich ratingów, wynik sprawdzianu (4c.7) z tego przeliczenia.
-- **Firestore:** ok. 300–600 odczytów na dzień pracy przy otwartym rynku.
+  - świece nowszej niż ostatnia znana szukamy dopiero od jej zamknięcia + 30 s (zapis w Firestore jest zwykle ok. 21 s po zamknięciu); poza godzinami rynku (4b) nie ma czego szukać — **zero odczytów Firestore**,
+  - 1 odczyt `fx/EURUSD` (podsumowanie); jeśli `lastTime` jest nowszy — odczyt dokumentu dnia (przy zmianie doby UTC dwóch, po weekendzie trzech), nowe świece do kopii lokalnej, prognoza (4c.6, ten sam kod co FX-research), publikacja; jeśli nie — kolejna próba za 30 s, a po 3 min spóźnienia co 2 min,
+  - co 2 min sygnał życia (`aliveAt`) — także bez nowej świecy i przy zamkniętym rynku,
+  - gdy `fx-repo/fx/ratings.json` się zmienił (nowe przeliczenie FX-research w trakcie pracy) — przy następnej świecy program bierze nowe ratingi,
+  - błąd sieci albo Firestore nie zatrzymuje programu — próba w kolejnym obrocie.
+- **Ctrl+C:** ostatnia publikacja z `stoppedAt` — dashboard pokazuje „program zatrzymany”.
+- **Publikacja:** `forecast.json` na branchu `fx-live` — zawsze jeden commit bez historii (force push), klon w `ia4-research/fx-live-repo/`. Zawartość: wersja, `aliveAt`, `generatedAt`, `stoppedAt` (po Ctrl+C), `marketOpen`, przeliczenie ratingów (ID, data, przewaga sprawdzianu i trafność kierunku k = 12 i 48), ostatnia świeca i zamknięcie, ostatnie 48 świec (początek, o, h, l, c), prognoza (początek świecy, cena) dla k = 1…48 tylko do zamknięcia rynku, zmiana prognozy w pipsach dla k = 1, 6, 12, 24, 48, liczba okoliczności prawdziwych i suma ich ratingów, 5 z nich o najwyższym ratingu (ID, rating, opis), odczyty Firestore dziś.
+- **Firestore:** ok. 2 odczyty na świecę — ok. 580 na pełny dzień roboczy, przy zamkniętym rynku 0 (symulacja 3 dób w `selftest`).
+- **GitHub:** ok. 30 publikacji na godzinę (sygnał życia + świece).
 
-#### 4c.10 Dashboard
+#### 4c.10 Dashboard (`ia4-research/ia4/fx/dashboard/index.html`)
 
-- **Adres:** GitHub Pages z brancha `fx` (`index.html`) — `https://miszyszka.github.io/IA4/`. Jednorazowo: GitHub → Settings → Pages → Branch `fx`, folder `/` (repozytorium publiczne).
-- Strona co 30 s czyta `forecast.json` z brancha `fx-live` przez API GitHub (zapytania warunkowe, bez tokenu).
-- Pokazuje: wykres świecowy ostatnich 48 świec + linię prognozy 48 zamknięć, czasy PL, **status Maca** („połączony”, gdy `aliveAt` jest młodszy niż 5 min; inaczej „Mac offline od …”, a prognoza jest wyszarzona z czasem jej wyliczenia), „rynek zamknięty”, wiek prognozy, liczbę okoliczności prawdziwych, przeliczenie ratingów i wynik sprawdzianu.
+- **Adres:** GitHub Pages z brancha `fx` (`index.html` + `.nojekyll`; kopiują je FX-research i FX-real-time, gdy plik w kodzie się zmienił) — `https://miszyszka.github.io/IA4/`. Jednorazowo: GitHub → Settings → Pages → Source: Deploy from a branch → Branch `fx`, folder `/ (root)` (repozytorium publiczne).
+- Jeden plik, bez bibliotek z zewnątrz, wykres w SVG; jasny i ciemny motyw według systemu; działa na telefonie.
+- Co 30 s czyta `forecast.json` z brancha `fx-live` przez API GitHub (zapytania warunkowe — odpowiedź „bez zmian” nie zużywa limitu 60 zapytań na godzinę); przy przekroczeniu limitu — przez 10 min z `raw.githubusercontent.com` (do 5 min opóźnienia).
+- Pokazuje: wykres świecowy ostatnich 48 świec + linię prognozy 48 zamknięć (godziny PL), **status Maca** (zielony „Mac połączony”, gdy `aliveAt` młodszy niż 5 min; czerwony „Mac offline od …” albo „program zatrzymany …” — wtedy linia prognozy szara, przerywana), rynek otwarty / zamknięty, czas wyliczenia prognozy i jej świecę, kafelki: ostatnie zamknięcie, prognoza +1 h i +4 h (cena i pipsy), okoliczności prawdziwe i suma ratingów, sprawdzian (przewaga i trafność kierunku), 5 okoliczności prawdziwych o najwyższym ratingu.
 
 #### 4c.11 Arkusz OKOLICZNOSCI_FX (`Fx.gs`)
 
@@ -351,15 +355,16 @@ Tylko ręcznie. Kolejno: synchronizacja (4c.1) → klon brancha `fx` w `ia4-rese
 Pisze je wyłącznie Python z Maca.
 
 ```
-fx (FX-research):
-  index.html          dashboard (kopia ia4-research/ia4/fx/dashboard/index.html)
+fx (FX-research; dashboard także FX-real-time):
+  index.html          dashboard (kopia ia4-research/ia4/fx/dashboard/index.html) — GitHub Pages
+  .nojekyll           Pages bez przetwarzania Jekyll
   fx/README.md
   fx/conditions.json  katalog fx-cond/1 z progami — zapisuje go raz `python -m ia4.fx.catalog --commit`, nienaruszalny
   fx/ratings.json     ostatnie przeliczenie: dla każdej okoliczności rating, wystąpienia, n_ind, S, częstość, znacznik, profil (48)
   fx/runs.jsonl       wiersz na każde przeliczenie: ID, czas, wersja, zakres danych, liczba świec, sprawdzian, rating / wystąpienia / częstość każdej okoliczności
 
-fx-live (FX-real-time, jeden commit, force push):
-  forecast.json
+fx-live (FX-real-time, zawsze jeden commit, force push):
+  forecast.json       stan na żywo (4c.9) — czyta go dashboard
 ```
 
 ---
@@ -448,7 +453,7 @@ Prognoza kursu EURUSD na 48 świec 5-minutowych (sekcja 4c). Kolejne kroki — k
 - **FX-1** — synchronizacja `fx/EURUSD` → `data/fx/` (`python -m ia4.fx.sync`), katalog 1000 okoliczności (4c.3), kalibracja próbna i właściwa (`python -m ia4.fx.catalog [--commit]`) → `fx/conditions.json`, test `python -m ia4.fx.selftest` — kod gotowy w 1.21; zamknięty, gdy `fx/conditions.json` jest na branchu `fx`,
 - **FX-2** — FX-research (`python -m ia4.fx.research`): wystąpienia, profile, ratingi (walk-forward), sprawdzian → `fx/ratings.json`, `fx/runs.jsonl`; testy w `python -m ia4.fx.selftest` — kod gotowy w 1.23; zamknięty, gdy pierwsze przeliczenie `R-001` jest na branchu `fx`,
 - **FX-3** — arkusz OKOLICZNOSCI_FX (`Fx.gs`, trigger `researchSync`, menu „odśwież OKOLICZNOSCI_FX teraz”) — kod gotowy w 1.24; zamknięty, gdy arkusz ma kolumnę R-001,
-- **FX-4** — FX-real-time i dashboard (GitHub Pages z brancha `fx`, dane z `fx-live`).
+- **FX-4** — FX-real-time (`python -m ia4.fx.live`) i dashboard (GitHub Pages z brancha `fx`, dane z `fx-live`) — kod gotowy w 1.25; zamknięty, gdy dashboard pokazuje prognozę i „Mac połączony”.
 
 Wdrożony, gdy: `fx/conditions.json` jest na branchu `fx` (1000 okoliczności, każda w 10–50% przy kalibracji), FX-research zapisało pierwsze przeliczenie, arkusz OKOLICZNOSCI_FX ma jego kolumnę, a dashboard pokazuje prognozę i status Maca.
 
@@ -756,7 +761,7 @@ Poszukiwanie (gdy zostanie wznowione, `search_closed: false`): `python -m ia4.la
 | Mac: pierwsza synchronizacja nowych instrumentów (doubleProof) | — | ok. 10 000 (raz) |
 | Mac: `ia4.sync --full` | — | ok. 48 000 — nie łączyć tego samego dnia z innymi dużymi odczytami |
 | Mac: `ia4.fx.sync` (FX-research, start FX-real-time) | — | pierwszy raz ok. 1 na dzień bazy FX (ok. 60), potem 1–3 / start |
-| Mac: FX-real-time | — | ok. 300–600 / dzień pracy przy otwartym rynku; przy zamkniętym 0 |
+| Mac: FX-real-time | — | ok. 2 na świecę: ok. 580 / pełny dzień roboczy, przy zamkniętym rynku 0 |
 
 ### Limity Apps Script (konto Gmail)
 
@@ -782,6 +787,7 @@ cd ~/Desktop/IA4 && git pull
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.25 | 2026-10-09 | Krok FX-4: `python -m ia4.fx.live` — prognoza na żywo (pętla 30 s, ok. 2 odczyty Firestore na świecę, zero przy zamkniętym rynku, sygnał życia co 2 min, `stoppedAt` po Ctrl+C), `forecast.json` na branchu `fx-live` (jeden commit); dashboard `index.html` na GitHub Pages z brancha `fx` (status Maca, rynek, wykres 48 + 48, kafelki, top 5 okoliczności), kopiowany przez FX-research i FX-real-time. Selftest: symulacja piątek → niedziela. PRZEWODNIK: sekcja o prognozie. |
 | 1.24 | 2026-10-09 | Krok FX-3: arkusz OKOLICZNOSCI_FX (`Fx.gs`, 4c.11) — katalog i kolumna `rating/wystąpienia` na każde przeliczenie, odświeżany w `researchSync` tylko po nowym commicie brancha `fx` (`FX_RUNS`), menu „💱 EURUSD — odśwież OKOLICZNOSCI_FX teraz”. 4c.3: wiersz 17 opisuje rodzinę „Trend i korekta” tak, jak skalibrowano `fx-cond/1` (kod 1.21); poprawka z 1.22 obowiązuje dopiero dla `fx-cond/2`. |
 | 1.23 | 2026-10-09 | Krok FX-2: `python -m ia4.fx.research` — wystąpienia, profile, ratingi, sprawdzian, zapis `fx/ratings.json` i `fx/runs.jsonl`, lokalnie `occurrences.npz` i `ratings-preview.csv`. Rating (4c.5) metodą walk-forward na 5 częściach zamiast jednego podziału 70/30 (mniej przypadkowych ratingów przy tej samej wykrywalności); sprawdzian (4c.7) z ratingami walk-forward na pierwszych 70% i wskazówką, jak go czytać. Selftest: zgodność z liczeniem ręcznym, brak zaglądania w przyszłość, zasiany sygnał, czysty szum. |
 | 1.22 | 2026-10-09 | Przegląd kalibracji próbnej na prawdziwych danych: rodzina 17 „Trend i korekta” — nowa cecha `combo_dip` (cena nad średnią długą, ale pod krótką), `combo_pull` tylko m = 3, 6, cele 15% i 12% zamiast 25/15/40% (wcześniej „korekta” wypadała na medianie, np. „zmiana ≤ +4 pips”). |

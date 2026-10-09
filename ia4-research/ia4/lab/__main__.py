@@ -1,6 +1,6 @@
 """
 IA 4 — poszukiwanie strategii na Macu (Etap 2).
-Wersja projektu: 1.24 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.25 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Uruchomienie (w folderze ia4-research/, z aktywnym .venv):
   python -m ia4.lab                 # liczy bez końca (Ctrl+C — zapisuje stan i kończy)

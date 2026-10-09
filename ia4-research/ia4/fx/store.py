@@ -1,10 +1,10 @@
 """
 IA 4 — wyniki modułu prognozy EURUSD na branchu `fx` (instrukcja, sekcja 4c.12).
-Wersja projektu: 1.24 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.25 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Klon brancha w ia4-research/fx-repo/ (poza gitem głównego repo), te same
 uprawnienia do push co zwykły `git push` na tym Macu. Mechanika git — wspólna
-z poszukiwaniem (ia4.lab.store.ResultsRepo). Branch `fx-live` dojdzie w kroku FX-4.
+z poszukiwaniem (ia4.lab.store.ResultsRepo). Branch `fx-live` — ia4/fx/live.py (LiveRepo).
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ Ten branch zapisuje wyłącznie Python z Maca. Zasady i znaczenie plików:
 - `fx/ratings.json` — ostatnie przeliczenie (`python -m ia4.fx.research`): rating, wystąpienia,
   przewaga, częstość i profil 48 świec każdej okoliczności, sprawdzian systemu
 - `fx/runs.jsonl` — wiersz na każde przeliczenie (R-001, R-002, …) → arkusz OKOLICZNOSCI_FX
+- `index.html`, `.nojekyll` — dashboard na GitHub Pages; dane na żywo: branch `fx-live` (`forecast.json`)
 """
 
 

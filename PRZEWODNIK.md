@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.24 (2026-10-09)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.25 (2026-10-09)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
@@ -44,6 +44,19 @@ Jeden wiersz na dzień (UTC): **oczekiwanych świec**, **zapisanych świec**, **
 - **Zapisanych zawsze = oczekiwanych.** Czego Yahoo nie odda po 3 próbach, to jest uśredniane. Uśrednione świece są oznaczone w bazie i przy analizie można je pominąć.
 - Kilka uśrednionych świec dziennie jest normalne. Dziesiątki przez kilka dni z rzędu oznaczają problem po stronie Yahoo; napisz wtedy do Claude.
 - Czy EURUSD zbiera się na bieżąco: STATS, wiersze „EURUSD 5m”.
+
+## 3b. Prognoza EURUSD — dashboard i OKOLICZNOSCI_FX
+
+**Dashboard:** https://miszyszka.github.io/IA4/ — działa tylko, gdy na Macu chodzi `python -m ia4.fx.live`
+(Terminal: `cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && python -m ia4.fx.live`; Ctrl+C kończy).
+- Zielone „Mac połączony” — prognoza jest świeża. Czerwone „Mac offline” albo „program zatrzymany” — widzisz ostatnią prognozę (szara linia), nie bieżącą.
+- Niebieska linia = średnia tego, co historycznie działo się z ceną po okolicznościach prawdziwych teraz, ważona ratingiem.
+- **Sprawdzian systemu** mówi, czy prognoza w ogóle coś umie: wynik między −1% a +1% = tyle co przypadek. Dopóki tak jest, linia jest ciekawostką, nie sygnałem.
+
+**Arkusz OKOLICZNOSCI_FX:** 1000 okoliczności, a w kolumnach kolejne przeliczenia: `rating/wystąpienia`.
+- Nowa kolumna pojawia się po `python -m ia4.fx.research` na Macu (ręcznie — np. raz w tygodniu, gdy przybyło danych).
+- Patrz, czy te same okoliczności trzymają wysoki rating w kolejnych kolumnach. Jednorazowy wysoki rating przy małej liczbie danych to zwykle przypadek.
+- Szara komórka = okoliczność wypadła poza 10–50% świec (rynek zmienił charakter) — tylko informacja.
 
 ## 4. VIRTUAL-INVESTOR — jak czytać wynik
 

@@ -1,6 +1,6 @@
 """
 IA 4 — weryfikacja strategii na doubleProof (instrukcja, sekcja 6a).
-Wersja projektu: 1.24 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.25 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Bierze strategie aktywne (research/strategies/) i liczy je backtestowo — tym samym
 silnikiem i tymi samymi zasadami (sekcja 8) — na 20 spółkach doubleProof, których
