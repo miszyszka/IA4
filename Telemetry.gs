@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — TELEMETRIA  (stan zbierania → telemetry/state.json w GitHub)
  *
- *  Wersja projektu: 1.19 (2026-10-08) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.20 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Claude widzi tylko repozytorium, nie arkusz. Ten plik raz na godzinę
  *  publikuje krótki stan bazy: etap, wersję, stan automatu i dla każdego
@@ -18,7 +18,7 @@ const TELEMETRY = {
   REPO: 'miszyszka/IA4',
   BRANCH: 'main',
   PATH: 'telemetry/state.json',
-  STAGE: 'Etap 2 — poszukiwanie strategii (wstrzymane) · Etap 3 — paper trading · moduł EURUSD — zbieranie',   // zmieniać razem z nagłówkiem instrukcji
+  STAGE: 'Etap 2 — poszukiwanie strategii (wstrzymane) · Etap 3 — paper trading · moduł EURUSD — zbieranie · Etap 4 — prognoza EURUSD (przygotowanie)',   // zmieniać razem z nagłówkiem instrukcji
   MIN_GAP_MIN: 10,
 };
 

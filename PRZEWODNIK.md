@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.19 (2026-10-08)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.20 (2026-10-09)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
