@@ -1,6 +1,6 @@
 """
 IA 4 — wyniki poszukiwania na branchu `research` w GitHub.
-Wersja projektu: 1.20 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.21 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Wyniki mają osobny branch, żeby commity co 30 minut nie mieszały się
 z `main` (kod, instrukcja, telemetria z Apps Script). Python trzyma własny
@@ -38,9 +38,12 @@ def _git(cwd: Path, *args, check=True) -> subprocess.CompletedProcess:
 
 
 class ResultsRepo:
-    def __init__(self, root: Path, push: bool = True):
-        self.root = root                      # ia4-research/research-repo
-        self.dir = root / "research"
+    def __init__(self, root: Path, push: bool = True, branch: str = BRANCH, subdir: str = "research",
+                 readme: str = README):
+        self.root = root                      # ia4-research/research-repo (fx: fx-repo, sekcja 4c.12)
+        self.dir = root / subdir
+        self.branch = branch
+        self.readme = readme
         self.push_enabled = push
         self.last_error = ""
 
@@ -59,28 +62,28 @@ class ResultsRepo:
             return
         self.root.mkdir(parents=True, exist_ok=True)
         if not self.push_enabled:
-            _git(self.root, "init", "-q", "-b", BRANCH)
+            _git(self.root, "init", "-q", "-b", self.branch)
             self.dir.mkdir(parents=True, exist_ok=True)
             return
         url = self._origin()
         _git(self.root, "init", "-q")
         _git(self.root, "remote", "add", "origin", url)
-        fetched = _git(self.root, "fetch", "-q", "origin", BRANCH, check=False).returncode == 0
+        fetched = _git(self.root, "fetch", "-q", "origin", self.branch, check=False).returncode == 0
         if fetched:
-            _git(self.root, "checkout", "-q", "-b", BRANCH, f"origin/{BRANCH}")
-            _git(self.root, "branch", "-q", "--set-upstream-to", f"origin/{BRANCH}")
+            _git(self.root, "checkout", "-q", "-b", self.branch, f"origin/{self.branch}")
+            _git(self.root, "branch", "-q", "--set-upstream-to", f"origin/{self.branch}")
         else:                                        # pierwszy raz — nowy, pusty branch
-            _git(self.root, "checkout", "-q", "--orphan", BRANCH)
+            _git(self.root, "checkout", "-q", "--orphan", self.branch)
             self.dir.mkdir(parents=True, exist_ok=True)
-            (self.dir / "README.md").write_text(README, encoding="utf-8")
-            self.commit_push("research: nowy branch wyników")
+            (self.dir / "README.md").write_text(self.readme, encoding="utf-8")
+            self.commit_push(f"{self.branch}: nowy branch wyników")
         self.dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------ git
     def pull(self) -> None:
         if not self.push_enabled:
             return
-        r = _git(self.root, "pull", "-q", "--rebase", "--autostash", "origin", BRANCH, check=False)
+        r = _git(self.root, "pull", "-q", "--rebase", "--autostash", "origin", self.branch, check=False)
         if r.returncode != 0:
             self.last_error = r.stderr.strip()[:300]
             _git(self.root, "rebase", "--abort", check=False)
@@ -96,7 +99,7 @@ class ResultsRepo:
         if not self.push_enabled:
             return True
         for attempt in range(4):
-            r = _git(self.root, "push", "-q", "-u", "origin", BRANCH, check=False)
+            r = _git(self.root, "push", "-q", "-u", "origin", self.branch, check=False)
             if r.returncode == 0:
                 self.last_error = ""
                 return True

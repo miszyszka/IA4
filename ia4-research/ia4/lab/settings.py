@@ -1,5 +1,5 @@
 """
-IA 4 — ustawienia poszukiwania (domyślne). Wersja projektu: 1.20 (2026-10-09)
+IA 4 — ustawienia poszukiwania (domyślne). Wersja projektu: 1.21 (2026-10-09)
 
 Wartości domyślne są tu. Claude (albo człowiek) nadpisuje je plikiem
 research/config.json na branchu `research` — Python czyta go przy starcie
