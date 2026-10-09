@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — MODUŁ EURUSD  (Yahoo EURUSD=X, świece 5 min → Firestore fx/EURUSD → arkusz FX)
  *
- *  Wersja projektu: 1.23 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.24 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Osobny moduł (instrukcja, sekcja 4b): zbiera dane. Nie bierze udziału
  *  w poszukiwaniu, weryfikacji ani paper tradingu.
@@ -18,6 +18,9 @@
  *    między sąsiednimi świecami i oznaczane (fillT) — każdy dzień kończy się kompletny.
  *  • Arkusz FX: jeden wiersz na dzień — oczekiwanych, zapisanych, w tym uśrednionych —
  *    dopisywany po kontroli zakończonego dnia.
+ *  • Arkusz OKOLICZNOSCI_FX (prognoza EURUSD, sekcja 4c.11): katalog okoliczności i rating /
+ *    wystąpienia z każdego przeliczenia FX-research — z brancha `fx` w GitHub, w triggerze
+ *    researchSync (co 30 min), tylko gdy na branchu pojawiło się coś nowego.
  *  Stan: Script Properties FX_STATE (bieżący) i FX_CHECK (dni czekające na kolejną próbę).
  * ============================================================================
  */
@@ -547,4 +550,155 @@ function fxTelemetry_() {
     yesterday: st.yesterday || null,
     pendingChecks: fxCheckLoad_(),
   };
+}
+
+
+// ============================================================================
+//  ARKUSZ OKOLICZNOSCI_FX — prognoza EURUSD (instrukcja, sekcja 4c.11)
+//  Źródło: branch `fx` (fx/conditions.json, fx/runs.jsonl), zapisuje go Python z Maca.
+//  Co 30 min (researchSync) jedno małe zapytanie o ostatni commit brancha `fx`;
+//  pliki są pobierane i arkusz przebudowany tylko, gdy commit się zmienił (FX_RUNS).
+// ============================================================================
+const FXR = {
+  BRANCH: 'fx',
+  COND: 'fx/conditions.json',
+  RUNS: 'fx/runs.jsonl',
+  SHEET: 'OKOLICZNOSCI_FX',
+  MARK: 'okol-1',                       // znacznik układu (G1); inny — arkusz budowany od nowa
+  HEAD: 6,                              // wiersz nagłówków kolumn; okoliczności od wiersza 7
+  FIX: ['ID', 'Rodzina', 'Kierunek', 'Para', 'Okoliczność', 'Próg', 'Częstość przy kalibracji %'],
+  RUN_LABELS: ['Przeliczenie', 'Data (PL)', 'Świec', 'Przewaga sprawdzianu %'],   // wiersze 2–5, etykiety w kolumnie G
+  GRAY: '#d9d9d9',
+};
+
+/** Trigger researchSync i menu: odświeża arkusz, gdy branch `fx` się zmienił. */
+function fxOkolSync_(force) {
+  try {
+    const sha = fxGhRefSha_();
+    if (!sha) return { ok: false, reason: 'brak brancha fx (najpierw python -m ia4.fx.catalog --commit)' };
+    const props = PropertiesService.getScriptProperties();
+    const st = JSON.parse(props.getProperty('FX_RUNS') || '{}');
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(FXR.SHEET);
+    const layoutOk = sh && sh.getRange(1, FXR.FIX.length).getValue() === FXR.MARK;
+    if (!force && layoutOk && st.sha === sha) return { ok: true, skipped: true };
+    const condTxt = fxGhRaw_(FXR.COND);
+    if (!condTxt) return { ok: false, reason: 'brak fx/conditions.json na branchu fx' };
+    const runs = (fxGhRaw_(FXR.RUNS) || '').split('\n').filter(l => l.trim())
+      .map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(x => x);
+    const built = fxOkolBuild_(JSON.parse(condTxt), runs, iso =>
+      Utilities.formatDate(new Date(iso), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm'));
+    fxOkolWrite_(built);
+    props.setProperty('FX_RUNS', JSON.stringify({ sha: sha, runs: runs.length, at: new Date().toISOString() }));
+    return { ok: true, runs: runs.length };
+  } catch (e) {
+    console.error('OKOLICZNOSCI_FX: ' + e.message);
+    if (force) throw e;
+    return { ok: false, reason: e.message };
+  }
+}
+
+function fxOkolNow() {
+  const r = fxOkolSync_(true);
+  toast_(r.ok ? `OKOLICZNOSCI_FX odświeżone (przeliczeń: ${r.runs}).` : 'OKOLICZNOSCI_FX: ' + r.reason);
+}
+
+/**
+ * Czysta funkcja (bez Apps Script): katalog + przeliczenia → wartości, tła, liczba kolumn.
+ * Wiersz 1: tytuł (A) i znacznik (G). Wiersze 2–5: nagłówki przeliczeń (etykiety w G).
+ * Wiersz 6: nagłówki kolumn. Od wiersza 7: okoliczności w kolejności ID.
+ * Komórka przeliczenia: „rating/wystąpienia” (tekst); szara, gdy częstość poza 10–50%.
+ */
+function fxOkolBuild_(cond, runs, fmtDate) {
+  const C = cond.conditions || [];
+  const F = FXR.FIX.length, W = F + runs.length, H = FXR.HEAD;
+  const blank = () => new Array(W).fill('');
+  const values = [], bg = [];
+  const d = cond.data || {};
+  const title = blank();
+  title[0] = `IA 4 — OKOLICZNOSCI_FX · katalog ${cond.catalog} (${C.length} okoliczności, kalibracja ` +
+    `${fmtDate(cond.calibratedAt)} na ${d.candles} świecach) · w kolumnach przeliczeń: rating / wystąpienia ` +
+    `(szare: częstość poza 10–50%) · instrukcja 4c.11`;
+  title[F - 1] = FXR.MARK;
+  values.push(title);
+  FXR.RUN_LABELS.forEach((lab, j) => {
+    const row = blank();
+    row[F - 1] = lab;
+    runs.forEach((r, i) => {
+      const ch = r.check || {}, S = ch.S || {};
+      row[F + i] = [r.run, fmtDate(r.at), String((r.data || {}).candles || ''),
+                    (S.all === null || S.all === undefined) ? '—' : (100 * S.all).toFixed(2).replace('.', ',')][j];
+    });
+    values.push(row);
+  });
+  const head = blank();
+  FXR.FIX.forEach((h, i) => { head[i] = h; });
+  runs.forEach((r, i) => { head[F + i] = 'rating / wystąpienia'; });
+  values.push(head);
+  for (let i = 0; i < H; i++) bg.push(new Array(W).fill('#ffffff'));
+  C.forEach((c, k) => {
+    const row = [c.id, c.familyName || c.family, c.dir, c.pair, c.desc,
+                 String(c.theta).replace('.', ','), (100 * c.coverage).toFixed(1).replace('.', ',')];
+    const b = new Array(W).fill('#ffffff');
+    runs.forEach((r, i) => {
+      const x = (r.r || [])[k];
+      if (!x) { row.push(''); return; }
+      row.push(`${x[0]}/${x[1]}`);
+      if (x[2] < 10 || x[2] > 50) b[F + i] = FXR.GRAY;
+    });
+    values.push(row);
+    bg.push(b);
+  });
+  return { values: values, bg: bg, width: W, fixed: F };
+}
+
+function fxOkolWrite_(b) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(FXR.SHEET) || ss.insertSheet(FXR.SHEET);
+  const rows = b.values.length, W = b.width;
+  sh.clear();
+  if (sh.getMaxColumns() < W) sh.insertColumnsAfter(sh.getMaxColumns(), W - sh.getMaxColumns());
+  if (sh.getMaxRows() < rows) sh.insertRowsAfter(sh.getMaxRows(), rows - sh.getMaxRows());
+  sh.setTabColor('#1a73e8');
+  const all = sh.getRange(1, 1, rows, W);
+  all.setNumberFormat('@');                                   // „41/344” to tekst, nie data ani ułamek
+  all.setValues(b.values);
+  all.setBackgrounds(b.bg);
+  sh.getRange(1, 1, 1, b.fixed - 1).merge().setFontWeight('bold');
+  sh.getRange(1, b.fixed).setFontColor('#999999');
+  sh.getRange(2, b.fixed, FXR.RUN_LABELS.length, 1).setFontWeight('bold').setHorizontalAlignment('right');
+  if (W > b.fixed) sh.getRange(2, b.fixed + 1, FXR.RUN_LABELS.length + 1, W - b.fixed)
+    .setFontWeight('bold').setHorizontalAlignment('center');
+  sh.getRange(FXR.HEAD, 1, 1, W).setFontWeight('bold').setBackground('#e8f0fe');
+  if (rows > FXR.HEAD) sh.getRange(FXR.HEAD + 1, b.fixed + 1, rows - FXR.HEAD, Math.max(W - b.fixed, 1))
+    .setHorizontalAlignment('center');
+  sh.setFrozenRows(FXR.HEAD);
+  sh.setFrozenColumns(1);
+  sh.setColumnWidth(5, 520);
+  sh.setColumnWidth(2, 210);
+}
+
+/** Ostatni commit brancha fx (null = brak brancha). */
+function fxGhRefSha_() {
+  const resp = UrlFetchApp.fetch(`https://api.github.com/repos/${TELEMETRY.REPO}/git/ref/heads/${FXR.BRANCH}`, {
+    muteHttpExceptions: true, headers: fxGhHeaders_('application/vnd.github+json') });
+  const code = resp.getResponseCode();
+  if (code === 404) return null;
+  if (code !== 200) throw new Error(`GitHub HTTP ${code} (ref ${FXR.BRANCH})`);
+  return JSON.parse(resp.getContentText()).object.sha;
+}
+
+/** Surowa treść pliku z brancha fx (null = brak). */
+function fxGhRaw_(path) {
+  const resp = UrlFetchApp.fetch(`https://api.github.com/repos/${TELEMETRY.REPO}/contents/${path}?ref=${FXR.BRANCH}`, {
+    muteHttpExceptions: true, headers: fxGhHeaders_('application/vnd.github.raw') });
+  const code = resp.getResponseCode();
+  if (code === 404) return null;
+  if (code !== 200) throw new Error(`GitHub HTTP ${code} (${path})`);
+  return resp.getContentText('UTF-8');
+}
+
+function fxGhHeaders_(accept) {
+  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
+  if (!token) throw new Error('brak tokenu GitHub (menu IA 4 → Ustaw token GitHub)');
+  return { Authorization: 'Bearer ' + token, Accept: accept };
 }

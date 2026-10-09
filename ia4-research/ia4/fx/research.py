@@ -1,7 +1,7 @@
 """
 IA 4 — FX-research: wystąpienia, profile, ratingi i sprawdzian okoliczności EURUSD
 (instrukcja, sekcje 4c.4–4c.8).
-Wersja projektu: 1.23 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.24 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.research              # synchronizacja, przeliczenie od zera, zapis i push na branch fx
   python -m ia4.fx.research --no-sync    # bez Firestore (kopia lokalna)

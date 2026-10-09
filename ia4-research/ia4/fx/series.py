@@ -1,6 +1,6 @@
 """
 IA 4 — seria EURUSD i wskaźniki modułu prognozy (instrukcja, sekcje 4c.1 i 4c.3).
-Wersja projektu: 1.23 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.24 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Seria = wszystkie świece w kolejności czasu, indeks t bez przerw (przez weekend też).
 Średnie kroczące, ATR i RSI — dokładnie wzory z sekcji 8.2 (ia4.lab.indicators).

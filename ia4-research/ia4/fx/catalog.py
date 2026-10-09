@@ -1,7 +1,7 @@
 """
 IA 4 — katalog okoliczności EURUSD `fx-cond/1` i jednorazowa kalibracja
 (instrukcja, sekcje 4c.2 i 4c.3).
-Wersja projektu: 1.23 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.24 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Okoliczność = cecha f (liczba na świecy t, tylko ze świec ≤ t) i warunek  f ≥ próg.
 Cecha jest zbudowana tak, że duża wartość = wzrost / wysoka cena. Okoliczność `+`

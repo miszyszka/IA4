@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.23
+**Wersja:** 1.24
 **Data:** 9 października 2026
 **Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca. Poszukiwanie wstrzymane 3.10.2026 (`search_closed: true`) — zostaje 60 aktywnych strategii. Od 4.10.2026 moduł EURUSD zbiera świece 5-minutowe (sekcja 4b). 🟨 Etap 4 — prognoza EURUSD na 48 świec 5-minutowych (sekcja 4c), w przygotowaniu. Jak czytać arkusze i wyciągać wnioski: `PRZEWODNIK.md`.
 
@@ -269,10 +269,10 @@ Cel: prognoza zamknięć EURUSD na **48 świec 5-minutowych do przodu** (4 godzi
 | 14 | MACD | 25 | linia = EMA_f − EMA_s, sygnał = EMA_g(linia), histogram = linia − sygnał; `macd` część „line”: linia / U, „hist”: histogram / U, „hist_slope”: (hist[t] − hist[t−3]) / U; (f, s, g) = (12,26,9), (6,13,5), (24,52,18), (48,104,36), (5,35,5) |
 | 15 | Knoty świec | 15 | `wick`: Σ(dolny knot − górny knot) z n świec / (n · U); dolny = min(o,c) − l, górny = h − max(o,c); n = 1, 3, 6, 12, 24, 48 |
 | 16 | Doba, tydzień, poprzednia doba | 15 | segment: doba UTC, doba handlowa (od 17:00 Nowy Jork), tydzień (od pierwszej świecy po przerwie) · `sess_chg`: (c − otwarcie pierwszej świecy segmentu) / pips · `sess_chg_u`: to samo / U · `day_pos`: (c − min l) / (max h − min l) − 0,5 od początku segmentu · `prev_day`: (c − zamknięcie / maksimum / minimum poprzedniej doby handlowej) / U |
-| 17 | Trend i korekta | 25 | trend: c > MA (EMA200, SMA288, KAMA103, EMA103), inaczej NaN · `combo_dip`: (MA_k − c) / U, tylko gdy dodatkowo c < MA_k (cena pod krótką średnią); MA_k = EMA20, EMA9, SMA38, EMA50 · `combo_pull`: −(c[t] − c[t−m]) / pips, m = 3, 6 · `combo_rsi`: 50 − RSI14 · `combo_stoch`: −`stoch`(24). Cele częstości tej rodziny: 15% i 12% (trend jest prawdziwy na ok. połowie świec — przy 25% „korekta” wypadałaby na medianie) |
+| 17 | Trend i korekta | 25 | trend: c > MA (EMA200, SMA288, KAMA103, EMA103), inaczej NaN · `combo_pull`: −(c[t] − c[t−m]) / pips, m = 3, 6, 12, 24 · `combo_rsi`: 50 − RSI14 · `combo_stoch`: −`stoch`(24). **Tak skalibrowano `fx-cond/1`** (kod 1.21, 9.10.2026) — przy celu 25% część „korekt” wypadła na medianie (np. „zmiana ≤ +2,5 pips”); opisy są prawdziwe, nazwa rodziny bywa na wyrost. Kod od 1.22 ma dla przyszłego katalogu (`fx-cond/2`) poprawioną rodzinę: `combo_dip` = (MA_k − c) / U tylko gdy c < MA_k (MA_k = EMA20, EMA9, SMA38, EMA50), `combo_pull` m = 3, 6, cele 15% i 12%. Funkcje `combo_pull`, `combo_rsi`, `combo_stoch` się nie zmieniły — `fx-cond/1` liczy się tak samo jak przy kalibracji |
 
 **Kalibracja** (`python -m ia4.fx.catalog --commit`, raz):
-1. Kandydaci w stałej kolejności: rodziny 1→17; w rodzinie najpierw wszystkie cechy z celem częstości 25%, potem 15%, potem 40% (rodzina 17: 15%, potem 12%).
+1. Kandydaci w stałej kolejności: rodziny 1→17; w rodzinie najpierw wszystkie cechy z celem częstości 25%, potem 15%, potem 40% (w kodzie od 1.22 rodzina 17: 15%, potem 12% — dotyczy dopiero `fx-cond/2`).
 2. Próg kandydata: wartości f ze strony `+` i `−` razem (po rozgrzewce, bez uśrednionych), próg = wartość, powyżej której leży udział równy celowi; zaokrąglenie do 2 cyfr znaczących, a dla cech całkowitych (liczby świec) — do liczby całkowitej dającej udział najbliższy celowi. Kandydat przepada, gdy którakolwiek strona wypada poza 10–50% albo ten sam warunek (rodzaj, parametry, próg) już był.
 3. Wybór: kandydaci po kolei, w granicach limitu rodziny, jeśli korelacja (phi) ze stroną `+` każdej już wybranej okoliczności ≤ 0,85; potem drugi przebieg z progiem 0,95. Gdy par jest mniej niż 500, brakujące miejsca dostają kolejne rodziny po jednym kandydacie (0,85 → 0,95 → bez progu).
 4. ID w kolejności rodzin, a w rodzinie — kolejności wyboru; para = `FX-(2i−1)` `+` i `FX-(2i)` `−`.
@@ -340,9 +340,11 @@ Tylko ręcznie. Kolejno: synchronizacja (4c.1) → klon brancha `fx` w `ia4-rese
 
 #### 4c.11 Arkusz OKOLICZNOSCI_FX (`Fx.gs`)
 
-- Wypełnia go Apps Script w triggerze `researchSync` (co 30 min) z `fx/conditions.json` i `fx/runs.jsonl` (branch `fx`, token `GITHUB_TOKEN`), tylko gdy przybyło przeliczeń (Script Properties `FX_RUNS`).
-- **Wiersze:** okoliczności — ID, rodzina, kierunek, para, opis, próg, częstość przy kalibracji %.
-- **Kolumny po prawej:** jedno przeliczenie FX-research = jedna kolumna (najstarsze z lewej). Komórka `rating/wystąpienia`, np. `41/344` (wystąpienia z całej historii); okoliczność z częstością poza 10–50% — komórka szara. Nagłówek kolumny: ID przeliczenia, data, liczba świec, przewaga `S` sprawdzianu dla wszystkich k.
+- Wypełnia go Apps Script (`Fx.gs`) w triggerze `researchSync` (co 30 min) i z menu IA 4 → „💱 EURUSD — odśwież OKOLICZNOSCI_FX teraz”. Co 30 min jedno małe zapytanie o ostatni commit brancha `fx`; `fx/conditions.json` i `fx/runs.jsonl` (token `GITHUB_TOKEN`) są pobierane, a arkusz przebudowany w całości tylko wtedy, gdy commit się zmienił albo arkusz ma inny układ (znacznik `okol-1` w G1). Stan: Script Properties `FX_RUNS` (commit, liczba przeliczeń).
+- **Układ:** wiersz 1 — opis katalogu; wiersze 2–5 — nagłówki przeliczeń (etykiety w kolumnie G): ID przeliczenia, data (PL), liczba świec, przewaga `S` sprawdzianu dla wszystkich k (%); wiersz 6 — nagłówki kolumn; od wiersza 7 — okoliczności w kolejności ID (1000 wierszy).
+- **Kolumny A–G:** ID, rodzina, kierunek, para, opis, próg, częstość przy kalibracji %.
+- **Kolumny od H:** jedno przeliczenie FX-research = jedna kolumna (najstarsze z lewej). Komórka `rating/wystąpienia` jako tekst, np. `41/344` (wystąpienia z całej historii); okoliczność z częstością poza 10–50% w tym przeliczeniu — komórka szara.
+- Arkusz tylko do odczytu — ręczne zmiany znikają przy następnym przebudowaniu.
 
 #### 4c.12 Branche `fx` i `fx-live`
 
@@ -445,7 +447,7 @@ Prognoza kursu EURUSD na 48 świec 5-minutowych (sekcja 4c). Kolejne kroki — k
 - **FX-0** — ta sekcja instrukcji (wersja 1.20),
 - **FX-1** — synchronizacja `fx/EURUSD` → `data/fx/` (`python -m ia4.fx.sync`), katalog 1000 okoliczności (4c.3), kalibracja próbna i właściwa (`python -m ia4.fx.catalog [--commit]`) → `fx/conditions.json`, test `python -m ia4.fx.selftest` — kod gotowy w 1.21; zamknięty, gdy `fx/conditions.json` jest na branchu `fx`,
 - **FX-2** — FX-research (`python -m ia4.fx.research`): wystąpienia, profile, ratingi (walk-forward), sprawdzian → `fx/ratings.json`, `fx/runs.jsonl`; testy w `python -m ia4.fx.selftest` — kod gotowy w 1.23; zamknięty, gdy pierwsze przeliczenie `R-001` jest na branchu `fx`,
-- **FX-3** — arkusz OKOLICZNOSCI_FX (`Fx.gs`, trigger `researchSync`),
+- **FX-3** — arkusz OKOLICZNOSCI_FX (`Fx.gs`, trigger `researchSync`, menu „odśwież OKOLICZNOSCI_FX teraz”) — kod gotowy w 1.24; zamknięty, gdy arkusz ma kolumnę R-001,
 - **FX-4** — FX-real-time i dashboard (GitHub Pages z brancha `fx`, dane z `fx-live`).
 
 Wdrożony, gdy: `fx/conditions.json` jest na branchu `fx` (1000 okoliczności, każda w 10–50% przy kalibracji), FX-research zapisało pierwsze przeliczenie, arkusz OKOLICZNOSCI_FX ma jego kolumnę, a dashboard pokazuje prognozę i status Maca.
@@ -706,7 +708,7 @@ Wynik musi brzmieć „rozbieżności: sygnały 0, transakcje 0”.
 
 ### Apps Script — skład
 
-Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `Fx.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min. Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY`, `BT_DP_AT`, `BT_PF_AT`, `CANDLE_LOG`, `FX_STATE`, `FX_CHECK`, `ACTIVE_IDS`, `PRIORITY`, `VI_BY_STRAT`, `VI_SUMMARY` i inne — nie edytować). Arkusze: STATS, FX, OKOLICZNOSCI_FX (od FX-3), STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
+Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `Fx.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min (STRATEGIE, BACKTEST PORTFELA, OKOLICZNOSCI_FX). Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY`, `BT_DP_AT`, `BT_PF_AT`, `CANDLE_LOG`, `FX_STATE`, `FX_CHECK`, `FX_RUNS`, `ACTIVE_IDS`, `PRIORITY`, `VI_BY_STRAT`, `VI_SUMMARY` i inne — nie edytować). Arkusze: STATS, FX, OKOLICZNOSCI_FX (od FX-3), STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
 
 ### Aktualizacja do nowej wersji
 
@@ -780,6 +782,7 @@ cd ~/Desktop/IA4 && git pull
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.24 | 2026-10-09 | Krok FX-3: arkusz OKOLICZNOSCI_FX (`Fx.gs`, 4c.11) — katalog i kolumna `rating/wystąpienia` na każde przeliczenie, odświeżany w `researchSync` tylko po nowym commicie brancha `fx` (`FX_RUNS`), menu „💱 EURUSD — odśwież OKOLICZNOSCI_FX teraz”. 4c.3: wiersz 17 opisuje rodzinę „Trend i korekta” tak, jak skalibrowano `fx-cond/1` (kod 1.21); poprawka z 1.22 obowiązuje dopiero dla `fx-cond/2`. |
 | 1.23 | 2026-10-09 | Krok FX-2: `python -m ia4.fx.research` — wystąpienia, profile, ratingi, sprawdzian, zapis `fx/ratings.json` i `fx/runs.jsonl`, lokalnie `occurrences.npz` i `ratings-preview.csv`. Rating (4c.5) metodą walk-forward na 5 częściach zamiast jednego podziału 70/30 (mniej przypadkowych ratingów przy tej samej wykrywalności); sprawdzian (4c.7) z ratingami walk-forward na pierwszych 70% i wskazówką, jak go czytać. Selftest: zgodność z liczeniem ręcznym, brak zaglądania w przyszłość, zasiany sygnał, czysty szum. |
 | 1.22 | 2026-10-09 | Przegląd kalibracji próbnej na prawdziwych danych: rodzina 17 „Trend i korekta” — nowa cecha `combo_dip` (cena nad średnią długą, ale pod krótką), `combo_pull` tylko m = 3, 6, cele 15% i 12% zamiast 25/15/40% (wcześniej „korekta” wypadała na medianie, np. „zmiana ≤ +4 pips”). |
 | 1.21 | 2026-10-09 | Krok FX-1: sekcja 4c.3 uzupełniona (17 rodzin, wzory cech, lustro, U = ATR100, rozgrzewka 1000 świec, procedura kalibracji z celami 15/25/40% i limitem korelacji). Nowe `ia4/fx/sync.py`, `series.py`, `catalog.py`, `store.py`, `selftest.py`; `python -m ia4.fx.catalog` (próbna) i `--commit` (właściwa, raz) zamiast kalibracji przy pierwszym FX-research. `ia4/lab/store.py`: branch jako parametr (bez zmiany działania `ia4.lab`). |
