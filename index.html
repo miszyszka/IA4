@@ -1,8 +1,9 @@
 <!doctype html>
 <!--
-  IA 4 — dashboard prognozy EURUSD (instrukcja, sekcja 4c.10). Wersja projektu: 1.25 (2026-10-09)
+  IA 4 — dashboard prognozy EURUSD (instrukcja, sekcja 4c.10). Wersja projektu: 1.26 (2026-10-09)
   GitHub Pages z brancha `fx` (kopiują go python -m ia4.fx.research i python -m ia4.fx.live).
   Dane: forecast.json z brancha `fx-live` przez API GitHub (zapytania warunkowe co 30 s, bez tokenu).
+  Prognoza to ROZKŁAD (4c.0): stożek 50% / 80%, linia środkowa, 3 prawdziwe scenariusze z historii.
 -->
 <html lang="pl">
 <head>
@@ -12,13 +13,15 @@
 <style>
   :root {
     --bg: #f6f7f9; --card: #ffffff; --ink: #1d2433; --muted: #6b7385; --line: #e3e6ec;
-    --up: #1a9e6a; --down: #d64545; --fc: #2f6fe4; --fcband: rgba(47,111,228,.07);
+    --up: #1a9e6a; --down: #d64545; --fc: #2f6fe4; --band80: rgba(47,111,228,.10); --band50: rgba(47,111,228,.20);
+    --sc-down: #d6454599; --sc-mid: #6b7385aa; --sc-up: #1a9e6a99;
     --ok: #1a9e6a; --warn: #c98a00; --bad: #d64545; --off: #9aa1ae;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #0f1218; --card: #171b23; --ink: #e6e9ef; --muted: #8e96a6; --line: #262c38;
-      --up: #33c48a; --down: #ff6b6b; --fc: #6ea0ff; --fcband: rgba(110,160,255,.08);
+      --up: #33c48a; --down: #ff6b6b; --fc: #6ea0ff; --band80: rgba(110,160,255,.10); --band50: rgba(110,160,255,.22);
+      --sc-down: #ff6b6baa; --sc-mid: #8e96a6aa; --sc-up: #33c48aaa;
       --ok: #33c48a; --warn: #f0b429; --bad: #ff6b6b; --off: #5d6575;
     }
   }
@@ -36,26 +39,27 @@
   .dot.ok { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
   .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
-  #chart { width: 100%; height: 420px; display: block; }
-  .stale #fcLine { stroke: var(--off); stroke-dasharray: 5 5; }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 14px 0; }
+  #chart { width: 100%; height: 440px; display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 18px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+  .stale .fcx { opacity: .45; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 14px 0; }
   .tile .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
-  .tile .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .tile .v { font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
   .tile .s { color: var(--muted); font-size: 12px; margin-top: 2px; }
   .up { color: var(--up); } .down { color: var(--down); }
   h2 { font-size: 14px; margin: 18px 0 8px; color: var(--muted); font-weight: 600; }
   ol { margin: 0; padding-left: 22px; } li { margin: 3px 0; }
   .r { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: 6px; }
   .note { color: var(--muted); font-size: 12px; margin-top: 18px; }
-  .msg { padding: 40px 10px; text-align: center; color: var(--muted); }
   svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-  @media (max-width: 600px) { #chart { height: 320px; } .tile .v { font-size: 18px; } }
+  @media (max-width: 600px) { #chart { height: 340px; } .tile .v { font-size: 18px; } }
 </style>
 </head>
 <body>
 <main>
   <header>
-    <h1>EURUSD · prognoza 48 świec (4 h)</h1>
+    <h1>EURUSD · prognoza 4 h (48 świec 5 min)</h1>
     <span class="sub" id="sub">IA 4 · moduł prognozy (instrukcja 4c)</span>
   </header>
   <div class="status">
@@ -63,25 +67,35 @@
     <span class="pill"><span class="dot" id="mktDot"></span><span id="mktTxt">rynek</span></span>
     <span class="pill"><span class="dot" id="ageDot"></span><span id="ageTxt">prognoza</span></span>
   </div>
-  <div class="card" id="chartCard"><svg id="chart" role="img" aria-label="Wykres świecowy EURUSD i linia prognozy"></svg></div>
+  <div class="card" id="chartCard">
+    <svg id="chart" role="img" aria-label="Wykres świecowy EURUSD, stożek prognozy i scenariusze z historii"></svg>
+    <div class="legend">
+      <span><i style="background:var(--band50)"></i>50% przypadków</span>
+      <span><i style="background:var(--band80)"></i>80% przypadków</span>
+      <span><i style="background:var(--fc);height:3px"></i>środek</span>
+      <span><i style="background:var(--sc-up);height:2px"></i><i style="background:var(--sc-mid);height:2px;margin-left:-3px"></i><i style="background:var(--sc-down);height:2px;margin-left:-3px"></i>scenariusze: prawdziwe ścieżki z podobnych chwil w historii</span>
+    </div>
+  </div>
   <div class="tiles">
     <div class="card tile"><div class="k">Ostatnie zamknięcie</div><div class="v" id="tClose">—</div><div class="s" id="tCloseT"></div></div>
-    <div class="card tile"><div class="k">Prognoza +1 h (k=12)</div><div class="v" id="t12">—</div><div class="s" id="t12p"></div></div>
-    <div class="card tile"><div class="k">Prognoza +4 h (k=48)</div><div class="v" id="t48">—</div><div class="s" id="t48p"></div></div>
-    <div class="card tile"><div class="k">Okoliczności prawdziwe</div><div class="v" id="tAct">—</div><div class="s" id="tActS"></div></div>
-    <div class="card tile"><div class="k">Sprawdzian systemu</div><div class="v" id="tChk">—</div><div class="s" id="tChkS"></div></div>
+    <div class="card tile"><div class="k">Oczekiwany zakres 4 h</div><div class="v" id="tRng">—</div><div class="s" id="tRngS"></div></div>
+    <div class="card tile"><div class="k">Za 4 h — 80% przypadków</div><div class="v" id="t80">—</div><div class="s" id="t80S"></div></div>
+    <div class="card tile"><div class="k">Kierunek</div><div class="v" id="tDir">—</div><div class="s" id="tDirS"></div></div>
+    <div class="card tile"><div class="k">Sprawdzian</div><div class="v" id="tChk">—</div><div class="s" id="tChkS"></div></div>
   </div>
+  <h2>Scenariusze — co działo się po najbardziej podobnych chwilach</h2>
+  <div class="card"><ol id="scen"><li class="sub">—</li></ol></div>
   <h2>Najwyższy rating wśród okoliczności prawdziwych teraz</h2>
   <div class="card"><ol id="top"><li class="sub">—</li></ol></div>
-  <p class="note">Prognoza = średnia historycznych zmian ceny po okolicznościach prawdziwych na ostatniej świecy, ważona ratingiem
-    (instrukcja 4c.6). Sprawdzian: przewaga nad prognozą „bez zmiany” na danych, których system nie widział — wynik w granicach ±1% nic nie znaczy (4c.7).
-    Mac „połączony” = sygnał życia z FX-real-time młodszy niż 5 min.</p>
+  <p class="note" id="note">Prognoza to rozkład, nie jedna linia (instrukcja 4c.0): 80 prawdziwych 4-godzinnych ścieżek ceny z historii, z chwil
+    o tej samej porze dnia i podobnych okolicznościach, przeskalowanych do dzisiejszej zmienności. Stożek pokazuje, gdzie cena była w 50% i 80% takich przypadków;
+    szerokość stożka i siłę linii środkowej ustala sprawdzian na danych, których model nie widział (4c.7). Mac „połączony” = sygnał życia z FX-real-time młodszy niż 5 min.</p>
 </main>
 <script>
 "use strict";
 const API = "https://api.github.com/repos/miszyszka/IA4/contents/forecast.json?ref=fx-live";
 const RAW = "https://raw.githubusercontent.com/miszyszka/IA4/fx-live/forecast.json";
-const POLL_MS = 30000, ALIVE_MAX_S = 300, STEP = 300;
+const POLL_MS = 30000, ALIVE_MAX_S = 300, STEP = 300, PIP = 0.0001;
 let data = null, fetchErr = null, rawUntil = 0;
 
 const $ = id => document.getElementById(id);
@@ -92,6 +106,9 @@ const px = v => v.toFixed(5);
 const ago = s => s < 90 ? `${Math.round(s)} s temu` : s < 5400 ? `${Math.round(s / 60)} min temu`
   : s < 172800 ? `${Math.round(s / 3600)} h temu` : `${Math.round(s / 86400)} dni temu`;
 const sgn = (v, d = 1) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(d).replace(".", ",");
+const pct = v => (v === null || v === undefined) ? "—" : Math.round(100 * v) + "%";
+const SC_COL = { "spadkowy": "var(--sc-down)", "boczny": "var(--sc-mid)", "wzrostowy": "var(--sc-up)" };
+const METHOD = { "analogi": "analogi (podobne okoliczności)", "pora": "ta sama pora dnia" };
 
 function marketOpen(date) {            // niedziela 17:00 – piątek 17:00 Nowy Jork (jak Fx.gs i live.py)
   const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short",
@@ -142,21 +159,43 @@ function render() {
   $("ageTxt").textContent = `prognoza z ${dhm(gen)} (${ago(genS)}) · świeca ${hm(lastT)}`;
   $("chartCard").classList.toggle("stale", !connected);
 
-  $("tClose").textContent = px(data.lastClose);
+  const c0 = data.lastClose, n = (data.times || []).length;
+  $("tClose").textContent = px(c0);
   $("tCloseT").textContent = `świeca ${dhm(lastT)} (start)`;
-  for (const k of ["12", "48"]) {
-    const p = data.forecastPips ? data.forecastPips[k] : null;
-    const f = (data.forecast || []).find(x => x[0] === lastT / 1000 + (+k) * STEP);
-    $("t" + k).textContent = f ? px(f[1]) : "—";
-    $("t" + k).className = "v " + (p > 0 ? "up" : p < 0 ? "down" : "");
-    $("t" + k + "p").textContent = p === null || p === undefined ? "poza godzinami rynku" : `${sgn(p)} pips`;
-  }
-  $("tAct").textContent = data.active;
-  $("tActS").textContent = `suma ratingów ${data.activeRatingSum}`;
+  if (data.range) {
+    $("tRng").textContent = `${data.range.pips.toFixed(1).replace(".", ",")} pips`;
+    $("tRngS").textContent = `typowe maks. ${px(data.range.high)} · min. ${px(data.range.low)}`;
+  } else { $("tRng").textContent = "—"; $("tRngS").textContent = ""; }
+  if (data.q10 && n) {
+    const lo = data.q10[n - 1], hi = data.q90[n - 1];
+    $("t80").textContent = `${px(lo)} – ${px(hi)}`;
+    $("t80S").textContent = `${sgn((lo - c0) / PIP)} / ${sgn((hi - c0) / PIP)} pips · do ${hm(data.times[n - 1] * 1000)}`;
+  } else { $("t80").textContent = "—"; $("t80S").textContent = n ? "" : "poza godzinami rynku"; }
+  const pu = data.pUp || {}, uc = data.upCount || {}, v = data.verdict || {};
+  const k = pu["48"] !== undefined ? "48" : pu["12"] !== undefined ? "12" : null;
+  if (k) {
+    const p = pu[k];
+    $("tDir").textContent = `wzrost ${pct(p)}`;
+    const edge = (v.direction || "").startsWith("przewaga");      // kolor tylko przy udowodnionej przewadze
+    $("tDir").className = "v " + (edge && p > 0.55 ? "up" : edge && p < 0.45 ? "down" : "");
+    $("tDirS").textContent = `${uc[k] ? `w ${uc[k][1]} podobnych chwilach wzrost po ${k === "48" ? "4 h" : "1 h"}: ${uc[k][0]}` : ""} · ${v.direction || ""}`;
+  } else { $("tDir").textContent = "—"; $("tDirS").textContent = ""; }
+  const ch = data.check || {}, m = data.model || {};
+  $("tChk").textContent = ch.cov80_48 === null || ch.cov80_48 === undefined ? "—" : `stożek ${pct(ch.cov80_48)}`;
+  $("tChkS").textContent = `cel 80% · ${v.cone || ""} · Brier ${ch.brier48 === null || ch.brier48 === undefined ? "—" : ch.brier48.toFixed(3).replace(".", ",")} (0,250 = moneta) · błąd zakresu ${pct(ch.rangeErr)}`;
   const rt = data.ratings || {};
-  $("tChk").textContent = rt.checkS === null || rt.checkS === undefined ? "—" : sgn(100 * rt.checkS, 2) + "%";
-  $("tChkS").textContent = `${rt.run || ""} · kierunek k=12 ${rt.checkHit12 ? (100 * rt.checkHit12).toFixed(0) + "%" : "—"}, k=48 ${rt.checkHit48 ? (100 * rt.checkHit48).toFixed(0) + "%" : "—"}`;
-  $("sub").textContent = `IA 4 · ratingi ${rt.run || "?"} (${rt.at ? dhm(Date.parse(rt.at)) : "?"}) · wersja ${data.version}`;
+  $("sub").textContent = `IA 4 · model: ${METHOD[m.method] || m.method || "?"}, ${m.K || "?"} ścieżek, szerokość ×${m.f}, środek λ ${m.lambda}` +
+    `${m.default ? " (domyślny — uruchom FX-research)" : ""} · ratingi ${rt.run || "?"} · wersja ${data.version}`;
+
+  const sl = $("scen"); sl.innerHTML = "";
+  (data.scenarios || []).forEach(s => {
+    const li = document.createElement("li"), last = s.path[s.path.length - 1];
+    li.innerHTML = `<span class="r" style="color:${SC_COL[s.name]}">●</span><b>${s.name}</b> — `;
+    li.appendChild(document.createTextNode(`jak po ${dhm(Date.parse(s.from))}: za ${s.path.length * 5} min ${sgn((last - c0) / PIP)} pips` +
+      ` (maks. ${sgn((Math.max(...s.path) - c0) / PIP)}, min. ${sgn((Math.min(...s.path) - c0) / PIP)})`));
+    sl.appendChild(li);
+  });
+  if (!(data.scenarios || []).length) sl.innerHTML = '<li class="sub">brak — poza godzinami rynku albo za mało historii</li>';
   const ol = $("top"); ol.innerHTML = "";
   (data.activeTop || []).forEach(c => {
     const li = document.createElement("li");
@@ -169,48 +208,58 @@ function render() {
 }
 
 function draw() {
-  const svg = $("chart"), W = svg.clientWidth || 800, Hh = svg.clientHeight || 420;
-  const C = data.candles || [], F = data.forecast || [];
+  const svg = $("chart"), W = svg.clientWidth || 800, Hh = svg.clientHeight || 440;
+  const C = data.candles || [], TT = data.times || [];
   if (!C.length) { svg.innerHTML = ""; return; }
   const m = { l: 8, r: 62, t: 14, b: 26 };
-  const n = C.length + 48, cw = (W - m.l - m.r) / n;
+  const nx = C.length + 48, cw = (W - m.l - m.r) / nx;
   const xs = i => m.l + (i + 0.5) * cw;
+  const lastI = C.length - 1, t0 = C[lastI][0];
+  const xf = t => xs(lastI + (t - t0) / STEP);
+  const series = [data.q10, data.q90, data.center].concat((data.scenarios || []).map(s => s.path)).filter(a => a && a.length);
   let lo = Infinity, hi = -Infinity;
   C.forEach(c => { lo = Math.min(lo, c[3]); hi = Math.max(hi, c[2]); });
-  F.forEach(f => { lo = Math.min(lo, f[1]); hi = Math.max(hi, f[1]); });
-  const pad = (hi - lo) * 0.08 || 0.0005; lo -= pad; hi += pad;
+  series.forEach(a => a.forEach(v => { lo = Math.min(lo, v); hi = Math.max(hi, v); }));
+  if (data.range) { lo = Math.min(lo, data.range.low); hi = Math.max(hi, data.range.high); }
+  const pad = (hi - lo) * 0.06 || 0.0005; lo -= pad; hi += pad;
   const ys = v => m.t + (hi - v) / (hi - lo) * (Hh - m.t - m.b);
-  const lastI = C.length - 1;
-  const fI = f => lastI + (f[0] - C[lastI][0]) / STEP;
   let s = "";
-  const ticks = 5;
-  for (let j = 0; j <= ticks; j++) {
-    const v = lo + (hi - lo) * j / ticks, y = ys(v);
-    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}" stroke="var(--line)"/>` +
-         `<text x="${W - m.r + 6}" y="${y + 4}">${px(v)}</text>`;
+  for (let j = 0; j <= 5; j++) {
+    const v = lo + (hi - lo) * j / 5, y = ys(v);
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${W - m.r + 6}" y="${y + 4}">${px(v)}</text>`;
   }
-  const xNow = xs(lastI) + cw / 2;
-  s += `<rect x="${xNow}" y="${m.t}" width="${W - m.r - xNow}" height="${Hh - m.t - m.b}" fill="var(--fcband)"/>`;
+  const xNow = xs(lastI) + cw / 2, c0 = C[lastI][4];
   s += `<line x1="${xNow}" x2="${xNow}" y1="${m.t}" y2="${Hh - m.b}" stroke="var(--muted)" stroke-dasharray="3 4"/>`;
-  const hourStep = cw * 12 < 46 ? 7200 : 3600;            // etykiety co 1 h (wąski ekran: co 2 h)
+  const hourStep = cw * 12 < 46 ? 7200 : 3600;
   const label = (t, x) => (t % hourStep === 0 && x > m.l + 16 && x < W - m.r - 16)
     ? `<text x="${x}" y="${Hh - 8}" text-anchor="middle">${hm(t * 1000)}</text>` : "";
   C.forEach((c, i) => {
-    const x = xs(i), up = c[4] >= c[1], col = up ? "var(--up)" : "var(--down)";
+    const x = xs(i), col = c[4] >= c[1] ? "var(--up)" : "var(--down)";
     const yo = ys(c[1]), yc = ys(c[4]), bw = Math.max(1, cw * 0.62);
     s += `<line x1="${x}" x2="${x}" y1="${ys(c[2])}" y2="${ys(c[3])}" stroke="${col}"/>` +
          `<rect x="${x - bw / 2}" y="${Math.min(yo, yc)}" width="${bw}" height="${Math.max(1, Math.abs(yc - yo))}" fill="${col}"/>`;
     s += label(c[0], x);
   });
-  if (F.length) {
-    const pts = [[xs(lastI), ys(C[lastI][4])]].concat(F.map(f => [xs(fI(f)), ys(f[1])]));
-    s += `<polyline id="fcLine" points="${pts.map(p => p.join(",")).join(" ")}" fill="none" stroke="var(--fc)" stroke-width="2.2" stroke-linejoin="round"/>`;
-    F.forEach((f, k) => {
-      const x = xs(fI(f));
-      if ((k + 1) % 12 === 0) s += `<circle cx="${x}" cy="${ys(f[1])}" r="3" fill="var(--fc)"/>`;
-      s += label(f[0], x);
-    });
+  const band = (a, b, fill) => {
+    if (!a || !b || !a.length) return "";
+    const top = [[xNow, ys(c0)]].concat(TT.map((t, i) => [xf(t), ys(b[i])]));
+    const bot = TT.map((t, i) => [xf(t), ys(a[i])]).reverse().concat([[xNow, ys(c0)]]);
+    return `<polygon class="fcx" points="${top.concat(bot).map(p => p.join(",")).join(" ")}" fill="${fill}"/>`;
+  };
+  const line = (a, stroke, w, dash) => (!a || !a.length) ? "" :
+    `<polyline class="fcx" points="${[[xNow, ys(c0)]].concat(TT.map((t, i) => [xf(t), ys(a[i])])).map(p => p.join(",")).join(" ")}"` +
+    ` fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linejoin="round"${dash ? ` stroke-dasharray="${dash}"` : ""}/>`;
+  s += band(data.q10, data.q90, "var(--band80)") + band(data.q25, data.q75, "var(--band50)");
+  (data.scenarios || []).forEach(sc => { s += line(sc.path, SC_COL[sc.name] || "var(--sc-mid)", 1.4); });
+  s += line(data.center, "var(--fc)", 2.4);
+  if (data.range && TT.length) {
+    const xe = xf(TT[TT.length - 1]);
+    for (const [v, lab] of [[data.range.high, "typ. maks."], [data.range.low, "typ. min."]]) {
+      s += `<line class="fcx" x1="${xNow}" x2="${xe}" y1="${ys(v)}" y2="${ys(v)}" stroke="var(--muted)" stroke-dasharray="2 5"/>` +
+           `<text x="${xe - 4}" y="${ys(v) - 4}" text-anchor="end">${lab}</text>`;
+    }
   }
+  TT.forEach(t => { s += label(t, xf(t)); });
   s += `<text x="${xNow + 6}" y="${m.t + 12}">prognoza →</text>`;
   svg.setAttribute("viewBox", `0 0 ${W} ${Hh}`);
   svg.innerHTML = s;
