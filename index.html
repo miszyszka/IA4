@@ -1,0 +1,225 @@
+<!doctype html>
+<!--
+  IA 4 — dashboard prognozy EURUSD (instrukcja, sekcja 4c.10). Wersja projektu: 1.25 (2026-10-09)
+  GitHub Pages z brancha `fx` (kopiują go python -m ia4.fx.research i python -m ia4.fx.live).
+  Dane: forecast.json z brancha `fx-live` przez API GitHub (zapytania warunkowe co 30 s, bez tokenu).
+-->
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IA 4 — EURUSD prognoza</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1d2433; --muted: #6b7385; --line: #e3e6ec;
+    --up: #1a9e6a; --down: #d64545; --fc: #2f6fe4; --fcband: rgba(47,111,228,.07);
+    --ok: #1a9e6a; --warn: #c98a00; --bad: #d64545; --off: #9aa1ae;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1218; --card: #171b23; --ink: #e6e9ef; --muted: #8e96a6; --line: #262c38;
+      --up: #33c48a; --down: #ff6b6b; --fc: #6ea0ff; --fcband: rgba(110,160,255,.08);
+      --ok: #33c48a; --warn: #f0b429; --bad: #ff6b6b; --off: #5d6575;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-bottom: 14px; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: .2px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .status { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+          background: var(--card); border: 1px solid var(--line); font-size: 13px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--off); flex: none; }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
+  .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  #chart { width: 100%; height: 420px; display: block; }
+  .stale #fcLine { stroke: var(--off); stroke-dasharray: 5 5; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 14px 0; }
+  .tile .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+  .tile .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .tile .s { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .up { color: var(--up); } .down { color: var(--down); }
+  h2 { font-size: 14px; margin: 18px 0 8px; color: var(--muted); font-weight: 600; }
+  ol { margin: 0; padding-left: 22px; } li { margin: 3px 0; }
+  .r { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: 6px; }
+  .note { color: var(--muted); font-size: 12px; margin-top: 18px; }
+  .msg { padding: 40px 10px; text-align: center; color: var(--muted); }
+  svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  @media (max-width: 600px) { #chart { height: 320px; } .tile .v { font-size: 18px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>EURUSD · prognoza 48 świec (4 h)</h1>
+    <span class="sub" id="sub">IA 4 · moduł prognozy (instrukcja 4c)</span>
+  </header>
+  <div class="status">
+    <span class="pill"><span class="dot" id="macDot"></span><span id="macTxt">Mac: sprawdzam…</span></span>
+    <span class="pill"><span class="dot" id="mktDot"></span><span id="mktTxt">rynek</span></span>
+    <span class="pill"><span class="dot" id="ageDot"></span><span id="ageTxt">prognoza</span></span>
+  </div>
+  <div class="card" id="chartCard"><svg id="chart" role="img" aria-label="Wykres świecowy EURUSD i linia prognozy"></svg></div>
+  <div class="tiles">
+    <div class="card tile"><div class="k">Ostatnie zamknięcie</div><div class="v" id="tClose">—</div><div class="s" id="tCloseT"></div></div>
+    <div class="card tile"><div class="k">Prognoza +1 h (k=12)</div><div class="v" id="t12">—</div><div class="s" id="t12p"></div></div>
+    <div class="card tile"><div class="k">Prognoza +4 h (k=48)</div><div class="v" id="t48">—</div><div class="s" id="t48p"></div></div>
+    <div class="card tile"><div class="k">Okoliczności prawdziwe</div><div class="v" id="tAct">—</div><div class="s" id="tActS"></div></div>
+    <div class="card tile"><div class="k">Sprawdzian systemu</div><div class="v" id="tChk">—</div><div class="s" id="tChkS"></div></div>
+  </div>
+  <h2>Najwyższy rating wśród okoliczności prawdziwych teraz</h2>
+  <div class="card"><ol id="top"><li class="sub">—</li></ol></div>
+  <p class="note">Prognoza = średnia historycznych zmian ceny po okolicznościach prawdziwych na ostatniej świecy, ważona ratingiem
+    (instrukcja 4c.6). Sprawdzian: przewaga nad prognozą „bez zmiany” na danych, których system nie widział — wynik w granicach ±1% nic nie znaczy (4c.7).
+    Mac „połączony” = sygnał życia z FX-real-time młodszy niż 5 min.</p>
+</main>
+<script>
+"use strict";
+const API = "https://api.github.com/repos/miszyszka/IA4/contents/forecast.json?ref=fx-live";
+const RAW = "https://raw.githubusercontent.com/miszyszka/IA4/fx-live/forecast.json";
+const POLL_MS = 30000, ALIVE_MAX_S = 300, STEP = 300;
+let data = null, fetchErr = null, rawUntil = 0;
+
+const $ = id => document.getElementById(id);
+const fmtPL = (t, opt) => new Intl.DateTimeFormat("pl-PL", Object.assign({ timeZone: "Europe/Warsaw" }, opt)).format(new Date(t));
+const hm = t => fmtPL(t, { hour: "2-digit", minute: "2-digit" });
+const dhm = t => fmtPL(t, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const px = v => v.toFixed(5);
+const ago = s => s < 90 ? `${Math.round(s)} s temu` : s < 5400 ? `${Math.round(s / 60)} min temu`
+  : s < 172800 ? `${Math.round(s / 3600)} h temu` : `${Math.round(s / 86400)} dni temu`;
+const sgn = (v, d = 1) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(d).replace(".", ",");
+
+function marketOpen(date) {            // niedziela 17:00 – piątek 17:00 Nowy Jork (jak Fx.gs i live.py)
+  const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short",
+    hour: "numeric", minute: "numeric", hour12: false }).formatToParts(date);
+  const g = k => (p.find(x => x.type === k) || {}).value;
+  const wd = g("weekday"), m = (+g("hour") % 24) * 60 + +g("minute");
+  if (wd === "Sat") return false;
+  if (wd === "Sun") return m >= 17 * 60;
+  if (wd === "Fri") return m < 17 * 60;
+  return true;
+}
+
+async function load() {
+  const useRaw = Date.now() < rawUntil;
+  try {
+    const r = await fetch(useRaw ? RAW + "?t=" + Math.floor(Date.now() / 60000) : API,
+      useRaw ? { cache: "no-store" } : { cache: "no-cache", headers: { Accept: "application/vnd.github.raw" } });
+    if (r.status === 404) { data = null; fetchErr = "brak danych — FX-real-time jeszcze nic nie opublikował"; }
+    else if (r.status === 403 || r.status === 429) { rawUntil = Date.now() + 10 * 60000; fetchErr = null; if (!useRaw) return load(); }
+    else if (!r.ok) fetchErr = `GitHub HTTP ${r.status}`;
+    else { data = await r.json(); fetchErr = null; }
+  } catch (e) { fetchErr = "brak połączenia z GitHub"; }
+  render();
+}
+
+function render() {
+  const now = Date.now();
+  const open = marketOpen(new Date());
+  $("mktDot").className = "dot " + (open ? "ok" : "");
+  $("mktTxt").textContent = open ? "rynek otwarty" : "rynek zamknięty (pt 23:00 – nd 23:00 PL)";
+  if (!data) {
+    $("macDot").className = "dot bad";
+    $("macTxt").textContent = fetchErr || "ładowanie…";
+    $("chart").innerHTML = "";
+    return;
+  }
+  const alive = Date.parse(data.aliveAt), aliveS = (now - alive) / 1000;
+  const connected = !data.stoppedAt && aliveS < ALIVE_MAX_S;
+  $("macDot").className = "dot " + (connected ? "ok" : "bad");
+  $("macTxt").textContent = connected ? `Mac połączony · ${ago(aliveS)}`
+    : data.stoppedAt ? `Mac rozłączony — program zatrzymany ${dhm(Date.parse(data.stoppedAt))}`
+    : `Mac offline od ${dhm(alive)} (${ago(aliveS)})`;
+  if (fetchErr) $("macTxt").textContent += ` · ${fetchErr}`;
+  const gen = Date.parse(data.generatedAt), genS = (now - gen) / 1000;
+  const lastT = Date.parse(data.lastCandle);
+  const fresh = connected && (now - lastT) / 1000 < 15 * 60;
+  $("ageDot").className = "dot " + (fresh ? "ok" : open ? "warn" : "");
+  $("ageTxt").textContent = `prognoza z ${dhm(gen)} (${ago(genS)}) · świeca ${hm(lastT)}`;
+  $("chartCard").classList.toggle("stale", !connected);
+
+  $("tClose").textContent = px(data.lastClose);
+  $("tCloseT").textContent = `świeca ${dhm(lastT)} (start)`;
+  for (const k of ["12", "48"]) {
+    const p = data.forecastPips ? data.forecastPips[k] : null;
+    const f = (data.forecast || []).find(x => x[0] === lastT / 1000 + (+k) * STEP);
+    $("t" + k).textContent = f ? px(f[1]) : "—";
+    $("t" + k).className = "v " + (p > 0 ? "up" : p < 0 ? "down" : "");
+    $("t" + k + "p").textContent = p === null || p === undefined ? "poza godzinami rynku" : `${sgn(p)} pips`;
+  }
+  $("tAct").textContent = data.active;
+  $("tActS").textContent = `suma ratingów ${data.activeRatingSum}`;
+  const rt = data.ratings || {};
+  $("tChk").textContent = rt.checkS === null || rt.checkS === undefined ? "—" : sgn(100 * rt.checkS, 2) + "%";
+  $("tChkS").textContent = `${rt.run || ""} · kierunek k=12 ${rt.checkHit12 ? (100 * rt.checkHit12).toFixed(0) + "%" : "—"}, k=48 ${rt.checkHit48 ? (100 * rt.checkHit48).toFixed(0) + "%" : "—"}`;
+  $("sub").textContent = `IA 4 · ratingi ${rt.run || "?"} (${rt.at ? dhm(Date.parse(rt.at)) : "?"}) · wersja ${data.version}`;
+  const ol = $("top"); ol.innerHTML = "";
+  (data.activeTop || []).forEach(c => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="r">${c.id} · ${c.rating}</span>`;
+    li.appendChild(document.createTextNode(c.desc));
+    ol.appendChild(li);
+  });
+  if (!(data.activeTop || []).length) ol.innerHTML = '<li class="sub">brak</li>';
+  draw();
+}
+
+function draw() {
+  const svg = $("chart"), W = svg.clientWidth || 800, Hh = svg.clientHeight || 420;
+  const C = data.candles || [], F = data.forecast || [];
+  if (!C.length) { svg.innerHTML = ""; return; }
+  const m = { l: 8, r: 62, t: 14, b: 26 };
+  const n = C.length + 48, cw = (W - m.l - m.r) / n;
+  const xs = i => m.l + (i + 0.5) * cw;
+  let lo = Infinity, hi = -Infinity;
+  C.forEach(c => { lo = Math.min(lo, c[3]); hi = Math.max(hi, c[2]); });
+  F.forEach(f => { lo = Math.min(lo, f[1]); hi = Math.max(hi, f[1]); });
+  const pad = (hi - lo) * 0.08 || 0.0005; lo -= pad; hi += pad;
+  const ys = v => m.t + (hi - v) / (hi - lo) * (Hh - m.t - m.b);
+  const lastI = C.length - 1;
+  const fI = f => lastI + (f[0] - C[lastI][0]) / STEP;
+  let s = "";
+  const ticks = 5;
+  for (let j = 0; j <= ticks; j++) {
+    const v = lo + (hi - lo) * j / ticks, y = ys(v);
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}" stroke="var(--line)"/>` +
+         `<text x="${W - m.r + 6}" y="${y + 4}">${px(v)}</text>`;
+  }
+  const xNow = xs(lastI) + cw / 2;
+  s += `<rect x="${xNow}" y="${m.t}" width="${W - m.r - xNow}" height="${Hh - m.t - m.b}" fill="var(--fcband)"/>`;
+  s += `<line x1="${xNow}" x2="${xNow}" y1="${m.t}" y2="${Hh - m.b}" stroke="var(--muted)" stroke-dasharray="3 4"/>`;
+  const hourStep = cw * 12 < 46 ? 7200 : 3600;            // etykiety co 1 h (wąski ekran: co 2 h)
+  const label = (t, x) => (t % hourStep === 0 && x > m.l + 16 && x < W - m.r - 16)
+    ? `<text x="${x}" y="${Hh - 8}" text-anchor="middle">${hm(t * 1000)}</text>` : "";
+  C.forEach((c, i) => {
+    const x = xs(i), up = c[4] >= c[1], col = up ? "var(--up)" : "var(--down)";
+    const yo = ys(c[1]), yc = ys(c[4]), bw = Math.max(1, cw * 0.62);
+    s += `<line x1="${x}" x2="${x}" y1="${ys(c[2])}" y2="${ys(c[3])}" stroke="${col}"/>` +
+         `<rect x="${x - bw / 2}" y="${Math.min(yo, yc)}" width="${bw}" height="${Math.max(1, Math.abs(yc - yo))}" fill="${col}"/>`;
+    s += label(c[0], x);
+  });
+  if (F.length) {
+    const pts = [[xs(lastI), ys(C[lastI][4])]].concat(F.map(f => [xs(fI(f)), ys(f[1])]));
+    s += `<polyline id="fcLine" points="${pts.map(p => p.join(",")).join(" ")}" fill="none" stroke="var(--fc)" stroke-width="2.2" stroke-linejoin="round"/>`;
+    F.forEach((f, k) => {
+      const x = xs(fI(f));
+      if ((k + 1) % 12 === 0) s += `<circle cx="${x}" cy="${ys(f[1])}" r="3" fill="var(--fc)"/>`;
+      s += label(f[0], x);
+    });
+  }
+  s += `<text x="${xNow + 6}" y="${m.t + 12}">prognoza →</text>`;
+  svg.setAttribute("viewBox", `0 0 ${W} ${Hh}`);
+  svg.innerHTML = s;
+}
+
+window.addEventListener("resize", () => data && draw());
+load();
+setInterval(load, POLL_MS);
+setInterval(render, 5000);
+</script>
+</body>
+</html>
