@@ -1,6 +1,6 @@
 # IA 4 — Python na Macu: kopia bazy i poszukiwanie strategii
 
-**Wersja projektu: 1.21 (2026-10-09)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.23 (2026-10-09)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Dwie rzeczy:
 1. `python -m ia4.sync` — ściąga świece z Firestore na dysk (`data/*.parquet`), przy
@@ -111,7 +111,11 @@ python -m ia4.fx.selftest            # test modułu na danych syntetycznych — 
 python -m ia4.fx.sync                # kopia świec EURUSD 5 min → data/fx/EURUSD.parquet (przyrostowo)
 python -m ia4.fx.catalog             # kalibracja PRÓBNA 1000 okoliczności → data/fx/catalog-preview.csv
 python -m ia4.fx.catalog --commit    # kalibracja WŁAŚCIWA → fx/conditions.json na branchu fx — tylko raz
+python -m ia4.fx.research            # przeliczenie: ratingi, profile, sprawdzian → fx/ratings.json, fx/runs.jsonl
 ```
 
+Podgląd ostatniego przeliczenia: `data/fx/ratings-preview.csv`. Wystąpienia jednej okoliczności
+(czas + 48 przyszłych zmian w pipsach): `from ia4.fx.research import load_occurrences; load_occurrences("FX-0001")`.
+
 Po `--commit` katalog okoliczności jest nienaruszalny (zasada 14): kolejne wywołanie odmawia.
-Klon brancha `fx`: `fx-repo/` (poza gitem). FX-research i FX-real-time dojdą w krokach FX-2 i FX-4.
+Klon brancha `fx`: `fx-repo/` (poza gitem). FX-real-time i dashboard dojdą w kroku FX-4.

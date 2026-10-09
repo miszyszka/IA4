@@ -1,6 +1,6 @@
 """
 IA 4 — wyniki modułu prognozy EURUSD na branchu `fx` (instrukcja, sekcja 4c.12).
-Wersja projektu: 1.21 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.23 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Klon brancha w ia4-research/fx-repo/ (poza gitem głównego repo), te same
 uprawnienia do push co zwykły `git push` na tym Macu. Mechanika git — wspólna
@@ -21,6 +21,9 @@ Ten branch zapisuje wyłącznie Python z Maca. Zasady i znaczenie plików:
 
 - `fx/conditions.json` — katalog okoliczności `fx-cond/1` z progami; zapisany raz
   (`python -m ia4.fx.catalog --commit`), potem nienaruszalny (zasada 14)
+- `fx/ratings.json` — ostatnie przeliczenie (`python -m ia4.fx.research`): rating, wystąpienia,
+  przewaga, częstość i profil 48 świec każdej okoliczności, sprawdzian systemu
+- `fx/runs.jsonl` — wiersz na każde przeliczenie (R-001, R-002, …) → arkusz OKOLICZNOSCI_FX
 """
 
 

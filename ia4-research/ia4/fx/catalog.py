@@ -1,7 +1,7 @@
 """
 IA 4 — katalog okoliczności EURUSD `fx-cond/1` i jednorazowa kalibracja
 (instrukcja, sekcje 4c.2 i 4c.3).
-Wersja projektu: 1.21 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.23 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Okoliczność = cecha f (liczba na świecy t, tylko ze świec ≤ t) i warunek  f ≥ próg.
 Cecha jest zbudowana tak, że duża wartość = wzrost / wysoka cena. Okoliczność `+`
@@ -245,6 +245,13 @@ def f_combo_pull(S, p):
     return np.where(_up(S, p), -(S.c - shift(S.c, p["m"])) / PIP, np.nan)
 
 
+def f_combo_dip(S, p):
+    short = _ma(S, p["sm"], p["sn"])
+    with np.errstate(invalid="ignore"):
+        ok = _up(S, p) & (S.c < short)                 # trend wzrostowy i cena pod krótką średnią
+    return np.where(ok, (short - S.c) / S.U, np.nan)
+
+
 def f_combo_rsi(S, p):
     return np.where(_up(S, p), 50.0 - S.rsi(p["r"]), np.nan)
 
@@ -351,6 +358,13 @@ def _d_combo_pull(p, th, side):
     return f"Cena pod {t}, a zmiana ceny {_w(p['m'])} ≥ {sg(th)} pips"
 
 
+def _d_combo_dip(p, th, side):
+    t, k = ma_name(p["ma"], p["n"]), ma_name(p["sm"], p["sn"])
+    if side > 0:
+        return f"Cena nad {t}, ale pod {k} o ≥ {num(max(th, 0))} ATR100"
+    return f"Cena pod {t}, ale nad {k} o ≥ {num(max(th, 0))} ATR100"
+
+
 def _d_combo_rsi(p, th, side):
     t = ma_name(p["ma"], p["n"])
     if side > 0:
@@ -394,6 +408,7 @@ KINDS = {
     "sess_chg_u": (f_sess_chg_u, False, None),
     "day_pos": (f_day_pos, False, None),
     "prev_day": (f_prev_day, False, _d_prevday),
+    "combo_dip": (f_combo_dip, False, _d_combo_dip),
     "combo_pull": (f_combo_pull, False, _d_combo_pull),
     "combo_rsi": (f_combo_rsi, False, _d_combo_rsi),
     "combo_stoch": (f_combo_stoch, False, _d_combo_stoch),
@@ -484,18 +499,26 @@ FAMILIES = [
      [("sess_chg", dict(a=a)) for a in ANCH] + [("sess_chg_u", dict(a=a)) for a in ANCH] +
      [("day_pos", dict(a=a)) for a in ANCH] + [("prev_day", dict(ref=r)) for r in ("close", "high", "low")]),
     ("kombinacje", "Trend i korekta", 25,
-     [("combo_pull", dict(ma=k, n=n, m=m)) for m in (3, 6, 12, 24) for (k, n) in TRENDS] +
+     [("combo_dip", dict(ma=k, n=n, sm=sk, sn=sn)) for (sk, sn) in (("EMA", 20), ("EMA", 9), ("SMA", 38), ("EMA", 50))
+      for (k, n) in TRENDS] +
+     [("combo_pull", dict(ma=k, n=n, m=m)) for m in (3, 6) for (k, n) in TRENDS] +
      [("combo_rsi", dict(ma=k, n=n, r=14)) for (k, n) in TRENDS] +
      [("combo_stoch", dict(ma=k, n=n, s=24)) for (k, n) in TRENDS]),
 ]
 assert sum(f[2] for f in FAMILIES) == PAIRS
 
 
+# Rodziny z własnymi celami częstości. „Trend i korekta”: warunek trendu jest prawdziwy na ok. połowie
+# świec, więc przy celu 25% „korekta” wypadałaby na medianie (np. „zmiana ≤ +1 pips”) — cel 15%
+# i 12% wymuszają prawdziwą korektę.
+FAMILY_TARGETS = {"kombinacje": (0.15, 0.12)}
+
+
 def candidates():
     """(rodzina, rodzaj, parametry, cel) w stałej kolejności: najpierw wszystkie cechy rodziny
-    z celem 25%, potem 15%, potem 40%."""
+    z celem 25%, potem 15%, potem 40% (albo cele rodziny z FAMILY_TARGETS)."""
     for fam, _, _, feats in FAMILIES:
-        for tg in TARGETS:
+        for tg in FAMILY_TARGETS.get(fam, TARGETS):
             for kind, p in feats:
                 yield fam, kind, p, tg
 
@@ -659,7 +682,7 @@ def document(conds, df, generated_by: str) -> dict:
         "calibratedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "by": generated_by,
         "data": {"from": iso(t0), "to": iso(t1), "candles": int(len(df)), "filled": int(df["filled"].sum()),
                  "warmup": sr.WARMUP},
-        "rules": {"targets": list(TARGETS), "range": list(RANGE), "corrSteps": list(CORR_STEPS),
+        "rules": {"targets": list(TARGETS), "familyTargets": {k: list(v) for k, v in FAMILY_TARGETS.items()}, "range": list(RANGE), "corrSteps": list(CORR_STEPS),
                   "unit": f"ATR{sr.U_PERIOD}", "pip": PIP, "condition": "f >= theta"},
         "families": [{"id": f, "name": n, "quota": q, "pairs": sum(1 for c in conds if c["family"] == f) // 2}
                      for f, n, q, _ in FAMILIES],
