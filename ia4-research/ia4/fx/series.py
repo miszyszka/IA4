@@ -1,34 +1,32 @@
 """
-IA 4 — seria EURUSD i wskaźniki modułu prognozy (instrukcja, sekcje 4c.1 i 4c.3).
-Wersja projektu: 1.26 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+IA 4 — seria świec 1h jednego instrumentu i wskaźniki modułu prognozy (instrukcja, sekcje 4c.1 i 4c.3).
+Wersja projektu: 1.27 (2026-10-10) — musi zgadzać się z IA4_INSTRUKCJA.md
 
-Seria = wszystkie świece w kolejności czasu, indeks t bez przerw (przez weekend też).
+Seria = wszystkie świece instrumentu w kolejności czasu, indeks t bez przerw (przez noce
+i weekendy też). Przerwa (4c.1) = brak co najmniej jednej oczekiwanej świecy rynku między
+kolejnymi świecami serii — zamknięcie rynku walutowego w weekend przerwą nie jest.
 Średnie kroczące, ATR i RSI — dokładnie wzory z sekcji 8.2 (ia4.lab.indicators).
 Pozostałe wskaźniki — wzory z tabeli 4c.3, tutaj.
 
 LUSTRO (para okoliczności, 4c.2): ta sama funkcja liczona na serii odbitej
   o' = −o, c' = −c, h' = −l, l' = −h
-Wszystkie wskaźniki modułu są różnicowe (pipsy albo jednostki ATR), więc odbicie
+Wszystkie cechy modułu są bezwymiarowe (jednostki ATR100, %, liczby świec), więc odbicie
 jest dokładne: SMA(−c) = −SMA(c), RSI(−c) = 100 − RSI(c), ATR bez zmian itd.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from functools import lru_cache
-from zoneinfo import ZoneInfo
-
 import numpy as np
+import pandas as pd
 from numba import njit
 
 from ..lab import indicators as ind
+from . import instruments as fi
 
-PIP = 0.0001
-GAP_SEC = 3600            # przerwa: odstęp między świecami > 60 min (4c.1)
-WARMUP = 1000             # rozgrzewka wskaźników: pierwsze 1000 świec serii (4c.3)
+STEP = fi.STEP            # świeca 1 h
+WARMUP = 1000             # rozgrzewka wskaźników: pierwsze 1000 świec serii instrumentu (4c.3)
 U_PERIOD = 100            # jednostka zmienności U = ATR(100) Wildera (4c.3)
 MA_KINDS = ("SMA", "EMA", "WMA", "HMA", "DEMA", "TEMA", "KAMA", "ZLEMA")
-NY = ZoneInfo("America/New_York")
 
 
 # ---------------------------------------------------------------------------
@@ -222,10 +220,10 @@ def shift(x: np.ndarray, k: int) -> np.ndarray:
 #  Seria
 # ---------------------------------------------------------------------------
 class Series:
-    """Jedna strona serii: zwykła (side=+1) albo odbita (side=−1). Wskaźniki w pamięci."""
+    """Jedna strona serii instrumentu: zwykła (side=+1) albo odbita (side=−1). Wskaźniki w pamięci."""
 
-    def __init__(self, time, o, h, l, c, filled, side: int = 1):
-        self.side = side
+    def __init__(self, time, o, h, l, c, filled, side: int = 1, sym: str = "", group: str = "fx"):
+        self.side, self.sym, self.group = side, sym, group
         self.time = np.asarray(time, dtype=np.int64)
         o, h, l, c = (np.asarray(a, dtype=np.float64) for a in (o, h, l, c))
         if side == 1:
@@ -248,6 +246,10 @@ class Series:
     def U(self):
         return self.cached(("U",), lambda: ind.atr(self.h, self.l, self.c, U_PERIOD))
 
+    @property
+    def U12(self):
+        return self.cached(("U12",), lambda: ind.atr(self.h, self.l, self.c, 12))
+
     def ma(self, kind, n):
         return self.cached(("ma", kind, n), lambda: ind.moving_average(kind, n, self.c, self.c * 0))
 
@@ -265,45 +267,52 @@ class Series:
 
     # --- czas (te same na obu stronach)
     def starts(self, anchor: str) -> np.ndarray:
-        """Pierwsza świeca segmentu: utc_day (doba UTC), ny_day (doba handlowa od 17:00
-        Nowy Jork), week (pierwsza świeca po przerwie > 60 min)."""
+        """Pierwsza świeca segmentu: utc_day (doba UTC), ny_day (doba handlowa od 17:00 Nowy Jork),
+        week (tydzień handlowy od niedzieli 17:00 Nowy Jork)."""
         def build():
-            t = self.time
-            st = np.zeros(t.size, dtype=bool)
-            if t.size:
+            did = day_ids(self.time, anchor)
+            st = np.zeros(self.n, dtype=bool)
+            if self.n:
                 st[0] = True
-            if anchor == "week":
-                st[1:] |= np.diff(t) > GAP_SEC
-            else:
-                did = day_ids(tuple(t.tolist()), anchor)
-                st[1:] |= did[1:] != did[:-1]
+            st[1:] |= did[1:] != did[:-1]
             return st
         return self.cached(("starts", anchor), build)
 
 
-@lru_cache(maxsize=8)
-def day_ids(times: tuple, anchor: str) -> np.ndarray:
-    t = np.asarray(times, dtype=np.int64)
+def day_ids(t: np.ndarray, anchor: str) -> np.ndarray:
+    """Numer doby UTC, doby handlowej (17:00 Nowy Jork → następny dzień) albo tygodnia handlowego
+    (poniedziałek doby handlowej, czyli od niedzieli 17:00 Nowy Jork)."""
+    t = np.asarray(t, dtype=np.int64)
     if anchor == "utc_day":
         return t // 86400
-    if anchor == "ny_day":                    # doba handlowa: 17:00 NY → następny dzień
-        out = np.empty(t.size, dtype=np.int64)
-        for i, x in enumerate(t.tolist()):
-            dt = datetime.fromtimestamp(x, timezone.utc).astimezone(NY)
-            out[i] = dt.toordinal() + (1 if dt.hour >= 17 else 0)
-        return out
+    ny = pd.to_datetime(t, unit="s", utc=True).tz_convert("America/New_York").tz_localize(None)
+    shifted = ny + pd.Timedelta(hours=7)                         # 17:00 → 00:00 następnego dnia
+    day = np.asarray(shifted.values.astype("datetime64[D]").astype(np.int64))                # dni od 1970-01-01
+    if anchor == "ny_day":
+        return day
+    if anchor == "week":
+        return day - np.asarray(shifted.dayofweek, dtype=np.int64)      # poniedziałek tygodnia
     raise ValueError(anchor)
 
 
-def pair_of(df) -> tuple[Series, Series]:
+def pair_of(df, sym: str = "", group: str | None = None) -> tuple[Series, Series]:
     """Seria zwykła i odbita z tabeli kopii lokalnej (time, o, h, l, c, filled)."""
+    g = group or fi.group_of(sym)
     args = (df["time"].to_numpy(), df["o"].to_numpy(), df["h"].to_numpy(),
             df["l"].to_numpy(), df["c"].to_numpy(), df["filled"].to_numpy())
-    return Series(*args, side=1), Series(*args, side=-1)
+    return Series(*args, side=1, sym=sym, group=g), Series(*args, side=-1, sym=sym, group=g)
 
 
-def gap_after(time: np.ndarray) -> np.ndarray:
-    """gap[i] = True, gdy między świecą i a i+1 jest przerwa (> 60 min)."""
+def gap_after(time: np.ndarray, group: str = "fx") -> np.ndarray:
+    """gap[i] = True, gdy między świecą i a i+1 brakuje co najmniej jednej oczekiwanej świecy rynku."""
+    time = np.asarray(time, dtype=np.int64)
     g = np.zeros(time.size, dtype=bool)
-    g[:-1] = np.diff(time) > GAP_SEC
+    if time.size < 2:
+        return g
+    t0 = int(time[0])
+    grid = t0 + STEP * np.arange((int(time[-1]) - t0) // STEP + 1)
+    cum = np.concatenate([[0], np.cumsum(fi.market_open(group, grid))])       # cum[i] = otwartych w grid[:i]
+    pos = (time - t0) // STEP
+    between = cum[pos[1:]] - cum[pos[:-1] + 1]                                 # otwarte sloty ściśle pomiędzy
+    g[:-1] = between > 0
     return g

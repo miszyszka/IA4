@@ -1,8 +1,8 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.26
-**Data:** 9 października 2026
-**Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca. Poszukiwanie wstrzymane 3.10.2026 (`search_closed: true`) — zostaje 60 aktywnych strategii. Od 4.10.2026 moduł EURUSD zbiera świece 5-minutowe (sekcja 4b). 🟨 Etap 4 — prognoza EURUSD na 4 godziny jako rozkład: stożek, zakres, kierunek i scenariusze z historii (sekcja 4c). Jak czytać arkusze i wyciągać wnioski: `PRZEWODNIK.md`.
+**Wersja:** 1.27
+**Data:** 10 października 2026
+**Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca. Poszukiwanie wstrzymane 3.10.2026 (`search_closed: true`) — zostaje 60 aktywnych strategii. Od 10.10.2026 (1.27) moduł FX zbiera świece 1h 10 par walutowych i BTC/USD (sekcja 4b; baza EURUSD 5 min usunięta). 🟨 Etap 4 — prognoza FX na 48 świec 1h jako rozkład: stożek, zakres, kierunek i scenariusze z historii (sekcja 4c) — po przejściu na 1h liczona od nowa (krok FX-7). Jak czytać arkusze i wyciągać wnioski: `PRZEWODNIK.md`.
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jeśli kod, arkusz albo telemetria się z nim rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -14,8 +14,8 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Je�
 2. **Poszukiwanie strategii** (Etap 2): program w Pythonie na Macu, uruchamiany w dowolnych momentach, bez końca przelicza kopię lokalną bazy i szuka powtarzalnych sygnałów long i short opartych na średnich kroczących. Liczy się jakość, nie liczba strategii: strategia ma trafiać w TP, a nie zarabiać na samym trzymaniu pozycji w hossie. Każda zapisana strategia jest regułą opisaną na sztywno (sekcja 8), tak żeby inny system mógł ją odtworzyć świeca po świecy.
 3. **Paper trading** (Etap 3): sygnały strategii na żywo i wirtualny inwestor w Apps Script, po każdej zamkniętej świecy (sekcja 11a).
 4. **Weryfikacja na nowych spółkach:** grupa doubleProof (20 spółek), której system nigdy nie widzi przy szukaniu — do sprawdzania strategii przez człowieka (sekcja 6a).
-5. **Moduł EURUSD:** osobna baza świec 5-minutowych kursu EURUSD (sekcja 4b).
-6. **Prognoza EURUSD** (Etap 4): co może się stać z kursem w ciągu 48 świec 5-minutowych (4 h) — rozkład z prawdziwych historycznych ścieżek (stożek, oczekiwany zakres, prawdopodobieństwo wzrostu, scenariusze) i 1000 okoliczności z ratingiem; przeliczenie na Macu, prognoza na żywo i dashboard (sekcja 4c).
+5. **Moduł FX 1h:** osobna baza świec godzinowych 10 najczęściej handlowanych par walutowych i Bitcoina (sekcja 4b).
+6. **Prognoza FX** (Etap 4): co może się stać z kursem każdego z 11 instrumentów w ciągu 48 świec 1h — rozkład z prawdziwych historycznych ścieżek (stożek, oczekiwany zakres, prawdopodobieństwo wzrostu, scenariusze) i 1000 okoliczności z ratingiem; przeliczenie na Macu, prognoza na żywo i dashboard (sekcja 4c).
 
 Historia wcześniejszych prac (strategie S1/S2, backtesty, etapy 0–5) jest w historii gita do wersji 0.47.
 
@@ -24,7 +24,7 @@ Historia wcześniejszych prac (strategie S1/S2, backtesty, etapy 0–5) jest w h
 ## 2. Żelazne zasady
 
 1. **Firestore jest jedynym źródłem danych.** Kopia na Macu (`ia4-research/data/`) to tylko kopia robocza — można ją skasować i odtworzyć. Python nigdy nie pobiera świec z Yahoo i nigdy nie pisze do Firestore.
-2. **Baza tylko rośnie.** Zapisujemy wyłącznie zamknięte świece. Niczego nie kasujemy. Wolno przepisać sesję tylko danymi pobranymi ponownie z Yahoo (nocne odświeżenie, „Uzupełnij ostatni miesiąc”). Jedyny wyjątek: moduł EURUSD uzupełnia świece, których Yahoo nie oddało po 3 próbach, uśrednieniem — zawsze oznaczonym w dokumencie (`fillT`, sekcja 4b).
+2. **Baza tylko rośnie.** Zapisujemy wyłącznie zamknięte świece. Niczego nie kasujemy. Wolno przepisać sesję tylko danymi pobranymi ponownie z Yahoo (nocne odświeżenie, „Uzupełnij ostatni miesiąc”). Jedyny wyjątek: moduł FX uzupełnia świece, których Yahoo nie oddało po 3 próbach, uśrednieniem — zawsze oznaczonym w dokumencie (`fillT`, sekcja 4b). Jedyne skasowanie danych w historii projektu: stara baza EURUSD 5 min (`fx/EURUSD`, wersje 1.15–1.26) — decyzja człowieka z 10.10.2026 przy przejściu na świece 1h, wykonywana ręcznie z menu z potwierdzeniem (4b).
 3. **Format bazy (sekcja 4) jest stały.** Każda jego zmiana wymaga najpierw zmiany tej instrukcji, zgody człowieka i opisu migracji istniejących danych.
 4. **Skarbiec = najstarsze 800 świec każdego instrumentu** (sekcja 6). Poszukiwanie nigdy nie widzi wyników skarbca. Skarbiec otwiera wyłącznie bramka skarbca, dla strategii, która przeszła wszystkie sita grupy głównej. Każde otwarcie jest liczone i zapisywane.
 5. **Sekrety nigdy nie trafiają do repozytorium:** klucz serwisowy Firebase (`~/.ia4/serviceAccount.json`) i token GitHub (Script Properties → `GITHUB_TOKEN`).
@@ -38,11 +38,11 @@ Historia wcześniejszych prac (strategie S1/S2, backtesty, etapy 0–5) jest w h
 8. **Jedna wersja dla całego projektu.** Ten sam numer w nagłówku tej instrukcji, w nagłówku każdego pliku `.gs`, w `CONFIG.VERSION` (`Code.gs`) i w `ia4-research/` (`ia4/__init__.py`). Zmiana znacząca (logika, zasada, format, etap) podbija wersję i dostaje wpis w sekcji 13. Drobne poprawki — tylko opis w commicie. (`appsscript.json` nie nosi wersji — JSON nie ma komentarzy.)
 9. **Strategia to reguła, nie kod.** Każda zapisana strategia jest pełną regułą w języku `ia4-rule/1` (sekcja 8): linie, sygnał, filtry, SL, TP, FC, limit czasu — wszystko liczbami, bez parametrów domyślnych. Definicje z sekcji 8 zmienia się tylko razem z nową wersją języka (`ia4-rule/2`); stare strategie zachowują swoją wersję.
 10. **Symulacja jest zawsze pesymistyczna** (sekcja 8.6). Strategie (poszukiwanie, weryfikacja, backtest doubleProof) liczone są bez kosztów transakcyjnych, każda reguła na wszystkich hipotezach SL × TP naraz. Koszt transakcyjny (`COST_PCT` = 0,005% wartości pozycji przy wejściu i przy wyjściu) liczą tylko wirtualny inwestor (11a) i backtest portfela (6b).
-11. **Wyniki poszukiwania żyją na branchu `research`** (sekcja 10), wyniki prognozy EURUSD — na branchach `fx` i `fx-live` (sekcja 4c.12). Python nie pisze do `main`; `main` to kod, ta instrukcja i telemetria automatu.
+11. **Wyniki poszukiwania żyją na branchu `research`** (sekcja 10), wyniki prognozy FX — na branchach `fx` i `fx-live` (sekcja 4c.12). Python nie pisze do `main`; `main` to kod, ta instrukcja i telemetria automatu.
 12. **Jeden język reguł, dwie implementacje.** Reguły liczy Python (`ia4/lab`, backtest) i JavaScript (`PaperEngine.gs`, na żywo). Każda zmiana definicji z sekcji 8 musi trafić do obu naraz, a test zgodności (`ia4-research/tests/`, sekcja 11a) musi dać 0 rozbieżności.
 13. **Mediana trzymania.** Każdy wynik strategii albo portfela (arkusze, pliki wyników) podaje medianę świec w pozycji: świeca wyjścia − świeca wejścia + 1.
-14. **Katalog okoliczności FX jest nienaruszalny.** Po jednorazowej kalibracji (sekcja 4c.2) ID, definicje i progi okoliczności nigdy się nie zmieniają; nowy katalog powstaje tylko jako nowa wersja (`fx-cond/2`) obok starego, za zgodą człowieka.
-15. **Prognoza zawsze z niepewnością i dowodem.** Prognoza EURUSD pokazuje rozkład (stożek, zakres, P(wzrost)), nigdy samą linię. Linia środkowa odchyla się od ceny bieżącej tylko w takim stopniu, w jakim sprawdzian na danych niewidzianych przez model (4c.7) potwierdził jej przewagę; dashboard zawsze pokazuje wynik sprawdzianu słowami.
+14. **Katalog okoliczności FX jest nienaruszalny.** Po jednorazowej kalibracji (sekcja 4c.2) ID, definicje i progi okoliczności nigdy się nie zmieniają; nowy katalog powstaje tylko jako nowa wersja (`fx-cond/3`), za zgodą człowieka. Obowiązuje `fx-cond/2` (świece 1h, od 1.27); `fx-cond/1` (EURUSD 5 min) — tylko w archiwum (4c.2).
+15. **Prognoza zawsze z niepewnością i dowodem.** Prognoza FX pokazuje rozkład (stożek, zakres, P(wzrost)), nigdy samą linię. Linia środkowa odchyla się od ceny bieżącej tylko w takim stopniu, w jakim sprawdzian na danych niewidzianych przez model (4c.7) potwierdził jej przewagę; dashboard zawsze pokazuje wynik sprawdzianu słowami.
 
 ---
 
@@ -56,15 +56,15 @@ Yahoo ──(Apps Script, co minutę)──▶ Firestore ──(ia4.sync)──�
                   │                                                     │
                   ├──◀ arkusze STRATEGIE, BACKTEST PORTFELA ◀──(Research.gs, co 30 min)── GitHub research: research/*
                   └──▶ po każdej świecy: Paper.gs (Firestore → pamięć _IA4_DANE → sygnały, inwestor)
-Yahoo EURUSD=X ──(Fx.gs, w tym samym triggerze)──▶ Firestore fx/EURUSD (moduł EURUSD, sekcja 4b)
-Firestore fx/EURUSD ──(ia4.fx.sync)──▶ Mac: data/fx/ ──▶ ia4.fx.research (ręcznie) ──▶ GitHub fx: ratingi, index.html ──▶ arkusz OKOLICZNOSCI_FX
+Yahoo 10 par + BTC (1h) ──(Fx.gs, w tym samym triggerze)──▶ Firestore fx1h/*, system/fx1h (moduł FX, sekcja 4b) ──▶ arkusz FX
+Firestore fx1h ──(ia4.fx.sync)──▶ Mac: data/fx1h/ ──▶ ia4.fx.research (ręcznie) ──▶ GitHub fx: ratingi, index.html ──▶ arkusz OKOLICZNOSCI_FX
                                                   └──▶ ia4.fx.live (co 30 s) ──▶ GitHub fx-live: forecast.json ──▶ dashboard (GitHub Pages)
 ```
 
 | Plik | Rola |
 |---|---|
 | `Code.gs` | automat: listy instrumentów, zbieranie na żywo (szybka ścieżka po zamknięciu świecy), nocne odświeżenie, liczenie bazy, pobieranie historii doubleProof, zapis do Firestore, arkusz STATS, menu, triggery |
-| `Fx.gs` | moduł EURUSD: świece 5 min z Yahoo → Firestore `fx/EURUSD`, opóźnienia w STATS (sekcja 4b) |
+| `Fx.gs` | moduł FX 1h: świece 1h 10 par walutowych i BTC z Yahoo → Firestore `fx1h`, arkusz FX, opóźnienia w STATS (sekcja 4b); arkusz OKOLICZNOSCI_FX (4c.11) |
 | `Telemetry.gs` | stan zbierania → `telemetry/state.json` w GitHub (branch `main`) |
 | `Research.gs` | branch `research` (`strategies.jsonl`, `backtest-doubleproof.json`, `portfolio-backtest.json`) → arkusze STRATEGIE i BACKTEST PORTFELA; listy `ACTIVE_IDS` i `PRIORITY` dla paper tradingu |
 | `Paper.gs` | paper trading: pamięć świec, sygnały na żywo (SIGNALS-REALTIME), wirtualny inwestor (VIRTUAL-INVESTOR) |
@@ -91,7 +91,7 @@ Firestore fx/EURUSD ──(ia4.fx.sync)──▶ Mac: data/fx/ ──▶ ia4.fx.
 | `ia4-research/README.md` | instalacja i użycie |
 | `telemetry/state.json` | stan automatu, generowany — nie edytować |
 | `IA4_INSTRUKCJA.md` | ten plik |
-| `ia4-research/ia4/fx/` | prognoza EURUSD (sekcja 4c): `sync.py` (Firestore → `data/fx/`), `series.py` (seria, lustro, wskaźniki 4c.3; średnie, ATR, RSI z `ia4/lab/indicators.py`), `catalog.py` (okoliczności `fx-cond/1`, kalibracja), `selftest.py`, `research.py` (wystąpienia, profile, ratingi walk-forward, środek prognozy), `scenario.py` (prognoza rozkładu i jej sprawdzian, 4c.6–4c.7), `live.py` (prognoza na żywo), `store.py` (branche `fx` i `fx-live`), `dashboard/index.html` |
+| `ia4-research/ia4/fx/` | prognoza FX 1h (sekcja 4c): `instruments.py` (lista 11 instrumentów i godziny rynku — kopia z `Fx.gs`), `sync.py` (Firestore `fx1h` → `data/fx1h/`), `series.py` (seria, lustro, wskaźniki 4c.3; średnie, ATR, RSI z `ia4/lab/indicators.py`), `catalog.py` (okoliczności `fx-cond/2`, kalibracja na puli instrumentów), `selftest.py` i `synth.py` (dane syntetyczne do testów), `research.py` (pula, wystąpienia, profile, ratingi walk-forward, środek prognozy), `scenario.py` (prognoza rozkładu i jej sprawdzian, 4c.6–4c.7), `live.py` (prognoza na żywo), `store.py` (branche `fx` i `fx-live`), `dashboard/index.html` |
 | `PRZEWODNIK.md` | prosty przewodnik dla człowieka: co jest gdzie, jak czytać, jakie wnioski |
 
 ---
@@ -158,7 +158,7 @@ Historia od połowy września 2024 (granica Yahoo: ok. 730 dni wstecz dla świec
    - Czasy każdej świecy: tabela świec w STATS (sekcja 4a).
 2. **Nocne odświeżenie.** Raz na dzień sesyjny, 45 min po zamknięciu, automat przepisuje ostatnie ~5 sesji wszystkich instrumentów (ok. 550 zapisów). Świeca brakująca z powodu awarii wraca sama tej samej nocy. Nieudane odświeżenie jest ponawiane co 30 min.
 3. **Liczenie bazy.** Po nocnym odświeżeniu automat liczy świece i pierwszą datę każdego instrumentu (zapytania agregujące, ok. 150 odczytów) — widać to w STATS i w `telemetry/state.json`.
-4. **Ręcznie:** menu IA 4 → „Uzupełnij ostatni miesiąc” (po dłuższej przerwie automatu), „Nocne odświeżenie teraz”, „Historia doubleProof — jedna porcja teraz”, „EURUSD — pobierz teraz”.
+4. **Ręcznie:** menu IA 4 → „Uzupełnij ostatni miesiąc” (po dłuższej przerwie automatu), „Nocne odświeżenie teraz”, „Historia doubleProof — jedna porcja teraz”, „💱 FX 1h — pobierz teraz” (sekcja 4b).
 5. **Historia doubleProof (jednorazowo, sama się kończy).** Raz na godzinę, w wolnym przebiegu `runCollector`, jedna porcja: dla każdej spółki doubleProof bez pełnej historii kolejne 60 dni wstecz (Yahoo `period1/period2`, okna od północy do północy UTC — sesja nigdy nie jest dzielona). Zaczyna od wczoraj, kończy na granicy Yahoo (728 dni wstecz albo odpowiedź Yahoo „poza zakresem 730 dni”). Ok. 840 zapisów na porcję, ok. 10 tys. łącznie; najwyżej 8000 zapisów dziennie, więc całość trwa ok. 12–13 godzin pracy rozłożonych na 1–2 dni. Stan: Script Properties `BACKFILL_DP`, postęp w STATS („Historia doubleProof”) i w `telemetry/state.json` (`doubleProofHistory`). Dzisiejsze i ostatnie sesje zapisują zbieranie na żywo i nocne odświeżenie, jak dla pozostałych instrumentów.
 
 Limity Firestore (plan Spark): 20 000 zapisów i 50 000 odczytów dziennie — zużycie wszystkich części systemu: sekcja 12, „Limity Firestore”.
@@ -167,7 +167,7 @@ Limity Firestore (plan Spark): 20 000 zapisów i 50 000 odczytów dziennie — z
 
 Przepisywany przy każdym uruchomieniu automatu. Układ oznacza znacznik w komórce A2 (`stats-1.15`); inny znacznik albo brak arkusza — arkusz buduje się sam od nowa.
 
-**Blok stanu** (od wiersza 3): status (OK / BŁĄD), ostatnie uruchomienie (PL, z watchdogiem „brak uruchomień > 15 min”), ostatnia akcja, czas w Nowym Jorku, sesja USA, trigger, **czas pracy automatu dziś** (suma czasu wszystkich uruchomień — limit Google dla konta Gmail to 90 min triggerów dziennie), zapisanych świec dziś, błędów dziś, ostatni błąd, nocne odświeżenie, świec w bazie, 3 wiersze modułu EURUSD (sekcja 4b).
+**Blok stanu** (od wiersza 3): status (OK / BŁĄD), ostatnie uruchomienie (PL, z watchdogiem „brak uruchomień > 15 min”), ostatnia akcja, czas w Nowym Jorku, sesja USA, trigger, **czas pracy automatu dziś** (suma czasu wszystkich uruchomień — limit Google dla konta Gmail to 90 min triggerów dziennie), zapisanych świec dziś, błędów dziś, ostatni błąd, nocne odświeżenie, świec w bazie, 3 wiersze modułu FX 1h (sekcja 4b).
 
 **Tabela świec** (pod blokiem stanu): jeden wiersz na świecę, najnowsze na górze — 7 wierszy na dzień sesyjny (4 w dni skrócone), ostatnie 90 dni. Czasy jako **+m:ss od zamknięcia świecy** (pełna godzina i 30 minut ET; ostatnia świeca — 16:00 ET); wartość ujemna = przed zamknięciem.
 
@@ -185,197 +185,219 @@ Przepisywany przy każdym uruchomieniu automatu. Układ oznacza znacznik w komó
 
 Spółka, której świeca dojdzie w późniejszym uruchomieniu, uzupełnia ten sam wiersz. Bieżący wiersz: Script Properties `CANDLE_LOG`; ostatnia świeca trafia też do telemetrii (`lastCandle`).
 
-### 4b. Moduł EURUSD (`Fx.gs`)
+### 4b. Moduł FX 1h (`Fx.gs`)
 
-Osobny moduł: **zbiera** świece 5-minutowe kursu EURUSD. Nie bierze udziału w poszukiwaniu, weryfikacji ani paper tradingu. Kopię na Macu i prognozę ma osobny moduł prognozy (sekcja 4c). Obowiązują go zasady 2.1–2.3 z jednym wyjątkiem (uśrednione świece, niżej).
+Osobny moduł: **zbiera** świece godzinowe 10 najczęściej handlowanych par walutowych i Bitcoina. Nie bierze udziału w poszukiwaniu, weryfikacji ani paper tradingu. Kopię na Macu i prognozę ma osobny moduł prognozy (sekcja 4c). Obowiązują go zasady 2.1–2.3 z jednym wyjątkiem (uśrednione świece, niżej). Od 1.27 zastępuje dawną bazę EURUSD 5 min (`fx/EURUSD`, wersje 1.15–1.26), którą usuwa się z menu (decyzja człowieka z 10.10.2026, zasada 2.2).
 
-- **Źródło:** Yahoo `EURUSD=X`, `interval=5m`. Yahoo trzyma świece 5 min tylko 60 dni wstecz, więc historia zaczyna się 59 dni przed startem modułu (pierwszy dzień bazy jest niepełny) i rośnie od tego dnia. Ceny Yahoo dla walut są orientacyjne; wolumen Yahoo podaje zawsze 0 — nie jest zapisywany.
-- **Świeca:** 5 minut, opisana czasem początku w UTC (wielokrotność 5 min). Zapisujemy tylko świece zamknięte. Ceny zaokrąglone do 6 miejsc.
-- **Godziny rynku:** od niedzieli 17:00 do piątku 17:00 czasu Nowego Jorku. **Oczekiwane świece dnia (UTC)** = świece, których początek wypada w tych godzinach: pon.–czw. **288**, piątek 252 (latem; zimą 264), niedziela 36 (zimą 24), sobota 0.
+- **Instrumenty (11)** — kolejność = kolumny arkusza FX. Lista jest w `Fx.gs` (`FX.INSTRUMENTS`) i w `ia4-research/ia4/fx/instruments.py`; zmiana listy = zmiana tej instrukcji i obu plików naraz.
+
+  | ID | Yahoo (zapasowy) | Grupa | Pips | Miejsc |
+  |---|---|---|---|---|
+  | EURUSD | `EURUSD=X` | fx | 0,0001 | 6 |
+  | USDJPY | `JPY=X` (`USDJPY=X`) | fx | 0,01 | 4 |
+  | GBPUSD | `GBPUSD=X` | fx | 0,0001 | 6 |
+  | AUDUSD | `AUDUSD=X` | fx | 0,0001 | 6 |
+  | USDCAD | `CAD=X` (`USDCAD=X`) | fx | 0,0001 | 6 |
+  | USDCHF | `CHF=X` (`USDCHF=X`) | fx | 0,0001 | 6 |
+  | NZDUSD | `NZDUSD=X` | fx | 0,0001 | 6 |
+  | EURJPY | `EURJPY=X` | fx | 0,01 | 4 |
+  | GBPJPY | `GBPJPY=X` | fx | 0,01 | 4 |
+  | EURGBP | `EURGBP=X` | fx | 0,0001 | 6 |
+  | BTCUSD | `BTC-USD` | crypto | 1 USD | 2 |
+
+  Dobór (10.10.2026): 7 par „głównych” (każda z USD — razem większość światowego obrotu walutami według badania BIS 2025) i 3 najpłynniejsze pary krzyżowe (EURJPY, GBPJPY, EURGBP). Pominięte: USD/CNY (kurs sterowany, handel w ograniczonych godzinach) i USD/HKD (kurs sztywny) — mało informacji o ruchach rynku. Bitcoin jako osobna grupa (`crypto`): handel 24/7, inna zmienność. Symbol zapasowy — gdy Yahoo nie odpowie na podstawowy, ponowienie przez drugi serwer Yahoo pyta o zapasowy.
+- **Źródło:** Yahoo, `interval=1h`. Yahoo trzyma świece 1h ok. 730 dni wstecz, więc historia zaczyna się 728 dni przed startem modułu (pierwszy dzień bazy może być niepełny). Ceny Yahoo dla walut są orientacyjne; wolumen nie jest zapisywany.
+- **Świeca:** 1 godzina, opisana czasem początku w UTC (pełna godzina). Zapisujemy tylko świece zamknięte. Ceny zaokrąglone do liczby miejsc z tabeli. Wpisy Yahoo poza godzinami rynku są pomijane.
+- **Godziny rynku:** pary walutowe — od niedzieli 17:00 do piątku 17:00 czasu Nowego Jorku; BTC — zawsze. **Oczekiwane świece dnia (UTC)** = świece, których początek wypada w tych godzinach: pary walutowe pon.–czw. **24**, piątek 21 (latem; zimą 22), niedziela 3 (zimą 2), sobota 0; BTC — 24 każdego dnia. Weekend nie jest brakiem.
 - **Format w Firestore:**
   ```
-  fx/EURUSD/days/{RRRR-MM-DD}     jeden dokument na dzień UTC
-    symbol ("EURUSD"), date, bars (świec razem, z uśrednionymi),
-    t [] (minuta dnia UTC początku świecy: 0, 5, … 1435), o [], h [], l [], c []   (tablice równoległe),
+  fx1h/{SYMBOL}/days/{RRRR-MM-DD}   jeden dokument na instrument i dzień UTC
+    symbol, date, interval ("1h"), bars (świec razem, z uśrednionymi),
+    t [] (minuta dnia UTC początku świecy: 0, 60, … 1380), o [], h [], l [], c []   (tablice równoległe),
     expected (oczekiwanych), missing (brakujących), filled (uśrednionych),
     fillT [] (minuty świec uśrednionych — NIE pochodzą z Yahoo), tries (próby kontroli),
     status ("dzień trwa", "do kontroli", "braki — próba n z 3", "kompletny",
-            "uzupełniony: N świec uśrednionych", "brak danych z Yahoo — nie uzupełniono",
+            "uzupełniony: N świec uśrednionych", "historia: uzupełniony: N świec uśrednionych",
+            "brak danych z Yahoo — nie da się uśrednić (brak świec obok)", "weekend — brak handlu",
             "pierwszy dzień bazy — od HH:MM UTC"), updatedAt
-  fx/EURUSD                       podsumowanie: symbol, yahoo ("EURUSD=X"), interval ("5m"),
-                                  lastDate, lastTime (HH:MM UTC), lastClose, liveUpdatedAt
+  fx1h/{SYMBOL}                     podsumowanie: symbol, yahoo, group, interval, pip, digits,
+                                    historyFirstDate, historyAt, historyBars, updatedAt
+  system/fx1h                       interval, symbols [] (lista instrumentów), groups {ID: grupa},
+                                    last {ID: początek ostatniej świecy}, lastClose {ID: zamknięcie}, updatedAt
   ```
-  Dokumenty sprzed 1.17 nie mają pól `expected`…`status` — pierwsze uruchomienie 1.17 przelicza je w rejestrze (niżej) i planuje kontrolę dni z brakami.
-- **Na żywo:** w każdym uruchomieniu `runCollector` (co minutę) i co 10 s w szybkiej ścieżce akcji — jeden trigger dla całego automatu (dzienny limit czasu triggerów). Yahoo jest pytane tylko wtedy, gdy powinna już być zamknięta świeca nowsza niż ostatnia zapisana (+5 s), i tylko w godzinach rynku (z zapasem 5 min). Pobranie od początku dnia UTC ostatniej zapisanej świecy; dokument dnia z nową świecą przepisywany w całości (status „dzień trwa”).
-- **Kontrola zakończonego dnia** (zamiast dawnego dziennego odświeżenia): od 00:20 UTC wczorajszy dzień trafia do kolejki (`FX_CHECK`; sobota — nie). **Próba** = świece z Firestore + cały dzień pobrany z Yahoo na nowo (z zapasem ±1 h; świeże z Yahoo wygrywają) → braki liczone od nowa. Do **3 prób co 60 min**; najwyżej 2 dni na jedno uruchomienie.
+  Soboty par walutowych nie mają dokumentów. `system/fx1h` to jeden dokument dla Maca: z niego FX-real-time wie, które instrumenty mają nową świecę (4c.9).
+- **Historia (jednorazowo, sama się kończy):** w wolnym uruchomieniu `runCollector` (gdy automat nie zbiera akcji, nocnego odświeżenia ani historii doubleProof) jeden instrument: całe 728 dni jednym zapytaniem Yahoo, zapis wszystkich dni (ok. 640 dokumentów na instrument, ok. 7000 łącznie). Dni starsze niż wczoraj — braki od razu uśrednione (Yahoo właśnie oddało wszystko, co ma; status „historia: uzupełniony…”), wczoraj — zwykła kontrola, dziś — „dzień trwa”. Nieudana próba — kolejna za 30 min. Cała historia: ok. 11 uruchomień (kilkanaście minut). Instrument bez historii nie jest zbierany na żywo.
+- **Na żywo:** w każdym uruchomieniu `runCollector` (co minutę) i co 10 s w szybkiej ścieżce akcji — jeden trigger dla całego automatu (dzienny limit czasu triggerów). Instrument jest pobierany, gdy powinna już być zamknięta świeca nowsza niż ostatnia zapisana (zamknięcie + 20 s; pary walutowe tylko w godzinach rynku). Wszystkie takie instrumenty jednym `fetchAll`, każdy od początku dnia UTC ostatniej zapisanej świecy; dokument dnia z nową świecą przepisywany w całości (status „dzień trwa”), potem `system/fx1h` — wszystko w jednym zapisie. Spóźniona świeca: próba w każdym uruchomieniu przez 10 min od zamknięcia, potem co 10 min.
+- **Kontrola zakończonego dnia:** od 00:20 UTC wczorajszy dzień każdego instrumentu trafia do kolejki (`FX1H_CHECK`; sobota par walutowych — nie). **Próba** = świece z Firestore + cały dzień pobrany z Yahoo na nowo (z zapasem ±1 h; świeże z Yahoo wygrywają) → braki liczone od nowa. Do **3 prób co 60 min**; najwyżej 11 par (instrument, dzień) na jedno uruchomienie.
   - brak braków → „kompletny”,
-  - po 3 próbach z brakami → **uśrednienie wszystkich braków** — każdy dzień kończy się kompletny (zapisanych = oczekiwanych); „brak danych z Yahoo — nie da się uśrednić” tylko wtedy, gdy w dniu i godzinę obok nie ma żadnej świecy,
+  - po 3 próbach z brakami → **uśrednienie wszystkich braków** — każdy dzień kończy się kompletny (zapisanych = oczekiwanych); „brak danych z Yahoo — nie da się uśrednić” tylko wtedy, gdy przed i po brakującej świecy nie ma żadnej świecy,
   - pierwszy dzień bazy (zaczyna się w połowie — granica historii Yahoo): oczekiwane świece liczone od jego pierwszej świecy,
-  - dni starsze niż 58 dni (Yahoo ich już nie odda) — od razu uśrednienie,
+  - dni starsze niż 726 dni (Yahoo ich już nie odda) — od razu uśrednienie,
   - dzień z wynikiem końcowym wypada z kolejki i nie jest już zmieniany.
-- **Uśrednienie** (interpolacja liniowa): dla brakującej świecy t — najbliższa świeca przed (P) i po (N), także z sąsiedniego dnia. Cena biegnie liniowo od zamknięcia P do otwarcia N: open = wartość w chwili t, close = w chwili t + 5 min, high/low = większa/mniejsza z nich. Tylko P albo tylko N — świeca płaska na tej cenie. Świece uśrednione są zawsze w `fillT`; analiza może je pominąć.
-- **Opóźnienie świecy** = chwila potwierdzenia zapisu w Firestore − zamknięcie świecy (początek + 5 min).
-- **Arkusz FX — jeden wiersz na dzień** (UTC, najnowszy na górze, także soboty): data, dzień tygodnia, **oczekiwanych świec**, **zapisanych świec**, **w tym uśrednionych**. Wiersz pojawia się, gdy kontrola zakończy dzień (zwykle 00:20–02:20 UTC następnego dnia; sobota — 0 / 0 / 0), i już się nie zmienia. Dzień, który trwa albo czeka na kolejną próbę, nie ma jeszcze wiersza. Czy zbieranie działa i opóźnienia — STATS.
-- **STATS** (3 wiersze bloku stanu) i telemetria (pole `fx`: ostatnia świeca i zapis, opóźnienia, wczoraj, kolejka kontroli).
-- Stan: Script Properties `FX_STATE`, `FX_CHECK`. Ręcznie: menu IA 4 → „EURUSD — pobierz teraz”, „EURUSD — przelicz arkusz FX” (arkusz od nowa z Firestore, ok. 1 odczyt na dzień bazy; dni niekompletne i dni robocze bez dokumentu trafiają do kontroli).
+- **Uśrednienie** (interpolacja liniowa): dla brakującej świecy t — najbliższa świeca przed (P) i po (N), także z sąsiedniego dnia. Cena biegnie liniowo od zamknięcia P do otwarcia N: open = wartość w chwili t, close = w chwili t + 1 h, high/low = większa/mniejsza z nich. Tylko P albo tylko N — świeca płaska na tej cenie. Świece uśrednione są zawsze w `fillT`; analiza (4c) nie używa ich jako wystąpień ani wyników.
+- **Opóźnienie świecy** = chwila potwierdzenia zapisu w Firestore − zamknięcie świecy (początek + 1 h).
+- **Arkusz FX — jeden wiersz na dzień UTC** (najnowszy na górze, także soboty), kolumny: data, dzień tygodnia i po jednej kolumnie na instrument: **`zapisanych/oczekiwanych`**, np. `24/24`, a gdy były uśrednione — `24/24 (1)` (komórka żółta); `—` = dzień bez handlu (sobota par walutowych). Komórka pojawia się, gdy historia albo kontrola zakończy dzień (zwykle 00:20–02:20 UTC następnego dnia), i już się nie zmienia. Dzień, który trwa albo czeka na kolejną próbę, nie ma jeszcze komórki. Czy zbieranie działa i opóźnienia — STATS.
+- **STATS** (3 wiersze bloku stanu): „FX 1h — ostatnia świeca” (najnowsza świeca, ile instrumentów aktualnych), „FX 1h — opóźnienie” (ostatni zapis, opóźnienie, mediana i 90% opóźnień dziś), „FX 1h — dziś / historia” (świece i braki dziś, wczoraj skontrolowanych i uśrednionych, historia N/11 od daty, kolejka kontroli). Telemetria: pole `fx` (4a, `telemetry/README.md`).
+- Stan: Script Properties `FX1H_STATE`, `FX1H_CHECK`. Ręcznie: menu IA 4 → „💱 FX 1h — pobierz teraz” (świece na żywo i jedna porcja historii, jeśli trwa), „💱 FX 1h — przelicz arkusz FX” (arkusz od nowa z Firestore — ok. 1 odczyt na dokument dnia, ok. 7000; dni niekompletne i dni z handlem bez dokumentu trafiają do kontroli), „🗑 FX — usuń stare świece EURUSD 5 min” (jednorazowo, z potwierdzeniem: kasuje `fx/EURUSD/days/*`, `fx/EURUSD` oraz `FX_STATE`, `FX_CHECK` — ok. 65 odczytów i 66 zapisów; nieodwracalne).
 
-### 4c. Prognoza EURUSD (`ia4-research/ia4/fx/`, Etap 4)
+### 4c. Prognoza FX 1h (`ia4-research/ia4/fx/`, Etap 4)
 
-Cel: **co może się stać z kursem EURUSD w ciągu 48 świec 5-minutowych** (4 godziny) — rozkład możliwych ścieżek ze statystyki historycznych świec i „okoliczności” (4c.0). Dwa programy w Pythonie na Macu — **FX-research** (tylko ręcznie) i **FX-real-time** (gdy Mac jest włączony) — oraz dashboard na GitHub Pages i arkusz OKOLICZNOSCI_FX. Moduł tylko czyta Firestore (zasada 2.1) i nie wpływa na zbieranie (4b), poszukiwanie strategii ani paper trading.
+Cel: **co może się stać z kursem każdego z 11 instrumentów (4b) w ciągu 48 kolejnych świec 1h** — rozkład możliwych ścieżek ze statystyki historycznych świec i „okoliczności” (4c.0). Pary walutowe liczą 48 świec w godzinach rynku (weekend pomijany), BTC — 48 godzin. Dwa programy w Pythonie na Macu — **FX-research** (tylko ręcznie) i **FX-real-time** (gdy Mac jest włączony) — oraz dashboard na GitHub Pages i arkusz OKOLICZNOSCI_FX. Moduł tylko czyta Firestore (zasada 2.1) i nie wpływa na zbieranie (4b), poszukiwanie strategii ani paper trading.
 
 #### 4c.0 Zasada: rozkład, nie jedna linia
 
-Kurs EURUSD na 5 minutach jest bardzo bliski błądzeniu losowemu: średnia z setek historycznych scenariuszy zawsze wychodzi blisko zera, więc jedna „uśredniona” linia jest prawie pozioma — i to jest poprawny wynik, nie błąd. Tak było w 1.20–1.25 (linia ±2–5 pipsów przy typowym ruchu ±14 pipsów w 4 h). Doświadczony trader nie pyta „jaka będzie linia”, tylko: **w jakim zakresie się poruszymy, z jakim prawdopodobieństwem w którą stronę i jak wyglądały najbardziej podobne sytuacje** — z ich skokami i wahaniami.
+Kurs walutowy jest bardzo bliski błądzeniu losowemu: średnia z setek historycznych scenariuszy zawsze wychodzi blisko zera, więc jedna „uśredniona” linia jest prawie pozioma — i to jest poprawny wynik, nie błąd. Doświadczony trader nie pyta „jaka będzie linia”, tylko: **w jakim zakresie się poruszymy, z jakim prawdopodobieństwem w którą stronę i jak wyglądały najbardziej podobne sytuacje** — z ich skokami i wahaniami.
 
-Badanie na danych R-001 (13 080 świec, walk-forward na ostatnich 30%, 9.10.2026):
-- typowy ruch w 4 h: odchylenie ±13,8 pipsa, zakres zamknięć — mediana 13,6 pipsa (10–90%: 6,7–29,8),
-- **zmienność zależy od pory dnia**: zakres 4 h od 12:00 UTC (Nowy Jork) — mediana 22,8 pipsa, od 20:00 UTC — 9,0 pipsa,
-- **kierunek**: żadna metoda (średnia profili, analogi, pora dnia) nie była lepsza od rzutu monetą (Brier k = 48 ≈ 0,25–0,27),
-- **zakres i rozrzut da się przewidzieć**: pora dnia + zmienność zmniejszają błąd prognozy zakresu 4 h z 47% do 27–29%; bez skalowania zmiennością stożek 80% obejmował tylko 55% przypadków,
-- analogi z okoliczności były tylko minimalnie lepsze od samej pory dnia (pinball k = 48: 5,44 wobec 5,49).
+Badanie na EURUSD 5 min (przeliczenie R-001, 13 080 świec, 9.10.2026 — dane usunięte w 1.27): kierunek ≈ rzut monetą (Brier ≈ 0,25–0,27), za to **zakres i rozrzut dało się przewidzieć** — pora dnia i zmienność zmniejszały błąd prognozy zakresu z 47% do 27–29%; bez skalowania zmiennością stożek 80% obejmował tylko 55% przypadków. Na świecach 1h i 11 instrumentach odpowiedź trzeba sprawdzić od nowa — daje ją sprawdzian (4c.7) w każdym przeliczeniu.
 
-Dlatego (od 1.26) prognoza to **rozkład** (4c.6): stożek 50% i 80%, oczekiwany zakres 4 h, P(wzrost), 3 prawdziwe scenariusze z historii i linia środkowa, która odchyla się tylko o tyle, o ile sprawdzian (4c.7) potwierdził jej przewagę (zasada 15). Okoliczności i ratingi (4c.2–4c.5) zostają: dają środek prognozy i dobór analogów, a sprawdzian przy każdym przeliczeniu mierzy, czy wnoszą coś ponad porę dnia — z każdym tygodniem danych odpowiedź może się zmienić.
+Dlatego prognoza to **rozkład** (4c.6): stożek 50% i 80%, oczekiwany zakres 48 h, P(wzrost), 3 prawdziwe scenariusze z historii i linia środkowa, która odchyla się tylko o tyle, o ile sprawdzian potwierdził jej przewagę (zasada 15). Okoliczności i ratingi (4c.2–4c.5) dają środek prognozy i dobór analogów, a sprawdzian przy każdym przeliczeniu mierzy, czy wnoszą coś ponad porę dnia.
+
+Dlaczego 1h i 11 instrumentów (1.27): przy 5 min 48 świec to tylko 4 h, a 60 dni historii Yahoo dawało ok. 60 niezależnych 4-godzinnych okien. Przy 1h historia sięga 2 lat (ok. 12 000 świec na parę), a 11 instrumentów razem — ok. 140 000 świec; wszystkie wielkości są w jednostkach zmienności (ATR100), więc statystyki różnych par można łączyć.
 
 #### 4c.1 Dane
 
-- **Kopia lokalna:** `python -m ia4.fx.sync` (oba programy wołają ją przy starcie) → `ia4-research/data/fx/EURUSD.parquet`: kolumny `time` (początek świecy, sekundy UTC), `o, h, l, c`, `filled` (świeca z `fillT` — uśredniona), posortowane po `time`; stan w `data/fx/_manifest.json` (najnowsze `updatedAt`). Przyrostowo: tylko dokumenty `fx/EURUSD/days` z `updatedAt` nowszym niż w manifeście (zwykle 1–3 odczyty); pierwszy raz — wszystkie dni (ok. 1 odczyt na dzień bazy); `--full` — od nowa.
-- **Seria:** wszystkie świece w kolejności czasu; `t` to indeks w serii (jak w sekcji 8 — przez weekend bez przerwy w indeksie). Wskaźniki liczone na całej serii, także na świecach uśrednionych.
-- **Przerwa:** odstęp między kolejnymi świecami serii większy niż 60 min (weekend, awaria bez uzupełnienia).
-- **Pips** = 0,0001.
+- **Kopia lokalna:** `python -m ia4.fx.sync` (oba programy wołają ją przy starcie) → `ia4-research/data/fx1h/{SYMBOL}.parquet`: kolumny `time` (początek świecy, sekundy UTC), `o, h, l, c`, `filled` (świeca z `fillT` — uśredniona), posortowane po `time`; stan w `data/fx1h/_manifest.json` (dla każdego instrumentu najnowsze `updatedAt`). Lista instrumentów z `system/fx1h` (bez Firestore — `instruments.py`). Przyrostowo: tylko dokumenty dni z `updatedAt` nowszym niż w manifeście (minus 30 min zapasu; zwykle 1–3 odczyty na instrument); pierwszy raz — wszystkie dni (ok. 7000 odczytów); `--full` — od nowa. Dokument dnia zastępuje wszystkie lokalne świece swojego dnia. Stara kopia EURUSD 5 min (`data/fx/`) jest usuwana przy pierwszej synchronizacji.
+- **Seria:** wszystkie świece instrumentu w kolejności czasu; `t` to indeks w serii (jak w sekcji 8 — przez noce i weekendy bez przerwy w indeksie). Wskaźniki liczone na całej serii, także na świecach uśrednionych.
+- **Przerwa:** między kolejnymi świecami serii brakuje co najmniej jednej oczekiwanej świecy rynku (4b). Weekend par walutowych nie jest przerwą.
+- **Pips** (tylko do wyświetlania): 0,0001 (pary z USD, EURGBP), 0,01 (pary z JPY), 1 USD (BTC). Obliczenia — w jednostkach ATR100 (4c.3).
+- **Pula:** FX-research i FX-real-time łączą wszystkie instrumenty w jedną tablicę świec (bloki instrumentów jeden po drugim). Wskaźniki i okoliczności zawsze liczone osobno na serii każdego instrumentu.
 
-#### 4c.2 Okoliczności (katalog `fx-cond/1`)
+#### 4c.2 Okoliczności (katalog `fx-cond/2`)
 
-- **Okoliczność** = warunek prawda/fałsz na świecy `t`, liczony wyłącznie ze świec ≤ `t` (o, h, l, c). Wartość, której nie da się policzyć, daje fałsz (jak w sekcji 8).
+- **Okoliczność** = warunek prawda/fałsz na świecy `t`, liczony wyłącznie ze świec ≤ `t` (o, h, l, c) tego samego instrumentu. Wartość, której nie da się policzyć, daje fałsz (jak w sekcji 8).
 - **1000 okoliczności = 500 par lustrzanych.** Każda ma kierunek: `+` (wzrost, wysoka cena) albo `−` (spadek, niska cena). Para to ten sam warunek odbity: ceny i różnice ze znakiem przeciwnym, ten sam próg. ID `FX-0001` … `FX-1000`; para = kolejne numery, nieparzysty `+`, parzysty `−`.
-- Każda okoliczność ma: rodzinę, opis słowny po polsku, definicję formalną (rodzaj + wszystkie parametry liczbami) i próg.
-- **Wskaźniki:** wzory z sekcji 8.2 (SMA, EMA, WMA, HMA, DEMA, TEMA, KAMA, ZLEMA, ATR, RSI — w module FX także z innymi okresami niż 14) oraz wskaźniki z tabeli 4c.3. VWMA nie jest używana (EURUSD nie ma wolumenu).
-- **Kalibracja tylko raz** — `python -m ia4.fx.catalog --commit` (krok FX-1; odmawia, gdy `fx/conditions.json` już jest na branchu `fx`): próg każdej pary dobierany na danych dostępnych w tej chwili tak, żeby okoliczność była prawdziwa na 15%, 25% albo 40% świec (cel kandydata), a każda z dwóch okoliczności pary — w przedziale 10–50%; próg zaokrąglony. Szczegóły: 4c.3. Zapis w `fx/conditions.json`: katalog, progi, data kalibracji, zakres danych, częstość każdej okoliczności przy kalibracji.
-- **Katalog jest nienaruszalny** (zasada 14): po kalibracji ID, definicje i progi nigdy się nie zmieniają, okoliczności nie są dodawane ani usuwane — dzięki temu ratingi kolejnych przeliczeń (na większej ilości danych) są porównywalne. Każde przeliczenie liczy częstość; okoliczność poza 10–50% dostaje znacznik „częstość poza zakresem” i nic więcej. Nowy katalog — tylko jako `fx-cond/2`, za zgodą człowieka, obok starego.
+- Każda okoliczność ma: rodzinę, opis słowny po polsku, definicję formalną (rodzaj + wszystkie parametry liczbami) i próg. **Ten sam katalog i te same progi dla wszystkich 11 instrumentów** — dlatego wszystkie cechy są bezwymiarowe (jednostki ATR100, %, liczby świec).
+- **Wskaźniki:** wzory z sekcji 8.2 (SMA, EMA, WMA, HMA, DEMA, TEMA, KAMA, ZLEMA, ATR, RSI — w module FX także z innymi okresami niż 14) oraz wskaźniki z tabeli 4c.3. VWMA nie jest używana (brak wolumenu).
+- **Kalibracja tylko raz** — `python -m ia4.fx.catalog --commit` (krok FX-7; odmawia, gdy `fx/conditions.json` z `fx-cond/2` już jest na branchu `fx`): próg każdej pary dobierany na puli wszystkich instrumentów (świece po rozgrzewce, bez uśrednionych) tak, żeby okoliczność była prawdziwa na 15%, 25% albo 40% świec puli (cel kandydata), a każda z dwóch okoliczności pary — w przedziale 10–50% puli; próg zaokrąglony. Szczegóły: 4c.3. Zapis w `fx/conditions.json`: katalog, progi, data kalibracji, zakres danych (każdy instrument: liczba świec, od–do), częstość każdej okoliczności w puli oraz najniższa i najwyższa częstość na pojedynczym instrumencie (`covInstMin`, `covInstMax` — tylko informacja).
+- **Katalog jest nienaruszalny** (zasada 14): po kalibracji ID, definicje i progi nigdy się nie zmieniają, okoliczności nie są dodawane ani usuwane — dzięki temu ratingi kolejnych przeliczeń (na większej ilości danych) są porównywalne. Każde przeliczenie liczy częstość w puli; okoliczność poza 10–50% dostaje znacznik „częstość poza zakresem” i nic więcej. Nowy katalog — tylko jako `fx-cond/3`, za zgodą człowieka.
+- **`fx-cond/1`** (EURUSD 5 min, skalibrowany 9.10.2026, przeliczenia R-001…) zostaje tylko w archiwum brancha `fx` (`fx/archive/fx-cond-1-5m/`, 4c.12) — kod 1.27 go nie liczy (dane 5 min usunięte).
 
 #### 4c.3 Rodziny okoliczności i wskaźniki (`ia4/fx/catalog.py`, `ia4/fx/series.py`)
 
 **Zasady wspólne:**
-- Okoliczność = **cecha f** (liczba na świecy `t`, tylko ze świec ≤ `t`) i warunek **f ≥ próg**. Cecha jest zbudowana tak, że duża wartość = wzrost / wysoka cena. Okoliczność `+` liczy f na serii zwykłej, jej para `−` — tę samą f na **serii odbitej** (`o' = −o`, `c' = −c`, `h' = −l`, `l' = −h`), z tym samym progiem. Wszystkie wielkości są różnicowe (pipsy albo jednostki U), więc odbicie jest dokładne: np. SMA(−c) = −SMA(c), RSI(−c) = 100 − RSI(c), maksimum ↔ minimum.
-- Wartość niepoliczalna (NaN) → warunek fałszywy. Wskaźniki na całej serii od pierwszej świecy.
+- Okoliczność = **cecha f** (liczba na świecy `t`, tylko ze świec ≤ `t`) i warunek **f ≥ próg**. Cecha jest zbudowana tak, że duża wartość = wzrost / wysoka cena. Okoliczność `+` liczy f na serii zwykłej, jej para `−` — tę samą f na **serii odbitej** (`o' = −o`, `c' = −c`, `h' = −l`, `l' = −h`), z tym samym progiem. Wszystkie wielkości są różnicowe i bezwymiarowe, więc odbicie jest dokładne: np. SMA(−c) = −SMA(c), RSI(−c) = 100 − RSI(c), maksimum ↔ minimum.
+- Wartość niepoliczalna (NaN) → warunek fałszywy. Wskaźniki na całej serii instrumentu od pierwszej świecy.
 - **U** = ATR(100) Wildera (8.2) — jednostka zmienności; „[ATR100]” w opisie = wartość podzielona przez U.
-- **Średnie** (MA): SMA, EMA, WMA, HMA, DEMA, TEMA, KAMA, ZLEMA — wzory 8.2; okresy 9, 20, 38, 50, 103, 200, 288 (288 = doba).
-- **Rozgrzewka** = pierwsze 1000 świec serii: nie są wystąpieniami i nie liczą się do częstości (najdłuższy wskaźnik, TEMA288, potrzebuje 864 świec).
-- Częstość = udział świec spełniających warunek wśród świec serii po rozgrzewce, bez uśrednionych.
+- **Średnie** (MA): SMA, EMA, WMA, HMA, DEMA, TEMA, KAMA, ZLEMA — wzory 8.2; okresy (`PER`) 9, 20, 24, 50, 100, 120, 200 (24 = doba, 120 = tydzień rynku walutowego).
+- **Rozgrzewka** = pierwsze 1000 świec serii każdego instrumentu (ok. 6 tygodni): nie są wystąpieniami i nie liczą się do częstości (najdłuższe wskaźniki: TEMA200 — 600 świec, ekstremum z 480 świec).
+- Częstość = udział świec spełniających warunek wśród świec puli po rozgrzewce, bez uśrednionych.
 - Opis każdej okoliczności po polsku generuje kod; strona `−` opisuje tę samą wielkość „≤ −próg” (albo minimum zamiast maksimum, czerwone zamiast zielonych).
+- **Pary średnich:** mieszane (`X_PAIRS`): EMA9–EMA24, EMA24–EMA50, SMA24–SMA50, EMA38–KAMA103, SMA50–SMA200, HMA24–EMA50, DEMA24–SMA100, EMA100–EMA200, WMA9–SMA38, KAMA20–KAMA100; tego samego typu (`MA_PAIRS`): każda MA × okresy (9,24), (9,50), (20,50), (24,100), (50,100), (50,200), (100,200), (24,120).
 
 **Rodziny** (kolejność, nazwa, limit par, cechy):
 
 | # | Rodzina | Limit | Cechy f (rodzaj: wzór; parametry) |
 |---|---|---|---|
-| 1 | Zmiana ceny (pips) | 35 | `chg_pips`: (c[t] − c[t−n]) / pips; n = 1, 2, 3, 4, 6, 9, 12, 18, 24, 36, 48, 72, 96, 144, 288 |
-| 2 | Kierunkowość ruchu i korpusów | 20 | `er_signed`: (c[t] − c[t−n]) / Σ\|Δc\| z n świec (0, gdy mianownik 0); n = 6, 9, 12, 18, 24, 36, 48, 72, 96, 144, 288 · `body_er`: Σ(c−o) / Σ\|c−o\| z n świec; n = 6, 12, 24, 48, 96 |
-| 3 | Kolory świec | 25 | `green_cnt`: liczba świec z c > o wśród ostatnich n; n = 4, 6, 8, 10, 12, 15, 20, 30, 40, 50, 75, 100 |
+| 1 | Zmiana ceny (ATR100) | 35 | `chg_u`: (c[t] − c[t−n]) / U; n = 1, 2, 3, 4, 6, 8, 12, 16, 24, 36, 48, 72, 96, 120, 240 |
+| 2 | Kierunkowość ruchu i korpusów | 20 | `er_signed`: (c[t] − c[t−n]) / Σ\|Δc\| z n świec (0, gdy mianownik 0); n = 6, 9, 12, 18, 24, 36, 48, 72, 96, 120, 240 · `body_er`: Σ(c−o) / Σ\|c−o\| z n świec; n = 6, 12, 24, 48, 96 |
+| 3 | Kolory świec | 25 | `green_cnt`: liczba świec z c > o wśród ostatnich n; n = 4, 6, 8, 10, 12, 16, 24, 36, 48, 72, 100, 120 |
 | 4 | Serie świec i położenie zamknięcia | 15 | `streak_green`: długość bieżącej serii świec c > o · `hhhl_streak`: seria świec z h > h[t−1] i l > l[t−1] · `clv`: średnia z n świec ((c−l) − (h−c)) / (h−l) (0, gdy h = l); n = 1, 3, 6, 12, 24, 48 |
-| 5 | Cena a średnia krocząca | 50 | `px_vs_ma`: (c − MA_n) / U; każda MA × każdy okres |
-| 6 | Nachylenie średniej | 40 | `ma_slope`: (MA_n[t] − MA_n[t−k]) / U; k = 3, 12; każda MA × każdy okres |
-| 7 | Rozstaw dwóch średnich | 50 | `ma_spread`: (MA1 − MA2) / U; pary mieszane: EMA9–EMA20, EMA20–EMA50, SMA20–SMA50, EMA38–KAMA103, SMA50–SMA200, HMA20–EMA50, DEMA20–SMA103, EMA103–EMA288, WMA9–SMA38, KAMA20–KAMA103; pary tego samego typu: każda MA × okresy (9,20), (9,38), (20,50), (20,103), (38,103), (50,200), (103,288), (20,200) |
-| 8 | Przecięcia średnich i ceny | 40 | `ma_cross`: −(świec od przecięcia MA1 w górę przez MA2), tylko gdy MA1 > MA2 (inaczej NaN); pary mieszane z rodziny 7; wariant „pod prąd”: liczą się tylko przecięcia, gdy MA2 spadała (MA2[t] − MA2[t−6] < 0) · `px_cross`: −(świec od przecięcia ceny w górę przez MA), tylko gdy c > MA; EMA20, SMA50, KAMA103, EMA200, SMA288, HMA50, DEMA103, TEMA200, ZLEMA38 |
-| 9 | Dynamika rozstawu średnich | 40 | `spread_pattern`: d = MA1 − MA2 > 0; seria = kolejne świece, na których d rośnie (albo maleje); zmiana 0 przerywa serię. „fade”: długość bieżącej serii spadków d, gdy poprzedzała ją seria wzrostów ≥ j; „grow”: odwrotnie; j = 2, 3, 5; pary mieszane z rodziny 7 + EMA, SMA, KAMA × (9,38), (20,103), (50,200) |
-| 10 | Położenie w zakresie (stochastic) | 30 | `stoch`: (c − LL_n) / (HH_n − LL_n) − 0,5, HH/LL = maksimum h / minimum l z n świec (0, gdy zakres 0); n = 12, 18, 24, 36, 48, 96, 144, 288 · `stoch_sm`: średnia z s wartości `stoch`; (n, s) = (24,3), (48,6), (96,12), (288,24) |
-| 11 | Wybicia i odległość od ekstremum | 25 | `breakout`: −(świec od ostatniego c > HH_n poprzednich n świec); n = 12, 24, 36, 48, 72, 96, 144, 288 · `dist_high`: −(HH_n − c) / U; n = 12, 24, 48, 96, 144, 288 |
+| 5 | Cena a średnia krocząca | 50 | `px_vs_ma`: (c − MA_n) / U; każda MA × każdy okres `PER` |
+| 6 | Nachylenie średniej | 40 | `ma_slope`: (MA_n[t] − MA_n[t−k]) / U; k = 3, 12; każda MA × każdy okres `PER` |
+| 7 | Rozstaw dwóch średnich | 50 | `ma_spread`: (MA1 − MA2) / U; pary mieszane i pary tego samego typu (wyżej) |
+| 8 | Przecięcia średnich i ceny | 40 | `ma_cross`: −(świec od przecięcia MA1 w górę przez MA2), tylko gdy MA1 > MA2 (inaczej NaN); pary mieszane; wariant „pod prąd”: liczą się tylko przecięcia, gdy MA2 spadała (MA2[t] − MA2[t−6] < 0) · `px_cross`: −(świec od przecięcia ceny w górę przez MA), tylko gdy c > MA; EMA24, SMA50, KAMA100, EMA200, SMA120, HMA50, DEMA100, TEMA200, ZLEMA38 |
+| 9 | Dynamika rozstawu średnich | 40 | `spread_pattern`: d = MA1 − MA2 > 0; seria = kolejne świece, na których d rośnie (albo maleje); zmiana 0 przerywa serię. „fade”: długość bieżącej serii spadków d, gdy poprzedzała ją seria wzrostów ≥ j; „grow”: odwrotnie; j = 2, 3, 5; pary mieszane + EMA, SMA, KAMA × (9,50), (24,100), (50,200) |
+| 10 | Położenie w zakresie (stochastic) | 30 | `stoch`: (c − LL_n) / (HH_n − LL_n) − 0,5, HH/LL = maksimum h / minimum l z n świec (0, gdy zakres 0); n = 12, 18, 24, 36, 48, 72, 120, 240 · `stoch_sm`: średnia z s wartości `stoch`; (n, s) = (24,3), (48,6), (120,12), (240,24) |
+| 11 | Wybicia i odległość od ekstremum | 25 | `breakout`: −(świec od ostatniego c > HH_n poprzednich n świec); n = 12, 24, 36, 48, 72, 120, 240, 480 · `dist_high`: −(HH_n − c) / U; n = 12, 24, 48, 120, 240, 480 |
 | 12 | RSI | 25 | `rsi`: RSI_n − 50 (Wilder, 8.2); n = 5, 7, 9, 14, 21, 30, 50, 100 · `rsi_slope`: RSI_n[t] − RSI_n[t−k]; (n, k) = (14,3), (14,6), (14,12), (7,3), (7,6), (30,6), (30,12) |
-| 13 | Odchylenie od średniej (Bollinger) | 25 | `boll_z`: (c − SMA_n) / σ_n, σ = odchylenie standardowe populacji c z n świec (0, gdy σ = 0); n = 10, 12, 20, 30, 50, 75, 100, 150, 200, 288 · `z_slope`: z[t] − z[t−k]; (n, k) = (20,3), (20,6), (50,6), (50,12), (100,12) |
-| 14 | MACD | 25 | linia = EMA_f − EMA_s, sygnał = EMA_g(linia), histogram = linia − sygnał; `macd` część „line”: linia / U, „hist”: histogram / U, „hist_slope”: (hist[t] − hist[t−3]) / U; (f, s, g) = (12,26,9), (6,13,5), (24,52,18), (48,104,36), (5,35,5) |
+| 13 | Odchylenie od średniej (Bollinger) | 25 | `boll_z`: (c − SMA_n) / σ_n, σ = odchylenie standardowe populacji c z n świec (0, gdy σ = 0); n = 10, 12, 20, 24, 30, 50, 75, 100, 120, 200 · `z_slope`: z[t] − z[t−k]; (n, k) = (20,3), (20,6), (50,6), (50,12), (100,12) |
+| 14 | MACD | 25 | linia = EMA_f − EMA_s, sygnał = EMA_g(linia), histogram = linia − sygnał; `macd` część „hist”: histogram / U, „line”: linia / U, „hist_slope”: (hist[t] − hist[t−3]) / U; (f, s, g) = (12,26,9), (6,13,5), (24,52,18), (48,104,36), (5,35,5) |
 | 15 | Knoty świec | 15 | `wick`: Σ(dolny knot − górny knot) z n świec / (n · U); dolny = min(o,c) − l, górny = h − max(o,c); n = 1, 3, 6, 12, 24, 48 |
-| 16 | Doba, tydzień, poprzednia doba | 15 | segment: doba UTC, doba handlowa (od 17:00 Nowy Jork), tydzień (od pierwszej świecy po przerwie) · `sess_chg`: (c − otwarcie pierwszej świecy segmentu) / pips · `sess_chg_u`: to samo / U · `day_pos`: (c − min l) / (max h − min l) − 0,5 od początku segmentu · `prev_day`: (c − zamknięcie / maksimum / minimum poprzedniej doby handlowej) / U |
-| 17 | Trend i korekta | 25 | trend: c > MA (EMA200, SMA288, KAMA103, EMA103), inaczej NaN · `combo_pull`: −(c[t] − c[t−m]) / pips, m = 3, 6, 12, 24 · `combo_rsi`: 50 − RSI14 · `combo_stoch`: −`stoch`(24). **Tak skalibrowano `fx-cond/1`** (kod 1.21, 9.10.2026) — przy celu 25% część „korekt” wypadła na medianie (np. „zmiana ≤ +2,5 pips”); opisy są prawdziwe, nazwa rodziny bywa na wyrost. Kod od 1.22 ma dla przyszłego katalogu (`fx-cond/2`) poprawioną rodzinę: `combo_dip` = (MA_k − c) / U tylko gdy c < MA_k (MA_k = EMA20, EMA9, SMA38, EMA50), `combo_pull` m = 3, 6, cele 15% i 12%. Funkcje `combo_pull`, `combo_rsi`, `combo_stoch` się nie zmieniły — `fx-cond/1` liczy się tak samo jak przy kalibracji |
+| 16 | Doba, tydzień, poprzednia doba | 15 | segment: doba UTC, doba handlowa (od 17:00 Nowy Jork), tydzień handlowy (od niedzieli 17:00 Nowy Jork) · `sess_chg_u`: (c − otwarcie pierwszej świecy segmentu) / U · `day_pos`: (c − min l) / (max h − min l) − 0,5 od początku segmentu · `prev_day`: (c − zamknięcie / maksimum / minimum poprzedniej doby handlowej) / U |
+| 17 | Trend i korekta | 25 | trend: c > MA (EMA200, SMA120, KAMA100, EMA100), inaczej NaN · `combo_dip`: (MA_k − c) / U tylko gdy c < MA_k (MA_k = EMA24, EMA9, SMA50, EMA50) · `combo_pull`: −(c[t] − c[t−m]) / U, m = 3, 6, 12 · `combo_rsi`: 50 − RSI14 · `combo_stoch`: −`stoch`(24); cele częstości 15% i 12% |
 
 **Kalibracja** (`python -m ia4.fx.catalog --commit`, raz):
-1. Kandydaci w stałej kolejności: rodziny 1→17; w rodzinie najpierw wszystkie cechy z celem częstości 25%, potem 15%, potem 40% (w kodzie od 1.22 rodzina 17: 15%, potem 12% — dotyczy dopiero `fx-cond/2`).
-2. Próg kandydata: wartości f ze strony `+` i `−` razem (po rozgrzewce, bez uśrednionych), próg = wartość, powyżej której leży udział równy celowi; zaokrąglenie do 2 cyfr znaczących, a dla cech całkowitych (liczby świec) — do liczby całkowitej dającej udział najbliższy celowi. Kandydat przepada, gdy którakolwiek strona wypada poza 10–50% albo ten sam warunek (rodzaj, parametry, próg) już był.
-3. Wybór: kandydaci po kolei, w granicach limitu rodziny, jeśli korelacja (phi) ze stroną `+` każdej już wybranej okoliczności ≤ 0,85; potem drugi przebieg z progiem 0,95. Gdy par jest mniej niż 500, brakujące miejsca dostają kolejne rodziny po jednym kandydacie (0,85 → 0,95 → bez progu).
+1. Kandydaci w stałej kolejności: rodziny 1→17; w rodzinie najpierw wszystkie cechy z celem częstości 25%, potem 15%, potem 40% (rodzina 17: 15%, potem 12%).
+2. Próg kandydata: wartości f ze strony `+` i `−` wszystkich instrumentów razem (po rozgrzewce, bez uśrednionych), próg = wartość, powyżej której leży udział równy celowi; zaokrąglenie do 2 cyfr znaczących, a dla cech całkowitych (liczby świec) — do liczby całkowitej dającej udział najbliższy celowi. Kandydat przepada, gdy którakolwiek strona wypada w puli poza 10–50% albo ten sam warunek (rodzaj, parametry, próg) już był.
+3. Wybór: kandydaci po kolei, w granicach limitu rodziny, jeśli korelacja (phi, na co 3. świecy puli) ze stroną `+` każdej już wybranej okoliczności ≤ 0,85; potem drugi przebieg z progiem 0,95. Gdy par jest mniej niż 500, brakujące miejsca dostają kolejne rodziny po jednym kandydacie (0,85 → 0,95 → bez progu).
 4. ID w kolejności rodzin, a w rodzinie — kolejności wyboru; para = `FX-(2i−1)` `+` i `FX-(2i)` `−`.
-5. Zapis `fx/conditions.json` (4c.12) — każda okoliczność: ID, para, kierunek, rodzina, rodzaj, parametry, próg, cel, częstość przy kalibracji, opis.
+5. Zapis `fx/conditions.json` (4c.12) — każda okoliczność: ID, para, kierunek, rodzina, rodzaj, parametry, próg, cel, częstość przy kalibracji (pula, min. i maks. na instrumencie), opis. Przed zapisem pliki `fx-cond/1` przenoszone do archiwum (4c.12).
 
-Kalibracja próbna (`python -m ia4.fx.catalog`, bez `--commit`) robi to samo, ale zapisuje tylko lokalny podgląd `data/fx/catalog-preview.csv` (otwiera się w Numbers/Excel) i nic nie wysyła. Test na danych syntetycznych: `python -m ia4.fx.selftest` — lustro, brak zaglądania w przyszłość, 1000 okoliczności w 10–50%, powtarzalność, synchronizacja; wynik musi brzmieć „WYNIK: OK”.
+Kalibracja próbna (`python -m ia4.fx.catalog`, bez `--commit`) robi to samo, ale zapisuje tylko lokalny podgląd `data/fx1h/catalog-preview.csv` (otwiera się w Numbers/Excel; kolumny częstości na każdym instrumencie) i nic nie wysyła. Czas: ok. 15 s, pamięć ok. 0,7 GB. Test na danych syntetycznych: `python -m ia4.fx.selftest` — lustro, brak zaglądania w przyszłość, 1000 okoliczności w 10–50%, powtarzalność, synchronizacja, godziny rynku; wynik musi brzmieć „WYNIK: OK”.
 
 #### 4c.4 Wystąpienia i profil
 
-- **Wystąpienie** okoliczności = każda świeca `t` po rozgrzewce (4c.3), na której okoliczność jest prawdziwa, jeśli świeca `t` nie jest uśredniona i w oknie `t … t+48` nie ma przerwy.
-- Dla wystąpienia zapisujemy zmiany ceny `r_k = (c[t+k] − c[t]) / 0,0001` (pipsy), k = 1…48. Zmiany nie ma, gdy świeca `t+k` jeszcze nie istnieje (koniec danych) albo jest uśredniona.
-- **Profil** okoliczności = dla każdego k średnia `r_k` ze wszystkich wystąpień, które ją mają (48 liczb), oraz liczba wystąpień.
-- **Niezależne wystąpienia** `n_ind` = wystąpienia wybierane od najstarszego tak, że każde kolejne jest co najmniej 48 świec po poprzednim wybranym.
-- Lokalnie (poza gitem): `data/fx/occurrences.npz` — każde wystąpienie każdej okoliczności (ID → świece `t` wystąpień) i wspólna tablica zmian `R[t, k]` dla wszystkich świec (ta sama informacja co „ID → wystąpienie → 48 zmian”, bez powielania liczb); przepisywany przy każdym przeliczeniu. W kodzie: `from ia4.fx.research import load_occurrences; load_occurrences("FX-0001")` — tabela: czas wystąpienia + `k1…k48`. Na GitHub trafiają tylko profile.
+- **Wystąpienie** okoliczności = każda świeca `t` instrumentu po rozgrzewce (4c.3), na której okoliczność jest prawdziwa, jeśli świeca `t` nie jest uśredniona i w oknie `t … t+48` (świece serii) nie ma przerwy (4c.1).
+- Dla wystąpienia zapisujemy zmiany ceny **w jednostkach zmienności**: `r_k = (c[t+k] − c[t]) / ATR100[t]`, k = 1…48 (świece serii — dla par walutowych przez weekend). Zmiany nie ma, gdy świeca `t+k` jeszcze nie istnieje (koniec danych) albo jest uśredniona. Zmiana w cenie = `r_k × ATR100[t]`.
+- **Profil** okoliczności = dla każdego k średnia `r_k` ze wszystkich wystąpień wszystkich instrumentów, które ją mają (48 liczb, ATR100), oraz liczba wystąpień.
+- **Niezależne wystąpienia** `n_ind` = w każdym instrumencie wystąpienia wybierane od najstarszego tak, że każde kolejne jest co najmniej 48 świec po poprzednim wybranym; suma po instrumentach.
+- Lokalnie (poza gitem): `data/fx1h/occurrences.npz` — macierz okoliczności × świece puli (bity), instrument, czas, zamknięcie, ATR100 i zmiany `R[t, k]` każdej świecy (ta sama informacja co „ID → wystąpienie → 48 zmian”, bez powielania liczb); przepisywany przy każdym przeliczeniu. W kodzie: `from ia4.fx.research import load_occurrences; load_occurrences("FX-0001", "EURUSD")` — tabela: instrument, czas wystąpienia, zamknięcie, ATR100, `k1…k48` (bez instrumentu — wszystkie). Na GitHub trafiają tylko profile.
 
 #### 4c.5 Rating 1–100
 
 Rating mówi, o ile profil okoliczności przewidywał przyszłość lepiej niż prognoza „cena się nie zmieni”, **sprawdzone poza próbą metodą walk-forward** (kolejne okresy oceniane profilem policzonym wyłącznie z przeszłości):
 
-1. Świece serii dzielone w czasie na **5 równych części**. Wystąpienie należy do części swojej świecy `t`.
-2. Dla każdej części j = 2…5: **profil uczący** `P_k` = profil z wystąpień, których okno kończy się przed początkiem części j (`t + 48` < początek części); część z mniej niż 30 takimi wystąpieniami jest pomijana.
-3. Dla każdego wystąpienia części j i każdego k, dla którego `t + k` leży jeszcze w części j: błąd okoliczności `|r_k − P_k|`, błąd „bez zmiany” `|r_k|`.
+1. **Kalendarz** (od najstarszej do najnowszej świecy puli) dzielony na **5 równych części** — wspólnych dla wszystkich instrumentów (pary walutowe poruszają się razem; podział po indeksie świec przeciekałby przyszłość z jednej pary do drugiej). Wystąpienie należy do części swojej świecy `t`.
+2. Dla każdej części j = 2…5: **profil uczący** `P_k` = profil z wystąpień, których okno kończy się przed początkiem części j (świeca `t + 48` przed początkiem); część z mniej niż 30 takimi wystąpieniami jest pomijana.
+3. Dla każdego wystąpienia części j i każdego k, dla którego świeca `t + k` leży jeszcze w części j: błąd okoliczności `|r_k − P_k|`, błąd „bez zmiany” `|r_k|`.
 4. **Przewaga** `S = 1 − Σ błąd okoliczności / Σ błąd „bez zmiany”` — sumy po wszystkich ocenianych częściach, wystąpieniach i k.
 5. Ściągnięcie przy małej liczbie danych: `S* = S · n / (n + 20)`, gdzie n = suma `n_ind` ocenianych części.
 6. **Rating** = 1, gdy `S* ≤ 0` albo n < 5; w pozostałych przypadkach `1 + round(99 · min(S* / RATING_FULL; 1))`, `RATING_FULL` = 0,05 (błąd o 5% mniejszy niż „bez zmiany” daje 100). Skala jest stała, więc ratingi z różnych przeliczeń można porównywać.
 
-Dlaczego walk-forward, a nie jeden podział 70/30: ocena obejmuje 80% danych zamiast 30%. Na czystym szumie (test syntetyczny, 6 serii po 2 miesiące) daje 3 razy mniej przypadkowych ratingów > 20, a zasiany sygnał wykrywa tak samo.
+Dlaczego walk-forward, a nie jeden podział 70/30: ocena obejmuje 80% danych zamiast 30%. Na czystym szumie daje mniej przypadkowych ratingów, a zasiany sygnał wykrywa tak samo (selftest).
 
 **Profil publikowany** (do prognozy na żywo) = profil ze wszystkich wystąpień całej historii.
 
 #### 4c.6 Prognoza rozkładu (`ia4/fx/scenario.py`)
 
-Na ostatniej zamkniętej świecy `t` (ten sam kod w FX-research i FX-real-time):
+Na ostatniej zamkniętej świecy `t` każdego instrumentu (ten sam kod w FX-research i FX-real-time):
 
-1. **Pula** — świece-kandydaci `a` z historii: mogą być wystąpieniem (4c.4), ich 48 świec przyszłości jest w całości znanych i kończy się przed `t` (`a + 48 ≤ t`), ta sama godzina UTC ±1 h co `t`, policzalna zmienność.
+1. **Pula** — świece-kandydaci `a` z historii: mogą być wystąpieniem (4c.4), mają zmianę po 48 świecach, ich okno 48 świec kończy się przed `t` (w kalendarzu), policzalna zmienność.
 2. **Dobór K = 80 momentów** jedną z metod (wybiera ją sprawdzian, 4c.7):
-   - `pora` — najnowsze momenty z puli,
-   - `analogi` — momenty najbardziej podobne pod względem okoliczności prawdziwych: Jaccard ważony ratingiem, `Σ rating (wspólne) / Σ rating (suma zbiorów)`; przy remisie nowsze.
-   Kolejne wybrane momenty są od siebie oddalone o ≥ 12 świec.
-3. **Ścieżki** — 48 zmian ceny każdego momentu (`r_k`, 4c.4) przeskalowane do dzisiejszej zmienności: `× √(ATR100[t]·ATR12[t] / (ATR100[a]·ATR12[a]))`, mnożnik ograniczony do 1/3…3 (ATR Wildera, 8.2).
-4. **Środek** = `λ × (średnia profili okoliczności prawdziwych na t ważona ratingiem)`: dla k = 1…48 `Σ(rating_i · profil_i[k]) / Σ rating_i` po okolicznościach prawdziwych, które mają `profil_i[k]` (dawna prognoza 1.20–1.25). λ ustala sprawdzian; λ = 0 → środek płaski na cenie bieżącej.
+   - `pora` — ten sam instrument, ta sama godzina UTC ±1 h co `t`, najnowsze momenty,
+   - `analogi` — wszystkie instrumenty tej samej grupy (10 par walutowych razem, BTC osobno), ta sama godzina UTC ±1 h, momenty najbardziej podobne pod względem okoliczności prawdziwych: Jaccard ważony ratingiem, `Σ rating (wspólne) / Σ rating (suma zbiorów)`; przy remisie nowsze.
+   Wybrane momenty są od siebie oddalone o ≥ 12 h w kalendarzu — także między instrumentami (EURUSD i GBPUSD o tej samej godzinie to prawie ta sama informacja).
+3. **Ścieżki** — 48 zmian `r_k` każdego momentu (ATR100, 4c.4) przeskalowane do dzisiejszego reżimu zmienności: `× √(ρ[t] / ρ[a])`, ρ = ATR12 / ATR100 (ATR Wildera, 8.2), mnożnik ograniczony do 1/3…3.
+4. **Środek** = `λ × (średnia profili okoliczności prawdziwych na t ważona ratingiem)`: dla k = 1…48 `Σ(rating_i · profil_i[k]) / Σ rating_i` po okolicznościach prawdziwych, które mają `profil_i[k]`. λ ustala sprawdzian; λ = 0 → środek płaski na cenie bieżącej.
 5. **Ścieżki*** = `środek + f × (ścieżka − mediana ścieżek)` — kształt i rozrzut z historii, położenie ze środka, szerokość skalibrowana `f` (4c.7).
-6. Z 80 ścieżek*: **stożek** = kwantyle 10%, 25%, 75%, 90% dla każdego k; **P(wzrost)** k = 12 i 48 = udział ścieżek* powyżej ceny bieżącej (z liczbą: „w 80 podobnych chwilach wzrost: N”); **oczekiwany zakres 4 h** = mediana (maks. − min.) ścieżek* od ceny bieżącej, z typowym maksimum i minimum; **3 scenariusze** = ścieżki* najbliższe 20., 50. i 80. percentyla zmiany po 48 świecach (spadkowy, boczny, wzrostowy), każda z datą historycznego momentu.
-7. Prognoza kończy się na zamknięciu rynku (piątek 17:00 Nowy Jork) — dalsze świece nie są pokazywane.
+6. Z 80 ścieżek*: **stożek** = kwantyle 10%, 25%, 75%, 90% dla każdego k; **P(wzrost)** k = 12 i 48 = udział ścieżek* powyżej ceny bieżącej (z liczbą: „w 80 podobnych chwilach wzrost: N”); **oczekiwany zakres 48 h** = mediana (maks. − min.) ścieżek* od ceny bieżącej, z typowym maksimum i minimum; **3 scenariusze** = ścieżki* najbliższe 20., 50. i 80. percentyla zmiany po 48 świecach (spadkowy, boczny, wzrostowy), każda z datą i instrumentem historycznego momentu (świeca uśredniona w środku ścieżki — interpolacja między sąsiadami).
+7. Ceny = cena bieżąca + `ATR100[t] ×` wartość. Czasy 48 świec prognozy — kolejne świece w godzinach rynku (pary walutowe: weekend pomijany, jak w danych; BTC: kolejne godziny).
 
 #### 4c.7 Sprawdzian prognozy rozkładu
 
-Każde przeliczenie FX-research sprawdza prognozę bez zaglądania w przyszłość (walk-forward):
-- **Zapytania**: świece-kandydaci z ostatnich 30% serii, co n-ta (najwyżej 1500). Ścieżki dla zapytania `t` tylko z momentów, których przyszłość kończy się przed `t`. Ratingi i profile do środka i do podobieństwa — wyłącznie ze świec sprzed granicy 70% (4c.5, okna kończą się przed granicą).
-- **Metody**: `analogi`, `pora` i punkt odniesienia `całość` (najnowsze momenty bez warunku pory dnia).
-- **Część A** (70–85% serii) — kalibracja: λ ∈ {0; 0,25; …; 3} minimalizujące Σ|r_k − λ·średnia profili|, potem f ∈ {0,70; 0,75; …; 2,00} tak, żeby przedział 10–90% obejmował 80% wyników (k = 12 i 48).
-- **Część B** (85–100%) — ocena z λ i f z części A: pinball (średnia straty kwantylowej dla 10/25/50/75/90%) k = 12 i 48, pokrycie przedziału 80% (k = 12, 48) i 50% (k = 48), Brier P(wzrost) k = 12 i 48 (0,25 = rzut monetą), błąd prognozy zakresu 4 h (mediana |prognoza − wynik| / wynik), przewaga środka nad „bez zmiany” (`centerS`).
-- **Model na żywo**: metoda (`analogi` albo `pora`) z niższą sumą pinball k = 12 + 48 w części B (remis → `pora`); f i λ na żywo dopasowane na A + B, ale **λ = 0, gdy środek w części B nie był lepszy niż „bez zmiany”** (`centerS ≤ 0`, zasada 15).
+Każde przeliczenie FX-research sprawdza prognozę bez zaglądania w przyszłość (walk-forward, po kalendarzu):
+- **Zapytania**: świece-kandydaci wszystkich instrumentów z ostatnich 30% kalendarza, co n-ta (najwyżej 2000). Ścieżki dla zapytania `t` tylko z momentów, których okno kończy się przed `t`. Ratingi i profile do środka i do podobieństwa — wyłącznie z okien kończących się przed granicą 70% (4c.5).
+- **Metody**: `analogi`, `pora` i punkt odniesienia `całość` (ten sam instrument, dowolna godzina, najnowsze momenty).
+- **Część A** (70–85% kalendarza) — kalibracja: λ ∈ {0; 0,25; …; 3} minimalizujące Σ|r_k − λ·średnia profili|, potem f ∈ {0,70; 0,75; …; 2,00} tak, żeby przedział 10–90% obejmował 80% wyników (k = 12 i 48).
+- **Część B** (85–100%) — ocena z λ i f z części A: pinball (średnia straty kwantylowej dla 10/25/50/75/90%) k = 12 i 48, pokrycie przedziału 80% (k = 12, 48) i 50% (k = 48), Brier P(wzrost) k = 12 i 48 (0,25 = rzut monetą), błąd prognozy zakresu 48 h (mediana |prognoza − wynik| / wynik), przewaga środka nad „bez zmiany” (`centerS`); dodatkowo dla każdego instrumentu osobno: pokrycie 80% k = 48, Brier k = 48, błąd zakresu (`inst`).
+- **Model na żywo**: metoda (`analogi` albo `pora`) z niższą sumą pinball k = 12 + 48 w części B (remis → `pora`); f i λ na żywo dopasowane na A + B, ale **λ = 0, gdy środek w części B nie był co najmniej o 1% lepszy niż „bez zmiany”** (`centerS < 0,01`, zasada 15); wtedy część B jest oceniana jeszcze raz z λ = 0 (tak, jak pójdzie na żywo).
 - **Werdykt słowny**: kierunek — „przewaga nad rzutem monetą”, gdy Brier k = 12 albo 48 < 0,245, inaczej „brak przewagi (jak rzut monetą)”; stożek — „trafny” przy pokryciu 80% w 75–85%, inaczej „za wąski” / „za szeroki”.
-- Test (`selftest`): czysty szum → λ = 0, Brier 0,25, stożek ~77–80%; zasiany sygnał → λ ≥ 0,5, Brier < 0,25, środek z przewagą.
-- Czas: ok. 2 min na 2 miesiące danych.
+- Test (`selftest`): czysty szum → λ = 0, Brier k = 48 ≥ 0,245, pokrycie 80% w 72–88%; zasiany sygnał → λ ≥ 0,5, Brier k = 48 < 0,24, środek z przewagą > 1%.
+- Czas: ok. 2–3 min na 11 instrumentów × 2 lata (test pełnej skali na danych syntetycznych: 142 000 świec — 136 s).
 
 #### 4c.8 FX-research — `python -m ia4.fx.research`
 
-Tylko ręcznie. Kolejno: synchronizacja (4c.1) → klon brancha `fx` w `ia4-research/fx-repo/` → katalog z `fx/conditions.json` (bez niego program kończy się komunikatem — najpierw kalibracja, 4c.2) → wszystkie wystąpienia i profile od zera (4c.4) → ratingi (4c.5) → sprawdzian prognozy rozkładu i wybór modelu na żywo (4c.7) → zapis i push na branch `fx`: `fx/ratings.json` (jedna okoliczność = jedna linia; w nagłówku `scenario`: wyniki wszystkich metod, model na żywo z f i λ, prognoza z ostatniej świecy), dopisany wiersz `fx/runs.jsonl`, od FX-4 także `index.html` (kopia dashboardu z `ia4/fx/dashboard/`). Lokalnie: `data/fx/occurrences.npz` (4c.4) i podgląd `data/fx/ratings-preview.csv` (rating, wystąpienia, przewaga, częstość, profil dla k = 12 i 48 — do obejrzenia przed arkuszem OKOLICZNOSCI_FX). Każde przeliczenie ma ID `R-001`, `R-002`, … Opcje: `--no-sync`, `--no-push`. Konsola: rozkład ratingów, najwyższe ratingi, tabela sprawdzianu (metoda × pinball, pokrycie, Brier, błąd zakresu, λ), model na żywo z werdyktem, prognoza z ostatniej świecy. Czas: ok. 2 min na 2 miesiące danych.
+Tylko ręcznie. Kolejno: synchronizacja (4c.1) → klon brancha `fx` w `ia4-research/fx-repo/` → katalog `fx-cond/2` z `fx/conditions.json` (bez niego program kończy się komunikatem — najpierw kalibracja, 4c.2) → pula, wszystkie wystąpienia i profile od zera (4c.4) → ratingi (4c.5) → sprawdzian prognozy rozkładu i wybór modelu na żywo (4c.7) → prognoza z ostatniej świecy każdego instrumentu → zapis i push na branch `fx`: `fx/ratings.json` (jedna okoliczność = jedna linia; w nagłówku: dane każdego instrumentu, `scenario` — wyniki wszystkich metod, model na żywo z f i λ, `lastCandle` — prognoza z ostatniej świecy każdego instrumentu), dopisany wiersz `fx/runs.jsonl`, `index.html` (kopia dashboardu z `ia4/fx/dashboard/`). Lokalnie: `data/fx1h/occurrences.npz` (4c.4) i podgląd `data/fx1h/ratings-preview.csv` (rating, wystąpienia, przewaga, częstość w puli i na instrumentach, profil dla k = 12 i 48 — do obejrzenia przed arkuszem OKOLICZNOSCI_FX). Każde przeliczenie na świecach 1h ma ID `H-001`, `H-002`, … (`R-…` — archiwum 5 min). Opcje: `--no-sync`, `--no-push`. Konsola: dane każdego instrumentu, rozkład ratingów, najwyższe ratingi, tabela sprawdzianu (metoda × pinball, pokrycie, Brier, błąd zakresu, λ), wyniki części B na każdym instrumencie, model na żywo z werdyktem, prognoza z ostatniej świecy. Czas: ok. 3 min, pamięć do ok. 3 GB.
 
 #### 4c.9 FX-real-time — `python -m ia4.fx.live`
 
-- **Start:** `caffeinate` (Mac nie zaśnie, dopóki program działa), klon brancha `fx` i katalog, ratingi, profile i model na żywo (metoda, f, λ — 4c.7) z `fx-repo/fx/` (bez `ratings.json` program się nie uruchamia — najpierw FX-research; `ratings.json` sprzed 1.26 bez sprawdzianu rozkładu → model domyślny `pora`, f = 1,15, λ = 0 i komunikat „uruchom FX-research”), dashboard na branchu `fx` (gdy się zmienił), synchronizacja (4c.1), prognoza na ostatniej świecy, publikacja.
+- **Start:** `caffeinate` (Mac nie zaśnie, dopóki program działa), klon brancha `fx` i katalog, ratingi, profile i model na żywo (metoda, f, λ — 4c.7) z `fx-repo/fx/` (bez `fx-cond/2` albo bez `ratings.json` ze sprawdzianem rozkładu program się nie uruchamia — najpierw kalibracja i FX-research), dashboard na branchu `fx` (gdy się zmienił), synchronizacja (4c.1), prognoza na ostatniej świecy każdego instrumentu, publikacja.
 - **Pętla co 30 s:**
-  - świece nowszej niż ostatnia znana szukamy dopiero od jej zamknięcia + 30 s (zapis w Firestore jest zwykle ok. 21 s po zamknięciu); poza godzinami rynku (4b) nie ma czego szukać — **zero odczytów Firestore**,
-  - 1 odczyt `fx/EURUSD` (podsumowanie); jeśli `lastTime` jest nowszy — odczyt dokumentu dnia (przy zmianie doby UTC dwóch, po weekendzie trzech), nowe świece do kopii lokalnej, prognoza rozkładu (4c.6, ten sam kod co FX-research; ok. 0,3 s), publikacja; jeśli nie — kolejna próba za 30 s, a po 3 min spóźnienia co 2 min,
+  - na świecę instrumentu czekamy dopiero od jej zamknięcia + 60 s (Fx.gs zapisuje zwykle 20–180 s po zamknięciu); pary walutowe poza godzinami rynku (4b) nie mają czego szukać — przy zamkniętym rynku program pyta tylko o BTC (raz na godzinę),
+  - gdy któryś instrument czeka: 1 odczyt `system/fx1h`; instrumenty z nowszą świecą — odczyt ich dokumentów dni (zwykle 1, przy zmianie doby UTC 2), nowe świece do kopii lokalnej, prognoza rozkładu wszystkich instrumentów (4c.6, ten sam kod co FX-research; ok. 4 s), publikacja; instrumenty nadal bez świecy — kolejna próba za 30 s, a po 15 min spóźnienia co 5 min,
   - co 2 min sygnał życia (`aliveAt`) — także bez nowej świecy i przy zamkniętym rynku,
   - gdy `fx-repo/fx/ratings.json` się zmienił (nowe przeliczenie FX-research w trakcie pracy) — przy następnej świecy program bierze nowe ratingi,
   - błąd sieci albo Firestore nie zatrzymuje programu — próba w kolejnym obrocie.
 - **Ctrl+C:** ostatnia publikacja z `stoppedAt` — dashboard pokazuje „program zatrzymany”.
-- **Publikacja:** `forecast.json` na branchu `fx-live` — zawsze jeden commit bez historii (force push), klon w `ia4-research/fx-live-repo/`. Zawartość: wersja, `aliveAt`, `generatedAt`, `stoppedAt` (po Ctrl+C), `marketOpen`, przeliczenie ratingów (ID, data), `model` (metoda, K, f, λ, czy domyślny), `check` (wyniki części B modelu: pokrycie 80% k = 12/48, pokrycie 50%, Brier k = 12/48, błąd zakresu, pinball k = 48), `verdict` (kierunek, stożek — słowami), ostatnia świeca i zamknięcie, ostatnie 48 świec (początek, o, h, l, c), `times` (początki świec prognozy — tylko do zamknięcia rynku), `center`, `q10`, `q25`, `q75`, `q90` (ceny), `pUp` i `upCount` (k = 12, 48), `range` (typowe maksimum, minimum, zakres w pipsach), `scenarios` (3 × nazwa, data historycznego momentu, ścieżka cen), `forecast` i `forecastPips` (środek — zgodność wstecz), liczba okoliczności prawdziwych i suma ich ratingów, 5 z nich o najwyższym ratingu, odczyty Firestore dziś.
-- **Firestore:** ok. 2 odczyty na świecę — ok. 580 na pełny dzień roboczy, przy zamkniętym rynku 0 (symulacja 3 dób w `selftest`).
-- **GitHub:** ok. 30 publikacji na godzinę (sygnał życia + świece).
+- **Publikacja:** `forecast.json` na branchu `fx-live` — zawsze jeden commit bez historii (force push), klon w `ia4-research/fx-live-repo/`; plik bez NaN (wartości niepoliczalne → `null`). Zawartość: `version`, `interval` ("1h"), `horizon` (48), `aliveAt`, `generatedAt`, `stoppedAt` (po Ctrl+C), `ratings` (ID przeliczenia, data), `model` (metoda, f, λ, K, okno godzin, odstęp), `check` (wyniki części B: pokrycie 80% k = 12/48, pokrycie 50%, Brier k = 12/48, błąd zakresu, pinball k = 48, `centerS`), `verdict` (kierunek, stożek — słowami), `firestoreReadsToday` i `instruments` — dla każdego: `id`, `name`, `group`, `pip`, `digits`, `lastCandle`, `lastClose`, `atr100`, `marketOpen`, `candles` (ostatnie 48 świec: początek, o, h, l, c), `times` (początki 48 świec prognozy), `check` (część B tego instrumentu), `K`, `center`, `q10`, `q25`, `q75`, `q90` (ceny), `pUp` i `upCount` (k = 12, 48), `range` (typowe maksimum, minimum, zakres w cenie), `scenarios` (3 × nazwa, data i instrument historycznego momentu, ścieżka cen), `forecastPips` (środek k = 12, 48 w pipsach), liczba okoliczności prawdziwych, suma ich ratingów i 5 z nich o najwyższym ratingu.
+- **Firestore:** ok. 1 + (liczba instrumentów z nową świecą) odczytów na godzinę — ok. 12 / godzinę, ok. 290 / pełny dzień roboczy, w weekend ok. 50 (sam BTC) (symulacja w `selftest`).
+- **GitHub:** ok. 31 publikacji na godzinę (sygnał życia + świece).
 
 #### 4c.10 Dashboard (`ia4-research/ia4/fx/dashboard/index.html`)
 
 - **Adres:** GitHub Pages z brancha `fx` (`index.html` + `.nojekyll`; kopiują je FX-research i FX-real-time, gdy plik w kodzie się zmienił) — `https://miszyszka.github.io/IA4/`. Jednorazowo: GitHub → Settings → Pages → Source: Deploy from a branch → Branch `fx`, folder `/ (root)` (repozytorium publiczne).
 - Jeden plik, bez bibliotek z zewnątrz, wykres w SVG; jasny i ciemny motyw według systemu; działa na telefonie.
 - Co 30 s czyta `forecast.json` z brancha `fx-live` przez API GitHub (zapytania warunkowe — odpowiedź „bez zmian” nie zużywa limitu 60 zapytań na godzinę); przy przekroczeniu limitu — przez 10 min z `raw.githubusercontent.com` (do 5 min opóźnienia).
-- Pokazuje: wykres ostatnich 48 świec i prognozę rozkładu na 48 świec (godziny PL) — **stożek** 50% i 80% przypadków, linia środkowa, **3 scenariusze** (spadkowy, boczny, wzrostowy — prawdziwe ścieżki z historii, z ich skokami), linie typowego maksimum i minimum; **status Maca** (zielony „Mac połączony”, gdy `aliveAt` młodszy niż 5 min; czerwony „Mac offline od …” albo „program zatrzymany …” — wtedy prognoza wyblakła), rynek otwarty / zamknięty, czas wyliczenia prognozy i jej świecę; kafelki: ostatnie zamknięcie, **oczekiwany zakres 4 h**, przedział 80% za 4 h (ceny i pipsy), **kierunek** (P(wzrost) z liczbą podobnych chwil i werdyktem — kolor tylko przy udowodnionej przewadze), **sprawdzian** (trafność stożka wobec celu 80%, Brier wobec 0,25, błąd zakresu); lista scenariuszy z datami i maks./min.; 5 okoliczności prawdziwych o najwyższym ratingu; model na żywo w nagłówku.
+- **Zakładki instrumentów** (11, z P(wzrost) k = 48 przy nazwie); wybrana zakładka zapamiętana w przeglądarce i w adresie (`#USDJPY`). Jednostki: pary walutowe — pipsy, BTC — USD.
+- Pokazuje dla wybranego instrumentu: wykres ostatnich 48 świec i prognozy rozkładu na 48 świec (godziny PL, przez weekend bez przerwy na osi) — **stożek** 50% i 80% przypadków, linia środkowa, **3 scenariusze** (spadkowy, boczny, wzrostowy — prawdziwe ścieżki z historii, z ich skokami), linie typowego maksimum i minimum; **status Maca** (zielony „Mac połączony”, gdy `aliveAt` młodszy niż 5 min; czerwony „Mac offline od …” albo „program zatrzymany …” — wtedy prognoza wyblakła), rynek otwarty / zamknięty (pary walutowe: godziny PL; BTC: 24/7), czas wyliczenia prognozy i ostatnią świecę; kafelki: ostatnie zamknięcie z ATR100, **oczekiwany zakres 48 h**, przedział 80% za 48 świec (ceny, pipsy i chwila końca), **kierunek** (P(wzrost) z liczbą podobnych chwil i werdyktem — kolor tylko przy udowodnionej przewadze), **sprawdzian** (trafność stożka wobec celu 80%, Brier wobec 0,25 — całość i ten instrument); lista scenariuszy z datami, instrumentem źródłowym i maks./min.; 5 okoliczności prawdziwych o najwyższym ratingu; model na żywo w nagłówku.
 
 #### 4c.11 Arkusz OKOLICZNOSCI_FX (`Fx.gs`)
 
-- Wypełnia go Apps Script (`Fx.gs`) w triggerze `researchSync` (co 30 min) i z menu IA 4 → „💱 EURUSD — odśwież OKOLICZNOSCI_FX teraz”. Co 30 min jedno małe zapytanie o ostatni commit brancha `fx`; `fx/conditions.json` i `fx/runs.jsonl` (token `GITHUB_TOKEN`) są pobierane, a arkusz przebudowany w całości tylko wtedy, gdy commit się zmienił albo arkusz ma inny układ (znacznik w G1 inny niż `okol-2`). Stan: Script Properties `FX_RUNS` (commit, liczba przeliczeń).
-- **Układ:** wiersz 1 — opis katalogu i znacznik `okol-2` (G1); wiersze 2–8 — nagłówki przeliczeń (etykiety w kolumnie G): ID przeliczenia, data (PL), liczba świec, model na żywo (metoda i λ środka), trafność stożka 80% (cel 80%), Brier k = 48 (0,25 = moneta), błąd prognozy zakresu 4 h — wszystko z części B sprawdzianu (4c.7; przeliczenia sprzed 1.26: „—”); wiersz 9 — nagłówki kolumn; od wiersza 10 — okoliczności w kolejności ID (1000 wierszy).
-- **Kolumny A–G:** ID, rodzina, kierunek, para, opis, próg, częstość przy kalibracji %.
-- **Kolumny od H:** jedno przeliczenie FX-research = jedna kolumna (najstarsze z lewej). Komórka `rating/wystąpienia` jako tekst, np. `41/344` (wystąpienia z całej historii); okoliczność z częstością poza 10–50% w tym przeliczeniu — komórka szara.
-- Arkusz tylko do odczytu — ręczne zmiany znikają przy następnym przebudowaniu.
+- Wypełnia go Apps Script (`Fx.gs`) w triggerze `researchSync` (co 30 min) i z menu IA 4 → „💱 FX — odśwież OKOLICZNOSCI_FX teraz”. Co 30 min jedno małe zapytanie o ostatni commit brancha `fx`; `fx/conditions.json` i `fx/runs.jsonl` (token `GITHUB_TOKEN`) są pobierane, a arkusz przebudowany w całości tylko wtedy, gdy commit się zmienił albo arkusz ma inny układ (znacznik w G1 inny niż `okol-3`). Stan: Script Properties `FX_RUNS` (commit, liczba przeliczeń).
+- **Układ:** wiersz 1 — opis katalogu (`fx-cond/2`, świece 1h, liczba instrumentów) i znacznik `okol-3` (G1); wiersze 2–8 — nagłówki przeliczeń (etykiety w kolumnie G): ID przeliczenia, data (PL), liczba świec (wszystkich instrumentów), model na żywo (metoda i λ środka), trafność stożka 80% (cel 80%), Brier k = 48 (0,25 = moneta), błąd prognozy zakresu 48 h — wszystko z części B sprawdzianu (4c.7); wiersz 9 — nagłówki kolumn; od wiersza 10 — okoliczności w kolejności ID (1000 wierszy).
+- **Kolumny A–G:** ID, rodzina, kierunek, para, opis, próg, częstość przy kalibracji % (pula).
+- **Kolumny od H:** jedno przeliczenie FX-research = jedna kolumna (najstarsze z lewej). Komórka `rating/wystąpienia` jako tekst, np. `41/3440` (wystąpienia z całej historii wszystkich instrumentów); okoliczność z częstością poza 10–50% w tym przeliczeniu — komórka szara.
+- Arkusz tylko do odczytu — ręczne zmiany znikają przy następnym przebudowaniu. Przy pierwszym przeliczeniu `H-001` arkusz buduje się od nowa (nowy katalog i znacznik `okol-3`); kolumny `R-…` z 5 min nie wracają.
 
 #### 4c.12 Branche `fx` i `fx-live`
 
@@ -386,11 +408,15 @@ fx (FX-research; dashboard także FX-real-time):
   index.html          dashboard (kopia ia4-research/ia4/fx/dashboard/index.html) — GitHub Pages
   .nojekyll           Pages bez przetwarzania Jekyll
   fx/README.md
-  fx/conditions.json  katalog fx-cond/1 z progami — zapisuje go raz `python -m ia4.fx.catalog --commit`, nienaruszalny
-  fx/ratings.json     ostatnie przeliczenie: dla każdej okoliczności rating, wystąpienia, n_ind, S, częstość, znacznik, profil (48);
-                      w nagłówku `scenario` — sprawdzian rozkładu i model na żywo (4c.7)
-  fx/runs.jsonl       wiersz na każde przeliczenie: ID, czas, wersja, zakres danych, liczba świec, `scenario` (model, f, λ, pokrycie 80%,
-                      Brier k=48, błąd zakresu, pinball k=48 metod; do 1.25: `check`), rating / wystąpienia / częstość każdej okoliczności
+  fx/conditions.json  katalog fx-cond/2 z progami — zapisuje go raz `python -m ia4.fx.catalog --commit`, nienaruszalny
+  fx/ratings.json     ostatnie przeliczenie: dla każdej okoliczności rating, wystąpienia, n_ind, S, częstość
+                      (pula, min./maks. na instrumencie), znacznik, profil (48, ATR100); w nagłówku dane instrumentów,
+                      `scenario` — sprawdzian rozkładu i model na żywo (4c.7), `lastCandle`
+  fx/runs.jsonl       wiersz na każde przeliczenie (H-001, …): ID, czas, wersja, zakres danych, liczba świec i instrumentów,
+                      `scenario` (model, f, λ, pokrycie 80%, Brier k=48, błąd zakresu, pinball k=48 metod),
+                      rating / wystąpienia / częstość każdej okoliczności
+  fx/archive/fx-cond-1-5m/   conditions.json, ratings.json, runs.jsonl katalogu fx-cond/1 (EURUSD 5 min, 1.21–1.26) —
+                      przeniesione przy kalibracji fx-cond/2, tylko do wglądu
 
 fx-live (FX-real-time, zawsze jeden commit, force push):
   forecast.json       stan na żywo (4c.9) — czyta go dashboard
@@ -475,18 +501,13 @@ Sygnały strategii na żywo i wirtualny inwestor w Apps Script (sekcja 11a). Dzi
 - 3.2 SIGNALS-REALTIME dostaje wiersz po każdej świecy sesji,
 - 3.3 VIRTUAL-INVESTOR otwiera i zamyka transakcje dla strategii zaznaczonych „for VI” w arkuszu STRATEGIE.
 
-### Etap 4 — Prognoza EURUSD 🟨
+### Etap 4 — Prognoza FX 🟨
 
-Prognoza kursu EURUSD na 48 świec 5-minutowych (sekcja 4c). Kolejne kroki — każdy zamyka się zgodą człowieka:
-- **FX-0** — ta sekcja instrukcji (wersja 1.20),
-- **FX-1** — synchronizacja `fx/EURUSD` → `data/fx/` (`python -m ia4.fx.sync`), katalog 1000 okoliczności (4c.3), kalibracja próbna i właściwa (`python -m ia4.fx.catalog [--commit]`) → `fx/conditions.json`, test `python -m ia4.fx.selftest` — kod gotowy w 1.21; zamknięty, gdy `fx/conditions.json` jest na branchu `fx`,
-- **FX-2** — FX-research (`python -m ia4.fx.research`): wystąpienia, profile, ratingi (walk-forward), sprawdzian → `fx/ratings.json`, `fx/runs.jsonl`; testy w `python -m ia4.fx.selftest` — kod gotowy w 1.23; zamknięty, gdy pierwsze przeliczenie `R-001` jest na branchu `fx`,
-- **FX-3** — arkusz OKOLICZNOSCI_FX (`Fx.gs`, trigger `researchSync`, menu „odśwież OKOLICZNOSCI_FX teraz”) — kod gotowy w 1.24; zamknięty, gdy arkusz ma kolumnę R-001,
-- **FX-4** — FX-real-time (`python -m ia4.fx.live`) i dashboard (GitHub Pages z brancha `fx`, dane z `fx-live`) — kod gotowy w 1.25; zamknięty, gdy dashboard pokazuje prognozę i „Mac połączony”,
-- **FX-5** — prognoza rozkładu (4c.0, 4c.6): silnik scenariuszy `scenario.py` (pula pora dnia ±1 h, analogi, skalowanie zmiennością, środek λ, stożek, zakres, P(wzrost), scenariusze), sprawdzian walk-forward z kalibracją f i λ i wyborem modelu (4c.7) w FX-research — kod gotowy w 1.26; zamknięty, gdy przeliczenie z `scenario` jest na branchu `fx`,
-- **FX-6** — prognoza rozkładu na żywo (`forecast.json` 1.26), nowy dashboard (stożek, scenariusze, zakres, kierunek, werdykt sprawdzianu), nagłówki OKOLICZNOSCI_FX (`okol-2`) — kod gotowy w 1.26; zamknięty, gdy dashboard pokazuje stożek i scenariusze.
+Prognoza 48 świec 1h dla 10 par walutowych i BTC/USD (sekcje 4b i 4c). Kolejne kroki — każdy zamyka się zgodą człowieka:
+- **FX-0 … FX-6** (1.20–1.26) — prognoza EURUSD na świecach 5 min: instrukcja, synchronizacja, katalog `fx-cond/1` (skalibrowany 9.10.2026), FX-research (przeliczenia R-…), arkusz OKOLICZNOSCI_FX, FX-real-time i dashboard, prognoza rozkładu (scenariusze, stożek, sprawdzian). Zamknięte; dane 5 min usunięte w 1.27, wyniki w archiwum brancha `fx`.
+- **FX-7** — przejście na świece 1h i 11 instrumentów (1.27): `Fx.gs` zbiera `fx1h` (historia 728 dni, na żywo, kontrola dni, arkusz FX z kolumną na instrument), kopia `data/fx1h/`, katalog `fx-cond/2` (cechy bezwymiarowe, kalibracja na puli), pula instrumentów w FX-research (zmiany w ATR100, części walk-forward po kalendarzu, analogi w grupie), prognoza i dashboard dla wszystkich instrumentów (zakładki), nagłówki OKOLICZNOSCI_FX (`okol-3`) — kod gotowy w 1.27. Kolejność: (1) pliki `.gs` w Apps Script — historia pobiera się sama w kilkanaście minut (STATS „FX 1h — dziś / historia” = 11/11); (2) menu „🗑 FX — usuń stare świece EURUSD 5 min”; (3) Mac: `python -m ia4.fx.selftest`, `python -m ia4.fx.sync`, kalibracja próbna `python -m ia4.fx.catalog` (przegląd `catalog-preview.csv` z Claude), potem `--commit`; (4) `python -m ia4.fx.research` → `H-001`; (5) `python -m ia4.fx.live`. Zamknięty, gdy `fx/conditions.json` z `fx-cond/2` i przeliczenie `H-001` są na branchu `fx`, arkusz OKOLICZNOSCI_FX ma kolumnę H-001, a dashboard pokazuje stożek każdego instrumentu i „Mac połączony”.
 
-Wdrożony, gdy: `fx/conditions.json` jest na branchu `fx` (1000 okoliczności, każda w 10–50% przy kalibracji), FX-research zapisało przeliczenie ze sprawdzianem rozkładu, arkusz OKOLICZNOSCI_FX ma jego kolumnę z modelem na żywo, a dashboard pokazuje stożek, scenariusze i status Maca.
+Wdrożony, gdy: arkusz FX ma kompletne dni wszystkich 11 instrumentów, `fx/conditions.json` (`fx-cond/2`) jest na branchu `fx` (1000 okoliczności, każda w 10–50% puli przy kalibracji), FX-research zapisało przeliczenie ze sprawdzianem rozkładu, arkusz OKOLICZNOSCI_FX ma jego kolumnę z modelem na żywo, a dashboard pokazuje stożek, scenariusze i status Maca.
 
 ---
 
@@ -744,7 +765,7 @@ Wynik musi brzmieć „rozbieżności: sygnały 0, transakcje 0”.
 
 ### Apps Script — skład
 
-Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `Fx.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min (STRATEGIE, BACKTEST PORTFELA, OKOLICZNOSCI_FX). Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY`, `BT_DP_AT`, `BT_PF_AT`, `CANDLE_LOG`, `FX_STATE`, `FX_CHECK`, `FX_RUNS`, `ACTIVE_IDS`, `PRIORITY`, `VI_BY_STRAT`, `VI_SUMMARY` i inne — nie edytować). Arkusze: STATS, FX, OKOLICZNOSCI_FX (od FX-3), STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
+Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `Fx.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min (STRATEGIE, BACKTEST PORTFELA, OKOLICZNOSCI_FX). Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY`, `BT_DP_AT`, `BT_PF_AT`, `CANDLE_LOG`, `FX1H_STATE`, `FX1H_CHECK`, `FX_RUNS`, `ACTIVE_IDS`, `PRIORITY`, `VI_BY_STRAT`, `VI_SUMMARY` i inne — nie edytować). Arkusze: STATS, FX, OKOLICZNOSCI_FX (od FX-3), STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
 
 ### Aktualizacja do nowej wersji
 
@@ -764,12 +785,13 @@ python -m ia4.lab.portfolio --force     # backtest portfela → BACKTEST PORTFEL
 python -m ia4.lab.selftest              # test silnika
 ```
 
-Prognoza EURUSD (sekcja 4c) — Mac włączony, gdy używasz dashboardu:
+Prognoza FX 1h (sekcja 4c) — Mac włączony, gdy używasz dashboardu:
 
 ```bash
 cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate
-python -m ia4.fx.selftest              # test modułu na danych syntetycznych (ok. 7 min) — „WYNIK: OK”
-python -m ia4.fx.catalog               # kalibracja próbna → data/fx/catalog-preview.csv (nic nie wysyła)
+python -m ia4.fx.selftest              # test modułu na danych syntetycznych (ok. 3 min) — „WYNIK: OK”
+python -m ia4.fx.sync                  # kopia świec 1h 11 instrumentów → data/fx1h/ (oba programy robią to same)
+python -m ia4.fx.catalog               # kalibracja próbna → data/fx1h/catalog-preview.csv (nic nie wysyła)
 python -m ia4.fx.catalog --commit      # kalibracja właściwa → fx/conditions.json (RAZ, zasada 14)
 python -m ia4.fx.research              # ręcznie: przeliczenie wszystkich okoliczności i ratingów → branch fx
 python -m ia4.fx.live                  # prognoza na żywo co 30 s → branch fx-live → dashboard (Ctrl+C kończy)
@@ -782,7 +804,7 @@ Poszukiwanie (gdy zostanie wznowione, `search_closed: false`): `python -m ia4.la
 | Część | Zapisy | Odczyty |
 |---|---|---|
 | zbieranie na żywo (75 instrumentów, 7 świec) | ok. 1100 / dzień | — |
-| moduł EURUSD (świeca 5 min: dokument dnia + podsumowanie; kontrola dnia) | ok. 580 / dzień (rynek otwarty) + do 3 na dzień kontroli, historia ok. 60 raz | do 3 / dzień; „przelicz arkusz FX” ok. 1 na dzień bazy |
+| moduł FX 1h (świeca: dokumenty dni instrumentów z nową świecą + `system/fx1h`; kontrola dni) | ok. 290 / dzień roboczy, w weekend ok. 50 (BTC) + ok. 11 / dzień kontroli; historia ok. 7000 raz; usunięcie bazy 5 min ok. 66 raz | ok. 11 / dzień (kontrola); „przelicz arkusz FX” ok. 7000; usunięcie bazy 5 min ok. 65 raz |
 | nocne odświeżenie + liczenie bazy | ok. 550 / noc | ok. 150 / noc |
 | historia doubleProof (do zakończenia) | najwyżej 8000 / dzień | — |
 | „Konfiguruj” / „Uzupełnij ostatni miesiąc” | ok. 2500 / raz | — |
@@ -791,12 +813,12 @@ Poszukiwanie (gdy zostanie wznowione, `search_closed: false`): `python -m ia4.la
 | Mac: odświeżanie doubleProof w `ia4.lab` | — | ok. 250 / godzinę pracy |
 | Mac: pierwsza synchronizacja nowych instrumentów (doubleProof) | — | ok. 10 000 (raz) |
 | Mac: `ia4.sync --full` | — | ok. 48 000 — nie łączyć tego samego dnia z innymi dużymi odczytami |
-| Mac: `ia4.fx.sync` (FX-research, start FX-real-time) | — | pierwszy raz ok. 1 na dzień bazy FX (ok. 60), potem 1–3 / start |
-| Mac: FX-real-time | — | ok. 2 na świecę: ok. 580 / pełny dzień roboczy, przy zamkniętym rynku 0 |
+| Mac: `ia4.fx.sync` (FX-research, start FX-real-time) | — | pierwszy raz ok. 7000 (wszystkie dni 11 instrumentów), potem ok. 1–3 na instrument / start |
+| Mac: FX-real-time | — | ok. 12 / godzinę: ok. 290 / pełny dzień roboczy, w weekend ok. 50 (BTC) |
 
 ### Limity Apps Script (konto Gmail)
 
-Łączny czas triggerów: 90 min dziennie; jedno uruchomienie: 6 min; `UrlFetchApp`: 20 000 zapytań dziennie. Zużycie czasu widać w STATS („Czas pracy automatu dziś”). Zapytania: Yahoo akcje ok. 75 × 7 + ponowienia brakujących + nocne odświeżenie (ok. 700 / dzień), Yahoo EURUSD ok. 290 / dzień, Firestore i GitHub — kilkaset.
+Łączny czas triggerów: 90 min dziennie; jedno uruchomienie: 6 min; `UrlFetchApp`: 20 000 zapytań dziennie. Zużycie czasu widać w STATS („Czas pracy automatu dziś”). Zapytania: Yahoo akcje ok. 75 × 7 + ponowienia brakujących + nocne odświeżenie (ok. 700 / dzień), Yahoo FX 1h ok. 270 / dzień (jedno zapytanie na instrument i świecę; więcej, gdy Yahoo się spóźnia), historia FX 11 zapytań raz, Firestore i GitHub — kilkaset.
 
 ### Pakiety `.bundle` od Claude
 
@@ -818,6 +840,7 @@ cd ~/Desktop/IA4 && git pull
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.27 | 2026-10-10 | Krok FX-7 — świece 1h i 11 instrumentów zamiast EURUSD 5 min (decyzja człowieka z 10.10.2026): `Fx.gs` od nowa — kolekcja `fx1h/{ID}/days` + `system/fx1h`, 10 par walutowych (EURUSD, USDJPY, GBPUSD, AUDUSD, USDCAD, USDCHF, NZDUSD, EURJPY, GBPJPY, EURGBP) i BTCUSD (4b, uzasadnienie doboru), historia 728 dni jednym zapytaniem na instrument, na żywo wszystkie instrumenty jednym `fetchAll`, kontrola dni i uśrednienie jak dotąd, arkusz FX z kolumną na instrument (`24/24 (1)`), STATS „FX 1h”, menu „usuń stare świece EURUSD 5 min” (zasada 2.2 — jedyne skasowanie danych, z potwierdzeniem), Script Properties `FX1H_STATE`, `FX1H_CHECK`. Python: `instruments.py`, `sync.py` → `data/fx1h/`, katalog `fx-cond/2` (cechy bezwymiarowe w ATR100, okresy 9/20/24/50/100/120/200, kalibracja na puli wszystkich instrumentów, `covInstMin/Max`), `fx-cond/1` do `fx/archive/fx-cond-1-5m/` (zasada 14: nowy katalog → `fx-cond/3`); FX-research na puli instrumentów: zmiany w ATR100, części walk-forward po kalendarzu, `n_ind` na instrument, ID przeliczeń `H-…`; scenariusze: `pora` w instrumencie, `analogi` w grupie (pary razem, BTC osobno), odstęp ≥ 12 h w kalendarzu, skalowanie √(ρt/ρa), ρ = ATR12/ATR100, λ > 0 tylko przy przewadze środka ≥ 1%, wyniki części B na każdym instrumencie; horyzont 48 świec w godzinach rynku; `forecast.json` z listą `instruments` (bez NaN); dashboard z zakładkami instrumentów; OKOLICZNOSCI_FX `okol-3`. Nowy `synth.py`, selftest od nowa (ok. 3 min). Wszystko liczone od nowa (kalibracja, H-001). |
 | 1.26 | 2026-10-09 | Kroki FX-5 i FX-6 — prognoza rozkładu zamiast jednej uśrednionej linii (4c.0, zasada 15): badanie na danych R-001 (kierunek ≈ rzut monetą, zakres i rozrzut przewidywalne dzięki porze dnia i zmienności); `scenario.py` — 80 prawdziwych ścieżek z historii (pora dnia ±1 h, metoda `pora` albo `analogi` z Jaccardem ważonym ratingiem, odstęp ≥ 12 świec, skalowanie √(ATR100·ATR12)), środek = λ × średnia profili ważona ratingiem, stożek 10/25/75/90%, P(wzrost), oczekiwany zakres 4 h, 3 scenariusze; sprawdzian walk-forward 70–85% kalibracja / 85–100% ocena (pinball, pokrycie, Brier, błąd zakresu), wybór modelu, λ = 0 bez przewagi środka (4c.7); `forecast.json`, dashboard i nagłówki OKOLICZNOSCI_FX (`okol-2`) na nowo; stary sprawdzian średniej (`check`) zastąpiony przez `scenario`. |
 | 1.25 | 2026-10-09 | Krok FX-4: `python -m ia4.fx.live` — prognoza na żywo (pętla 30 s, ok. 2 odczyty Firestore na świecę, zero przy zamkniętym rynku, sygnał życia co 2 min, `stoppedAt` po Ctrl+C), `forecast.json` na branchu `fx-live` (jeden commit); dashboard `index.html` na GitHub Pages z brancha `fx` (status Maca, rynek, wykres 48 + 48, kafelki, top 5 okoliczności), kopiowany przez FX-research i FX-real-time. Selftest: symulacja piątek → niedziela. PRZEWODNIK: sekcja o prognozie. |
 | 1.24 | 2026-10-09 | Krok FX-3: arkusz OKOLICZNOSCI_FX (`Fx.gs`, 4c.11) — katalog i kolumna `rating/wystąpienia` na każde przeliczenie, odświeżany w `researchSync` tylko po nowym commicie brancha `fx` (`FX_RUNS`), menu „💱 EURUSD — odśwież OKOLICZNOSCI_FX teraz”. 4c.3: wiersz 17 opisuje rodzinę „Trend i korekta” tak, jak skalibrowano `fx-cond/1` (kod 1.21); poprawka z 1.22 obowiązuje dopiero dla `fx-cond/2`. |

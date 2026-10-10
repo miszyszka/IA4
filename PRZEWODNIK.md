@@ -1,13 +1,13 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.26 (2026-10-09)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.27 (2026-10-10)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
 Nic nie musisz uruchamiać. Apps Script co minutę:
 - zbiera świece 1h z 75 spółek (zapis ok. 30–40 s po zamknięciu świecy),
 - liczy sygnały 60 strategii i prowadzi wirtualnego inwestora (ok. +0:45 po zamknięciu świecy),
-- zbiera świece 5 min EURUSD (na razie tylko zbiera).
+- zbiera świece 1h 10 par walutowych i Bitcoina (zapis zwykle ok. 20 s – 3 min po zamknięciu świecy).
 
 Mac jest potrzebny tylko do jednorazowych przeliczeń, kiedy Claude o to poprosi.
 
@@ -18,7 +18,7 @@ Mac jest potrzebny tylko do jednorazowych przeliczeń, kiedy Claude o to poprosi
 | **VIRTUAL-INVESTOR** | wynik strategii na żywo — **najważniejszy** | raz dziennie / raz w tygodniu |
 | **STRATEGIE** | lista strategii: wynik w backteście i na żywo, wybór „for VI” | raz w tygodniu |
 | **STATS** | czy automat działa i jak szybko | gdy coś wygląda dziwnie |
-| **FX** | EURUSD: jeden wiersz na dzień — oczekiwanych, zapisanych, uśrednionych | gdy chcesz sprawdzić EURUSD |
+| **FX** | 10 par walutowych + BTC: wiersz na dzień, kolumna na instrument — zapisanych/oczekiwanych świec | gdy chcesz sprawdzić dane FX |
 | SIGNALS-REALTIME | które strategie dały sygnał na której świecy | podgląd, niepotrzebny do decyzji |
 | BACKTEST PORTFELA | jednorazowy raport, z którego wzięły się obecne ustawienia | przeczytać raz; można usunąć |
 | `_IA4_DANE` (ukryty) | pamięć świec i stan inwestora | nie ruszać |
@@ -29,39 +29,41 @@ U góry blok stanu. Dobrze, gdy:
 - **Status = OK**, obok „✓ automat żyje”,
 - **Czas pracy automatu dziś** wynosi wyraźnie poniżej 90 min (limit Google; zwykle 25–35 min),
 - **Nocne odświeżenie** pokazuje wczorajszą sesję,
-- **EURUSD — opóźnienie**: mediana ok. +0:20–0:30.
+- **FX 1h — opóźnienie**: mediana ok. +0:30–3:00 (zależy, jak szybko Yahoo domknie świecę), **FX 1h — dziś / historia**: „historia 11/11”.
 
 Pod spodem jest tabela świec: 7 wierszy na dzień, czasy od zamknięcia świecy.
 - „75 spółek zapisane” ok. **+0:35**, „Arkusze SIGNALS i VI gotowe” ok. **+0:45** to stan normalny.
 - +3:00 zdarza się, gdy Yahoo spóźni się z jedną spółką (widać ją w kolumnie „Brakujące / błędy”).
 - Jeśli +3:00 lub więcej pojawia się w większości wierszy przez kilka dni, napisz do Claude.
 
-## 3a. FX — EURUSD
+## 3a. FX — 10 par walutowych i Bitcoin (świece 1h)
 
-Jeden wiersz na dzień (UTC): **oczekiwanych świec**, **zapisanych świec**, **w tym uśrednionych**.
-- Wiersz pojawia się po zakończeniu dnia, gdy system go sprawdzi (w nocy, do ok. 04:30 czasu polskiego). Dzisiejszego dnia jeszcze nie ma.
-- Pełny dzień ma **288** świec, piątek 252, niedziela 36, sobota 0. Rynek walutowy działa od niedzieli 23:00 do piątku 23:00 czasu polskiego; zimą piątek ma 264, a niedziela 24 świece.
-- **Zapisanych zawsze = oczekiwanych.** Czego Yahoo nie odda po 3 próbach, to jest uśredniane. Uśrednione świece są oznaczone w bazie i przy analizie można je pominąć.
-- Kilka uśrednionych świec dziennie jest normalne. Dziesiątki przez kilka dni z rzędu oznaczają problem po stronie Yahoo; napisz wtedy do Claude.
-- Czy EURUSD zbiera się na bieżąco: STATS, wiersze „EURUSD 5m”.
+Instrumenty: EURUSD, USDJPY, GBPUSD, AUDUSD, USDCAD, USDCHF, NZDUSD, EURJPY, GBPJPY, EURGBP i BTCUSD.
+Jeden wiersz na dzień (UTC), jedna kolumna na instrument: **zapisanych/oczekiwanych** świec, np. `24/24`.
+- Komórka pojawia się po zakończeniu dnia, gdy system go sprawdzi (w nocy, zwykle do ok. 04:30 czasu polskiego). Dzisiejszego dnia jeszcze nie ma.
+- Pary walutowe: pełny dzień ma **24** świece, piątek 21 (zimą 22), niedziela 3 (zimą 2), sobota — `—` (rynek zamknięty od piątku 23:00 do niedzieli 23:00 czasu polskiego). BTC: zawsze 24.
+- **Zapisanych zawsze = oczekiwanych.** Czego Yahoo nie odda po 3 próbach, to jest uśredniane — wtedy w nawiasie liczba uśrednionych, np. `24/24 (1)`, a komórka jest żółta. Uśrednione świece nie są używane w prognozie.
+- Pojedyncze uśrednione świece są normalne. Wiele żółtych komórek przez kilka dni z rzędu oznacza problem po stronie Yahoo; napisz wtedy do Claude.
+- Historia (2 lata wstecz) pobiera się sama po wdrożeniu 1.27 w kilkanaście minut. Starą bazę EURUSD 5 min usuwasz raz z menu „🗑 FX — usuń stare świece EURUSD 5 min”.
 
-## 3b. Prognoza EURUSD — dashboard i OKOLICZNOSCI_FX
+## 3b. Prognoza FX — dashboard i OKOLICZNOSCI_FX
 
 **Dashboard:** https://miszyszka.github.io/IA4/ — działa tylko, gdy na Macu chodzi `python -m ia4.fx.live`
 (Terminal: `cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && python -m ia4.fx.live`; Ctrl+C kończy).
+U góry zakładki 11 instrumentów (przy nazwie P(wzrost) za 48 świec); dashboard pamięta ostatnio wybraną.
 
-Prognoza to **rozkład, nie jedna linia** — bo jedna uśredniona linia dla EURUSD zawsze wychodzi prawie pozioma:
-- **Stożek** (niebieskie pasma): ciemny — gdzie cena była w 50% podobnych przypadków, jasny — w 80%. Szeroki stożek = spodziewane duże wahania (np. otwarcie Nowego Jorku), wąski = spokój (wieczór).
-- **Scenariusze** (cienkie linie zielona / szara / czerwona): prawdziwe 4-godzinne ścieżki ceny z najbardziej podobnych chwil w historii — tak realnie wyglądają skoki i wahania. To przykłady, nie przepowiednia.
-- **Oczekiwany zakres 4 h**: o ile pipsów typowo rozjedzie się maksimum i minimum — to model przewiduje najlepiej (błąd ok. 27–29%).
+Prognoza na **48 świec 1h** (pary walutowe — 48 godzin handlu, weekend pomijany; BTC — 48 godzin) to **rozkład, nie jedna linia** — bo jedna uśredniona linia zawsze wychodzi prawie pozioma:
+- **Stożek** (niebieskie pasma): ciemny — gdzie cena była w 50% podobnych przypadków, jasny — w 80%. Szeroki stożek = spodziewane duże wahania, wąski = spokój.
+- **Scenariusze** (cienkie linie zielona / szara / czerwona): prawdziwe 48-godzinne ścieżki ceny z najbardziej podobnych chwil w historii (czasem innej pary walutowej — w nawiasie), przeliczone na dzisiejszą zmienność — tak realnie wyglądają skoki i wahania. To przykłady, nie przepowiednia.
+- **Oczekiwany zakres 48 h**: o ile pipsów (BTC: dolarów) typowo rozjedzie się maksimum i minimum.
 - **Kierunek**: P(wzrost) i ile z 80 podobnych chwil skończyło się wzrostem. Werdykt „brak przewagi (jak rzut monetą)” = nie traktuj tego jako sygnału.
 - **Linia środkowa** odchyla się od ceny tylko wtedy, gdy sprawdzian udowodnił, że to pomaga. Płaska linia = model uczciwie mówi „kierunku nie wiem”.
-- **Sprawdzian**: „stożek 78%” przy celu 80% = stożek trafny. Brier poniżej 0,245 = przewaga w kierunku; 0,25 = moneta.
+- **Sprawdzian**: „stożek 78%” przy celu 80% = stożek trafny. Brier poniżej 0,245 = przewaga w kierunku; 0,25 = moneta. Obok wynik tego jednego instrumentu.
 - Zielone „Mac połączony” — prognoza świeża; czerwone — widzisz ostatnią prognozę (wyblakłą).
 
 **Arkusz OKOLICZNOSCI_FX:** 1000 okoliczności, w kolumnach kolejne przeliczenia: `rating/wystąpienia`; nad nimi model na żywo,
 trafność stożka, Brier i błąd zakresu każdego przeliczenia.
-- Nowa kolumna po `python -m ia4.fx.research` na Macu (ręcznie, np. raz w tygodniu; ok. 2 min). FX-real-time sam weźmie nowy model.
+- Nowa kolumna po `python -m ia4.fx.research` na Macu (ręcznie, np. raz w tygodniu; ok. 3 min). FX-real-time sam weźmie nowy model. Przeliczenia na świecach 1h mają ID `H-001`, `H-002`, … (dawne `R-…` z 5 min są w archiwum).
 - Patrz, czy te same okoliczności trzymają wysoki rating w kolejnych kolumnach i czy Brier zaczyna schodzić poniżej 0,245.
 - Szara komórka = okoliczność wypadła poza 10–50% świec — tylko informacja.
 

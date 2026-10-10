@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — zbieranie świec 1h  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 1.26 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.27 (2026-10-10) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Jedyne zadanie tego pliku: żeby baza świec w Firestore była kompletna
  *  i rosła każdego dnia. Zasady i format bazy: IA4_INSTRUKCJA.md.
@@ -14,7 +14,7 @@
  *    brakujące spółki ponawia co 10 s, a gdy jest komplet 53 spółek, od razu
  *    uruchamia paper trading (Paper.gs). Uruchomienie, które wypada tuż przed
  *    zamknięciem świecy, czeka na nie i pobiera 15 s po zamknięciu.
- *  • W każdym uruchomieniu moduł EURUSD (Fx.gs) dociąga świece 5-minutowe.
+ *  • W każdym uruchomieniu moduł FX (Fx.gs) dociąga świece 1h 10 par walutowych i BTC.
  *  • Raz na dobę, po sesji, przepisuje ostatnie 5 sesji wszystkich instrumentów
  *    (nocne odświeżenie) — dziura z dowolnego dnia łata się sama następnej nocy.
  *    Zaraz potem liczy, ile świec ma w bazie każdy instrument.
@@ -31,7 +31,7 @@
 //  KONFIGURACJA
 // ============================================================================
 const CONFIG = {
-  VERSION: '1.26',
+  VERSION: '1.27',
 
   // Trzy grupy instrumentów — nazwy kolekcji w Firestore są historyczne
   // i zostają bez zmian (instrukcja, sekcja 4).
@@ -117,7 +117,7 @@ const STATS_LAYOUT = 'stats-1.15';           // znacznik układu w komórce A2 �
 const STATUS_LABELS = [
   'Status', 'Ostatnie uruchomienie (PL)', 'Ostatnia akcja', 'Czas w Nowym Jorku (ET)', 'Sesja USA',
   'Automat (trigger)', 'Czas pracy automatu dziś', 'Zapisanych świec dziś', 'Błędów dziś', 'Ostatni błąd',
-  'Nocne odświeżenie', 'Świec w bazie', 'EURUSD 5m — ostatnia świeca', 'EURUSD 5m — opóźnienie', 'EURUSD 5m — dziś',
+  'Nocne odświeżenie', 'Świec w bazie', 'FX 1h — ostatnia świeca', 'FX 1h — opóźnienie', 'FX 1h — dziś / historia',
 ];
 const STATS_FIRST = 3;
 const CANDLE_TITLE = STATS_FIRST + STATUS_LABELS.length + 1;
@@ -157,9 +157,10 @@ function onOpen() {
     .addItem('▶️ Uzupełnij ostatni miesiąc', 'runNow')
     .addItem('⏪ Historia doubleProof — jedna porcja teraz', 'backfillNow')
     .addItem('🌙 Nocne odświeżenie teraz', 'nightlyNow')
-    .addItem('💱 EURUSD — pobierz teraz', 'fxNow')
-    .addItem('💱 EURUSD — przelicz arkusz FX', 'fxRebuildNow')
-    .addItem('💱 EURUSD — odśwież OKOLICZNOSCI_FX teraz', 'fxOkolNow')
+    .addItem('💱 FX 1h — pobierz teraz', 'fxNow')
+    .addItem('💱 FX 1h — przelicz arkusz FX', 'fxRebuildNow')
+    .addItem('💱 FX — odśwież OKOLICZNOSCI_FX teraz', 'fxOkolNow')
+    .addItem('🗑 FX — usuń stare świece EURUSD 5 min', 'fxLegacyDelete')
     .addItem('🔥 Test połączenia z Firestore', 'testFirestore')
     .addSeparator()
     .addItem('📡 Wyślij stan do GitHub teraz', 'telemetryPublishNow')
@@ -229,14 +230,14 @@ function execute_(mode, initMessage) {
     ctx = marketContext_(new Date());
 
     if (mode === 'auto') {
-      try { fxIfDue_(); } catch (e) { recordError_('EURUSD', e.message || String(e)); }   // Fx.gs
+      try { fxIfDue_(); } catch (e) { recordError_('FX', e.message || String(e)); }   // Fx.gs
       if (armIfDue_(ctx)) ctx = marketContext_(new Date());     // czeka na zamknięcie świecy
       const gate = gate_(ctx);
       if (gate.fetch) {
         summary = fastCollect_(ctx);
       } else {
         action = gate.reason;
-        const extra = nightlyIfDue_(ctx) || countIfDue_() || backfillIfDue_(ctx);
+        const extra = nightlyIfDue_(ctx) || countIfDue_() || backfillIfDue_(ctx) || fxHistoryIfDue_();   // Fx.gs: historia 1h
         if (extra) action += ' · ' + extra;
       }
     } else if (mode === 'nightly') {
@@ -320,7 +321,7 @@ function fastCollect_(ctx) {
     if (Date.now() - closeAt > CONFIG.FAST_WINDOW_MIN * 60000) break;
     if (Date.now() - RUN_.t0 + (CONFIG.POLL_SEC + 20) * 1000 > CONFIG.FAST_MAX_RUN_SEC * 1000) break;
     Utilities.sleep(CONFIG.POLL_SEC * 1000);
-    try { fxIfDue_(); } catch (e) { recordError_('EURUSD', e.message || String(e)); }
+    try { fxIfDue_(); } catch (e) { recordError_('FX', e.message || String(e)); }
     ctx = marketContext_(new Date());
   }
   return total;
@@ -989,6 +990,7 @@ function finishRun_(ctx, action) {
     [counts ? `${counts.total.toLocaleString('pl-PL')} (policzone ${fmt(counts.at)})` : 'po pierwszym nocnym odświeżeniu'],
     [fx[0]], [fx[1]], [fx[2]],
   ]);
+  sh.getRange(STATS_FIRST + STATUS_LABELS.length - 3, 1, 3, 1).setValues(FX_STATUS_LABELS.map(x => [x]));   // etykiety (1.27: EURUSD 5m → FX 1h)
 
   if (RUN_.candleDirty && RUN_.candle) candleLogWrite_(sh, RUN_.candle);
 }

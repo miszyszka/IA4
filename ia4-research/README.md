@@ -1,6 +1,6 @@
 # IA 4 — Python na Macu: kopia bazy i poszukiwanie strategii
 
-**Wersja projektu: 1.26 (2026-10-09)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.27 (2026-10-10)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Dwie rzeczy:
 1. `python -m ia4.sync` — ściąga świece z Firestore na dysk (`data/*.parquet`), przy
@@ -103,20 +103,21 @@ sig_t, fc, _ = rules.entries(s["rule"], m)      # świece sygnału i świece FC
 
 Format bazy, skarbiec, język reguł i kryteria: `IA4_INSTRUKCJA.md`.
 
-## Prognoza EURUSD (instrukcja, sekcja 4c)
+## Prognoza FX 1h — 10 par walutowych + BTC/USD (instrukcja, sekcje 4b i 4c)
 
 ```bash
 source .venv/bin/activate
-python -m ia4.fx.selftest            # test modułu na danych syntetycznych (ok. 7 min) — musi być „WYNIK: OK”
-python -m ia4.fx.sync                # kopia świec EURUSD 5 min → data/fx/EURUSD.parquet (przyrostowo)
-python -m ia4.fx.catalog             # kalibracja PRÓBNA 1000 okoliczności → data/fx/catalog-preview.csv
+python -m ia4.fx.selftest            # test modułu na danych syntetycznych (ok. 3 min) — musi być „WYNIK: OK”
+python -m ia4.fx.sync                # kopia świec 1h (11 instrumentów) → data/fx1h/{ID}.parquet (przyrostowo)
+python -m ia4.fx.catalog             # kalibracja PRÓBNA 1000 okoliczności → data/fx1h/catalog-preview.csv
 python -m ia4.fx.catalog --commit    # kalibracja WŁAŚCIWA → fx/conditions.json na branchu fx — tylko raz
-python -m ia4.fx.research            # przeliczenie (ok. 2 min): ratingi, sprawdzian rozkładu, model na żywo → branch fx
+python -m ia4.fx.research            # przeliczenie (ok. 3 min): ratingi, sprawdzian rozkładu, model na żywo → branch fx
 python -m ia4.fx.live                # prognoza na żywo co 30 s → branch fx-live → https://miszyszka.github.io/IA4/
 ```
 
-Podgląd ostatniego przeliczenia: `data/fx/ratings-preview.csv`. Wystąpienia jednej okoliczności
-(czas + 48 przyszłych zmian w pipsach): `from ia4.fx.research import load_occurrences; load_occurrences("FX-0001")`.
+Podgląd ostatniego przeliczenia: `data/fx1h/ratings-preview.csv`. Wystąpienia jednej okoliczności
+(czas + 48 przyszłych zmian w jednostkach ATR100): `from ia4.fx.research import load_occurrences; load_occurrences("FX-0001", "EURUSD")`.
+Stara kopia EURUSD 5 min (`data/fx/`) jest usuwana przy pierwszej synchronizacji 1.27.
 
 Po `--commit` katalog okoliczności jest nienaruszalny (zasada 14): kolejne wywołanie odmawia.
 Klony branchy: `fx-repo/` i `fx-live-repo/` (poza gitem). Dashboard (GitHub Pages z brancha `fx`) pokazuje, czy Mac jest połączony.

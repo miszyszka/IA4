@@ -1,7 +1,11 @@
 """
-IA 4 — katalog okoliczności EURUSD `fx-cond/1` i jednorazowa kalibracja
+IA 4 — katalog okoliczności FX 1h `fx-cond/2` i jednorazowa kalibracja
 (instrukcja, sekcje 4c.2 i 4c.3).
-Wersja projektu: 1.26 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.27 (2026-10-10) — musi zgadzać się z IA4_INSTRUKCJA.md
+
+`fx-cond/2` (od 1.27): świece 1h, 11 instrumentów (10 par walutowych + BTC), wszystkie cechy
+bezwymiarowe (jednostki ATR100, %, liczby świec), progi skalibrowane raz na puli wszystkich
+instrumentów. `fx-cond/1` (EURUSD 5 min, 1.21–1.26) — w archiwum brancha `fx`.
 
 Okoliczność = cecha f (liczba na świecy t, tylko ze świec ≤ t) i warunek  f ≥ próg.
 Cecha jest zbudowana tak, że duża wartość = wzrost / wysoka cena. Okoliczność `+`
@@ -11,7 +15,7 @@ z tym samym progiem. Dzięki temu 500 par = dokładnie 500 `+` i 500 `−`.
 DEFINICJI RODZAJÓW (FEATURES) NIE WOLNO ZMIENIAĆ po kalibracji (zasada 14) —
 `fx/conditions.json` zapisuje tylko rodzaj, parametry i próg, a wartości liczy ten kod.
 
-  python -m ia4.fx.catalog             # kalibracja próbna: podgląd w data/fx/catalog-preview.csv
+  python -m ia4.fx.catalog             # kalibracja próbna: podgląd w data/fx1h/catalog-preview.csv
   python -m ia4.fx.catalog --commit    # kalibracja właściwa → fx/conditions.json (branch fx), RAZ
 """
 
@@ -27,20 +31,22 @@ from datetime import datetime, timezone
 import numpy as np
 
 from . import series as sr
-from .series import PIP, Series, shift
+from .series import Series, shift
 
-CATALOG = "fx-cond/1"
+CATALOG = "fx-cond/2"
+LEGACY = ("fx-cond/1",)            # katalogi archiwalne (instrukcja 4c.12)
 TARGETS = (0.25, 0.15, 0.40)       # docelowe częstości (kolejność = kolejność kandydatów)
 RANGE = (0.10, 0.50)               # każda okoliczność pary musi się w tym mieścić
 CORR_STEPS = (0.85, 0.95)          # najwyższa korelacja (phi) z już wybraną okolicznością
 PAIRS = 500
 
-PER = (9, 20, 38, 50, 103, 200, 288)
-MA_PAIRS = ((9, 20), (9, 38), (20, 50), (20, 103), (38, 103), (50, 200), (103, 288), (20, 200))
-X_PAIRS = (("EMA", 9, "EMA", 20), ("EMA", 20, "EMA", 50), ("SMA", 20, "SMA", 50), ("EMA", 38, "KAMA", 103),
-           ("SMA", 50, "SMA", 200), ("HMA", 20, "EMA", 50), ("DEMA", 20, "SMA", 103), ("EMA", 103, "EMA", 288),
-           ("WMA", 9, "SMA", 38), ("KAMA", 20, "KAMA", 103))
-TRENDS = (("EMA", 200), ("SMA", 288), ("KAMA", 103), ("EMA", 103))
+CORR_STRIDE = 3                    # korelacja liczona na co 3. świecy puli (pamięć)
+PER = (9, 20, 24, 50, 100, 120, 200)          # świece 1h: 24 = doba, 120 = tydzień rynku walutowego
+MA_PAIRS = ((9, 24), (9, 50), (20, 50), (24, 100), (50, 100), (50, 200), (100, 200), (24, 120))
+X_PAIRS = (("EMA", 9, "EMA", 24), ("EMA", 24, "EMA", 50), ("SMA", 24, "SMA", 50), ("EMA", 38, "KAMA", 103),
+           ("SMA", 50, "SMA", 200), ("HMA", 24, "EMA", 50), ("DEMA", 24, "SMA", 100), ("EMA", 100, "EMA", 200),
+           ("WMA", 9, "SMA", 38), ("KAMA", 20, "KAMA", 100))
+TRENDS = (("EMA", 200), ("SMA", 120), ("KAMA", 100), ("EMA", 100))
 ANCH = {"utc_day": "doby UTC", "ny_day": "doby handlowej (od 17:00 Nowy Jork)", "week": "tygodnia"}
 
 
@@ -51,8 +57,8 @@ def _ma(S, k, n):
     return S.ma(k, n)
 
 
-def f_chg_pips(S, p):
-    return (S.c - shift(S.c, p["n"])) / PIP
+def f_chg_u(S, p):
+    return (S.c - shift(S.c, p["n"])) / S.U
 
 
 def f_er_signed(S, p):
@@ -210,10 +216,6 @@ def _seg_open(S, anchor):
     return sr.anchor_ffill(S.starts(anchor), S.o)
 
 
-def f_sess_chg(S, p):
-    return (S.c - _seg_open(S, p["a"])) / PIP
-
-
 def f_sess_chg_u(S, p):
     return (S.c - _seg_open(S, p["a"])) / S.U
 
@@ -242,7 +244,7 @@ def _up(S, p):
 
 
 def f_combo_pull(S, p):
-    return np.where(_up(S, p), -(S.c - shift(S.c, p["m"])) / PIP, np.nan)
+    return np.where(_up(S, p), -(S.c - shift(S.c, p["m"])) / S.U, np.nan)
 
 
 def f_combo_dip(S, p):
@@ -354,8 +356,8 @@ def _d_prevday(p, th, side):
 def _d_combo_pull(p, th, side):
     t = ma_name(p["ma"], p["n"])
     if side > 0:
-        return f"Cena nad {t}, a zmiana ceny {_w(p['m'])} ≤ {sg(-th)} pips"
-    return f"Cena pod {t}, a zmiana ceny {_w(p['m'])} ≥ {sg(th)} pips"
+        return f"Cena nad {t}, a zmiana ceny {_w(p['m'])} [ATR100] ≤ {sg(-th)}"
+    return f"Cena pod {t}, a zmiana ceny {_w(p['m'])} [ATR100] ≥ {sg(th)}"
 
 
 def _d_combo_dip(p, th, side):
@@ -381,7 +383,7 @@ def _d_combo_stoch(p, th, side):
 
 # rodzaj → (funkcja, całkowita?, opis)
 KINDS = {
-    "chg_pips": (f_chg_pips, False, generic("Zmiana ceny {w}", " pips")),
+    "chg_u": (f_chg_u, False, generic("Zmiana ceny {w} [ATR100]")),
     "er_signed": (f_er_signed, False, generic("Kierunkowość ruchu (ER ze znakiem) {z}")),
     "body_er": (f_body_er, False, generic("Przewaga korpusów Σ(c−o)/Σ|c−o| {z}")),
     "green_cnt": (f_green_cnt, True, _d_green),
@@ -404,7 +406,6 @@ KINDS = {
     "z_slope": (f_z_slope, False, generic("Zmiana odchylenia od SMA{n} (w odch. std.) w {k} świecach")),
     "macd": (f_macd, False, None),
     "wick": (f_wick, False, generic("Przewaga dolnych knotów nad górnymi {z} [ATR100 na świecę]")),
-    "sess_chg": (f_sess_chg, False, None),
     "sess_chg_u": (f_sess_chg_u, False, None),
     "day_pos": (f_day_pos, False, None),
     "prev_day": (f_prev_day, False, _d_prevday),
@@ -433,7 +434,6 @@ def _d_daypos(p, th, side):
 
 
 KINDS["macd"] = (f_macd, False, _d_macd)
-KINDS["sess_chg"] = (f_sess_chg, False, _d_sess(" pips", ""))
 KINDS["sess_chg_u"] = (f_sess_chg_u, False, _d_sess("", " [ATR100]"))
 KINDS["day_pos"] = (f_day_pos, False, _d_daypos)
 
@@ -454,13 +454,13 @@ def _mapairs_x():
 
 
 FAMILIES = [
-    ("momentum", "Zmiana ceny (pips)", 35,
-     [("chg_pips", dict(n=n)) for n in (1, 2, 3, 4, 6, 9, 12, 18, 24, 36, 48, 72, 96, 144, 288)]),
+    ("momentum", "Zmiana ceny (ATR100)", 35,
+     [("chg_u", dict(n=n)) for n in (1, 2, 3, 4, 6, 8, 12, 16, 24, 36, 48, 72, 96, 120, 240)]),
     ("kierunkowosc", "Kierunkowość ruchu i korpusów", 20,
-     [("er_signed", dict(n=n)) for n in (6, 9, 12, 18, 24, 36, 48, 72, 96, 144, 288)] +
+     [("er_signed", dict(n=n)) for n in (6, 9, 12, 18, 24, 36, 48, 72, 96, 120, 240)] +
      [("body_er", dict(n=n)) for n in (6, 12, 24, 48, 96)]),
     ("kolory", "Kolory świec", 25,
-     [("green_cnt", dict(n=n)) for n in (4, 6, 8, 10, 12, 15, 20, 30, 40, 50, 75, 100)]),
+     [("green_cnt", dict(n=n)) for n in (4, 6, 8, 10, 12, 16, 24, 36, 48, 72, 100, 120)]),
     ("serie", "Serie świec i położenie zamknięcia", 15,
      [("streak_green", {}), ("hhhl_streak", {})] + [("clv", dict(n=n)) for n in (1, 3, 6, 12, 24, 48)]),
     ("cena_ma", "Cena a średnia krocząca", 50,
@@ -471,24 +471,24 @@ FAMILIES = [
      [("ma_spread", p) for p in _mapairs_x() + _mapairs_same()]),
     ("przeciecia", "Przecięcia średnich i ceny", 40,
      [("ma_cross", dict(p, against=ag)) for ag in (0, 1) for p in _mapairs_x()] +
-     [("px_cross", dict(ma=k, n=n)) for (k, n) in (("EMA", 20), ("SMA", 50), ("KAMA", 103), ("EMA", 200),
-                                                    ("SMA", 288), ("HMA", 50), ("DEMA", 103), ("TEMA", 200),
+     [("px_cross", dict(ma=k, n=n)) for (k, n) in (("EMA", 24), ("SMA", 50), ("KAMA", 100), ("EMA", 200),
+                                                    ("SMA", 120), ("HMA", 50), ("DEMA", 100), ("TEMA", 200),
                                                     ("ZLEMA", 38))]),
     ("dynamika", "Dynamika rozstawu średnich (rosła / malała)", 40,
      [("spread_pattern", dict(p, j=j, mode=md)) for md in ("fade", "grow") for j in (2, 3, 5)
       for p in _mapairs_x() + [dict(m1=k, n1=a, m2=k, n2=b) for k in ("EMA", "SMA", "KAMA")
-                               for (a, b) in ((9, 38), (20, 103), (50, 200))]]),
+                               for (a, b) in ((9, 50), (24, 100), (50, 200))]]),
     ("zakres", "Położenie w zakresie (stochastic)", 30,
-     [("stoch", dict(n=n)) for n in (12, 18, 24, 36, 48, 96, 144, 288)] +
-     [("stoch_sm", dict(n=n, s=s)) for (n, s) in ((24, 3), (48, 6), (96, 12), (288, 24))]),
+     [("stoch", dict(n=n)) for n in (12, 18, 24, 36, 48, 72, 120, 240)] +
+     [("stoch_sm", dict(n=n, s=s)) for (n, s) in ((24, 3), (48, 6), (120, 12), (240, 24))]),
     ("wybicia", "Wybicia i odległość od ekstremum", 25,
-     [("breakout", dict(n=n)) for n in (12, 24, 36, 48, 72, 96, 144, 288)] +
-     [("dist_high", dict(n=n)) for n in (12, 24, 48, 96, 144, 288)]),
+     [("breakout", dict(n=n)) for n in (12, 24, 36, 48, 72, 120, 240, 480)] +
+     [("dist_high", dict(n=n)) for n in (12, 24, 48, 120, 240, 480)]),
     ("rsi", "RSI", 25,
      [("rsi", dict(n=n)) for n in (5, 7, 9, 14, 21, 30, 50, 100)] +
      [("rsi_slope", dict(n=n, k=k)) for (n, k) in ((14, 3), (14, 6), (14, 12), (7, 3), (7, 6), (30, 6), (30, 12))]),
     ("bollinger", "Odchylenie od średniej (Bollinger)", 25,
-     [("boll_z", dict(n=n)) for n in (10, 12, 20, 30, 50, 75, 100, 150, 200, 288)] +
+     [("boll_z", dict(n=n)) for n in (10, 12, 20, 24, 30, 50, 75, 100, 120, 200)] +
      [("z_slope", dict(n=n, k=k)) for (n, k) in ((20, 3), (20, 6), (50, 6), (50, 12), (100, 12))]),
     ("macd", "MACD", 25,
      [("macd", dict(f=f, s=s, g=g, part=pt)) for pt in ("hist", "line", "hist_slope")
@@ -496,12 +496,12 @@ FAMILIES = [
     ("knoty", "Knoty świec", 15,
      [("wick", dict(n=n)) for n in (1, 3, 6, 12, 24, 48)]),
     ("sesje", "Doba, tydzień, poprzednia doba", 15,
-     [("sess_chg", dict(a=a)) for a in ANCH] + [("sess_chg_u", dict(a=a)) for a in ANCH] +
+     [("sess_chg_u", dict(a=a)) for a in ANCH] +
      [("day_pos", dict(a=a)) for a in ANCH] + [("prev_day", dict(ref=r)) for r in ("close", "high", "low")]),
     ("kombinacje", "Trend i korekta", 25,
-     [("combo_dip", dict(ma=k, n=n, sm=sk, sn=sn)) for (sk, sn) in (("EMA", 20), ("EMA", 9), ("SMA", 38), ("EMA", 50))
+     [("combo_dip", dict(ma=k, n=n, sm=sk, sn=sn)) for (sk, sn) in (("EMA", 24), ("EMA", 9), ("SMA", 50), ("EMA", 50))
       for (k, n) in TRENDS] +
-     [("combo_pull", dict(ma=k, n=n, m=m)) for m in (3, 6) for (k, n) in TRENDS] +
+     [("combo_pull", dict(ma=k, n=n, m=m)) for m in (3, 6, 12) for (k, n) in TRENDS] +
      [("combo_rsi", dict(ma=k, n=n, r=14)) for (k, n) in TRENDS] +
      [("combo_stoch", dict(ma=k, n=n, s=24)) for (k, n) in TRENDS]),
 ]
@@ -509,8 +509,7 @@ assert sum(f[2] for f in FAMILIES) == PAIRS
 
 
 # Rodziny z własnymi celami częstości. „Trend i korekta”: warunek trendu jest prawdziwy na ok. połowie
-# świec, więc przy celu 25% „korekta” wypadałaby na medianie (np. „zmiana ≤ +1 pips”) — cel 15%
-# i 12% wymuszają prawdziwą korektę.
+# świec, więc przy celu 25% „korekta” wypadałaby na medianie — cele 15% i 12% wymuszają prawdziwą korektę.
 FAMILY_TARGETS = {"kombinacje": (0.15, 0.12)}
 
 
@@ -579,22 +578,36 @@ def _theta(pooled_sorted_desc: np.ndarray, target: float, is_int: bool) -> float
     return best
 
 
-def calibrate(Sp: Series, Sm: Series, log=print) -> list[dict]:
-    el = eligible(Sp)
-    N = int(el.sum())
+def calibrate(pairs: list, log=print) -> list[dict]:
+    """pairs = [(Sp, Sm), …] — seria zwykła i odbita każdego instrumentu. Progi z puli wszystkich
+    instrumentów (świece po rozgrzewce, bez uśrednionych); częstość = udział w puli."""
+    els = [eligible(Sp) for Sp, _ in pairs]
+    N = int(sum(e.sum() for e in els))
     if N < 2000:
-        raise RuntimeError(f"Za mało świec do kalibracji: {N} (po rozgrzewce {sr.WARMUP}).")
+        raise RuntimeError(f"Za mało świec do kalibracji: {N} (po rozgrzewce {sr.WARMUP} na instrument).")
     quota = {f[0]: f[2] for f in FAMILIES}
     fam_name = {f[0]: f[1] for f in FAMILIES}
+    sizes = [int(e.sum()) for e in els]
+    sub = np.zeros(N, dtype=bool)
+    sub[::CORR_STRIDE] = True
+    Ns = int(sub.sum())
 
-    # 1) każdy kandydat: próg, częstości obu stron, wektor `+`
-    pool = []                                        # (fam, kind, p, tg, th, cov+, cov−, x+)
+    def pooled(kind, p, side):
+        out = []
+        for P, e in zip(pairs, els):
+            S = P[0] if side > 0 else P[1]
+            out.append(feature(S, kind, p)[e])
+            S._cache.pop(("feat",) + _key(kind, p), None)       # cecha już niepotrzebna — oszczędność pamięci
+        return np.concatenate(out)
+
+    # 1) każdy kandydat: próg, częstości obu stron (w puli i na instrument), wektor `+` (podpróbka)
+    pool = []                                        # (fam, kind, p, tg, th, cov+, cov−, x+, cov_min, cov_max)
     seen = set()
     for fam, kind, p, tg in candidates():
         is_int = KINDS[kind][1]
-        fp, fm = feature(Sp, kind, p)[el], feature(Sm, kind, p)[el]
-        pooled = np.nan_to_num(np.concatenate([fp, fm]), nan=-np.inf)
-        th = _theta(np.sort(pooled)[::-1], tg, is_int)
+        fp, fm = pooled(kind, p, 1), pooled(kind, p, -1)
+        both = np.nan_to_num(np.concatenate([fp, fm]), nan=-np.inf)
+        th = _theta(np.sort(both)[::-1], tg, is_int)
         if th is None:
             continue
         key = _key(kind, p) + (th,)
@@ -606,11 +619,17 @@ def calibrate(Sp: Series, Sm: Series, log=print) -> list[dict]:
         cp, cm = float(xp.mean()), float(xm.mean())
         if not (RANGE[0] <= cp <= RANGE[1] and RANGE[0] <= cm <= RANGE[1]):
             continue
-        pool.append((fam, kind, p, tg, th, cp, cm, xp))
-    log(f"  kandydatów w zakresie {int(RANGE[0]*100)}–{int(RANGE[1]*100)}%: {len(pool)}")
+        per = []
+        o = 0
+        for n_ in sizes:
+            per += [float(xp[o:o + n_].mean()), float(xm[o:o + n_].mean())]
+            o += n_
+        pool.append((fam, kind, p, tg, th, cp, cm, xp[sub], min(per), max(per)))
+    log(f"  kandydatów w zakresie {int(RANGE[0]*100)}–{int(RANGE[1]*100)}%: {len(pool)} "
+        f"(pula {N} świec z {len(pairs)} instrumentów)")
 
     # 2) wybór: limity rodzin, korelacja z już wybranymi
-    Z = np.zeros((PAIRS, N), dtype=np.float32)
+    Z = np.zeros((PAIRS, Ns), dtype=np.float32)
     chosen, used = [], np.zeros(len(pool), dtype=bool)
     count = {f: 0 for f in quota}
 
@@ -620,7 +639,7 @@ def calibrate(Sp: Series, Sm: Series, log=print) -> list[dict]:
         if sd == 0:
             return False
         z = (x - x.mean()) / sd
-        if chosen and float((Z[: len(chosen)] @ z).max()) / N > limit:
+        if chosen and float((Z[: len(chosen)] @ z).max()) / Ns > limit:
             return False
         Z[len(chosen)] = z
         chosen.append(i)
@@ -654,11 +673,12 @@ def calibrate(Sp: Series, Sm: Series, log=print) -> list[dict]:
     order = sorted(chosen, key=lambda i: ([f[0] for f in FAMILIES].index(pool[i][0]), chosen.index(i)))
     conds = []
     for k, i in enumerate(order):
-        fam, kind, p, tg, th, cp, cm, _ = pool[i]
+        fam, kind, p, tg, th, cp, cm, _, lo, hi = pool[i]
         a, b = f"FX-{2*k+1:04d}", f"FX-{2*k+2:04d}"
         for cid, pid, d, cov in ((a, b, "+", cp), (b, a, "−", cm)):
             conds.append({"id": cid, "pair": pid, "dir": d, "family": fam, "familyName": fam_name[fam],
                           "kind": kind, "p": p, "theta": th, "target": tg, "coverage": round(cov, 4),
+                          "covInstMin": round(lo, 4), "covInstMax": round(hi, 4),
                           "desc": describe(kind, p, th, 1 if d == "+" else -1)})
     return conds
 
@@ -673,17 +693,22 @@ def family_summary(conds: list[dict]) -> list[tuple]:
     return rows
 
 
-def document(conds, df, generated_by: str) -> dict:
+def document(conds, dfs: dict, generated_by: str) -> dict:
+    """dfs = {SYMBOL: tabela świec} — dane, na których skalibrowano katalog."""
     from .. import __version__
-    t0, t1 = int(df["time"].iloc[0]), int(df["time"].iloc[-1])
-    iso = lambda t: datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+    from . import instruments as fi
+    iso = lambda t: datetime.fromtimestamp(int(t), timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+    inst = [{"id": s, "group": fi.group_of(s), "candles": int(len(d)), "filled": int(d["filled"].sum()),
+             "from": iso(d["time"].iloc[0]), "to": iso(d["time"].iloc[-1])} for s, d in dfs.items()]
     return {
         "catalog": CATALOG, "version": __version__,
         "calibratedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "by": generated_by,
-        "data": {"from": iso(t0), "to": iso(t1), "candles": int(len(df)), "filled": int(df["filled"].sum()),
-                 "warmup": sr.WARMUP},
-        "rules": {"targets": list(TARGETS), "familyTargets": {k: list(v) for k, v in FAMILY_TARGETS.items()}, "range": list(RANGE), "corrSteps": list(CORR_STEPS),
-                  "unit": f"ATR{sr.U_PERIOD}", "pip": PIP, "condition": "f >= theta"},
+        "data": {"interval": "1h", "from": min(i["from"] for i in inst), "to": max(i["to"] for i in inst),
+                 "candles": sum(i["candles"] for i in inst), "filled": sum(i["filled"] for i in inst),
+                 "warmup": sr.WARMUP, "instruments": inst},
+        "rules": {"targets": list(TARGETS), "familyTargets": {k: list(v) for k, v in FAMILY_TARGETS.items()},
+                  "range": list(RANGE), "corrSteps": list(CORR_STEPS), "corrStride": CORR_STRIDE,
+                  "unit": f"ATR{sr.U_PERIOD}", "pool": "wszystkie instrumenty", "condition": "f >= theta"},
         "families": [{"id": f, "name": n, "quota": q, "pairs": sum(1 for c in conds if c["family"] == f) // 2}
                      for f, n, q, _ in FAMILIES],
         "conditions": conds,
@@ -694,16 +719,40 @@ def write_preview(conds, path):
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f, delimiter=";")
         w.writerow(["ID", "Para", "Kierunek", "Rodzina", "Okoliczność", "Rodzaj", "Parametry", "Próg",
-                    "Częstość %"])
+                    "Częstość %", "Częstość min. na instrumencie %", "Częstość maks. na instrumencie %"])
+        pc = lambda x: f"{100 * x:.1f}".replace(".", ",")
         for c in conds:
             w.writerow([c["id"], c["pair"], c["dir"], c["familyName"], c["desc"], c["kind"],
                         json.dumps(c["p"], ensure_ascii=False), str(c["theta"]).replace(".", ","),
-                        f"{100 * c['coverage']:.1f}".replace(".", ",")])
+                        pc(c["coverage"]), pc(c.get("covInstMin", c["coverage"])), pc(c.get("covInstMax", c["coverage"]))])
 
 
 def load_conditions(repo_dir) -> dict | None:
+    """Bieżący katalog (`fx-cond/2`) z klonu brancha `fx`; katalog archiwalny albo brak — None."""
     p = repo_dir / "fx" / "conditions.json"
-    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+    if not p.exists():
+        return None
+    d = json.loads(p.read_text(encoding="utf-8"))
+    return d if d.get("catalog") == CATALOG else None
+
+
+def archive_legacy(repo, log=print) -> bool:
+    """Katalog `fx-cond/1` (EURUSD 5 min) i jego przeliczenia → fx/archive/fx-cond-1-5m/ (instrukcja 4c.12)."""
+    p = repo.dir / "conditions.json"
+    if not p.exists():
+        return False
+    cat_ = json.loads(p.read_text(encoding="utf-8")).get("catalog")
+    if cat_ not in LEGACY:
+        return False
+    dst = repo.dir / "archive" / (cat_.replace("/", "-") + "-5m")
+    dst.mkdir(parents=True, exist_ok=True)
+    moved = []
+    for name in ("conditions.json", "ratings.json", "runs.jsonl"):
+        if (repo.dir / name).exists():
+            (repo.dir / name).replace(dst / name)
+            moved.append(name)
+    log(f"  katalog {cat_} przeniesiony do fx/archive/{dst.name}/ ({', '.join(moved)})")
+    return True
 
 
 # ===========================================================================
@@ -711,9 +760,9 @@ def load_conditions(repo_dir) -> dict | None:
 # ===========================================================================
 def main() -> None:
     from . import store
-    from .sync import FX_DIR, load, sync
+    from .sync import FX_DIR, load_all, sync
 
-    ap = argparse.ArgumentParser(description="Katalog okoliczności EURUSD fx-cond/1 — kalibracja")
+    ap = argparse.ArgumentParser(description=f"Katalog okoliczności FX 1h {CATALOG} — kalibracja")
     ap.add_argument("--commit", action="store_true",
                     help="kalibracja właściwa: zapis fx/conditions.json na branch fx (tylko raz)")
     ap.add_argument("--no-sync", action="store_true", help="bez synchronizacji z Firestore")
@@ -724,28 +773,33 @@ def main() -> None:
     if a.commit:
         repo.ensure()
         if load_conditions(repo.root):
-            print("fx/conditions.json już istnieje na branchu fx — katalog jest nienaruszalny (zasada 14).")
+            print(f"fx/conditions.json ({CATALOG}) już istnieje na branchu fx — katalog jest nienaruszalny (zasada 14).")
             sys.exit(1)
-    df = load() if a.no_sync else sync()
-    Sp, Sm = sr.pair_of(df)
+    dfs = load_all() if a.no_sync else sync()
+    from . import instruments as fi
+    pairs = [sr.pair_of(d, s, fi.group_of(s)) for s, d in dfs.items()]
     t = datetime.now()
-    conds = calibrate(Sp, Sm)
+    conds = calibrate(pairs)
     print(f"  kalibracja: {(datetime.now() - t).total_seconds():.0f} s\n")
     print(f"  {'rodzina':48s} {'limit':>5s} {'par':>4s}   częstość min / śr / max")
     for name, q, n, lo, mu, hi in family_summary(conds):
         print(f"  {name:48s} {q:5d} {n:4d}   {100*lo:4.1f}% / {100*mu:4.1f}% / {100*hi:4.1f}%")
     cov = [c["coverage"] for c in conds]
     print(f"\n  okoliczności: {len(conds)} ({sum(c['dir'] == '+' for c in conds)} `+`, "
-          f"{sum(c['dir'] == '−' for c in conds)} `−`), częstość {100*min(cov):.1f}–{100*max(cov):.1f}%")
+          f"{sum(c['dir'] == '−' for c in conds)} `−`), częstość w puli {100*min(cov):.1f}–{100*max(cov):.1f}%, "
+          f"na pojedynczym instrumencie {100*min(c['covInstMin'] for c in conds):.1f}–"
+          f"{100*max(c['covInstMax'] for c in conds):.1f}%")
     prev = FX_DIR / "catalog-preview.csv"
+    FX_DIR.mkdir(parents=True, exist_ok=True)
     write_preview(conds, prev)
     print(f"  podgląd: {prev}")
     if not a.commit:
         print("\nTo była kalibracja próbna — nic nie zostało zapisane na GitHub.\n"
               "Kalibracja właściwa (raz, potem katalog jest nienaruszalny): python -m ia4.fx.catalog --commit")
         return
-    repo.write_json("conditions.json", document(conds, df, "python -m ia4.fx.catalog --commit"))
-    ok = repo.commit_push(f"fx: katalog {CATALOG} — kalibracja ({len(conds)} okoliczności)")
+    archive_legacy(repo)
+    repo.write_json("conditions.json", document(conds, dfs, "python -m ia4.fx.catalog --commit"))
+    ok = repo.commit_push(f"fx: katalog {CATALOG} — kalibracja ({len(conds)} okoliczności, {len(dfs)} instrumentów)")
     print("\nZapisano fx/conditions.json na branchu fx." if ok else f"\n! push nieudany: {repo.last_error}")
 
 

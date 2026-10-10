@@ -1,6 +1,6 @@
 """
-IA 4 — wyniki modułu prognozy EURUSD na branchu `fx` (instrukcja, sekcja 4c.12).
-Wersja projektu: 1.26 (2026-10-09) — musi zgadzać się z IA4_INSTRUKCJA.md
+IA 4 — wyniki modułu prognozy FX 1h (10 par + BTC/USD) na branchu `fx` (instrukcja, sekcja 4c.12).
+Wersja projektu: 1.27 (2026-10-10) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Klon brancha w ia4-research/fx-repo/ (poza gitem głównego repo), te same
 uprawnienia do push co zwykły `git push` na tym Macu. Mechanika git — wspólna
@@ -14,16 +14,17 @@ from pathlib import Path
 from ..lab.store import ResultsRepo
 
 RESEARCH_DIR = Path(__file__).resolve().parent.parent.parent
-README = """# IA 4 — prognoza EURUSD (branch `fx`)
+README = """# IA 4 — prognoza FX 1h: 10 par walutowych + BTC/USD (branch `fx`)
 
 Ten branch zapisuje wyłącznie Python z Maca. Zasady i znaczenie plików:
 `IA4_INSTRUKCJA.md` na branchu `main`, sekcja 4c.
 
-- `fx/conditions.json` — katalog okoliczności `fx-cond/1` z progami; zapisany raz
+- `fx/conditions.json` — katalog okoliczności `fx-cond/2` (świece 1h, wszystkie instrumenty) z progami; zapisany raz
   (`python -m ia4.fx.catalog --commit`), potem nienaruszalny (zasada 14)
 - `fx/ratings.json` — ostatnie przeliczenie (`python -m ia4.fx.research`): rating, wystąpienia,
   przewaga, częstość i profil 48 świec każdej okoliczności, sprawdzian systemu
-- `fx/runs.jsonl` — wiersz na każde przeliczenie (R-001, R-002, …) → arkusz OKOLICZNOSCI_FX
+- `fx/runs.jsonl` — wiersz na każde przeliczenie (H-001, H-002, …) → arkusz OKOLICZNOSCI_FX
+- `fx/archive/fx-cond-1-5m/` — archiwum katalogu `fx-cond/1` (EURUSD 5 min, 1.21–1.26), tylko do wglądu
 - `index.html`, `.nojekyll` — dashboard na GitHub Pages; dane na żywo: branch `fx-live` (`forecast.json`)
 """
 
