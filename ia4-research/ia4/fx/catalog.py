@@ -1,7 +1,7 @@
 """
 IA 4 — katalog okoliczności FX 1h `fx-cond/2` i jednorazowa kalibracja
 (instrukcja, sekcje 4c.2 i 4c.3).
-Wersja projektu: 1.29 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.30 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 `fx-cond/2` (od 1.27): świece 1h, 11 instrumentów (10 par walutowych + BTC), wszystkie cechy
 bezwymiarowe (jednostki ATR100, %, liczby świec), progi skalibrowane raz na puli wszystkich
@@ -37,6 +37,7 @@ CATALOG = "fx-cond/2"
 LEGACY = ("fx-cond/1",)            # katalogi archiwalne (instrukcja 4c.12)
 TARGETS = (0.25, 0.15, 0.40)       # docelowe częstości (kolejność = kolejność kandydatów)
 RANGE = (0.10, 0.50)               # każda okoliczność pary musi się w tym mieścić
+INST_RANGE = (0.01, 0.80)          # od 1.30: częstość na każdym pojedynczym instrumencie (obie strony pary)
 CORR_STEPS = (0.85, 0.95)          # najwyższa korelacja (phi) z już wybraną okolicznością
 PAIRS = 500
 
@@ -624,6 +625,8 @@ def calibrate(pairs: list, log=print) -> list[dict]:
         for n_ in sizes:
             per += [float(xp[o:o + n_].mean()), float(xm[o:o + n_].mean())]
             o += n_
+        if min(per) < INST_RANGE[0] or max(per) > INST_RANGE[1]:
+            continue                                 # cecha rozpoznaje instrument (sposób budowy świec Yahoo), nie rynek
         pool.append((fam, kind, p, tg, th, cp, cm, xp[sub], min(per), max(per)))
     log(f"  kandydatów w zakresie {int(RANGE[0]*100)}–{int(RANGE[1]*100)}%: {len(pool)} "
         f"(pula {N} świec z {len(pairs)} instrumentów)")

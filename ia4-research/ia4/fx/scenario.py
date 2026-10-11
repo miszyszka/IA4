@@ -1,6 +1,6 @@
 """
 IA 4 — prognoza rozkładu FX 1h: scenariusze z historii (instrukcja, sekcje 4c.0, 4c.6, 4c.7).
-Wersja projektu: 1.29 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.30 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Zamiast jednej uśrednionej linii: K = 80 prawdziwych 48-świecowych ścieżek ceny z historii,
 z chwil podobnych do obecnej, w jednostkach zmienności (ATR100) i przeskalowanych do

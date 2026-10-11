@@ -1,6 +1,6 @@
 """
 IA 4 — test zgodności silnika JS (PaperEngine.gs) z Pythonem (ia4.lab).
-Wersja projektu: 1.29 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.30 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Uruchomienie (w ia4-research/, potrzebny Node.js):
   python tests/parity_dump.py /tmp/ia4_parity.json
