@@ -1,7 +1,7 @@
 """
 IA 4 — FX-research: wystąpienia, profile, ratingi i sprawdzian okoliczności na świecach 1h
 11 instrumentów (instrukcja, sekcje 4c.4–4c.8).
-Wersja projektu: 1.30 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.31 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.research              # synchronizacja, przeliczenie od zera, zapis i push na branch fx
   python -m ia4.fx.research --no-sync    # bez Firestore (kopia lokalna)
@@ -246,8 +246,9 @@ def run(dfs: dict, conds: list[dict], log=print) -> dict:
             a = eng.select(t, int(P.time[t]) + 1, mdl["method"])
             if a.size < 10:
                 continue
-            center = mdl["lambda"] * np.nan_to_num(forecast_from(P.M[:, t], ratings, profiles), nan=0.0)
-            d = sc.distribution(eng.paths(t, a), center, mdl["f"])
+            paths = eng.paths(t, a)
+            center = sc.center_of(mdl, paths, forecast_from(P.M[:, t], ratings, profiles))
+            d = sc.distribution(paths, center, mdl["f"])
             u = float(P.U100[t])
             last[s] = {"time": iso(P.time[t]), "close": float(P.c[t]), "active": int(P.M[:, t].sum()),
                        "center48": round(u * float(d["center"][-1]), 6), "q10_48": round(u * float(d["q"][10][-1]), 6),
@@ -286,7 +287,7 @@ def documents(res: dict, conds_doc: dict, run_id: str) -> tuple[dict, dict]:
     pin = {m: ((sc_.get("methods") or {}).get(m, {}).get("B") or {}).get("pinball48") for m in ("analogi", "pora", "całość")}
     run_line = {"run": run_id, "at": now, "version": __version__, "data": {k: data[k] for k in ("interval", "from", "to", "candles")},
                 "instruments": len(P.syms),
-                "scenario": {"model": mdl.get("method"), "f": mdl.get("f"), "lambda": mdl.get("lambda"),
+                "scenario": {"model": mdl.get("method"), "f": mdl.get("f"), "lambda": mdl.get("lambda"), "center": mdl.get("center"),
                              "cov80_48": best.get("cov80_48"), "brier48": best.get("brier48"),
                              "rangeErr": best.get("rangeErr"), "pinball48": pin},
                 "r": [[r["rating"], r["n"], round(100 * r["coverage"], 1)] for r in res["rows"]]}
@@ -368,7 +369,10 @@ def summary(res: dict, conds: list[dict], log=print) -> None:
         from .scenario import verdict
         B = sc_["methods"][mdl["method"]]["B"]
         vd = verdict(B)
-        log(f"    → na żywo: {mdl['method']} (szerokość ×{mdl['f']}, środek λ = {mdl['lambda']}); "
+        cs = sc_["methods"][mdl["method"]].get("centers") or {}
+        log("    środek — kandydaci (λ z części A, przewaga nad „bez zmiany” w części B): " + ", ".join(
+            f"{k} λ {v['lambda']} → {100*v['centerS']:+.1f}%" for k, v in cs.items() if v.get("centerS") is not None))
+        log(f"    → na żywo: {mdl['method']} (szerokość ×{mdl['f']}, środek λ = {mdl['lambda']}, {mdl.get('center', 'profile')}); "
             f"kierunek: {vd['direction']}; {vd['cone']}")
         log("    na instrument (ocena, pokrycie 80% / Brier k=48): " + ", ".join(
             f"{s} {100*x['cov80_48']:.0f}%/{x['brier48']:.3f}" for s, x in (B.get("inst") or {}).items()))

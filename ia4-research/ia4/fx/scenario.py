@@ -1,6 +1,6 @@
 """
 IA 4 — prognoza rozkładu FX 1h: scenariusze z historii (instrukcja, sekcje 4c.0, 4c.6, 4c.7).
-Wersja projektu: 1.30 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.31 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Zamiast jednej uśrednionej linii: K = 80 prawdziwych 48-świecowych ścieżek ceny z historii,
 z chwil podobnych do obecnej, w jednostkach zmienności (ATR100) i przeskalowanych do
@@ -272,20 +272,31 @@ def check(engine: Engine, PM: np.ndarray, start_frac: float = 0.70, split_frac: 
         return out
 
     out = {"queries": int(Q.size), "every": int(step), "splitAt": int(t_split), "methods": {}}
-    for m in methods:
-        A_ = [x for x in raw[m] if engine.time[x[0]] < t_split]
-        B_ = [x for x in raw[m] if engine.time[x[0]] >= t_split]
+    def variant(A_, B_):
         f, lam = fit(A_)
         fa, la = fit(A_ + B_)
         B = score(B_, f, lam)
-        center_test = B["centerS"] if B else None          # test środka z λ z części A
-        if not B or B["centerS"] is None or B["centerS"] < CENTER_MIN:
+        return f, lam, fa, la, B, (B["centerS"] if B else None)
+
+    for m in methods:
+        A_ = [x for x in raw[m] if engine.time[x[0]] < t_split]
+        B_ = [x for x in raw[m] if engine.time[x[0]] >= t_split]
+        # dwa kandydaci na środek (od 1.31): średnia profili okoliczności ("profile") i mediana ścieżek
+        # z podobnych chwil ("analog") — każdy z λ z części A, oceniony na części B
+        med = lambda X: np.nan_to_num(np.nanmedian(X, axis=0), nan=0.0)
+        V = {"profile": variant(A_, B_),
+             "analog": variant([(t, X, med(X)) for t, X, pm in A_], [(t, X, med(X)) for t, X, pm in B_])}
+        ok = {k: v for k, v in V.items() if v[4] and v[5] is not None and v[5] >= CENTER_MIN}
+        src = max(ok, key=lambda k: ok[k][5]) if ok else "profile"
+        f, lam, fa, la, B, center_test = V[src]
+        if not ok:
             la = 0.0                                   # środek bez udowodnionej przewagi (B) — na żywo płaski (4c.7)
             if B and lam != 0:
                 B = score(B_, f, 0.0)                  # ocena stożka w konfiguracji, która idzie na żywo
         if B:
             B["centerS_A"] = center_test
-        out["methods"][m] = {"fitA": {"f": f, "lambda": lam}, "B": B, "live": {"f": fa, "lambda": la}}
+        out["methods"][m] = {"fitA": {"f": f, "lambda": lam}, "B": B, "live": {"f": fa, "lambda": la, "center": src},
+                             "centers": {k: {"lambda": v[1], "centerS": v[5]} for k, v in V.items()}}
     cand = [m for m in ("analogi", "pora") if out["methods"].get(m, {}).get("B")]
     if cand:
         best = min(cand, key=lambda m: (out["methods"][m]["B"]["pinball12"] + out["methods"][m]["B"]["pinball48"],
@@ -293,6 +304,12 @@ def check(engine: Engine, PM: np.ndarray, start_frac: float = 0.70, split_frac: 
         out["model"] = {"method": best, **out["methods"][best]["live"], "K": K, "hourWindow": HOUR_WINDOW,
                         "spacingHours": SPACING_H}
     return out
+
+
+def center_of(mdl: dict, paths: np.ndarray, profile_mean: np.ndarray) -> np.ndarray:
+    """Środek na żywo: λ × (średnia profili albo mediana ścieżek analogów — wybór sprawdzianu, 4c.6 p. 4)."""
+    base = np.nanmedian(paths, axis=0) if mdl.get("center") == "analog" else profile_mean
+    return mdl["lambda"] * np.nan_to_num(base, nan=0.0)
 
 
 def verdict(B: dict | None) -> dict:

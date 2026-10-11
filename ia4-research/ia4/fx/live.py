@@ -1,6 +1,6 @@
 """
 IA 4 — FX-real-time: prognoza rozkładu na żywo dla 11 instrumentów 1h (instrukcja, sekcje 4c.6, 4c.9, 4c.10).
-Wersja projektu: 1.30 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.31 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.live              # działa do Ctrl+C
   python -m ia4.fx.live --no-push    # bez GitHub (test: forecast.json tylko w fx-live-repo/)
@@ -149,8 +149,9 @@ def compute(dfs: dict, model: Model, now: float | None = None) -> dict:
              "times": times, "check": inst_chk.get(sym)}
         a = eng.select(t, int(P.time[t]) + 1, mdl["method"])
         if a.size >= 10:
-            center = mdl["lambda"] * np.nan_to_num(forecast_from(P.M[:, t], model.ratings, model.profiles), nan=0.0)
-            d = sc.distribution(eng.paths(t, a), center, mdl["f"])
+            paths = eng.paths(t, a)
+            center = sc.center_of(mdl, paths, forecast_from(P.M[:, t], model.ratings, model.profiles))
+            d = sc.distribution(paths, center, mdl["f"])
             e.update({
                 "K": int(a.size), "center": price(d["center"]), **{f"q{q}": price(d["q"][q]) for q in d["q"]},
                 "pUp": {str(k): round(float(d["pUp"][k - 1]), 3) for k in (12, 48)},
@@ -178,7 +179,7 @@ def document(state: dict, model: Model, now: float, stopped: bool = False) -> di
     ch = model.check or {}
     doc = {"version": __version__, "interval": "1h", "horizon": H, "aliveAt": iso(now), "generatedAt": state.get("generatedAt"),
            "ratings": {"run": model.run, "at": model.run_at},
-           "model": {k: model.model.get(k) for k in ("method", "f", "lambda", "K", "hourWindow", "spacingHours")},
+           "model": {k: model.model.get(k) for k in ("method", "f", "lambda", "center", "K", "hourWindow", "spacingHours")},
            "check": {k: ch.get(k) for k in ("n", "cov80_12", "cov80_48", "cov50_48", "brier12", "brier48",
                                              "rangeErr", "pinball48", "centerS")},
            "verdict": verdict(ch or None),
