@@ -1,7 +1,7 @@
 """
 IA 4 — syntetyczne świece 1h do testów modułu FX (bez Firestore): pary walutowe w godzinach
 rynku i BTC 24/7, zmienność zależna od pory dnia, okresy trendu, braki uśrednione.
-Wersja projektu: 1.28 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.29 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 """
 
 from __future__ import annotations

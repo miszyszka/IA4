@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — STRATEGIE  (GitHub, branch `research` → arkusze STRATEGIE i BACKTEST PORTFELA)
  *
- *  Wersja projektu: 1.28 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.29 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Trigger researchSync (co 30 min) i menu „Odśwież STRATEGIE teraz”:
  *   • STRATEGIE — wszystkie strategie aktywne w kolejności pierwszeństwa: wynik
