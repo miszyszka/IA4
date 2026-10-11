@@ -1,6 +1,6 @@
 """
 IA 4 — FX-real-time: prognoza rozkładu na żywo dla 11 instrumentów 1h (instrukcja, sekcje 4c.6, 4c.9, 4c.10).
-Wersja projektu: 1.32 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.33 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.live              # działa do Ctrl+C
   python -m ia4.fx.live --no-push    # bez GitHub (test: forecast.json tylko w fx-live-repo/)
@@ -199,6 +199,7 @@ class Source:
     def __init__(self):
         self.reads = 0
         self.day = None
+        self.updated = None          # updatedAt dokumentu system/fx1h (s) — opóźnienie Firestore → Mac (11c.4)
 
     def _count(self, n=1):
         today = datetime.now(timezone.utc).date().isoformat()
@@ -214,6 +215,8 @@ class Source:
         if not d.exists:
             return {}
         out = {}
+        u = d.to_dict().get("updatedAt")
+        self.updated = int(u.timestamp()) if hasattr(u, "timestamp") else None
         for s, v in (d.to_dict().get("last") or {}).items():
             out[s] = int(v.timestamp()) if hasattr(v, "timestamp") else int(datetime.fromisoformat(str(v).replace("Z", "+00:00")).timestamp())
         return out
@@ -244,7 +247,10 @@ def _git(cwd: Path, *args, check=False):
 
 
 class LiveRepo:
+    """Branch „na żywo”: zawsze jeden commit z jednym plikiem (force push). Ten sam mechanizm dla
+    `fx-live/forecast.json` i `ai-live/status.json` (11c.11)."""
     BRANCH = "fx-live"
+    FILE = "forecast.json"
 
     def __init__(self, root: Path, push: bool = True):
         self.root, self.push = root, push
@@ -259,14 +265,14 @@ class LiveRepo:
                 _git(self.root, "remote", "add", "origin", origin)
 
     def publish(self, doc: dict) -> bool:
-        (self.root / "forecast.json").write_text(json.dumps(clean(doc), ensure_ascii=False, separators=(",", ":"),
+        (self.root / self.FILE).write_text(json.dumps(clean(doc), ensure_ascii=False, separators=(",", ":"),
                                                             allow_nan=False), encoding="utf-8")
         ident = []
         if not _git(self.root, "config", "user.email").stdout.strip():
             ident = ["-c", "user.name=IA4 fx-live", "-c", "user.email=ia4-lab@users.noreply.github.com"]
         _git(self.root, "checkout", "-q", "--orphan", "_next")
         _git(self.root, "add", "-A")
-        r = _git(self.root, *ident, "commit", "-q", "-m", f"fx-live: {doc.get('aliveAt')}")
+        r = _git(self.root, *ident, "commit", "-q", "-m", f"{self.BRANCH}: {doc.get('aliveAt')}")
         if r.returncode != 0:
             self.last_error = (r.stderr or r.stdout).strip()[:200]
             return False
@@ -357,6 +363,8 @@ def main() -> None:
     ap.add_argument("--no-sync", action="store_true", help="bez synchronizacji przy starcie")
     a = ap.parse_args()
     from .. import __version__
+    from ..ai.lock import guard
+    guard("python -m ia4.fx.live")           # przy działającym `ia4 start` prognoza FX liczy się w nim (11c.3)
     print(f"IA 4 — FX-real-time 1h (wersja {__version__})\n")
     if sys.platform == "darwin":
         try:

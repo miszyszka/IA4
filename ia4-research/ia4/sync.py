@@ -1,6 +1,6 @@
 """
 IA 4 — synchronizacja Firestore → lokalna kopia (parquet).
-Wersja projektu: 1.32 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.33 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Firestore jest jedynym źródłem prawdy. Pliki w data/ to kopia robocza na Macu —
 można je skasować i odtworzyć.
@@ -23,6 +23,10 @@ Uruchomienie (w folderze ia4-research/):
   python -m ia4.sync             # przyrostowo, wszystkie instrumenty
   python -m ia4.sync --full      # od nowa, ignorując manifest
   python -m ia4.sync AAPL TSLA   # wybrane instrumenty
+
+SZYBKA ŚCIEŻKA (AI Investor, instrukcja 11c.4): `sync_symbol(..., quick=True)` zadaje tylko pytanie 2
+(dokumenty z `updatedAt` późniejszym niż poprzednia synchronizacja) — po nowej świecy to 1–2 odczyty
+na instrument zamiast kilkunastu.
 """
 
 from __future__ import annotations
@@ -111,12 +115,17 @@ def _stream(ref, since: str | None, updated_since):
                 yield doc
 
 
-def _fetch_sessions(symbol: str, since: str | None, updated_since=None) -> pd.DataFrame:
-    """Format sesyjny: jeden dokument = jedna sesja z równoległymi tablicami."""
+def _ref(symbol: str):
+    if config.group_of(symbol) == "main":
+        return config.client().collection(f"stocks/{config.fs_id(symbol)}/candles")
     coll = GROUP_COLLECTION[config.group_of(symbol)]
-    ref = config.client().collection(f"{coll}/{config.fs_id(symbol)}/sessions")
+    return config.client().collection(f"{coll}/{config.fs_id(symbol)}/sessions")
+
+
+def _fetch_sessions(symbol: str, since: str | None, updated_since=None, docs=None) -> pd.DataFrame:
+    """Format sesyjny: jeden dokument = jedna sesja z równoległymi tablicami."""
     rows = []
-    for doc in _stream(ref, since, updated_since):
+    for doc in (docs if docs is not None else _stream(_ref(symbol), since, updated_since)):
         d = doc.to_dict()
         slots = d.get("slots") or []
         o, h, l, c = d.get("o") or [], d.get("h") or [], d.get("l") or [], d.get("c") or []
@@ -132,11 +141,10 @@ def _fetch_sessions(symbol: str, since: str | None, updated_since=None) -> pd.Da
     return pd.DataFrame(rows, columns=COLUMNS)
 
 
-def _fetch_candles(symbol: str, since: str | None, updated_since=None) -> pd.DataFrame:
+def _fetch_candles(symbol: str, since: str | None, updated_since=None, docs=None) -> pd.DataFrame:
     """Format świecowy (spółki główne): jeden dokument = jedna świeca."""
-    ref = config.client().collection(f"stocks/{config.fs_id(symbol)}/candles")
     rows = []
-    for doc in _stream(ref, since, updated_since):
+    for doc in (docs if docs is not None else _stream(_ref(symbol), since, updated_since)):
         d = doc.to_dict()
         rows.append((symbol, d.get("date"), int(d.get("slot")),
                      d.get("open"), d.get("high"), d.get("low"), d.get("close"),
@@ -148,6 +156,13 @@ def fetch(symbol: str, since: str | None, updated_since=None) -> pd.DataFrame:
     if config.group_of(symbol) == "main":
         return _fetch_candles(symbol, since, updated_since)
     return _fetch_sessions(symbol, since, updated_since)
+
+
+def fetch_updated(symbol: str, updated_since) -> tuple[pd.DataFrame, int]:
+    """Szybka ścieżka: tylko dokumenty zmienione po `updated_since`. Zwraca (świece, liczba dokumentów)."""
+    docs = list(_where(_ref(symbol), "updatedAt", ">", updated_since).stream())
+    parse = _fetch_candles if config.group_of(symbol) == "main" else _fetch_sessions
+    return parse(symbol, None, None, docs=docs), len(docs)
 
 
 def _updated_since(entry: dict):
@@ -166,7 +181,10 @@ def _updated_since(entry: dict):
 # ---------------------------------------------------------------------------
 #  Synchronizacja
 # ---------------------------------------------------------------------------
-def sync_symbol(symbol: str, manifest: dict, full: bool = False) -> dict:
+def sync_symbol(symbol: str, manifest: dict, full: bool = False, quick: bool = False, quiet: bool = False) -> dict:
+    """Synchronizacja jednego instrumentu. `quick` — tylko dokumenty zmienione od poprzedniego razu
+    (AI Investor, 11c.4); bez wcześniejszej synchronizacji robi zwykłą. Wynik: statystyki + `docs`
+    (pobrane dokumenty — ok. liczba odczytów Firestore)."""
     from datetime import datetime, timezone
 
     path = parquet_path(symbol)
@@ -177,7 +195,12 @@ def sync_symbol(symbol: str, manifest: dict, full: bool = False) -> dict:
     since = None if full else _since_for(entry.get("last_date"))
     started = datetime.now(timezone.utc)      # PRZED pobraniem — nic nie umknie między pytaniami
 
-    new = fetch(symbol, since, updated_since)
+    if quick and not full:
+        new, ndocs = fetch_updated(symbol, updated_since)
+        ndocs = max(1, ndocs)                 # puste zapytanie też kosztuje 1 odczyt
+    else:
+        new = fetch(symbol, since, updated_since)
+        ndocs = len(new) if config.group_of(symbol) == "main" else int(new["date"].nunique()) if not new.empty else 1
 
     had = 0
     if path.exists() and not full:
@@ -190,7 +213,7 @@ def sync_symbol(symbol: str, manifest: dict, full: bool = False) -> dict:
 
     if df.empty:
         print(f"  {symbol}: brak danych")
-        return {"candles": 0, "first": "", "last": "", "added": 0}
+        return {"candles": 0, "first": "", "last": "", "added": 0, "docs": ndocs}
 
     df = (df.drop_duplicates(subset=["date", "slot"], keep="last")
             .sort_values(["date", "slot"]).reset_index(drop=True))
@@ -206,13 +229,16 @@ def sync_symbol(symbol: str, manifest: dict, full: bool = False) -> dict:
     }
     manifest[symbol] = {"last_date": stats["last"], "synced_at": started.isoformat(),
                         "group": config.group_of(symbol), **stats}
-    print(f"  {symbol}: +{stats['added']} świec → {stats['candles']} w {stats['sessions']} sesjach "
-          f"({stats['first']} – {stats['last']})")
+    if not quiet:
+        print(f"  {symbol}: +{stats['added']} świec → {stats['candles']} w {stats['sessions']} sesjach "
+              f"({stats['first']} – {stats['last']})")
+    stats["docs"] = ndocs
     return stats
 
 
-def sync(symbols: list[str] | None = None, full: bool = False) -> dict:
-    print("IA 4 — synchronizacja Firestore → kopia lokalna\n")
+def sync(symbols: list[str] | None = None, full: bool = False, quiet: bool = False) -> dict:
+    if not quiet:
+        print("IA 4 — synchronizacja Firestore → kopia lokalna\n")
     symbols = symbols or config.all_symbols()
     manifest = load_manifest()
 
@@ -224,11 +250,12 @@ def sync(symbols: list[str] | None = None, full: bool = False) -> dict:
               f"(dzienny limit 50 000 — nie powtarzaj tego tego samego dnia).\n".replace(",", " "))
     for s in symbols:
         try:
-            sync_symbol(s, manifest, full=full)
+            sync_symbol(s, manifest, full=full, quiet=quiet)
         except Exception as e:  # jeden instrument nie zatrzymuje reszty
             print(f"  ! {s}: {type(e).__name__}: {e}", file=sys.stderr)
         save_manifest(manifest)  # zapis po każdym — przerwanie nie gubi postępu
-    print(f"\nGotowe. Manifest: {config.MANIFEST_PATH}")
+    if not quiet:
+        print(f"\nGotowe. Manifest: {config.MANIFEST_PATH}")
     return manifest
 
 

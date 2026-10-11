@@ -1,6 +1,6 @@
 """
 IA 4 — poszukiwanie strategii na Macu (Etap 2).
-Wersja projektu: 1.32 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.33 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Uruchomienie (w folderze ia4-research/, z aktywnym .venv):
   python -m ia4.lab                 # liczy bez końca (Ctrl+C — zapisuje stan i kończy)
@@ -56,6 +56,8 @@ def main() -> int:
     ap.add_argument("--no-sync", action="store_true", help="bez synchronizacji z Firestore")
     ap.add_argument("--no-push", action="store_true", help="bez wysyłania wyników do GitHub")
     a = ap.parse_args()
+    from ..ai.lock import guard
+    guard("python -m ia4.lab")               # pamięć i rdzenie zajmuje AI Investor (11c.2)
 
     print(f"IA 4 — poszukiwanie strategii (wersja {__version__})\n")
     if sys.platform == "darwin":

@@ -1,5 +1,5 @@
 // IA 4 — zakładka System: czy wszystko żyje, strumień zdarzeń, parametry, instrumenty.
-// Wersja projektu: 1.32 (2026-10-11)
+// Wersja projektu: 1.33 (2026-10-11)
 
 import { store, SOURCES, VERSION, age, num, pct, esc, t, nyseOpen, fxOpen, stockClose, plStamp } from "../core.js";
 import { nodes, fxLast, stamp } from "../health.js";
@@ -58,6 +58,10 @@ function components() {
     detail: ni ? `sesja ${esc(ni.date)} · przepisanych ${num(ni.written)}` : "—" });
   rows.push({ name: "FX-real-time (Mac)", s: N.mac.status, ts: fc ? stamp(fc.aliveAt) : NaN, every: "sygnał co 2 min",
     detail: fc ? `${N.mac.sub} · prognoza ${t.short(stamp(fc.generatedAt))} · ratingi ${esc((fc.ratings || {}).run || "—")} · odczyty Firestore dziś ${fc.firestoreReadsToday ?? "—"}` : "brak forecast.json" });
+  const ai = store.get("ailive"), af = ai && ai.feed ? ai.feed : {};
+  rows.push({ name: "AI Investor (Mac)", s: N.ai.status, ts: ai ? stamp(ai.aliveAt) : NaN, every: "sygnał co 5 min",
+    detail: ai ? `${esc(N.ai.sub)} · akcje ${esc(((af.stocks || {}).last || {}).candle || "—")} · FX ${(((af.fx || {}).last || {}).closeAt || "").slice(11, 16) || "—"} UTC` +
+      ` · model ${esc((ai.ollama || {}).model || "—")} · odczyty Firestore dziś ${ai.feed ? ai.feed.readsToday : "—"}` : "nie uruchomiony — <b>ia4 start</b> (krok AI-1)" });
   const lr = runs && runs.length ? runs[runs.length - 1] : null;
   rows.push({ name: "FX-research (Mac, ręcznie)", s: lr ? "ok" : "off", ts: lr ? stamp(lr.at) : NaN, every: "ręcznie",
     detail: lr ? `przeliczenie ${esc(lr.run)} · ${num((lr.data || {}).candles)} świec · wersja ${esc(lr.version)}` : "—" });
@@ -96,6 +100,9 @@ function events() {
     (vi.signals || []).filter(s => s.fired.length).slice(0, 8).forEach(s => E.push({ t: plStamp(s.at), src: "sygnał", cls: "", k: "g" + s.key,
       m: `${s.fired.length} sygn.: ${esc(s.fired.slice(0, 6).map(f => f[1]).join(", "))}${s.fired.length > 6 ? "…" : ""}` }));
   }
+  const ai = store.get("ailive");
+  if (ai) (ai.events || []).filter(e => e.kind !== "fx").slice(0, 10).forEach(e => E.push({ t: stamp(e.at), src: "ai", cls: e.kind === "error" ? "" : "dim",
+    k: "ai" + e.at + e.kind, m: esc(e.text) }));
   (runs || []).slice(-3).forEach(r => E.push({ t: stamp(r.at), src: "research", cls: "", k: "r" + r.run, m: `FX-research ${esc(r.run)} · model ${esc((r.scenario || {}).model || "—")}` }));
   return E.filter(e => isFinite(e.t)).sort((a, b) => b.t - a.t).slice(0, 60);
 }

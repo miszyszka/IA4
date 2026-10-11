@@ -1,6 +1,6 @@
 # IA 4 — Python na Macu: kopia bazy i poszukiwanie strategii
 
-**Wersja projektu: 1.32 (2026-10-11)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.33 (2026-10-11)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Dwie rzeczy:
 1. `python -m ia4.sync` — ściąga świece z Firestore na dysk (`data/*.parquet`), przy
@@ -48,7 +48,7 @@ pobranie `research/config.json` i punktu wznowienia, dalsze liczenie od miejsca,
 w którym skończył poprzedni przebieg. Wyniki: branch `research` (klon w
 `research-repo/`), lokalna lista przetestowanych reguł: `state/tested.txt`.
 
-Skrót (raz): `alias ia4='cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && python -m ia4.lab --workers 4'`
+Skrót: funkcja `ia4` w `~/.zshrc` — `ia4` uruchamia poszukiwanie, `ia4 start` — AI Investor (niżej).
 w `~/.zshrc` — potem wystarczy `ia4`.
 
 Poszukiwanie używa tylko spółek głównych i kontrolnych. Grupa **doubleProof** (20 spółek)
@@ -102,6 +102,31 @@ sig_t, fc, _ = rules.entries(s["rule"], m)      # świece sygnału i świece FC
 ```
 
 Format bazy, skarbiec, język reguł i kryteria: `IA4_INSTRUKCJA.md`.
+
+## AI Investor — `ia4 start` (instrukcja, sekcja 11c, Etap 6)
+
+Krok AI-1: nadzorca, który utrzymuje kopię lokalną akcji i FX na bieżąco z Firestore, liczy w sobie prognozę FX
+(zamiast osobnego `python -m ia4.fx.live`) i publikuje stan na branch `ai-live` → strona IA4, zakładka AI.
+Agenci (Investor, Maker, Manager) dochodzą w krokach AI-2…AI-4.
+
+Raz: Ollama z modelem (`ollama pull qwen2.5:14b`) i funkcja w `~/.zshrc` (zastępuje dawny alias `ia4`):
+
+```bash
+ia4() { cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && if [ "$1" = start ]; then shift; python -m ia4.ai "$@"; else python -m ia4.lab --workers 4 "$@"; fi; }
+```
+
+Potem `source ~/.zshrc` (albo nowe okno terminala) i:
+
+```bash
+python -m ia4.ai.selftest   # test na danych syntetycznych — „WYNIK: OK”
+ia4 start                   # albo dwuklik IA4-start.command (można go skopiować na Pulpit); Ctrl+C kończy
+ia4 start --no-llm-check    # bez sprawdzania Ollamy (w AI-1 model nie jest jeszcze używany)
+ia4 start --no-push         # test bez GitHub
+```
+
+Przy działającym `ia4 start` nie uruchamiaj osobno `ia4.fx.live`, `ia4.fx.research` ani `ia4.lab` — odmówią
+startu (pamięć 16 GB zajmie model językowy). Noc: laptop otwarty i na zasilaczu. Hub (pamięć agentów):
+`data/ai/hub.sqlite`, poza gitem.
 
 ## Prognoza FX 1h — 10 par walutowych + BTC/USD (instrukcja, sekcje 4b i 4c)
 

@@ -1,7 +1,7 @@
 """
 IA 4 — FX-research: wystąpienia, profile, ratingi i sprawdzian okoliczności na świecach 1h
 11 instrumentów (instrukcja, sekcje 4c.4–4c.8).
-Wersja projektu: 1.32 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.33 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.research              # synchronizacja, przeliczenie od zera, zapis i push na branch fx
   python -m ia4.fx.research --no-sync    # bez Firestore (kopia lokalna)
@@ -391,6 +391,8 @@ def main() -> None:
     ap.add_argument("--no-sync", action="store_true", help="bez synchronizacji z Firestore")
     ap.add_argument("--no-push", action="store_true", help="bez zapisu na GitHub")
     a = ap.parse_args()
+    from ..ai.lock import guard
+    guard("python -m ia4.fx.research")       # do ok. 3 GB pamięci — nie razem z modelem językowym (11c.2)
 
     print("IA 4 — FX-research (świece 1h)\n")
     repo = fx_repo(push=not a.no_push)

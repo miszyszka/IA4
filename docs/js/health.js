@@ -1,8 +1,8 @@
 // IA 4 — „czy system żyje”: jeden model stanu dla magistrali (góra strony) i zakładki System.
-// Wersja projektu: 1.32 (2026-10-11)
+// Wersja projektu: 1.33 (2026-10-11)
 //
 // Każde ogniwo ma: ts (chwila ostatniego znaku życia, ms), status ok / warn / bad / off,
-// opis i oczekiwany rytm. Wiek liczony jest na żywo (co sekundę) z ts.
+// opis i oczekiwany rytm. Ogniwa: Yahoo → Apps Script → Firestore → GitHub → Mac (FX-real-time) → Mac (AI Investor) → strona. Wiek liczony jest na żywo (co sekundę) z ts.
 
 import { store, fxOpen, nyseOpen, stockClose, plStamp } from "./core.js";
 
@@ -66,7 +66,13 @@ export function nodes() {
     status: !fc ? "off" : fc.stoppedAt ? "off" : now - aT < 5 * MIN ? "ok" : "bad",
     sub: !fc ? "brak forecast.json" : fc.stoppedAt ? "program zatrzymany" : now - aT < 5 * MIN ? "połączony" : "offline" });
 
-  // 6. Ta strona — ostatnie udane pobranie
+  // 6. Mac — AI Investor (`ia4 start`, sygnał życia co 5 min, 11c.11)
+  const ai = store.get("ailive"), xT = ai ? stamp(ai.aliveAt) : NaN;
+  N.push({ id: "ai", name: "Mac · AI Investor", ts: xT, every: "sygnał co 5 min",
+    status: !ai ? "off" : ai.stoppedAt ? "off" : now - xT < 11 * MIN ? "ok" : "bad",
+    sub: !ai ? "nie uruchomiony" : ai.stoppedAt ? "zatrzymany" : now - xT < 11 * MIN ? `połączony · ${ai.step || ""}` : "offline" });
+
+  // 7. Ta strona — ostatnie udane pobranie
   const okT = maxTs(...Object.values(M).filter(m => m.ok).map(m => m.at));
   const errs = Object.entries(M).filter(([k, m]) => !m.ok && m.err && m.err !== "brak pliku");
   N.push({ id: "web", name: "Ta strona", ts: okT, every: "co 30–60 s",
@@ -86,8 +92,8 @@ export function overall(N = nodes()) {
 
 /** Wersje: strona, Apps Script, Python (FX-real-time). */
 export function versions() {
-  const st = store.get("state"), fc = store.get("forecast"), vi = store.get("vi");
-  return { gas: st && st.version, vi: vi && vi.version, mac: fc && fc.version };
+  const st = store.get("state"), fc = store.get("forecast"), vi = store.get("vi"), ai = store.get("ailive");
+  return { gas: st && st.version, vi: vi && vi.version, mac: fc && fc.version, ai: ai && ai.version };
 }
 
 export { stamp, plStamp };

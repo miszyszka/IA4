@@ -1,16 +1,17 @@
 // IA 4 — start strony: bramka, zakładki, magistrala, zegary (instrukcja, sekcja 11b).
-// Wersja projektu: 1.32 (2026-10-11)
+// Wersja projektu: 1.33 (2026-10-11)
 //
 // Nowa zakładka: plik js/views/<nazwa>.js eksportujący { id, title, render(el, changed), tick?(el) },
-// wpis w VIEWS niżej i link w <nav> w index.html (docs/README.md).
+// wpis w VIEWS niżej i link w <nav> w index.html (docs/README.md). Zakładki: #system, #inwestor, #fx, #ai (klawisze 1–4).
 
 import { store, startPolling, gateRemembered, gateTry, gateForget, age, t, $ } from "./core.js";
 import { nodes, overall } from "./health.js";
 import system from "./views/system.js";
 import investor from "./views/investor.js";
 import fx from "./views/fx.js";
+import ai from "./views/ai.js";
 
-const VIEWS = [system, investor, fx];
+const VIEWS = [system, investor, fx, ai];
 let current = null;
 const lastTs = {}, pulseUntil = {};
 
@@ -85,7 +86,7 @@ function bus() {
     d.querySelector(".node-sub").textContent = n.sub || n.every;
     d.title = `${n.name}: ${n.sub || ""} · rytm: ${n.every}`;
     // pasek: ile z typowego odstępu minęło (pełny = pora na kolejny znak życia)
-    const span = { yahoo: 3600, gas: 3600, fs: 3600, gh: 3600, mac: 120, web: 60 }[n.id];
+    const span = { yahoo: 3600, gas: 3600, fs: 3600, gh: 3600, mac: 120, ai: 300, web: 60 }[n.id];
     d.querySelector(".node-bar i").style.width = s === null ? "0" : Math.min(100, 100 * s / span) + "%";
     if (isFinite(n.ts) && lastTs[n.id] && n.ts > lastTs[n.id]) { pulseUntil[n.id] = now + 1600; d.classList.remove("pulse"); void d.offsetWidth; d.classList.add("pulse"); }
     if (isFinite(n.ts)) lastTs[n.id] = n.ts;

@@ -1,6 +1,6 @@
 # docs/ — strona IA4 (konsola systemu)
 
-**Wersja projektu: 1.32 (2026-10-11)** · zasady: `IA4_INSTRUKCJA.md`, sekcja 11b
+**Wersja projektu: 1.33 (2026-10-11)** · zasady: `IA4_INSTRUKCJA.md`, sekcja 11b
 
 Adres: https://miszyszka.github.io/IA4/ (GitHub Pages z brancha `main`, folder `/docs`).
 Każdy `git push` na `main` publikuje stronę w ok. minutę. Bez buildu i bez bibliotek: zwykłe
@@ -11,12 +11,13 @@ index.html            szkielet: bramka hasła, nagłówek z zakładkami, magistr
 css/ia4.css           wygląd (kolory w :root), układ, wersja telefonu (@media max-width 760px)
 css/fonts.css         kroje pisma z fonts/ (Chakra Petch, IBM Plex Mono — licencja OFL)
 js/core.js            źródła danych (SOURCES), odświeżanie, formaty dat i liczb, godziny rynków, bramka hasła
-js/health.js          „czy system żyje”: stan ogniw magistrali (Yahoo → Apps Script → Firestore → GitHub → Mac → strona)
+js/health.js          „czy system żyje”: stan ogniw magistrali (Yahoo → Apps Script → Firestore → GitHub → Mac FX → Mac AI → strona)
 js/chart.js           wykresy SVG: prognoza FX, mini-wykres, krzywa wyniku
-js/main.js            start: bramka, zakładki (#system, #inwestor, #fx; klawisze 1–3), zegary, magistrala
+js/main.js            start: bramka, zakładki (#system, #inwestor, #fx, #ai; klawisze 1–4), zegary, magistrala
 js/views/system.js    zakładka System
 js/views/investor.js  zakładka Inwestor (+ renderInvestor — wspólne z przyszłym inwestorem FX)
 js/views/fx.js        zakładka FX
+js/views/ai.js        zakładka AI — AI Investor na Macu (ai-live/status.json, instrukcja 11c.11)
 ```
 
 ## Jak dodać zakładkę
