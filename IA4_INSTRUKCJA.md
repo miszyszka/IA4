@@ -1,8 +1,8 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.31
+**Wersja:** 1.32
 **Data:** 11 października 2026
-**Aktualny etap:** ✅ Etap 1 — baza akcji (działa bez końca) · 🟨 Etap 2 — poszukiwanie strategii (wstrzymane od 3.10.2026, 60 aktywnych strategii) · 🟨 Etap 3 — paper trading i wirtualny inwestor akcji · 🟨 Etap 4 — FX na świecach 1h: zbieranie 10 par + BTC (od 1.27) i prognoza rozkładu (krok FX-7: kalibracja `fx-cond/2` i H-001 do zrobienia) · 🟨 Etap 5 — strona IA4 `https://miszyszka.github.io/IA4/` (od 1.28). Mapa całości i lista otwartych kroków: sekcja 0. Jak czytać arkusze i stronę: `PRZEWODNIK.md`.
+**Aktualny etap:** ✅ Etap 1 — baza akcji (działa bez końca) · 🟨 Etap 2 — poszukiwanie strategii (wstrzymane od 3.10.2026, 60 aktywnych strategii) · 🟨 Etap 3 — paper trading i wirtualny inwestor akcji · 🟨 Etap 4 — FX na świecach 1h: zbieranie 10 par + BTC (od 1.27) i prognoza rozkładu (krok FX-7: katalog `fx-cond/2` i H-001 zapisane 11.10.2026; po 1.31 — H-002) · 🟨 Etap 5 — strona IA4 `https://miszyszka.github.io/IA4/` (od 1.28) · 🟨 Etap 6 — AI Investor: trzej agenci na Macu (od 1.32 instrukcja, sekcja 11c; kod w krokach AI-1…AI-5). Mapa całości i lista otwartych kroków: sekcja 0. Jak czytać arkusze i stronę: `PRZEWODNIK.md`.
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jeśli kod, arkusz albo telemetria się z nim rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -10,15 +10,16 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Je�
 
 ## 0. Mapa projektu i stan na dziś (czytać najpierw)
 
-IA 4 to system, który **zbiera świece z Yahoo do Firestore** (Apps Script, bez Maca), **liczy na nich** (Python na Macu) i **pokazuje wyniki** (arkusz Google i strona IA4). Trzy filary:
+IA 4 to system, który **zbiera świece z Yahoo do Firestore** (Apps Script, bez Maca), **liczy na nich** (Python na Macu) i **pokazuje wyniki** (arkusz Google i strona IA4). Od 1.32 na Macu powstaje też **AI Investor** — trzej agenci na lokalnym modelu językowym. Cztery filary:
 
 | Filar | Co robi | Gdzie działa | Sekcje |
 |---|---|---|---|
 | **A. Akcje i wirtualny inwestor** | baza świec 1h 75 spółek (NYSE) → poszukiwanie strategii `ia4-rule/1` (wstrzymane, 60 aktywnych) → sygnały na żywo i wirtualny inwestor (paper trading, 100 $ na transakcję) | zbieranie, sygnały, inwestor: Apps Script (`Code.gs`, `Paper.gs`, `PaperEngine.gs`); poszukiwanie, weryfikacja doubleProof, backtesty: Mac (`ia4.lab`) | 4, 4a, 6–11a |
 | **B. FX** — dwa programy na jednych danych | **B1 zbieranie:** świece 1h 10 par walutowych + BTC/USD → `fx1h` w Firestore (Apps Script, `Fx.gs`, od 1.27). **B2 prognoza:** 1000 okoliczności z ratingiem i prognoza rozkładu 48 świec (stożek, zakres, P(wzrost), scenariusze) — FX-research (ręcznie) i FX-real-time (co 30 s) na Macu | B1: Apps Script; B2: Mac (`ia4.fx`) | 4b, 4c |
 | **C. Strona IA4** | konsola systemu na GitHub Pages: System (czy żyje), Inwestor, FX; hasło; wersja na telefon | przeglądarka; dane tylko z publicznego repo | 11b |
+| **D. AI Investor** (od 1.32; kod w krokach AI-1…AI-5) | trzej agenci na lokalnym modelu językowym: Strategy-Maker (hipotezy i backtesty), Strategy-Manager (krytyczny przegląd, cele, wnioski), Agent-Investor (wirtualny portfel 100 000 $ na akcjach i FX, każda decyzja z notatką, SL i TP) | Mac: `ia4 start` (`ia4.ai`), Ollama `qwen2.5:14b` | 11c |
 
-**Przepływ danych:** Yahoo → Apps Script (trigger co minutę) → Firestore → (a) Mac: kopia lokalna → wyniki na branche `research`, `fx`, `fx-live`; (b) Apps Script: arkusze i `telemetry/` na `main` → strona IA4 czyta wszystkie branche. Python nigdy nie pisze do Firestore ani do `main` (zasady 1, 11).
+**Przepływ danych:** Yahoo → Apps Script (trigger co minutę) → Firestore → (a) Mac: kopia lokalna → wyniki na branche `research`, `fx`, `fx-live`; (b) Apps Script: arkusze i `telemetry/` na `main` → strona IA4 czyta wszystkie branche; (c) Mac, AI Investor (`ia4 start`): kopia lokalna nadążająca za Firestore → agenci → branche `ai`, `ai-live` i plik `AI-INVESTOR.xlsx`. Python nigdy nie pisze do Firestore ani do `main` (zasady 1, 11).
 
 **Gdzie co leży:**
 
@@ -29,19 +30,21 @@ IA 4 to system, który **zbiera świece z Yahoo do Firestore** (Apps Script, bez
 | branch `research` | strategie, dziennik poszukiwania, doubleProof, backtest portfela (10) | Mac (`ia4.lab`) |
 | branch `fx` | katalog okoliczności, ratingi, przeliczenia FX-research, archiwum `fx-cond/1` (4c.12) | Mac (`ia4.fx`) |
 | branch `fx-live` | `forecast.json` — prognoza na żywo (4c.9) | Mac (FX-real-time) |
+| branch `ai` | AI Investor: transakcje, decyzje, hipotezy, playbook, przeglądy, wnioski (11c.11) | Mac (`ia4.ai`) |
+| branch `ai-live` | `status.json` — stan agentów i portfela na żywo (11c.11) | Mac (`ia4.ai`) |
 | arkusz Google | STATS, FX, OKOLICZNOSCI_FX, STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, `_IA4_DANE` | Apps Script |
-| Mac `ia4-research/data/` | kopie lokalne (akcje `*.parquet`, FX `fx1h/`) — robocze, do odtworzenia | Mac |
+| Mac `ia4-research/data/` | kopie lokalne (akcje `*.parquet`, FX `fx1h/`) — robocze, do odtworzenia; hub AI Investor `ai/hub.sqlite` (odtwarzalny z brancha `ai`, 11c.5) | Mac |
+| Mac `~/Desktop/IA4/AI-INVESTOR.xlsx` | transakcje, decyzje i dziennik AI Investor (11c.11) | Mac (`ia4.ai`) |
 
-**Historia w skrócie:** 1.0–1.1 baza akcji i poszukiwanie · 1.2–1.14 sita, skarbiec, doubleProof, paper trading (1.8), poszukiwanie wstrzymane (1.14) · 1.15–1.19 szybka ścieżka, wirtualny inwestor z kosztami, backtest portfela, moduł EURUSD 5 min · 1.20–1.26 prognoza EURUSD 5 min (katalog `fx-cond/1`, ratingi, dashboard, prognoza rozkładu) · 1.27 FX na świecach 1h, 11 instrumentów, wszystko liczone od nowa · 1.28 strona IA4 i `telemetry/vi.json` · 1.29 porządek instrukcji (ta sekcja) · 1.30 kalibracja FX: warunek częstości na pojedynczym instrumencie · 1.31 środek prognozy: kandydat „mediana analogów”. Szczegóły: sekcja 13.
+**Historia w skrócie:** 1.0–1.1 baza akcji i poszukiwanie · 1.2–1.14 sita, skarbiec, doubleProof, paper trading (1.8), poszukiwanie wstrzymane (1.14) · 1.15–1.19 szybka ścieżka, wirtualny inwestor z kosztami, backtest portfela, moduł EURUSD 5 min · 1.20–1.26 prognoza EURUSD 5 min (katalog `fx-cond/1`, ratingi, dashboard, prognoza rozkładu) · 1.27 FX na świecach 1h, 11 instrumentów, wszystko liczone od nowa · 1.28 strona IA4 i `telemetry/vi.json` · 1.29 porządek instrukcji (ta sekcja) · 1.30 kalibracja FX: warunek częstości na pojedynczym instrumencie · 1.31 środek prognozy: kandydat „mediana analogów” · 1.32 AI Investor — instrukcja (sekcja 11c, Etap 6). Szczegóły: sekcja 13.
 
-**Otwarte kroki (stan 11.10.2026)** — do odhaczenia przez Claude na podstawie telemetrii i branchy:
-1. Apps Script w wersji 1.29 (`telemetry/state.json` → `version`) — podmienić wszystkie pliki `.gs` po każdym pakiecie (sekcja 12).
-2. Historia FX 1h: `state.json` → `fx.history` = `11/11` (11.10.2026 13:13: `10/11`).
-3. Stara baza EURUSD 5 min usunięta z menu „🗑 FX — usuń stare świece EURUSD 5 min” (dopiero po pkt 2; nieodwracalne, 4b).
-4. GitHub Pages przestawione na `main` / `/docs` (11b) — do tej chwili pod adresem strony jest dawny dashboard z brancha `fx`.
-5. `telemetry/vi.json` pojawia się po pierwszej świecy sesji po wdrożeniu 1.28+ (11b).
-6. Mac: `git pull`, `python -m ia4.fx.selftest`, `python -m ia4.fx.sync`, kalibracja próbna `python -m ia4.fx.catalog` (11.10.2026: druga próba czysta, katalog zatwierdzony, H-001 zapisane; po 1.31 — ponownie `python -m ia4.fx.research` → H-002) → przegląd `data/fx1h/catalog-preview.csv` z Claude → `python -m ia4.fx.catalog --commit` (raz, zasada 14) → `python -m ia4.fx.research` (H-001) → `python -m ia4.fx.live` (krok FX-7, sekcja 7).
-7. Później, tylko za zgodą człowieka: strategie FX i wirtualny inwestor FX (`telemetry/fx-vi.json`, krok FX-8, sekcja 7).
+**Otwarte kroki (stan 11.10.2026, 20:00)** — do odhaczenia przez Claude na podstawie telemetrii i branchy (zrobione 11.10.2026: historia FX 1h `11/11`, GitHub Pages z `main/docs` — strona pokazuje konsolę, katalog `fx-cond/2`, przeliczenie H-001, FX-real-time działa):
+1. Apps Script w wersji 1.32 (`telemetry/state.json` → `version`; 11.10.2026 19:13 wciąż `1.27`) — podmienić wszystkie pliki `.gs` (sekcja 12). Strona ostrzega o różnicy wersji.
+2. `telemetry/vi.json` pojawia się po pierwszej świecy sesji po wdrożeniu 1.28+ (11b) — zależy od pkt 1.
+3. Stara baza EURUSD 5 min usunięta z menu „🗑 FX — usuń stare świece EURUSD 5 min” (historia FX 1h już kompletna; nieodwracalne, 4b) — potwierdzić.
+4. Mac: `git pull`, `python -m ia4.fx.research` → H-002 (kandydat „mediana analogów”, 1.31). FX-7 zamyka się, gdy arkusz OKOLICZNOSCI_FX ma kolumnę przeliczenia, a zakładka FX pokazuje stożek i „Mac połączony” (sekcja 7).
+5. Etap 6 — krok AI-1 (nadzorca `ia4 start`, feed, hub, `ai-live`, szkielet zakładki AI; sekcja 7, 11c) — kod w następnym pakiecie. Ollama i `qwen2.5:14b` zainstalowane na Macu 11.10.2026.
+6. Później, tylko za zgodą człowieka: strategie FX i wirtualny inwestor FX (`telemetry/fx-vi.json`, krok FX-8, sekcja 7) — H-001 nie pokazało przewagi kierunku.
 
 ---
 
@@ -53,6 +56,7 @@ IA 4 to system, który **zbiera świece z Yahoo do Firestore** (Apps Script, bez
 4. **Weryfikacja na nowych spółkach:** grupa doubleProof (20 spółek), której system nigdy nie widzi przy szukaniu — do sprawdzania strategii przez człowieka (sekcja 6a).
 5. **Moduł FX 1h:** osobna baza świec godzinowych 10 najczęściej handlowanych par walutowych i Bitcoina (sekcja 4b).
 6. **Prognoza FX** (Etap 4): co może się stać z kursem każdego z 11 instrumentów w ciągu 48 świec 1h — rozkład z prawdziwych historycznych ścieżek (stożek, oczekiwany zakres, prawdopodobieństwo wzrostu, scenariusze) i 1000 okoliczności z ratingiem; przeliczenie na Macu, prognoza na żywo i zakładka FX strony IA4 (sekcje 4c, 11b).
+7. **AI Investor** (Etap 6): trzej agenci na lokalnym modelu językowym na Macu — Strategy-Maker wysuwa i sprawdza hipotezy, Strategy-Manager krytycznie je przegląda i uczy się z transakcji, Agent-Investor prowadzi wirtualny portfel 100 000 $ na akcjach i FX z notatką, SL i TP przy każdej decyzji (sekcja 11c).
 
 Historia wcześniejszych prac (strategie S1/S2, backtesty, etapy 0–5) jest w historii gita do wersji 0.47.
 
@@ -67,19 +71,21 @@ Historia wcześniejszych prac (strategie S1/S2, backtesty, etapy 0–5) jest w h
 5. **Sekrety nigdy nie trafiają do repozytorium:** klucz serwisowy Firebase (`~/.ia4/serviceAccount.json`) i token GitHub (Script Properties → `GITHUB_TOKEN`).
 6. **System jest minimalny.** Nowa funkcja, arkusz, plik czy dziennik pojawia się tylko za zgodą człowieka i najpierw jako zmiana tej instrukcji.
 7. **Współpraca z Claude:**
-   - na początku rozmowy Claude pobiera repozytorium `github.com/miszyszka/IA4.git`, czyta ten plik (branch `main`), `telemetry/state.json` (branch `main`) oraz `research/status.json` i `research/log.jsonl` (branch `research`), a gdy istnieją — `telemetry/vi.json` (branch `main`), `fx/runs.jsonl` (branch `fx`) i `forecast.json` (branch `fx-live`); potem sprawdza listę otwartych kroków w sekcji 0 i aktualizuje ją w kolejnym pakiecie,
+   - na początku rozmowy Claude pobiera repozytorium `github.com/miszyszka/IA4.git`, czyta ten plik (branch `main`), `telemetry/state.json` (branch `main`) oraz `research/status.json` i `research/log.jsonl` (branch `research`), a gdy istnieją — `telemetry/vi.json` (branch `main`), `fx/runs.jsonl` (branch `fx`), `forecast.json` (branch `fx-live`), `status.json` (branch `ai-live`) oraz końcówki `ai/reviews.jsonl` i `ai/decisions.jsonl` (branch `ai`); potem sprawdza listę otwartych kroków w sekcji 0 i aktualizuje ją w kolejnym pakiecie,
    - Claude przygotowuje zmiany jako commit w pliku `.bundle` (wysyła go w rozmowie, użytkownik zapisuje w `~/Downloads`) i podaje gotowe polecenia terminala do wypchnięcia (sekcja 12); lokalna kopia `~/Desktop/IA4` aktualizuje się przez `git pull`,
    - każdą zmianę Claude sprawdza przed wysłaniem: `selftest`, test zgodności (sekcja 11a), składnia plików `.gs`, symulacja zmienionej logiki,
    - pracę wykraczającą poza tę instrukcję albo pomysł na jej zmianę Claude najpierw proponuje i czeka na zgodę,
    - Claude nie ma dostępu do arkusza ani edytora Apps Script: użytkownik ręcznie wkleja zmienione pliki `.gs` do Apps Script i robi `git pull` na Macu.
 8. **Jedna wersja dla całego projektu.** Ten sam numer w nagłówku tej instrukcji, w nagłówku każdego pliku `.gs`, w `CONFIG.VERSION` (`Code.gs`), w `ia4-research/` (`ia4/__init__.py`) i w stronie (`docs/`, `VERSION` w `js/core.js`). Zmiana znacząca (logika, zasada, format, etap) podbija wersję i dostaje wpis w sekcji 13. Drobne poprawki — tylko opis w commicie. (`appsscript.json` nie nosi wersji — JSON nie ma komentarzy.)
 9. **Strategia to reguła, nie kod.** Każda zapisana strategia jest pełną regułą w języku `ia4-rule/1` (sekcja 8): linie, sygnał, filtry, SL, TP, FC, limit czasu — wszystko liczbami, bez parametrów domyślnych. Definicje z sekcji 8 zmienia się tylko razem z nową wersją języka (`ia4-rule/2`); stare strategie zachowują swoją wersję.
-10. **Symulacja jest zawsze pesymistyczna** (sekcja 8.6). Strategie (poszukiwanie, weryfikacja, backtest doubleProof) liczone są bez kosztów transakcyjnych, każda reguła na wszystkich hipotezach SL × TP naraz. Koszt transakcyjny (`COST_PCT` = 0,005% wartości pozycji przy wejściu i przy wyjściu) liczą tylko wirtualny inwestor (11a) i backtest portfela (6b).
-11. **Wyniki poszukiwania żyją na branchu `research`** (sekcja 10), wyniki prognozy FX — na branchach `fx` i `fx-live` (sekcja 4c.12). Python nie pisze do `main`; `main` to kod, ta instrukcja, telemetria automatu (`telemetry/`) i strona IA4 (`docs/`, sekcja 11b).
-12. **Jeden język reguł, dwie implementacje.** Reguły liczy Python (`ia4/lab`, backtest) i JavaScript (`PaperEngine.gs`, na żywo). Każda zmiana definicji z sekcji 8 musi trafić do obu naraz, a test zgodności (`ia4-research/tests/`, sekcja 11a) musi dać 0 rozbieżności.
+10. **Symulacja jest zawsze pesymistyczna** (sekcja 8.6). Strategie (poszukiwanie, weryfikacja, backtest doubleProof) liczone są bez kosztów transakcyjnych, każda reguła na wszystkich hipotezach SL × TP naraz. Koszt transakcyjny (`COST_PCT` = 0,005% wartości pozycji przy wejściu i przy wyjściu) liczą tylko wirtualny inwestor (11a) i backtest portfela (6b). Wyjątek: AI Investor (11c) — hipotezy Strategy-Makera i transakcje Agent-Investora zawsze z kosztami 11c.6.
+11. **Wyniki poszukiwania żyją na branchu `research`** (sekcja 10), wyniki prognozy FX — na branchach `fx` i `fx-live` (sekcja 4c.12), wyniki AI Investor — na branchach `ai` i `ai-live` (11c.11). Python nie pisze do `main`; `main` to kod, ta instrukcja, telemetria automatu (`telemetry/`) i strona IA4 (`docs/`, sekcja 11b).
+12. **Jeden język reguł, dwie implementacje.** Reguły liczy Python (`ia4/lab`, backtest) i JavaScript (`PaperEngine.gs`, na żywo). Każda zmiana definicji z sekcji 8 musi trafić do obu naraz, a test zgodności (`ia4-research/tests/`, sekcja 11a) musi dać 0 rozbieżności. Język hipotez `ia4-hyp/1` (11c.8) liczy wyłącznie Python — AI Investor działa tylko na Macu; reguły `ia4-rule/1`, których używają agenci, liczy ten sam silnik `ia4/lab`.
 13. **Mediana trzymania.** Każdy wynik strategii albo portfela (arkusze, pliki wyników) podaje medianę świec w pozycji: świeca wyjścia − świeca wejścia + 1.
 14. **Katalog okoliczności FX jest nienaruszalny.** Po jednorazowej kalibracji (sekcja 4c.2) ID, definicje i progi okoliczności nigdy się nie zmieniają; nowy katalog powstaje tylko jako nowa wersja (`fx-cond/3`), za zgodą człowieka. Obowiązuje `fx-cond/2` (świece 1h, od 1.27); `fx-cond/1` (EURUSD 5 min) — tylko w archiwum (4c.2).
 15. **Prognoza zawsze z niepewnością i dowodem.** Prognoza FX pokazuje rozkład (stożek, zakres, P(wzrost)), nigdy samą linię. Linia środkowa odchyla się od ceny bieżącej tylko w takim stopniu, w jakim sprawdzian na danych niewidzianych przez model (4c.7) potwierdził jej przewagę; strona IA4 zawsze pokazuje wynik sprawdzianu słowami.
+16. **LLM myśli, Python liczy.** W AI Investor (11c) każda liczba pochodzi z kodu, model odpowiada wyłącznie JSON-em zgodnym ze schematem, limity ryzyka egzekwuje kod, decyzja jest wykonywana po open następnej świecy, a świece z przerwy (Mac wyłączony) służą tylko do rozliczenia otwartych pozycji — nigdy do nowych wejść. Kod napisany przez model nie jest uruchamiany (wyjątek: krok AI-5, za zgodą człowieka, w piaskownicy).
+17. **Sejf AI** = 20 spółek doubleProof i świece FX sprzed 2025-04-01. Strategy-Maker nigdy ich nie widzi; otwiera je wyłącznie bramka sejfu AI, każde otwarcie jest liczone i zapisywane (11c.8).
 
 ---
 
@@ -96,7 +102,8 @@ Yahoo ──(Apps Script, co minutę)──▶ Firestore ──(ia4.sync)──�
 Yahoo 10 par + BTC (1h) ──(Fx.gs, w tym samym triggerze)──▶ Firestore fx1h/*, system/fx1h (moduł FX, sekcja 4b) ──▶ arkusz FX
 Firestore fx1h ──(ia4.fx.sync)──▶ Mac: data/fx1h/ ──▶ ia4.fx.research (ręcznie) ──▶ GitHub fx: ratingi, index.html ──▶ arkusz OKOLICZNOSCI_FX
                                                   └──▶ ia4.fx.live (co 30 s) ──▶ GitHub fx-live: forecast.json
-GitHub main: telemetry/state.json, telemetry/vi.json · research · fx · fx-live ──(przeglądarka, tylko odczyt)──▶ strona IA4: GitHub Pages z main/docs (sekcja 11b)
+Firestore ──(feed, ia4 start)──▶ Mac: kopie lokalne ──▶ AI Investor: Maker · Manager · Investor (hub SQLite, Ollama) ──▶ GitHub ai, ai-live · AI-INVESTOR.xlsx (sekcja 11c)
+GitHub main: telemetry/state.json, telemetry/vi.json · research · fx · fx-live · ai · ai-live ──(przeglądarka, tylko odczyt)──▶ strona IA4: GitHub Pages z main/docs (sekcja 11b)
 ```
 
 | Plik | Rola |
@@ -132,6 +139,7 @@ GitHub main: telemetry/state.json, telemetry/vi.json · research · fx · fx-liv
 | `docs/` | strona IA4 — konsola systemu na GitHub Pages: `index.html`, `css/`, `js/` (moduły bez buildu), `fonts/`, `README.md` — jak rozwijać (sekcja 11b) |
 | `IA4_INSTRUKCJA.md` | ten plik |
 | `ia4-research/ia4/fx/` | prognoza FX 1h (sekcja 4c): `instruments.py` (lista 11 instrumentów i godziny rynku — kopia z `Fx.gs`), `sync.py` (Firestore `fx1h` → `data/fx1h/`), `series.py` (seria, lustro, wskaźniki 4c.3; średnie, ATR, RSI z `ia4/lab/indicators.py`), `catalog.py` (okoliczności `fx-cond/2`, kalibracja na puli instrumentów), `selftest.py` i `synth.py` (dane syntetyczne do testów), `research.py` (pula, wystąpienia, profile, ratingi walk-forward, środek prognozy), `scenario.py` (prognoza rozkładu i jej sprawdzian, 4c.6–4c.7), `live.py` (prognoza na żywo), `store.py` (branche `fx` i `fx-live`), `dashboard/index.html` |
+| `ia4-research/ia4/ai/` | AI Investor (sekcja 11c; kod od kroku AI-1): nadzorca `python -m ia4.ai` (`ia4 start`), feed, hub, trzej agenci, silnik portfela, publikacja na `ai` i `ai-live`, plik Excel; `ia4-research/IA4-start.command` — uruchamianie dwuklikiem |
 | `PRZEWODNIK.md` | prosty przewodnik dla człowieka: co jest gdzie, jak czytać, jakie wnioski |
 
 ---
@@ -546,6 +554,8 @@ Prognoza 48 świec 1h dla 10 par walutowych i BTC/USD (sekcje 4b i 4c). Kolejne 
 - **FX-0 … FX-6** (1.20–1.26) — prognoza EURUSD na świecach 5 min: instrukcja, synchronizacja, katalog `fx-cond/1` (skalibrowany 9.10.2026), FX-research (przeliczenia R-…), arkusz OKOLICZNOSCI_FX, FX-real-time i dashboard, prognoza rozkładu (scenariusze, stożek, sprawdzian). Zamknięte; dane 5 min usunięte w 1.27, wyniki w archiwum brancha `fx`.
 - **FX-7** — przejście na świece 1h i 11 instrumentów (1.27): `Fx.gs` zbiera `fx1h` (historia 728 dni, na żywo, kontrola dni, arkusz FX z kolumną na instrument), kopia `data/fx1h/`, katalog `fx-cond/2` (cechy bezwymiarowe, kalibracja na puli), pula instrumentów w FX-research (zmiany w ATR100, części walk-forward po kalendarzu, analogi w grupie), prognoza i dashboard dla wszystkich instrumentów (zakładki), nagłówki OKOLICZNOSCI_FX (`okol-3`) — kod gotowy w 1.27. Kolejność: (1) pliki `.gs` w Apps Script — historia pobiera się sama w kilkanaście minut (STATS „FX 1h — dziś / historia” = 11/11); (2) menu „🗑 FX — usuń stare świece EURUSD 5 min”; (3) Mac: `python -m ia4.fx.selftest`, `python -m ia4.fx.sync`, kalibracja próbna `python -m ia4.fx.catalog` (przegląd `catalog-preview.csv` z Claude), potem `--commit`; (4) `python -m ia4.fx.research` → `H-001`; (5) `python -m ia4.fx.live`. Zamknięty, gdy `fx/conditions.json` z `fx-cond/2` i przeliczenie `H-001` są na branchu `fx`, arkusz OKOLICZNOSCI_FX ma kolumnę H-001, a strona IA4 (zakładka FX) pokazuje stożek każdego instrumentu i „Mac połączony”.
 
+  Stan 11.10.2026: `fx-cond/2` skalibrowany, H-001 zapisane — kierunek: brak przewagi (Brier k = 48 0,25), stożek 80% obejmuje 77% (trafny), błąd prognozy zakresu 32%, najwyższy rating 23, λ = 0; FX-real-time działa. Po 1.31 — H-002.
+
 - **FX-8** ⬜ — strategie FX i wirtualny inwestor FX: tylko gdy FX-research pokaże udowodnioną przewagę (sprawdzian 4c.7: Brier < 0,245 na kilku przeliczeniach z rzędu). Wtedy Claude proponuje osobną sekcję instrukcji: język reguł FX, symulację, plik `telemetry/fx-vi.json` w formacie `vi.json` (strona ma na niego gotowe miejsce, 11b). Nic z tego nie powstaje bez zgody człowieka.
 
 Wdrożony, gdy: arkusz FX ma kompletne dni wszystkich 11 instrumentów, `fx/conditions.json` (`fx-cond/2`) jest na branchu `fx` (1000 okoliczności, każda w 10–50% puli przy kalibracji), FX-research zapisało przeliczenie ze sprawdzianem rozkładu, arkusz OKOLICZNOSCI_FX ma jego kolumnę z modelem na żywo, a strona IA4 (zakładka FX) pokazuje stożek, scenariusze i status Maca.
@@ -553,6 +563,18 @@ Wdrożony, gdy: arkusz FX ma kompletne dni wszystkich 11 instrumentów, `fx/cond
 ### Etap 5 — Strona IA4 🟨
 
 Konsola systemu na GitHub Pages (sekcja 11b), rozwijana zakładka po zakładce na prośbę człowieka. Wdrożony, gdy: Pages pokazuje `main` / `/docs`, bramka hasła działa, zakładka System pokazuje zielone ogniwa Apps Script i GitHub, zakładka Inwestor — pozycje z `vi.json`, zakładka FX — stożek z `forecast.json`. Kolejne zakładki i źródła: `docs/README.md`; każdy nowy plik danych dla strony — najpierw zmiana instrukcji i zgoda (zasada 6).
+
+### Etap 6 — AI Investor 🟨
+
+Trzej agenci na Macu (sekcja 11c). Kroki — każdy zamyka się zgodą człowieka:
+- **AI-0** ✅ (1.32) — sekcja 11c i zasady 16–17. Decyzje człowieka z 11.10.2026: MacBook Air M2 16 GB z `qwen2.5:14b`; rytm Maca — od rana do 16:00, od 18:00 do wieczora, czasem w nocy; tryb rygorystyczny z małym budżetem na własne pomysły; short dozwolony, pozostałe limity — propozycja Claude (11c.7); lokalny plik Excel; dzienniki agentów w publicznym repo.
+- **AI-1** ⬜ — nadzorca `python -m ia4.ai` / `ia4 start` / `IA4-start.command` (11c.3), blokada dla `ia4.fx.research` i `ia4.lab`, feed akcji i FX (11c.4), hub (11c.5), `ai-live` z sygnałem życia, zakładka AI strony (magistrala, agenci, świece). Bez modelu językowego. Zamknięty, gdy `ia4 start` przepracuje dzień, świece akcji i FX są w kopii lokalnej najpóźniej 2 min po zapisie w Firestore, a zakładka AI pokazuje „Mac (AI) połączony”.
+- **AI-2** ⬜ — Agent-Investor: rozliczanie, koszty i limity (11c.6–11c.7 — najpierw sam kod z testem na danych historycznych), warstwa modelu, playbook `bazowa`, wnioski startowe, branch `ai`, `AI-INVESTOR.xlsx`, punkty odniesienia (11c.10), panele zakładki AI, sekcja w `PRZEWODNIK.md`. Zamknięty, gdy pierwsza transakcja z notatką, SL i TP jest w Excelu, na branchu `ai` i na stronie.
+- **AI-3** ⬜ — Strategy-Maker: gramatyka `ia4-hyp/1` (najpierw zmiana instrukcji), ocena walk-forward z kosztami, sejf AI z bramką, liczniki prób, pętla modelu.
+- **AI-4** ⬜ — Strategy-Manager: briefy, dyrektywy, rekomendacje, wnioski, zmiany playbooka, inkubacja.
+- **AI-5** ⬜ — opcjonalnie, tylko za zgodą: cechy pisane przez model, uruchamiane w piaskownicy (osobny proces, bez sieci i bez dostępu do `~/.ia4`, limit czasu) z testem obcięcia — cecha policzona na serii uciętej w chwili t musi dać te same wartości do t.
+
+Dlaczego Inwestor przed Makerem: wyniki na żywo przybywają tylko z czasem, więc Inwestor zaczyna je zbierać jak najwcześniej, na wiedzy, która już jest (60 strategii, prognoza FX). Wdrożony, gdy działają AI-1…AI-4.
 
 ---
 
@@ -813,14 +835,177 @@ Jedna strona dla człowieka, którą można rozwijać zakładka po zakładce: **
 - **Adres:** `https://miszyszka.github.io/IA4/` — GitHub Pages z brancha `main`, folder `/docs` (jednorazowo: GitHub → Settings → Pages → Source: Deploy from a branch → `main`, `/docs`). Każdy push na `main` publikuje stronę w ok. minutę.
 - **Kod:** zwykłe pliki bez buildu i bez zewnętrznych bibliotek (moduły ES): `index.html`, `css/ia4.css`, `css/fonts.css` + `fonts/` (Chakra Petch, IBM Plex Mono — licencja OFL, hostowane w repo), `js/core.js` (źródła, odświeżanie, formaty, godziny rynków, bramka), `js/health.js` (stan ogniw), `js/chart.js` (wykresy SVG), `js/main.js` (zakładki, zegary, magistrala), `js/views/*.js` (po pliku na zakładkę). Jak dodać zakładkę albo źródło: `docs/README.md`.
 - **Hasło:** bramka w przeglądarce. W kodzie tylko skrót PBKDF2-SHA256 (150 000 iteracji) — samego hasła nie ma w repo ani w tej instrukcji (zna je człowiek); odblokowanie pamiętane w przeglądarce 30 dni, przycisk „wyloguj”. **Bramka nie chroni danych**: wszystkie pliki, które czyta strona, są w publicznym repo (zasada 5 — żadnych sekretów w danych strony).
-- **Źródła** (odświeżane tylko przy otwartej karcie): `telemetry/state.json` i `telemetry/vi.json` (co 60 s), `forecast.json` z `fx-live` (co 30 s, API GitHub z ETag), `research/strategies.jsonl`, `research/status.json`, `fx/runs.jsonl` (co 15 min), lista commitów `main` (co 3 min, API), `telemetry/fx-vi.json` (przyszły inwestor FX; brak pliku = panel „nieaktywny”). Pliki godzinowe — przez `raw.githubusercontent.com` (bez limitu, do ok. 5 min opóźnienia); przy limicie API strona przechodzi na 10 min na raw.
-- **Wygląd:** konsola terminala — ciemne tło, panele z tytułem w ramce, fosfor bursztynowy dla interakcji, cyjan dla prognoz, zieleń i czerwień tylko dla kierunku i stanu. Klawisze 1–3 przełączają zakładki, adres zakładki w `#`.
+- **Źródła** (odświeżane tylko przy otwartej karcie): `telemetry/state.json` i `telemetry/vi.json` (co 60 s), `forecast.json` z `fx-live` (co 30 s, API GitHub z ETag), `research/strategies.jsonl`, `research/status.json`, `fx/runs.jsonl` (co 15 min), lista commitów `main` (co 3 min, API), `telemetry/fx-vi.json` (przyszły inwestor FX; brak pliku = panel „nieaktywny”), od kroku AI-1: `status.json` z `ai-live` (co 30 s, API z ETag) i pliki `ai/` (co 5 min) — 11c.11. Pliki godzinowe — przez `raw.githubusercontent.com` (bez limitu, do ok. 5 min opóźnienia); przy limicie API strona przechodzi na 10 min na raw.
+- **Wygląd:** konsola terminala — ciemne tło, panele z tytułem w ramce, fosfor bursztynowy dla interakcji, cyjan dla prognoz, zieleń i czerwień tylko dla kierunku i stanu. Klawisze 1–3 (od kroku AI-1: 1–4) przełączają zakładki, adres zakładki w `#`.
 - **Magistrala** (pasek pod nagłówkiem, na każdej zakładce): ogniwa przepływu danych **Yahoo → Apps Script → Firestore → GitHub → Mac (FX-real-time) → ta strona**; każde z lampką (zielona / żółta / czerwona / szara = nie dotyczy teraz), wiekiem ostatniego znaku życia tykającym co sekundę i paskiem „ile z typowego odstępu minęło”; ogniwo z nowym znakiem życia błyska. Znacznik w nagłówku: „system żyje”, gdy Apps Script i GitHub dały znak w ciągu 80 min.
 - **Zakładka System:** stan składników (automat, zbieranie akcji i FX, paper trading, telemetria, nocne odświeżenie, FX-real-time, FX-research, poszukiwanie, strona — ostatni znak życia, rytm, szczegóły, odliczanie do następnej świecy); **strumień zdarzeń** (`tail -f`: commity, świece akcji i FX, transakcje i sygnały inwestora, przeliczenia — nowe podświetlone); parametry (wersja — ostrzeżenie, gdy Apps Script ma inną niż strona; czas pracy automatu wobec limitu 90 min; uruchomienia, świece i błędy dziś; świece w bazie; ostatni błąd); spływ ostatniej świecy akcji (kiedy który etap był gotowy, od zamknięcia); siatka wszystkich instrumentów; stan źródeł danych.
 - **Zakładka Inwestor:** odczyty (wynik zrealizowany i niezrealizowany $, średni wynik z przedziałem 95%, skuteczność TP i wyjścia, mediana świec, koszty, od kiedy), krzywa wyniku, sygnały z ostatnich świec, otwarte pozycje (z położeniem ceny między SL i TP), strategie (filtry „for VI” / „z wynikiem na żywo” / wszystkie, wyszukiwarka, sortowanie: PF z poszukiwania, $ na żywo, pierwszeństwo), zamknięte transakcje, spółki (pozycje, sygnały, wynik). Zanim pojawi się `vi.json` — samo podsumowanie z `state.json`.
 - **Zakładka FX:** stan Maca, rynku, model na żywo, sprawdzian, ratingi; lista 11 instrumentów (mini-wykres 48 świec, zamknięcie, P(wzrost)); wykres wybranego instrumentu z prognozą rozkładu i odczytami (jak dawny dashboard, 4c.10); **spływ świec 1h** — po komórce na świecę z ostatnich 24 godzin rynku, ramka dla świecy, która trwa, migająca ramka dla spóźnionej, godzina i wiek ostatniej świecy, odliczanie do następnej (świece z `state.json` nowsze niż prognoza też są widoczne); scenariusze i okoliczności o najwyższym ratingu; przeliczenia FX-research (`fx/runs.jsonl`); **wirtualny inwestor FX** — miejsce zarezerwowane: gdy powstaną strategie FX, Apps Script będzie wysyłał `telemetry/fx-vi.json` w formacie `vi.json` i panel pokaże go tym samym widokiem co inwestora akcji (format i powstanie pliku — dopiero za zgodą człowieka, nowa wersja instrukcji).
+- **Zakładka AI** (od kroku AI-1): agenci, portfel i punkty odniesienia, pozycje, transakcje z notatkami, dziennik agentów, hipotezy, dyrektywy i wnioski, playbook — 11c.11.
 - **Telefon** (szerokość ≤ 760 px): przede wszystkim stan — na zakładce System magistrala w pionie i składniki z wiekiem; na pozostałych magistrala zwinięta do siatki lampek; odczyty po dwa w rzędzie; tabele szczegółowe (strategie, transakcje, siatki, przeliczenia, źródła) ukryte; wykres FX z 24 świecami wstecz.
 - **`telemetry/vi.json`** (pisze `Telemetry.gs`, woła go `Paper.gs` po każdym przeliczeniu świecy i po „zacznij od nowa”; commit tylko przy zmianie treści — `VI_HASH`): `version`, `generatedAt`, `lastCandleKey` / `lastCandlePL`, `since`, `capital`, `stake`, `costPct`, `maxPerTicker`, `summary` (closed, open, pending, avgPct, ci95Pct, realizedUsd, unrealizedUsd, tpShare, exits TP/SL/FC/LIMIT, medianBars, costsUsd), `open` (każda pozycja otwarta i oczekująca: nr, strategia, spółka, kierunek, status, sygnał, wejście, SL/TP % i ceny, cena teraz, wynik % i $, świece), `closed` (ostatnie 150, od najnowszej: wejście, wyjście, powód, wynik % i $, świece), `equity` (skumulowany $ po każdej zamkniętej, najwyżej 2000 punktów), `strategies` (aktywne i „for VI”: opis, for VI, pierwszeństwo, zamknięte, otwarte, średni wynik, skuteczność, $), `signals` (ostatnie 35 świec: chwila, klucz, lista [strategia, spółka]). Wszystko pochodzi ze stanu inwestora (11a) — nic nie jest liczone na nowo. Ostatnie sygnały: `sigLog` w stanie inwestora (`_IA4_DANE`). Po świecy `Paper.gs` wysyła też od razu `state.json` (najwyżej raz na 10 min), żeby strona widziała świeżą świecę.
+
+## 11c. AI Investor — trzej agenci na Macu (`ia4-research/ia4/ai/`, Etap 6, filar D)
+
+Trzeci program obok strategii akcji (filar A) i FX (filar B): **trzej agenci na lokalnym modelu językowym** (Ollama, Mac) prowadzą wirtualny portfel 100 000 $ na akcjach i FX. Działają tylko wtedy, gdy Mac jest włączony i uruchomiono `ia4 start`. Tylko czytają Firestore (zasada 1). Nie zmieniają zbierania, poszukiwania strategii, paper tradingu w Apps Script (11a) ani prognozy FX (4c) — korzystają z ich wyników. Kod powstaje w krokach AI-1…AI-5 (Etap 6, sekcja 7); do tego czasu ta sekcja jest planem, który obowiązuje kod.
+
+| Agent | Kiedy | Co robi |
+|---|---|---|
+| **Agent-Investor** | po każdej rundzie nowych świec (FX co godzinę, akcje po każdej świecy sesji) | rozlicza pozycje, wybiera wejścia spośród kandydatów, zapisuje każdą decyzję z notatką, SL i TP (11c.6–11c.7) |
+| **Strategy-Maker** | w wolnych przebiegach, bez końca | wysuwa hipotezy, Python liczy je na historii, wyniki i wnioski trafiają do huba (11c.8) |
+| **Strategy-Manager** | na starcie, co ok. 4 h, w nocy | krytycznie przegląda pracę Makera i transakcje Inwestora, wyznacza cele, zakazuje tropów, rekomenduje, prowadzi listę wniosków (11c.9) |
+
+### 11c.1 Zasady filaru D
+
+1. **LLM myśli, Python liczy.** Każda liczba — cena, wielkość pozycji, wynik transakcji i backtestu, statystyka — pochodzi z kodu. Model odpowiada wyłącznie JSON-em zgodnym ze schematem (Ollama, parametr `format`); odpowiedź niezgodna → najwyżej 2 ponowienia, potem „brak decyzji” (zapisany jak każda decyzja).
+2. **Limity ryzyka egzekwuje kod** (11c.7). Model ich nie zmienia; Strategy-Manager może ryzyko tylko zmniejszyć (`risk_dial`).
+3. **Bez zaglądania w przyszłość.** Decyzja na świecy t jest wykonywana po cenie open następnej świecy instrumentu (jak 8.6 p. 1). Świece, które przyszły, gdy Mac był wyłączony, służą tylko do rozliczenia otwartych pozycji (SL, TP, limit czasu) — nigdy do nowego wejścia ani ręcznego zamknięcia wstecz.
+4. **Agent czyta brief, nie surowe logi.** Brief przygotowuje Python: wyliczone zestawienie, zawsze z liczbą obserwacji i przedziałem 95%.
+5. **Sejf AI** (11c.8): dane, których Strategy-Maker nigdy nie widzi; otwiera je tylko bramka, każde otwarcie jest liczone.
+6. **Kod pisany przez model nie jest uruchamiany** — wyjątek dopiero w kroku AI-5, za zgodą człowieka, w piaskownicy.
+7. **Wszystko zapisane:** każde wywołanie modelu (pełny prompt i odpowiedź w hubie, skrót SHA-1, model z `digest`, czas), każda decyzja i odrzucenie przez kod z powodem.
+8. **Hub jest pamięcią roboczą, branch `ai` — trwałą historią** (11c.11). Utracony hub odtwarza `python -m ia4.ai.restore` z brancha `ai` (transakcje, decyzje, playbook, wnioski, dyrektywy, hipotezy).
+
+### 11c.2 Model językowy i zasoby Maca
+
+- **Model:** Ollama lokalnie, `qwen2.5:14b` (kwantyzacja Q4, ok. 9 GB). `num_ctx` = 8192 ustawiane jawnie przy każdym wywołaniu (domyślne 2048 ucina kontekst bez ostrzeżenia), `OLLAMA_NUM_PARALLEL=1`, `keep_alive` 30 min. Temperatura: Investor 0,2, Manager 0,3, Maker 0,8. Brief mieści się w ok. 6000 tokenów. Zmiana modelu albo parametrów = zmiana tej instrukcji.
+- **Kolejka do modelu z pierwszeństwem:** Investor → Manager → Maker. Maker oddaje model po bieżącej odpowiedzi; Investor nie czeka na Makera.
+- **Pamięć (MacBook Air M2, 16 GB):** model z kontekstem ok. 10–11 GB, reszta systemu ok. 1 GB, obliczenia Makera najwyżej 2 procesy robocze i ok. 1,5 GB. Dlatego, gdy działa `ia4 start`, nie uruchamia się `ia4.fx.research` ani `ia4.lab` — oba odmawiają startu, gdy istnieje blokada `data/ai/ia4-start.lock` (od AI-1).
+- **Tempo:** ok. 6–10 tokenów/s — runda Inwestora ok. 1–2 min, przegląd Managera 3–5 min. Air nie ma wentylatora: obliczenia Makera z obniżonym priorytetem (`nice`), model wywoływany tylko wtedy, gdy jest o czym decydować.
+
+### 11c.3 Uruchamianie — `ia4 start`
+
+- Jedno polecenie (alias `ia4 start` w `~/.zshrc`) albo dwuklik `IA4-start.command` (skopiowany na Pulpit). Uruchamia `python -m ia4.ai` — jeden proces-nadzorca:
+  1. sprawdza Ollamę (`ollama serve`, gdy nie działa) i obecność modelu; bez nich kończy się z komunikatem, co zrobić,
+  2. `caffeinate`, blokada `data/ai/ia4-start.lock`,
+  3. synchronizacja akcji i FX (11c.4),
+  4. Inwestor rozlicza pozycje na świecach z przerwy (11c.1 p. 3) — wpis „rozliczone po powrocie”,
+  5. przegląd Managera,
+  6. praca: feed, prognoza FX (kod `ia4.fx.live` wewnątrz nadzorcy — osobnego `python -m ia4.fx.live` wtedy nie uruchamiamy), Inwestor, Manager, Maker, publikacja.
+- W terminalu co minutę jedna linia stanu (świece, portfel, co robi każdy agent). **Ctrl+C** kończy w ciągu ok. 30 s: zapis huba, ostatnia publikacja ze `stoppedAt`, zdjęcie blokady.
+- Noc: laptop otwarty i na zasilaczu (ekran może zgasnąć) — z zamkniętą klapą MacBook zasypia mimo `caffeinate`.
+- Rytm Maca (11.10.2026): zwykle od rana do 16:00 i od 18:00 do wieczora, czasem w nocy. Świece akcji zamykają się 16:30…22:00 PL — przy tym rytmie Inwestor decyduje na 5 z 7 świec sesji (18:30–22:00); świece 16:30 i 17:30 tylko rozlicza po powrocie. Między zmianą czasu w Europie i w USA (25.10–1.11.2026) sesja to 14:30–21:00 PL.
+
+### 11c.4 Feed — kopia lokalna nadążająca za Firestore
+
+- **FX:** dokładnie jak 4c.9 (1 odczyt `system/fx1h`, potem dokumenty dni instrumentów z nową świecą) — ten sam kod, ta sama kopia `data/fx1h/`.
+- **Akcje:** od zamknięcia świecy sesji + 60 s co 30 s 1 odczyt `system/status`; gdy `lastWrite` jest nowszy niż ostatnio widziany → `ia4.sync` przyrostowo dla 53 spółek handlowanych oraz SPY i QQQ (bez doubleProof — sejf AI) → kopia `data/*.parquet`. Zdarzenie „świeca akcji” — gdy wszystkie 53 mają świecę albo 4 min po zamknięciu, bez brakujących (jak 11a).
+- Format Firestore bez zmian (zasada 3). Błąd sieci nie zatrzymuje programu — próba w kolejnym obrocie.
+- Zużycie: ok. 900 odczytów na dzień sesyjny (akcje); FX — wspólne z 4c.9.
+
+### 11c.5 Hub — wspólna pamięć agentów (`data/ai/hub.sqlite`)
+
+Jeden plik SQLite (tryb WAL) — kanał komunikacji agentów („tablica”): każdy agent pisze swoje i czyta cudze. Tabele:
+
+| Tabela | Zawartość |
+|---|---|
+| `events` | zdarzenia: nowa świeca, runda, decyzja, wynik hipotezy, przegląd, start i stop |
+| `notes` | dziennik każdego agenta (autor, czas, rodzaj, tekst, odnośniki do decyzji, transakcji, hipotez) |
+| `llm_calls` | każde wywołanie modelu (11c.1 p. 7) |
+| `rounds`, `decisions` | rundy Inwestora: kandydaci, decyzje, odrzucenia przez kod z powodem |
+| `positions`, `trades`, `equity` | portfel: pozycje oczekujące i otwarte, transakcje zamknięte, stan konta po każdej rundzie |
+| `hypotheses`, `experiments` | hipotezy Makera (`ia4-hyp/1`) i ich wyniki (warianty, części walk-forward, sejf) |
+| `playbook` | strategie, których Inwestor może używać, ze statusem (11c.8) |
+| `directives` | Manager → Maker: cele, zakazane tropy, priorytety; z datą ważności |
+| `recommendations` | Manager → Investor: rekomendacje z odnośnikiem do playbooka |
+| `lessons` | wnioski — destylowana wiedza projektu, najwyżej 50 aktywnych |
+| `reviews` | przeglądy Managera (brief, wynik, notatka) |
+
+`lessons` na start zasiewa Claude (AI-2) wnioskami z historii projektu, m.in.: tysiące strategii z 1.1 okazały się w większości jedną „kup spadek w hossie” (1.2); wyniki z danych, na których szukano, są zawyżone — uczciwa ocena to doubleProof i przyszłość (6a, 6b); kierunek FX w H-001 to rzut monetą, zakres i rozrzut są przewidywalne (4c.0, 4c.7); wolumen 0 to brak danych (4); kilkanaście transakcji to za mało na wniosek.
+
+### 11c.6 Agent-Investor
+
+- **Zakres:** 53 spółki handlowane (główne + kontrolne, sekcja 4), 10 par walutowych i BTCUSD (4b). Long i short. doubleProof nie (sejf AI), SPY i QQQ tylko jako tło.
+- **Kapitał:** 100 000 $ (USD) od `startedAt` (start kroku AI-2). Wszystko na papierze.
+- **Rundy:** FX i BTC — po pełnej godzinie, gdy instrumenty z otwartym rynkiem mają świecę albo 5 min po zamknięciu; akcje — po każdej świecy sesji (zdarzenie z 11c.4). Runda bez kandydatów i bez otwartych pozycji nie woła modelu (wpis „brak kandydatów”).
+- **Kolejność rundy:**
+  1. **Rozliczenie** (kod): każda nowa świeca instrumentu — pozycja oczekująca wchodzi po open; potem luka SL/TP → SL → TP (SL i TP w jednej świecy — zawsze SL) → limit czasu (8.6 p. 3).
+  2. **Kandydaci** (kod, najwyżej 12, w kolejności szacunku przewagi): sygnały na tej świecy strategii z playbooka (na start: 60 aktywnych strategii `ia4-rule/1`, liczone na Macu silnikiem `ia4/lab` — tym samym, co w teście zgodności z `PaperEngine.gs`); prognoza FX (4c.6) jest podstawą wejścia tylko dla instrumentu, którego werdykt kierunku brzmi „przewaga nad rzutem monetą” (4c.7) — w pozostałych przypadkach służy do ustawienia SL/TP i wielkości (zakres 48 h, stożek).
+  3. **Brief** (kod): portfel i pozycje (z położeniem ceny między SL i TP), kandydaci z wynikami historycznymi i na żywo (n, średnia, przedział 95%), prognoza FX instrumentów kandydatów z werdyktem słowami, aktywne rekomendacje Managera, `risk_dial`, wolny budżet ryzyka, wnioski.
+  4. **Decyzja** (model, JSON): dla każdego kandydata i każdej otwartej pozycji — `enter_long` / `enter_short` / `skip` / `close` / `tighten_sl` / `hold`; dla wejścia: podstawa (ID z playbooka albo `own`), SL i TP (ceny), limit świec, pewność 0–100, notatka „dlaczego” (po polsku, do 600 znaków); na koniec notatka z całej rundy.
+  5. **Wykonanie** (kod): walidacja (11c.7), wielkość pozycji, pozycja „oczekuje” do open następnej świecy; odrzucone przez kod zapisane z powodem. Potem publikacja (11c.11).
+- **Tryb rygorystyczny** (decyzja człowieka z 11.10.2026): wejście tylko z kandydata z playbooka albo z prognozy FX z udowodnioną przewagą. Wyjątek: **własny pomysł** (`own`) — instrument i kierunek wybiera model, łączne ryzyko otwartych takich pozycji ≤ 10% budżetu ryzyka (11c.7), wyniki liczone osobno — żeby zmierzyć, czy jego osąd coś wnosi.
+- **SL i TP** obowiązkowe przy każdym wejściu. Strategia z playbooka — SL/TP i limit czasu z jej reguły. Własny pomysł — TP/SL od 1:3 do 3:1, odległość SL ≥ 1 × ATR14 instrumentu, limit ≤ 120 świec. Po wejściu SL wolno tylko zacieśniać (w stronę zysku), TP się nie zmienia; wcześniejsze zamknięcie — po open następnej świecy, z notatką.
+- **Akcje:** wejście i zamknięcie tylko po open świecy sesji; decyzja na ostatniej świecy sesji → open pierwszej świecy następnej sesji.
+- **Koszty** (wynik zawsze netto): akcje — `COST_PCT` 0,005% przy wejściu i przy wyjściu (jak 11a); pary walutowe — spread na transakcję, połowa przy wejściu, połowa przy wyjściu: EURUSD 0,8 · USDJPY 0,9 · GBPUSD 1,2 · AUDUSD 1,0 · USDCAD 1,5 · USDCHF 1,5 · NZDUSD 1,6 · EURJPY 1,6 · GBPJPY 2,5 · EURGBP 1,2 pipsa; BTC — 0,05% przy wejściu i przy wyjściu. Bez kosztu finansowania (swap, pożyczka akcji do shortu) — świadome uproszczenie.
+- **Przeliczenie na USD:** wynik w walucie kwotowanej przeliczany kursem z zamknięcia świecy wyjścia: pary z USD jako walutą kwotowaną — bez przeliczenia; USDJPY, USDCAD, USDCHF — przez kurs tej pary; EURJPY, GBPJPY — przez USDJPY; EURGBP — przez GBPUSD.
+
+### 11c.7 Ryzyko — limity egzekwowane przez kod
+
+| Limit | Wartość |
+|---|---|
+| ryzyko na transakcję (strata na SL z kosztami) | 0,5% stanu konta × `risk_dial` × mnożnik statusu z playbooka (11c.8) |
+| `risk_dial` | 0,25–1,0; start 1,0; zmienia go Manager albo automat obsunięcia |
+| pozycje otwarte i oczekujące | najwyżej 12 razem; 1 na instrument |
+| wartość jednej pozycji | akcje i BTC ≤ 20% stanu konta; para walutowa ≤ 50% |
+| ekspozycja brutto (suma wartości pozycji) | ≤ 200% stanu konta |
+| budżet ryzyka | 12 × 0,5% = 6% stanu konta; własne pomysły łącznie ≤ 0,6% |
+| stop dzienny | wynik doby UTC (zrealizowany + niezrealizowany) ≤ −2% → bez nowych wejść do końca doby |
+| obsunięcie od szczytu | ≥ 10% → `risk_dial` 0,5 i obowiązkowy przegląd Managera; ≥ 20% → bez nowych wejść do decyzji człowieka |
+
+Wielkość pozycji = ryzyko $ / (odległość SL + koszty) w jednostkach instrumentu, przycięta do limitów wartości i ekspozycji. Stan konta = kapitał + wynik zamkniętych + wynik otwartych netto.
+
+### 11c.8 Strategy-Maker — hipotezy i playbook
+
+- **Cykl** (w wolnym czasie modelu i rdzeni): brief (aktywne dyrektywy, wnioski, ostatnie wyniki, liczniki prób w rodzinach) → model proponuje 1–5 hipotez w języku **`ia4-hyp/1`** (rodzina, opis, instrumenty, kierunek, warunek wejścia albo model, wyjście: SL/TP/limit, siatka parametrów ≤ 200 wariantów) → kod sprawdza schemat i przemiata warianty → wyniki i notatka modelu do huba. Jedno wywołanie modelu daje setki przeliczeń.
+- **Klocki `ia4-hyp/1`:** reguły `ia4-rule/1` (sekcja 8, akcje); warunki z okoliczności `fx-cond/2` (definicje i progi — **nie** ratingi ani profile, bo te policzono na wynikach całej historii) i cech 8.4 / 4c.3, łączone AND/OR (najwyżej 4); modele z biblioteki: regresja logistyczna, LightGBM (≤ 200 drzew), regresja kwantylowa, analogi `scenario.py` — trenowane walk-forward, sygnał = prawdopodobieństwo albo kwantyl ≥ próg; cechy międzyrynkowe (SPY, QQQ, pary walutowe, BTC) — wartość z ostatniej świecy zamkniętej nie później niż świeca t (wyrównanie po czasie UTC). Pełna gramatyka — zmiana tej instrukcji w kroku AI-3, przed kodem. `ia4-hyp/1` liczy tylko Python (zasada 12).
+- **Ocena:** wykonanie pesymistyczne 8.6 z kosztami 11c.6 (wyjątek od zasady 10); walk-forward na 5 częściach kalendarza (jak 4c.5) z przerwą 48 świec na granicach; model trenowany wyłącznie na częściach wcześniejszych od ocenianej. Wynik: transakcje, PF, średni wynik netto z przedziałem 95%, mediana świec w pozycji (zasada 13), udziały wyjść, przewaga nad wejściem na ślepo (8.6 p. 10), wynik każdej części, liczba prób w rodzinie (wszystkie warianty).
+- **Sito AI** (domyślne progi w `ai/config.json`): ≥ 60 transakcji, PF ≥ 1,3 netto, średni wynik netto > 0 w ≥ 3 z 4 ocenianych części, przewaga nad wejściem na ślepo ≥ 1,2, mediana PF sąsiednich wariantów ≥ 1,1, limit czasu ≤ 10% wyjść; nie-duplikat (≥ 50% wspólnych świec wejścia z pozycją playbooka albo hipotezą sprawdzoną w sejfie → bez sejfu, jak 9.3 p. 4).
+- **Sejf AI:** akcje — 20 spółek doubleProof (sekcja 6a); FX — wszystkie świece 11 instrumentów sprzed 2025-04-01. Maker i jego procesy ich nie wczytują; wynik zwraca wyłącznie bramka. **Bramka:** hipoteza po sicie, te same parametry, jedno otwarcie: ≥ 20 transakcji w sejfie, PF ≥ 1,2 netto, średni wynik netto > 0 → `inkubacja`, inaczej `odrzucona przez sejf`. Każde otwarcie: licznik `ai_vault_peeks` i wpis w `ai/vault.jsonl` (jak zasada 4).
+- **Playbook — statusy i mnożnik ryzyka:**
+
+  | Status | Skąd | Mnożnik |
+  |---|---|---|
+  | `bazowa` | 60 aktywnych strategii Etapu 2 na start AI-2; „wybrane” w backteście portfela (6b) — 1,0, pozostałe 0,5 | 0,5 / 1,0 |
+  | `inkubacja` | hipoteza Makera po bramce sejfu | 0,25 |
+  | `zatwierdzona` | Manager, po ≥ 20 transakcjach na żywo ze średnim wynikiem netto > 0 | 1,0 |
+  | `wycofana` | Manager po ≥ 20 transakcjach na żywo; kod sam — gdy po ≥ 30 średni wynik netto ≤ 0 | 0 |
+
+### 11c.9 Strategy-Manager
+
+- **Kiedy:** na starcie `ia4 start` (po rozliczeniu), co 4 h pracy, wcześniej po 10 nowych transakcjach zamkniętych albo 50 nowych hipotezach (nie częściej niż co godzinę), i przegląd nocny (pierwszy po 23:00, dłuższy brief). Przy obsunięciu ≥ 10% — od razu.
+- **Brief** (kod, od ostatniego przeglądu): hipotezy Makera — liczba, 10 najlepszych z n i przedziałem 95%, odrzucone według powodu, liczba prób w rodzinach, wyniki sejfu; Inwestor — transakcje i wyniki według pozycji playbooka i osobno własnych pomysłów, **pominięte sygnały i ich wynik „gdyby wszedł”** (liczony przez kod na tych samych świecach), kalibracja pewności (deklarowana pewność wobec trafności, w przedziałach), porównanie z punktami odniesienia (11c.10); aktywne dyrektywy, rekomendacje, wnioski, `risk_dial`.
+- **Wynik** (model, JSON): dyrektywy dla Makera (cel / zakaz / priorytet, ważność w godzinach, najwyżej 10 aktywnych), rekomendacje dla Inwestora (najwyżej 5), zmiany playbooka (`zatwierdź` / `wycofaj` — kod sprawdza warunki z 11c.8 i odrzuca niespełniające), `risk_dial`, wnioski (dodaj / zmień / usuń, najwyżej 50 aktywnych), notatka z przeglądu.
+- **Ograniczenia:** wniosek o pozycji playbooka dopiero przy n ≥ 20 (kod); Manager nie zmienia limitów 11c.7 ani progów sita — może je zaproponować w notatce; zmienia je człowiek (z Claude) w `ai/config.json`.
+
+### 11c.10 Jak oceniać Inwestora — punkty odniesienia
+
+Liczone przez kod po każdej rundzie, na tych samych świecach i z tymi samymi limitami:
+- **wszyscy kandydaci** — wirtualnie wchodzi w każdego kandydata z playbooka, na ile pozwalają limity (czy wybór modelu jest lepszy niż brak wyboru),
+- **losowy wybór** — 200 symulacji: tyle samo wejść co Inwestor, losowo spośród tych samych kandydatów (percentyl wyniku Inwestora),
+- **mechaniczny inwestor** z Apps Script (`telemetry/vi.json`, 11a) — średni wynik transakcji,
+- **SPY kup i trzymaj** od `startedAt`.
+
+Ocena jak w PRZEWODNIKU (sekcja 4): mediana i przedział 95% średniego wyniku transakcji, nie dni; żadnego werdyktu przed 30 transakcjami.
+
+### 11c.11 Zapis i widoczność
+
+- **Hub:** `ia4-research/data/ai/hub.sqlite` (poza gitem, 11c.5).
+- **Branch `ai`** (pisze wyłącznie Python z Maca; klon `ia4-research/ai-repo/`; commit po rundzie Inwestora ze zmianą, po przeglądzie Managera i co 30 min pracy Makera):
+  ```
+  ai/README.md
+  ai/config.json        nadpisania progów i limitów (zmienia człowiek z Claude, jak research/config.json)
+  ai/trades.jsonl       transakcja zamknięta = wiersz (wejście, wyjście, powód, wynik netto % i $, koszty, świece, notatki, podstawa, pewność)
+  ai/decisions.jsonl    runda = wiersz (kandydaci, decyzje, odrzucenia przez kod, notatka rundy)
+  ai/hypotheses.jsonl   hipoteza = wiersz (definicja ia4-hyp/1, wyniki, status, notatka)
+  ai/vault.jsonl        każde otwarcie sejfu AI
+  ai/playbook.json      pozycje playbooka ze statusem i wynikami na żywo
+  ai/directives.jsonl   dyrektywy i rekomendacje Managera
+  ai/reviews.jsonl      przeglądy Managera
+  ai/lessons.json       aktywne wnioski
+  ai/benchmarks.json    punkty odniesienia (11c.10)
+  ```
+  Pełne prompty zostają w hubie (na GitHub tylko skróty SHA-1).
+- **Branch `ai-live`** (zawsze jeden commit, force push, jak `fx-live`): `status.json` — sygnał życia co 2 min, stan każdego agenta (co robi, ostatnie wywołanie modelu, kolejka), portfel (stan konta, `risk_dial`, pozycje z SL/TP i wynikiem), ostatnie 30 notatek, `stoppedAt` po Ctrl+C. Bez NaN.
+- **Excel:** `~/Desktop/IA4/AI-INVESTOR.xlsx` (ścieżka: `ai/config.json` → `xlsx_path`; plik w `.gitignore`), przepisywany po każdej rundzie i przeglądzie, zapis atomowy (plik tymczasowy → zamiana; plik otwarty w Excelu/Numbers pokazuje stan z chwili otwarcia). Arkusze: TRANSAKCJE (każda transakcja: nr, otwarcie, instrument, kierunek, podstawa, wejście, SL, TP, wielkość, wartość, ryzyko $, pewność, notatka wejścia, status, wyjście, cena wyjścia, powód, wynik netto % i $, koszty, świece, notatka wyjścia), DECYZJE (każda decyzja, także pominięcia i odrzucenia przez kod), PORTFEL (stan konta, ekspozycja, `risk_dial` po każdej rundzie), DZIENNIK (notatki wszystkich agentów), HIPOTEZY, PRZEGLĄDY, PLAYBOOK. Ścieżka w folderze Dysku Google (aplikacja Google Drive na Macu) → ten sam plik widać w Arkuszach Google.
+- **Strona IA4 — zakładka AI** (11b, klawisz 4): magistrala dostaje ogniwo „Mac (AI)”; panele: agenci (stan, zajęcie, ostatnie wywołanie modelu, wiek), portfel i krzywa wobec punktów odniesienia, pozycje z położeniem między SL i TP, transakcje z notatkami, dziennik agentów (strumień), hipotezy Makera, dyrektywy i wnioski Managera, playbook. Telefon: stan agentów, portfel, pozycje. Źródła: `ai-live/status.json` (co 30 s, API z ETag), pliki `ai/` (co 5 min).
+- Claude na początku rozmowy czyta `ai-live/status.json` oraz końcówki `ai/reviews.jsonl` i `ai/decisions.jsonl` (zasada 7).
+
+### 11c.12 Zużycie
+
+- Firestore: feed akcji ok. 900 odczytów na dzień sesyjny; FX wspólne z 4c.9; 0 zapisów.
+- GitHub: `ai-live` ok. 30 publikacji na godzinę pracy (nie wpływa na stronę); `ai` ok. 10–30 commitów na dzień pracy.
+- Apps Script: nic (limit triggerów — 60 z 90 min w niedzielę 11.10.2026 — nie jest obciążany).
 
 ---
 
@@ -840,7 +1025,7 @@ Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `
 
 ### Mac — na co dzień
 
-Przy wstrzymanym poszukiwaniu Mac **nie jest potrzebny na co dzień** — zbieranie, sygnały i wirtualny inwestor działają w Apps Script. Mac tylko do jednorazowych przeliczeń:
+Przy wstrzymanym poszukiwaniu Mac **nie jest potrzebny na co dzień** — zbieranie, sygnały i wirtualny inwestor działają w Apps Script. Mac tylko do jednorazowych przeliczeń, prognozy FX i AI Investor (niżej):
 
 ```bash
 cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate
@@ -861,6 +1046,14 @@ python -m ia4.fx.research              # ręcznie: przeliczenie wszystkich okoli
 python -m ia4.fx.live                  # prognoza na żywo co 30 s → branch fx-live → strona IA4, zakładka FX (Ctrl+C kończy)
 ```
 
+AI Investor (sekcja 11c, od kroku AI-1) — Mac włączony, gdy agenci mają pracować; noc: laptop otwarty i na zasilaczu:
+
+```bash
+ia4 start            # albo dwuklik IA4-start.command: Ollama, synchronizacja, rozliczenie przerwy, przegląd, agenci + prognoza FX (Ctrl+C kończy)
+```
+
+Przy działającym `ia4 start` nie uruchamiamy osobno `ia4.fx.live` (prognoza FX działa wewnątrz), `ia4.fx.research` ani `ia4.lab` (pamięć, 11c.2).
+
 Poszukiwanie (gdy zostanie wznowione, `search_closed: false`): `python -m ia4.lab --workers 4` (alias `ia4`); opcje: `--hours N`, `--workers N`, `--check`, `--no-sync`, `--no-push`.
 
 ### Limity Firestore (plan Spark: 20 000 zapisów i 50 000 odczytów na dzień)
@@ -879,6 +1072,7 @@ Poszukiwanie (gdy zostanie wznowione, `search_closed: false`): `python -m ia4.la
 | Mac: `ia4.sync --full` | — | ok. 48 000 — nie łączyć tego samego dnia z innymi dużymi odczytami |
 | Mac: `ia4.fx.sync` (FX-research, start FX-real-time) | — | pierwszy raz ok. 7000 (wszystkie dni 11 instrumentów), potem ok. 1–3 na instrument / start |
 | Mac: FX-real-time | — | ok. 12 / godzinę: ok. 290 / pełny dzień roboczy, w weekend ok. 50 (BTC) |
+| Mac: AI Investor — feed akcji (`ia4 start`, 11c.4) | — | ok. 900 / dzień sesyjny (FX — wspólne z FX-real-time) |
 
 ### Limity Apps Script (konto Gmail)
 
@@ -904,6 +1098,7 @@ cd ~/Desktop/IA4 && git pull
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.32 | 2026-10-11 | Etap 6 — AI Investor, filar D (nowa sekcja 11c; sama instrukcja, kod w krokach AI-1…AI-5; decyzje człowieka z 11.10.2026): trzej agenci na lokalnym modelu `qwen2.5:14b` (Ollama, MacBook Air M2 16 GB) — Agent-Investor (wirtualny portfel 100 000 $ na 53 spółkach, 10 parach i BTC, long i short, decyzja po open następnej świecy, notatka + SL + TP, tryb rygorystyczny: wejścia z playbooka albo z prognozy FX z udowodnioną przewagą, własne pomysły ≤ 10% budżetu ryzyka, koszty i przeliczenie na USD, limity ryzyka w kodzie), Strategy-Maker (hipotezy `ia4-hyp/1`, ocena walk-forward z kosztami, sito AI, sejf AI: doubleProof i FX sprzed 2025-04-01, inkubacja) i Strategy-Manager (briefy, dyrektywy, rekomendacje, wnioski, statusy playbooka); hub SQLite, feed akcji przez `system/status`, uruchamianie `ia4 start`, punkty odniesienia (wszyscy kandydaci, losowy wybór, mechaniczny inwestor, SPY), branche `ai` i `ai-live`, plik `AI-INVESTOR.xlsx`, zakładka AI strony. Nowe zasady 16 (LLM myśli, Python liczy) i 17 (sejf AI); dopiski w zasadach 7, 10, 11, 12; sekcja 0 (filar D, otwarte kroki), Etap 4 (wynik H-001), nowy Etap 6, sekcje 1, 3, 11b, 12. `Telemetry.gs`: etap w telemetrii. |
 | 1.31 | 2026-10-11 | Przegląd H-001 (11.10.2026: stożek 77–78% przy celu 80%, analogi o ok. 2% lepsze w pinball, najwyższy rating 23, λ = 0, P(wzrost) wszędzie 50%): drugi kandydat na środek prognozy — mediana ścieżek z podobnych chwil (`model.center` = `analog`), ten sam test przewagi ≥ 1% w części B (4c.6 p. 4, 4c.7). Wcześniej przy λ = 0 kierunek analogów był z konstrukcji wyrzucany. Konsola FX-research pokazuje obu kandydatów; `runs.jsonl` — pole `center`. |
 | 1.30 | 2026-10-11 | Kalibracja `fx-cond/2` (4c.3 p. 2, przed pierwszym `--commit`, za zgodą człowieka): kandydat przepada także, gdy na którymkolwiek instrumencie częstość którejkolwiek strony < 1% albo > 80% (`INST_RANGE` w `catalog.py`). Przegląd próbnej kalibracji z 11.10.2026: 12 par (knoty, położenie zamknięcia) rozpoznawało instrument zamiast rynku (0,1–97,9%). |
 | 1.29 | 2026-10-11 | Porządek instrukcji, żeby nowa rozmowa wiedziała wszystko: nowa sekcja 0 (mapa trzech filarów — akcje i wirtualny inwestor, FX: zbieranie + prognoza, strona; przepływ danych; gdzie co leży; historia wersji w skrócie; lista otwartych kroków), nagłówek „Aktualny etap” ze wszystkimi etapami, zasada 7 (czytanie `vi.json` i listy otwartych kroków), zasada 8 (wersja także w `docs/`), 11a (`vi.json`), Etap 3 (stan), krok FX-8 (plan inwestora FX, tylko za zgodą), nowy Etap 5 — strona IA4. `Telemetry.gs`: etap w telemetrii zgodny z nagłówkiem. Bez zmian logiki. |

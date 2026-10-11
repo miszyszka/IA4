@@ -1,5 +1,5 @@
 // IA 4 — „czy system żyje”: jeden model stanu dla magistrali (góra strony) i zakładki System.
-// Wersja projektu: 1.31 (2026-10-11)
+// Wersja projektu: 1.32 (2026-10-11)
 //
 // Każde ogniwo ma: ts (chwila ostatniego znaku życia, ms), status ok / warn / bad / off,
 // opis i oczekiwany rytm. Wiek liczony jest na żywo (co sekundę) z ts.

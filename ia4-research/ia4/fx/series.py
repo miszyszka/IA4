@@ -1,6 +1,6 @@
 """
 IA 4 — seria świec 1h jednego instrumentu i wskaźniki modułu prognozy (instrukcja, sekcje 4c.1 i 4c.3).
-Wersja projektu: 1.31 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.32 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Seria = wszystkie świece instrumentu w kolejności czasu, indeks t bez przerw (przez noce
 i weekendy też). Przerwa (4c.1) = brak co najmniej jednej oczekiwanej świecy rynku między

@@ -1,7 +1,7 @@
 """
 IA 4 — FX-research: wystąpienia, profile, ratingi i sprawdzian okoliczności na świecach 1h
 11 instrumentów (instrukcja, sekcje 4c.4–4c.8).
-Wersja projektu: 1.31 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.32 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.research              # synchronizacja, przeliczenie od zera, zapis i push na branch fx
   python -m ia4.fx.research --no-sync    # bez Firestore (kopia lokalna)
