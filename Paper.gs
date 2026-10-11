@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — PAPER TRADING  (sygnały na żywo + wirtualny inwestor)
  *
- *  Wersja projektu: 1.27 (2026-10-10) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.28 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Po zamknięciu każdej świecy, gdy automat zapisał ją do Firestore:
  *   1. dociąga nowe świece z Firestore do pamięci (ukryty arkusz _IA4_DANE,
@@ -212,6 +212,7 @@ function paperStep_() {
     });
     nSig += fired.length;
     sigRows.push([K, fired]);
+    state.sigLog = (state.sigLog || []).concat([[K, fired]]).slice(-VI_PUB.SIGNALS);   // dla telemetry/vi.json
     state.lastKey = K;
   });
 
@@ -231,6 +232,10 @@ function paperStep_() {
   if (keys.length && typeof candleLogPaper_ === 'function') {
     const lastRow = sigRows[sigRows.length - 1];
     candleLogPaper_(state.lastKey, { sig: tSig, sheets: tSheets, signals: lastRow ? lastRow[1].length : 0, opened, closed });
+  }
+  if (keys.length) {                                  // strona IA4 (instrukcja 11b): vi.json i state.json zaraz po świecy
+    try { telemetryViPublish_(state, X, invIds, active, prio); } catch (e) { console.warn('vi.json: ' + e.message); }
+    try { telemetryPublish_(false); } catch (e) { console.warn('telemetria: ' + e.message); }
   }
   return `paper: świec ${keys.length}, sygnałów ${nSig}, otwarto ${opened}, zamknięto ${closed}` + (note ? ` (${note})` : '');
 }
@@ -516,6 +521,7 @@ function viResetNow() {
     pp_storeSave_(store);
     pp_saveSummary_(state);
     pp_writeInvestor_(pp_investorSheet_(), state, viSelectedIds_(), {});
+    try { telemetryViPublish_(state, {}, viSelectedIds_(), pp_activeIds_(), pp_priority_()); } catch (e) { console.warn('vi.json: ' + e.message); }
     toast_('Wirtualny inwestor zaczyna od zera.');
   } finally { lock.releaseLock(); }
 }

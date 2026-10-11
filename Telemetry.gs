@@ -2,9 +2,9 @@
  * ============================================================================
  *  IA 4 — TELEMETRIA  (stan zbierania → telemetry/state.json w GitHub)
  *
- *  Wersja projektu: 1.27 (2026-10-10) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.28 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
- *  Claude widzi tylko repozytorium, nie arkusz. Ten plik raz na godzinę
+ *  Claude widzi tylko repozytorium, nie arkusz. Ten plik raz na godzinę (i zaraz po świecy sesji)
  *  publikuje krótki stan bazy: etap, wersję, stan automatu i dla każdego
  *  instrumentu ostatnią świecę oraz liczbę świec w bazie. Commit powstaje
  *  tylko wtedy, gdy coś się zmieniło.
@@ -21,6 +21,86 @@ const TELEMETRY = {
   STAGE: 'Etap 2 — poszukiwanie strategii (wstrzymane) · Etap 3 — paper trading · moduł FX — zbieranie świec 1h (10 par + BTC) · Etap 4 — prognoza FX 1h (rozkład, scenariusze)',   // zmieniać razem z nagłówkiem instrukcji
   MIN_GAP_MIN: 10,
 };
+
+// ============================================================================
+//  telemetry/vi.json — wirtualny inwestor dla strony IA4 (instrukcja, sekcja 11b)
+//  Wysyła go Paper.gs zaraz po przeliczeniu świecy (i „zacznij od nowa”); commit
+//  tylko, gdy treść się zmieniła (VI_HASH). Cała zawartość pochodzi ze stanu
+//  inwestora (_IA4_DANE) — nic nowego nie jest liczone.
+// ============================================================================
+const VI_PUB = {
+  PATH: 'telemetry/vi.json',
+  CLOSED: 150,          // ostatnich zamkniętych transakcji z pełnym opisem
+  EQUITY: 2000,         // punktów krzywej wyniku (każda zamknięta transakcja)
+  SIGNALS: 35,          // ostatnich świec z sygnałami (5 sesji)
+};
+
+function telemetryViPublish_(state, X, invIds, active, prio) {
+  const doc = telemetryViDoc_(state, invIds, active, prio);
+  const props = PropertiesService.getScriptProperties();
+  const body = JSON.parse(JSON.stringify(doc));
+  delete body.generatedAt;
+  const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, JSON.stringify(body), Utilities.Charset.UTF_8);
+  const hash = raw.map(b => ((b & 0xFF) + 0x100).toString(16).slice(1)).join('');
+  if (hash === props.getProperty('VI_HASH')) return false;
+  if (!props.getProperty('GITHUB_TOKEN')) return false;
+  telemetryGithubPut_(VI_PUB.PATH, JSON.stringify(doc), `VI ${doc.lastCandlePL || ''}`.trim());
+  props.setProperty('VI_HASH', hash);
+  return true;
+}
+
+function telemetryViDoc_(state, invIds, active, prio) {
+  const lab = K => K ? pp_closeLabel_(K, {}).pl : null;
+  const r2 = x => (x === undefined || x === null) ? null : Math.round(x * 100) / 100;
+  const r4 = x => (x === undefined || x === null) ? null : Math.round(x * 10000) / 10000;
+  const P = state.positions || [];
+  const closed = P.filter(p => p.status === 'zamknięta').sort((a, b) => (a.exitKey - b.exitKey) || (a.no - b.no));
+  const live = P.filter(p => p.status !== 'zamknięta').sort((a, b) => b.no - a.no);
+  const cs = pp_closedStats_(P);
+  const cnt = k => closed.filter(p => p.exitKind === k).length;
+  const unreal = live.filter(p => p.status === 'otwarta').reduce((a, p) => a + PAPER.STAKE * (p.retNow || 0) / 100, 0);
+  let cum = 0;
+  const equity = closed.map(p => { cum += p.pnl; return [lab(p.exitKey), r2(cum)]; }).slice(-VI_PUB.EQUITY);
+  const by = {};
+  P.forEach(p => {
+    const b = by[p.id] || (by[p.id] = { n: 0, tp: 0, sumPct: 0, usd: 0, open: 0 });
+    if (p.status === 'zamknięta') { b.n++; b.sumPct += p.ret; b.usd += p.pnl; if (p.exitKind === 'TP') b.tp++; } else b.open++;
+  });
+  const ids = Array.from(new Set((active || []).concat(invIds || [])));
+  const vi = new Set(invIds || []);
+  return {
+    version: CONFIG.VERSION,
+    generatedAt: new Date().toISOString(),
+    lastCandleKey: state.lastKey || 0,
+    lastCandlePL: lab(state.lastKey),
+    since: state.startedAt || null,
+    capital: PAPER.CAPITAL, stake: PAPER.STAKE, costPct: PAPER.COST_PCT, maxPerTicker: PAPER.MAX_PER_TICKER,
+    summary: {
+      closed: closed.length, open: live.filter(p => p.status === 'otwarta').length,
+      pending: live.filter(p => p.status === 'oczekuje').length,
+      avgPct: r4(cs.avg), ci95Pct: r4(cs.ci), realizedUsd: r2(cs.usd), unrealizedUsd: r2(unreal), tpShare: r4(cs.tp),
+      exits: { TP: cnt('TP'), SL: cnt('SL'), FC: cnt('FC'), LIMIT: cnt('LIMIT') },
+      medianBars: closed.length ? pp_median_(closed.map(p => p.bars || 0)) : null,
+      costsUsd: r2(closed.reduce((a, p) => a + PAPER.STAKE * (p.cost || 0) / 100, 0)),
+    },
+    open: live.map(p => ({ no: p.no, id: p.id, sym: p.sym, dir: p.dir > 0 ? 'long' : 'short', status: p.status,
+      signal: lab(p.sigKey), entryAt: lab(p.entryKey), entry: r4(p.entry), sl: p.sl, tp: p.tp, slPx: p.slPx || null,
+      tpPx: p.tpPx || null, price: r4(p.price), retPct: r4(p.retNow), usd: r2(PAPER.STAKE * (p.retNow || 0) / 100),
+      bars: p.bars || 0, maxBars: p.maxBars || 0, lastAt: lab(p.lastKey) })),
+    closed: closed.slice(-VI_PUB.CLOSED).reverse().map(p => ({ no: p.no, id: p.id, sym: p.sym, dir: p.dir > 0 ? 'long' : 'short',
+      entryAt: lab(p.entryKey), entry: r4(p.entry), exitAt: lab(p.exitKey), exit: r4(p.exitPx), kind: p.exitKind,
+      retPct: r4(p.ret), usd: r2(p.pnl), bars: p.bars || 0 })),
+    equity,
+    strategies: ids.map(id => {
+      const b = by[id] || { n: 0, tp: 0, sumPct: 0, usd: 0, open: 0 };
+      const rl = state.rules && state.rules[id];
+      return { id, desc: rl ? rl.desc : null, forVI: vi.has(id), active: (active || []).indexOf(id) >= 0,
+               priority: prio && prio[id] !== undefined ? prio[id] + 1 : null, closed: b.n, open: b.open,
+               avgPct: b.n ? r4(b.sumPct / b.n) : null, tpShare: b.n ? r4(b.tp / b.n) : null, usd: r2(b.usd) };
+    }),
+    signals: (state.sigLog || []).slice().reverse().map(([K, fired]) => ({ at: lab(K), key: K, fired })),
+  };
+}
 
 /** Handler triggera godzinowego — NIE zmieniaj nazwy. */
 function telemetryHourly() { telemetryPublish_(false); }

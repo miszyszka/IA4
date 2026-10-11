@@ -1,9 +1,13 @@
 # telemetry/
 
-**Wersja projektu: 1.27 (2026-10-10)**
+**Wersja projektu: 1.28 (2026-10-11)**
 
 `state.json` — najnowszy stan zbierania danych. Zapisuje go `Telemetry.gs`
-z Apps Script (co godzinę, tylko gdy coś się zmieniło). Nie edytuj ręcznie.
+z Apps Script (co godzinę i zaraz po świecy sesji, tylko gdy coś się zmieniło). Nie edytuj ręcznie.
+
+`vi.json` — wirtualny inwestor dla strony IA4 (instrukcja, sekcja 11b): podsumowanie, otwarte
+pozycje, ostatnie 150 transakcji, krzywa wyniku, strategie, sygnały ostatnich 35 świec. Zapisuje go
+`Telemetry.gs` po każdym przeliczeniu świecy w `Paper.gs`, tylko gdy treść się zmieniła.
 
 ```
 version, stage     wersja projektu i bieżący etap

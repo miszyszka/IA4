@@ -1,6 +1,6 @@
 """
 IA 4 — wyniki modułu prognozy FX 1h (10 par + BTC/USD) na branchu `fx` (instrukcja, sekcja 4c.12).
-Wersja projektu: 1.27 (2026-10-10) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.28 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Klon brancha w ia4-research/fx-repo/ (poza gitem głównego repo), te same
 uprawnienia do push co zwykły `git push` na tym Macu. Mechanika git — wspólna
@@ -25,7 +25,7 @@ Ten branch zapisuje wyłącznie Python z Maca. Zasady i znaczenie plików:
   przewaga, częstość i profil 48 świec każdej okoliczności, sprawdzian systemu
 - `fx/runs.jsonl` — wiersz na każde przeliczenie (H-001, H-002, …) → arkusz OKOLICZNOSCI_FX
 - `fx/archive/fx-cond-1-5m/` — archiwum katalogu `fx-cond/1` (EURUSD 5 min, 1.21–1.26), tylko do wglądu
-- `index.html`, `.nojekyll` — dashboard na GitHub Pages; dane na żywo: branch `fx-live` (`forecast.json`)
+- `index.html`, `.nojekyll` — dawny dashboard (do 1.27); od 1.28 strona IA4 jest w `docs/` na branchu `main`
 """
 
 

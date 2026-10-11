@@ -1,12 +1,12 @@
 """
 IA 4 — FX-real-time: prognoza rozkładu na żywo dla 11 instrumentów 1h (instrukcja, sekcje 4c.6, 4c.9, 4c.10).
-Wersja projektu: 1.27 (2026-10-10) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.28 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.live              # działa do Ctrl+C
   python -m ia4.fx.live --no-push    # bez GitHub (test: forecast.json tylko w fx-live-repo/)
 
 Start: katalog, ratingi, profile i model na żywo z fx-repo/fx/ (ostatnie przeliczenie FX-research),
-dashboard na branch `fx`, synchronizacja kopii lokalnej, prognoza z ostatniej świecy każdego instrumentu.
+synchronizacja kopii lokalnej, prognoza z ostatniej świecy każdego instrumentu.
 Pętla co 30 s:
   • gdy któremuś instrumentowi powinna już przybyć świeca (zamknięcie + 60 s; pary walutowe tylko
     w godzinach rynku, BTC co godzinę) — 1 odczyt system/fx1h; instrumenty z nowszą świecą — ich
@@ -22,7 +22,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shutil
 import subprocess
 import sys
 import time
@@ -46,7 +45,6 @@ LATE_EVERY_SEC = 300
 ALIVE_EVERY_SEC = 120         # sygnał życia
 SHOW = 48                     # świec wstecz na dashboardzie
 TOP = 5                       # okoliczności o najwyższym ratingu wśród prawdziwych (na dashboard)
-DASHBOARD = Path(__file__).resolve().parent / "dashboard" / "index.html"
 
 
 def iso(t: float) -> str:
@@ -284,16 +282,6 @@ class LiveRepo:
         return r.returncode == 0
 
 
-def publish_dashboard(repo) -> bool:
-    """Kopia dashboardu (ia4/fx/dashboard/index.html) w korzeniu brancha `fx` — GitHub Pages (4c.10)."""
-    dst = repo.root / "index.html"
-    if dst.exists() and dst.read_bytes() == DASHBOARD.read_bytes() and (repo.root / ".nojekyll").exists():
-        return False
-    shutil.copyfile(DASHBOARD, dst)
-    (repo.root / ".nojekyll").write_text("", encoding="utf-8")
-    return repo.commit_push("fx: dashboard (index.html)")
-
-
 # ===========================================================================
 #  Pętla
 # ===========================================================================
@@ -378,8 +366,6 @@ def main() -> None:
     repo = fx_repo(push=not a.no_push)
     repo.ensure()
     model = Model(repo.root)
-    if publish_dashboard(repo):
-        print("  dashboard zaktualizowany na branchu fx")
     dfs = load_all() if a.no_sync else sync()
     out = LiveRepo(repo.root.parent / "fx-live-repo", push=not a.no_push)
     out.ensure(repo._origin() if not a.no_push else None)
@@ -395,7 +381,7 @@ def main() -> None:
         rg = (e.get("range") or {}).get("size")
         print(f"    {e['id']:7s} świeca {e['lastCandle'][:16]} · zakres 48 h {rg / e['pip'] if rg else 0:.0f} {unit} · "
               f"P(wzrost) {(e.get('pUp') or {}).get('48')}")
-    print(f"  dashboard: https://miszyszka.github.io/IA4/  (Ctrl+C kończy)\n")
+    print(f"  strona: https://miszyszka.github.io/IA4/#fx  (Ctrl+C kończy)\n")
     try:
         while True:
             try:

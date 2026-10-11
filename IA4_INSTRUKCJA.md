@@ -1,8 +1,8 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.27
-**Data:** 10 października 2026
-**Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca. Poszukiwanie wstrzymane 3.10.2026 (`search_closed: true`) — zostaje 60 aktywnych strategii. Od 10.10.2026 (1.27) moduł FX zbiera świece 1h 10 par walutowych i BTC/USD (sekcja 4b; baza EURUSD 5 min usunięta). 🟨 Etap 4 — prognoza FX na 48 świec 1h jako rozkład: stożek, zakres, kierunek i scenariusze z historii (sekcja 4c) — po przejściu na 1h liczona od nowa (krok FX-7). Jak czytać arkusze i wyciągać wnioski: `PRZEWODNIK.md`.
+**Wersja:** 1.28
+**Data:** 11 października 2026
+**Aktualny etap:** 🟨 Etap 2 — Poszukiwanie strategii i 🟨 Etap 3 — Paper trading (sygnały na żywo, wirtualny inwestor). Etap 1 (baza danych) zamknięty 30.09.2026; automat zbierający świece działa dalej bez końca. Poszukiwanie wstrzymane 3.10.2026 (`search_closed: true`) — zostaje 60 aktywnych strategii. Od 10.10.2026 (1.27) moduł FX zbiera świece 1h 10 par walutowych i BTC/USD (sekcja 4b; baza EURUSD 5 min usunięta). 🟨 Etap 4 — prognoza FX na 48 świec 1h jako rozkład: stożek, zakres, kierunek i scenariusze z historii (sekcja 4c) — po przejściu na 1h liczona od nowa (krok FX-7). Stan całego systemu na jednej stronie: konsola IA4 `https://miszyszka.github.io/IA4/` (sekcja 11b). Jak czytać arkusze i wyciągać wnioski: `PRZEWODNIK.md`.
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jeśli kod, arkusz albo telemetria się z nim rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -15,7 +15,7 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Je�
 3. **Paper trading** (Etap 3): sygnały strategii na żywo i wirtualny inwestor w Apps Script, po każdej zamkniętej świecy (sekcja 11a).
 4. **Weryfikacja na nowych spółkach:** grupa doubleProof (20 spółek), której system nigdy nie widzi przy szukaniu — do sprawdzania strategii przez człowieka (sekcja 6a).
 5. **Moduł FX 1h:** osobna baza świec godzinowych 10 najczęściej handlowanych par walutowych i Bitcoina (sekcja 4b).
-6. **Prognoza FX** (Etap 4): co może się stać z kursem każdego z 11 instrumentów w ciągu 48 świec 1h — rozkład z prawdziwych historycznych ścieżek (stożek, oczekiwany zakres, prawdopodobieństwo wzrostu, scenariusze) i 1000 okoliczności z ratingiem; przeliczenie na Macu, prognoza na żywo i dashboard (sekcja 4c).
+6. **Prognoza FX** (Etap 4): co może się stać z kursem każdego z 11 instrumentów w ciągu 48 świec 1h — rozkład z prawdziwych historycznych ścieżek (stożek, oczekiwany zakres, prawdopodobieństwo wzrostu, scenariusze) i 1000 okoliczności z ratingiem; przeliczenie na Macu, prognoza na żywo i zakładka FX strony IA4 (sekcje 4c, 11b).
 
 Historia wcześniejszych prac (strategie S1/S2, backtesty, etapy 0–5) jest w historii gita do wersji 0.47.
 
@@ -38,11 +38,11 @@ Historia wcześniejszych prac (strategie S1/S2, backtesty, etapy 0–5) jest w h
 8. **Jedna wersja dla całego projektu.** Ten sam numer w nagłówku tej instrukcji, w nagłówku każdego pliku `.gs`, w `CONFIG.VERSION` (`Code.gs`) i w `ia4-research/` (`ia4/__init__.py`). Zmiana znacząca (logika, zasada, format, etap) podbija wersję i dostaje wpis w sekcji 13. Drobne poprawki — tylko opis w commicie. (`appsscript.json` nie nosi wersji — JSON nie ma komentarzy.)
 9. **Strategia to reguła, nie kod.** Każda zapisana strategia jest pełną regułą w języku `ia4-rule/1` (sekcja 8): linie, sygnał, filtry, SL, TP, FC, limit czasu — wszystko liczbami, bez parametrów domyślnych. Definicje z sekcji 8 zmienia się tylko razem z nową wersją języka (`ia4-rule/2`); stare strategie zachowują swoją wersję.
 10. **Symulacja jest zawsze pesymistyczna** (sekcja 8.6). Strategie (poszukiwanie, weryfikacja, backtest doubleProof) liczone są bez kosztów transakcyjnych, każda reguła na wszystkich hipotezach SL × TP naraz. Koszt transakcyjny (`COST_PCT` = 0,005% wartości pozycji przy wejściu i przy wyjściu) liczą tylko wirtualny inwestor (11a) i backtest portfela (6b).
-11. **Wyniki poszukiwania żyją na branchu `research`** (sekcja 10), wyniki prognozy FX — na branchach `fx` i `fx-live` (sekcja 4c.12). Python nie pisze do `main`; `main` to kod, ta instrukcja i telemetria automatu.
+11. **Wyniki poszukiwania żyją na branchu `research`** (sekcja 10), wyniki prognozy FX — na branchach `fx` i `fx-live` (sekcja 4c.12). Python nie pisze do `main`; `main` to kod, ta instrukcja, telemetria automatu (`telemetry/`) i strona IA4 (`docs/`, sekcja 11b).
 12. **Jeden język reguł, dwie implementacje.** Reguły liczy Python (`ia4/lab`, backtest) i JavaScript (`PaperEngine.gs`, na żywo). Każda zmiana definicji z sekcji 8 musi trafić do obu naraz, a test zgodności (`ia4-research/tests/`, sekcja 11a) musi dać 0 rozbieżności.
 13. **Mediana trzymania.** Każdy wynik strategii albo portfela (arkusze, pliki wyników) podaje medianę świec w pozycji: świeca wyjścia − świeca wejścia + 1.
 14. **Katalog okoliczności FX jest nienaruszalny.** Po jednorazowej kalibracji (sekcja 4c.2) ID, definicje i progi okoliczności nigdy się nie zmieniają; nowy katalog powstaje tylko jako nowa wersja (`fx-cond/3`), za zgodą człowieka. Obowiązuje `fx-cond/2` (świece 1h, od 1.27); `fx-cond/1` (EURUSD 5 min) — tylko w archiwum (4c.2).
-15. **Prognoza zawsze z niepewnością i dowodem.** Prognoza FX pokazuje rozkład (stożek, zakres, P(wzrost)), nigdy samą linię. Linia środkowa odchyla się od ceny bieżącej tylko w takim stopniu, w jakim sprawdzian na danych niewidzianych przez model (4c.7) potwierdził jej przewagę; dashboard zawsze pokazuje wynik sprawdzianu słowami.
+15. **Prognoza zawsze z niepewnością i dowodem.** Prognoza FX pokazuje rozkład (stożek, zakres, P(wzrost)), nigdy samą linię. Linia środkowa odchyla się od ceny bieżącej tylko w takim stopniu, w jakim sprawdzian na danych niewidzianych przez model (4c.7) potwierdził jej przewagę; strona IA4 zawsze pokazuje wynik sprawdzianu słowami.
 
 ---
 
@@ -58,14 +58,15 @@ Yahoo ──(Apps Script, co minutę)──▶ Firestore ──(ia4.sync)──�
                   └──▶ po każdej świecy: Paper.gs (Firestore → pamięć _IA4_DANE → sygnały, inwestor)
 Yahoo 10 par + BTC (1h) ──(Fx.gs, w tym samym triggerze)──▶ Firestore fx1h/*, system/fx1h (moduł FX, sekcja 4b) ──▶ arkusz FX
 Firestore fx1h ──(ia4.fx.sync)──▶ Mac: data/fx1h/ ──▶ ia4.fx.research (ręcznie) ──▶ GitHub fx: ratingi, index.html ──▶ arkusz OKOLICZNOSCI_FX
-                                                  └──▶ ia4.fx.live (co 30 s) ──▶ GitHub fx-live: forecast.json ──▶ dashboard (GitHub Pages)
+                                                  └──▶ ia4.fx.live (co 30 s) ──▶ GitHub fx-live: forecast.json
+GitHub main: telemetry/state.json, telemetry/vi.json · research · fx · fx-live ──(przeglądarka, tylko odczyt)──▶ strona IA4: GitHub Pages z main/docs (sekcja 11b)
 ```
 
 | Plik | Rola |
 |---|---|
 | `Code.gs` | automat: listy instrumentów, zbieranie na żywo (szybka ścieżka po zamknięciu świecy), nocne odświeżenie, liczenie bazy, pobieranie historii doubleProof, zapis do Firestore, arkusz STATS, menu, triggery |
 | `Fx.gs` | moduł FX 1h: świece 1h 10 par walutowych i BTC z Yahoo → Firestore `fx1h`, arkusz FX, opóźnienia w STATS (sekcja 4b); arkusz OKOLICZNOSCI_FX (4c.11) |
-| `Telemetry.gs` | stan zbierania → `telemetry/state.json` w GitHub (branch `main`) |
+| `Telemetry.gs` | stan zbierania → `telemetry/state.json`, stan wirtualnego inwestora → `telemetry/vi.json` w GitHub (branch `main`) |
 | `Research.gs` | branch `research` (`strategies.jsonl`, `backtest-doubleproof.json`, `portfolio-backtest.json`) → arkusze STRATEGIE i BACKTEST PORTFELA; listy `ACTIVE_IDS` i `PRIORITY` dla paper tradingu |
 | `Paper.gs` | paper trading: pamięć świec, sygnały na żywo (SIGNALS-REALTIME), wirtualny inwestor (VIRTUAL-INVESTOR) |
 | `PaperEngine.gs` | język reguł `ia4-rule/1` w JavaScript — wierna kopia `indicators/data/rules/sim.py` |
@@ -90,6 +91,8 @@ Firestore fx1h ──(ia4.fx.sync)──▶ Mac: data/fx1h/ ──▶ ia4.fx.res
 | `ia4-research/ia4/lab/selftest.py` | test silnika na danych syntetycznych |
 | `ia4-research/README.md` | instalacja i użycie |
 | `telemetry/state.json` | stan automatu, generowany — nie edytować |
+| `telemetry/vi.json` | wirtualny inwestor dla strony IA4 (pozycje, transakcje, strategie, sygnały), generowany po każdej świecy — nie edytować (11b) |
+| `docs/` | strona IA4 — konsola systemu na GitHub Pages: `index.html`, `css/`, `js/` (moduły bez buildu), `fonts/`, `README.md` — jak rozwijać (sekcja 11b) |
 | `IA4_INSTRUKCJA.md` | ten plik |
 | `ia4-research/ia4/fx/` | prognoza FX 1h (sekcja 4c): `instruments.py` (lista 11 instrumentów i godziny rynku — kopia z `Fx.gs`), `sync.py` (Firestore `fx1h` → `data/fx1h/`), `series.py` (seria, lustro, wskaźniki 4c.3; średnie, ATR, RSI z `ia4/lab/indicators.py`), `catalog.py` (okoliczności `fx-cond/2`, kalibracja na puli instrumentów), `selftest.py` i `synth.py` (dane syntetyczne do testów), `research.py` (pula, wystąpienia, profile, ratingi walk-forward, środek prognozy), `scenario.py` (prognoza rozkładu i jej sprawdzian, 4c.6–4c.7), `live.py` (prognoza na żywo), `store.py` (branche `fx` i `fx-live`), `dashboard/index.html` |
 | `PRZEWODNIK.md` | prosty przewodnik dla człowieka: co jest gdzie, jak czytać, jakie wnioski |
@@ -367,29 +370,25 @@ Każde przeliczenie FX-research sprawdza prognozę bez zaglądania w przyszłoś
 
 #### 4c.8 FX-research — `python -m ia4.fx.research`
 
-Tylko ręcznie. Kolejno: synchronizacja (4c.1) → klon brancha `fx` w `ia4-research/fx-repo/` → katalog `fx-cond/2` z `fx/conditions.json` (bez niego program kończy się komunikatem — najpierw kalibracja, 4c.2) → pula, wszystkie wystąpienia i profile od zera (4c.4) → ratingi (4c.5) → sprawdzian prognozy rozkładu i wybór modelu na żywo (4c.7) → prognoza z ostatniej świecy każdego instrumentu → zapis i push na branch `fx`: `fx/ratings.json` (jedna okoliczność = jedna linia; w nagłówku: dane każdego instrumentu, `scenario` — wyniki wszystkich metod, model na żywo z f i λ, `lastCandle` — prognoza z ostatniej świecy każdego instrumentu), dopisany wiersz `fx/runs.jsonl`, `index.html` (kopia dashboardu z `ia4/fx/dashboard/`). Lokalnie: `data/fx1h/occurrences.npz` (4c.4) i podgląd `data/fx1h/ratings-preview.csv` (rating, wystąpienia, przewaga, częstość w puli i na instrumentach, profil dla k = 12 i 48 — do obejrzenia przed arkuszem OKOLICZNOSCI_FX). Każde przeliczenie na świecach 1h ma ID `H-001`, `H-002`, … (`R-…` — archiwum 5 min). Opcje: `--no-sync`, `--no-push`. Konsola: dane każdego instrumentu, rozkład ratingów, najwyższe ratingi, tabela sprawdzianu (metoda × pinball, pokrycie, Brier, błąd zakresu, λ), wyniki części B na każdym instrumencie, model na żywo z werdyktem, prognoza z ostatniej świecy. Czas: ok. 3 min, pamięć do ok. 3 GB.
+Tylko ręcznie. Kolejno: synchronizacja (4c.1) → klon brancha `fx` w `ia4-research/fx-repo/` → katalog `fx-cond/2` z `fx/conditions.json` (bez niego program kończy się komunikatem — najpierw kalibracja, 4c.2) → pula, wszystkie wystąpienia i profile od zera (4c.4) → ratingi (4c.5) → sprawdzian prognozy rozkładu i wybór modelu na żywo (4c.7) → prognoza z ostatniej świecy każdego instrumentu → zapis i push na branch `fx`: `fx/ratings.json` (jedna okoliczność = jedna linia; w nagłówku: dane każdego instrumentu, `scenario` — wyniki wszystkich metod, model na żywo z f i λ, `lastCandle` — prognoza z ostatniej świecy każdego instrumentu), dopisany wiersz `fx/runs.jsonl`. Lokalnie: `data/fx1h/occurrences.npz` (4c.4) i podgląd `data/fx1h/ratings-preview.csv` (rating, wystąpienia, przewaga, częstość w puli i na instrumentach, profil dla k = 12 i 48 — do obejrzenia przed arkuszem OKOLICZNOSCI_FX). Każde przeliczenie na świecach 1h ma ID `H-001`, `H-002`, … (`R-…` — archiwum 5 min). Opcje: `--no-sync`, `--no-push`. Konsola: dane każdego instrumentu, rozkład ratingów, najwyższe ratingi, tabela sprawdzianu (metoda × pinball, pokrycie, Brier, błąd zakresu, λ), wyniki części B na każdym instrumencie, model na żywo z werdyktem, prognoza z ostatniej świecy. Czas: ok. 3 min, pamięć do ok. 3 GB.
 
 #### 4c.9 FX-real-time — `python -m ia4.fx.live`
 
-- **Start:** `caffeinate` (Mac nie zaśnie, dopóki program działa), klon brancha `fx` i katalog, ratingi, profile i model na żywo (metoda, f, λ — 4c.7) z `fx-repo/fx/` (bez `fx-cond/2` albo bez `ratings.json` ze sprawdzianem rozkładu program się nie uruchamia — najpierw kalibracja i FX-research), dashboard na branchu `fx` (gdy się zmienił), synchronizacja (4c.1), prognoza na ostatniej świecy każdego instrumentu, publikacja.
+- **Start:** `caffeinate` (Mac nie zaśnie, dopóki program działa), klon brancha `fx` i katalog, ratingi, profile i model na żywo (metoda, f, λ — 4c.7) z `fx-repo/fx/` (bez `fx-cond/2` albo bez `ratings.json` ze sprawdzianem rozkładu program się nie uruchamia — najpierw kalibracja i FX-research), synchronizacja (4c.1), prognoza na ostatniej świecy każdego instrumentu, publikacja.
 - **Pętla co 30 s:**
   - na świecę instrumentu czekamy dopiero od jej zamknięcia + 60 s (Fx.gs zapisuje zwykle 20–180 s po zamknięciu); pary walutowe poza godzinami rynku (4b) nie mają czego szukać — przy zamkniętym rynku program pyta tylko o BTC (raz na godzinę),
   - gdy któryś instrument czeka: 1 odczyt `system/fx1h`; instrumenty z nowszą świecą — odczyt ich dokumentów dni (zwykle 1, przy zmianie doby UTC 2), nowe świece do kopii lokalnej, prognoza rozkładu wszystkich instrumentów (4c.6, ten sam kod co FX-research; ok. 4 s), publikacja; instrumenty nadal bez świecy — kolejna próba za 30 s, a po 15 min spóźnienia co 5 min,
   - co 2 min sygnał życia (`aliveAt`) — także bez nowej świecy i przy zamkniętym rynku,
   - gdy `fx-repo/fx/ratings.json` się zmienił (nowe przeliczenie FX-research w trakcie pracy) — przy następnej świecy program bierze nowe ratingi,
   - błąd sieci albo Firestore nie zatrzymuje programu — próba w kolejnym obrocie.
-- **Ctrl+C:** ostatnia publikacja z `stoppedAt` — dashboard pokazuje „program zatrzymany”.
+- **Ctrl+C:** ostatnia publikacja z `stoppedAt` — strona IA4 (zakładka FX) pokazuje „program zatrzymany”.
 - **Publikacja:** `forecast.json` na branchu `fx-live` — zawsze jeden commit bez historii (force push), klon w `ia4-research/fx-live-repo/`; plik bez NaN (wartości niepoliczalne → `null`). Zawartość: `version`, `interval` ("1h"), `horizon` (48), `aliveAt`, `generatedAt`, `stoppedAt` (po Ctrl+C), `ratings` (ID przeliczenia, data), `model` (metoda, f, λ, K, okno godzin, odstęp), `check` (wyniki części B: pokrycie 80% k = 12/48, pokrycie 50%, Brier k = 12/48, błąd zakresu, pinball k = 48, `centerS`), `verdict` (kierunek, stożek — słowami), `firestoreReadsToday` i `instruments` — dla każdego: `id`, `name`, `group`, `pip`, `digits`, `lastCandle`, `lastClose`, `atr100`, `marketOpen`, `candles` (ostatnie 48 świec: początek, o, h, l, c), `times` (początki 48 świec prognozy), `check` (część B tego instrumentu), `K`, `center`, `q10`, `q25`, `q75`, `q90` (ceny), `pUp` i `upCount` (k = 12, 48), `range` (typowe maksimum, minimum, zakres w cenie), `scenarios` (3 × nazwa, data i instrument historycznego momentu, ścieżka cen), `forecastPips` (środek k = 12, 48 w pipsach), liczba okoliczności prawdziwych, suma ich ratingów i 5 z nich o najwyższym ratingu.
 - **Firestore:** ok. 1 + (liczba instrumentów z nową świecą) odczytów na godzinę — ok. 12 / godzinę, ok. 290 / pełny dzień roboczy, w weekend ok. 50 (sam BTC) (symulacja w `selftest`).
-- **GitHub:** ok. 31 publikacji na godzinę (sygnał życia + świece).
+- **GitHub:** ok. 31 publikacji na godzinę (sygnał życia + świece) — wszystkie na `fx-live`, nie wpływają na stronę.
 
-#### 4c.10 Dashboard (`ia4-research/ia4/fx/dashboard/index.html`)
+#### 4c.10 Prognoza na stronie IA4 (zakładka FX)
 
-- **Adres:** GitHub Pages z brancha `fx` (`index.html` + `.nojekyll`; kopiują je FX-research i FX-real-time, gdy plik w kodzie się zmienił) — `https://miszyszka.github.io/IA4/`. Jednorazowo: GitHub → Settings → Pages → Source: Deploy from a branch → Branch `fx`, folder `/ (root)` (repozytorium publiczne).
-- Jeden plik, bez bibliotek z zewnątrz, wykres w SVG; jasny i ciemny motyw według systemu; działa na telefonie.
-- Co 30 s czyta `forecast.json` z brancha `fx-live` przez API GitHub (zapytania warunkowe — odpowiedź „bez zmian” nie zużywa limitu 60 zapytań na godzinę); przy przekroczeniu limitu — przez 10 min z `raw.githubusercontent.com` (do 5 min opóźnienia).
-- **Zakładki instrumentów** (11, z P(wzrost) k = 48 przy nazwie); wybrana zakładka zapamiętana w przeglądarce i w adresie (`#USDJPY`). Jednostki: pary walutowe — pipsy, BTC — USD.
-- Pokazuje dla wybranego instrumentu: wykres ostatnich 48 świec i prognozy rozkładu na 48 świec (godziny PL, przez weekend bez przerwy na osi) — **stożek** 50% i 80% przypadków, linia środkowa, **3 scenariusze** (spadkowy, boczny, wzrostowy — prawdziwe ścieżki z historii, z ich skokami), linie typowego maksimum i minimum; **status Maca** (zielony „Mac połączony”, gdy `aliveAt` młodszy niż 5 min; czerwony „Mac offline od …” albo „program zatrzymany …” — wtedy prognoza wyblakła), rynek otwarty / zamknięty (pary walutowe: godziny PL; BTC: 24/7), czas wyliczenia prognozy i ostatnią świecę; kafelki: ostatnie zamknięcie z ATR100, **oczekiwany zakres 48 h**, przedział 80% za 48 świec (ceny, pipsy i chwila końca), **kierunek** (P(wzrost) z liczbą podobnych chwil i werdyktem — kolor tylko przy udowodnionej przewadze), **sprawdzian** (trafność stożka wobec celu 80%, Brier wobec 0,25 — całość i ten instrument); lista scenariuszy z datami, instrumentem źródłowym i maks./min.; 5 okoliczności prawdziwych o najwyższym ratingu; model na żywo w nagłówku.
+Od 1.28 prognozę pokazuje zakładka **FX** strony IA4 (sekcja 11b) — dawny osobny dashboard z brancha `fx` (`ia4-research/ia4/fx/dashboard/`, 1.25–1.27) został usunięty, a FX-research i FX-real-time już nic nie kopiują na branch `fx`. Zawartość zakładki: sekcja 11b. Zasady prezentacji bez zmian: rozkład, nie jedna linia (4c.0, zasada 15), kolor kierunku tylko przy udowodnionej przewadze, wynik sprawdzianu słowami, wyblakła prognoza, gdy Mac nie jest połączony.
 
 #### 4c.11 Arkusz OKOLICZNOSCI_FX (`Fx.gs`)
 
@@ -404,9 +403,8 @@ Tylko ręcznie. Kolejno: synchronizacja (4c.1) → klon brancha `fx` w `ia4-rese
 Pisze je wyłącznie Python z Maca.
 
 ```
-fx (FX-research; dashboard także FX-real-time):
-  index.html          dashboard (kopia ia4-research/ia4/fx/dashboard/index.html) — GitHub Pages
-  .nojekyll           Pages bez przetwarzania Jekyll
+fx (FX-research):
+  index.html, .nojekyll   dawny dashboard (1.25–1.27) — od 1.28 nieużywany (strona IA4: main/docs, 11b)
   fx/README.md
   fx/conditions.json  katalog fx-cond/2 z progami — zapisuje go raz `python -m ia4.fx.catalog --commit`, nienaruszalny
   fx/ratings.json     ostatnie przeliczenie: dla każdej okoliczności rating, wystąpienia, n_ind, S, częstość
@@ -419,7 +417,7 @@ fx (FX-research; dashboard także FX-real-time):
                       przeniesione przy kalibracji fx-cond/2, tylko do wglądu
 
 fx-live (FX-real-time, zawsze jeden commit, force push):
-  forecast.json       stan na żywo (4c.9) — czyta go dashboard
+  forecast.json       stan na żywo (4c.9) — czyta go strona IA4 (zakładka FX)
 ```
 
 ---
@@ -505,9 +503,9 @@ Sygnały strategii na żywo i wirtualny inwestor w Apps Script (sekcja 11a). Dzi
 
 Prognoza 48 świec 1h dla 10 par walutowych i BTC/USD (sekcje 4b i 4c). Kolejne kroki — każdy zamyka się zgodą człowieka:
 - **FX-0 … FX-6** (1.20–1.26) — prognoza EURUSD na świecach 5 min: instrukcja, synchronizacja, katalog `fx-cond/1` (skalibrowany 9.10.2026), FX-research (przeliczenia R-…), arkusz OKOLICZNOSCI_FX, FX-real-time i dashboard, prognoza rozkładu (scenariusze, stożek, sprawdzian). Zamknięte; dane 5 min usunięte w 1.27, wyniki w archiwum brancha `fx`.
-- **FX-7** — przejście na świece 1h i 11 instrumentów (1.27): `Fx.gs` zbiera `fx1h` (historia 728 dni, na żywo, kontrola dni, arkusz FX z kolumną na instrument), kopia `data/fx1h/`, katalog `fx-cond/2` (cechy bezwymiarowe, kalibracja na puli), pula instrumentów w FX-research (zmiany w ATR100, części walk-forward po kalendarzu, analogi w grupie), prognoza i dashboard dla wszystkich instrumentów (zakładki), nagłówki OKOLICZNOSCI_FX (`okol-3`) — kod gotowy w 1.27. Kolejność: (1) pliki `.gs` w Apps Script — historia pobiera się sama w kilkanaście minut (STATS „FX 1h — dziś / historia” = 11/11); (2) menu „🗑 FX — usuń stare świece EURUSD 5 min”; (3) Mac: `python -m ia4.fx.selftest`, `python -m ia4.fx.sync`, kalibracja próbna `python -m ia4.fx.catalog` (przegląd `catalog-preview.csv` z Claude), potem `--commit`; (4) `python -m ia4.fx.research` → `H-001`; (5) `python -m ia4.fx.live`. Zamknięty, gdy `fx/conditions.json` z `fx-cond/2` i przeliczenie `H-001` są na branchu `fx`, arkusz OKOLICZNOSCI_FX ma kolumnę H-001, a dashboard pokazuje stożek każdego instrumentu i „Mac połączony”.
+- **FX-7** — przejście na świece 1h i 11 instrumentów (1.27): `Fx.gs` zbiera `fx1h` (historia 728 dni, na żywo, kontrola dni, arkusz FX z kolumną na instrument), kopia `data/fx1h/`, katalog `fx-cond/2` (cechy bezwymiarowe, kalibracja na puli), pula instrumentów w FX-research (zmiany w ATR100, części walk-forward po kalendarzu, analogi w grupie), prognoza i dashboard dla wszystkich instrumentów (zakładki), nagłówki OKOLICZNOSCI_FX (`okol-3`) — kod gotowy w 1.27. Kolejność: (1) pliki `.gs` w Apps Script — historia pobiera się sama w kilkanaście minut (STATS „FX 1h — dziś / historia” = 11/11); (2) menu „🗑 FX — usuń stare świece EURUSD 5 min”; (3) Mac: `python -m ia4.fx.selftest`, `python -m ia4.fx.sync`, kalibracja próbna `python -m ia4.fx.catalog` (przegląd `catalog-preview.csv` z Claude), potem `--commit`; (4) `python -m ia4.fx.research` → `H-001`; (5) `python -m ia4.fx.live`. Zamknięty, gdy `fx/conditions.json` z `fx-cond/2` i przeliczenie `H-001` są na branchu `fx`, arkusz OKOLICZNOSCI_FX ma kolumnę H-001, a strona IA4 (zakładka FX) pokazuje stożek każdego instrumentu i „Mac połączony”.
 
-Wdrożony, gdy: arkusz FX ma kompletne dni wszystkich 11 instrumentów, `fx/conditions.json` (`fx-cond/2`) jest na branchu `fx` (1000 okoliczności, każda w 10–50% puli przy kalibracji), FX-research zapisało przeliczenie ze sprawdzianem rozkładu, arkusz OKOLICZNOSCI_FX ma jego kolumnę z modelem na żywo, a dashboard pokazuje stożek, scenariusze i status Maca.
+Wdrożony, gdy: arkusz FX ma kompletne dni wszystkich 11 instrumentów, `fx/conditions.json` (`fx-cond/2`) jest na branchu `fx` (1000 okoliczności, każda w 10–50% puli przy kalibracji), FX-research zapisało przeliczenie ze sprawdzianem rozkładu, arkusz OKOLICZNOSCI_FX ma jego kolumnę z modelem na żywo, a strona IA4 (zakładka FX) pokazuje stożek, scenariusze i status Maca.
 
 ---
 
@@ -761,18 +759,37 @@ Wynik musi brzmieć „rozbieżności: sygnały 0, transakcje 0”.
 
 ---
 
+## 11b. Strona IA4 — konsola systemu (`docs/`)
+
+Jedna strona dla człowieka, którą można rozwijać zakładka po zakładce: **czy system żyje, co przyszło, co policzono**. Tylko czyta pliki z publicznego repo — niczego nie zapisuje, nie dotyka Firestore ani arkuszy.
+
+- **Adres:** `https://miszyszka.github.io/IA4/` — GitHub Pages z brancha `main`, folder `/docs` (jednorazowo: GitHub → Settings → Pages → Source: Deploy from a branch → `main`, `/docs`). Każdy push na `main` publikuje stronę w ok. minutę.
+- **Kod:** zwykłe pliki bez buildu i bez zewnętrznych bibliotek (moduły ES): `index.html`, `css/ia4.css`, `css/fonts.css` + `fonts/` (Chakra Petch, IBM Plex Mono — licencja OFL, hostowane w repo), `js/core.js` (źródła, odświeżanie, formaty, godziny rynków, bramka), `js/health.js` (stan ogniw), `js/chart.js` (wykresy SVG), `js/main.js` (zakładki, zegary, magistrala), `js/views/*.js` (po pliku na zakładkę). Jak dodać zakładkę albo źródło: `docs/README.md`.
+- **Hasło:** bramka w przeglądarce. W kodzie tylko skrót PBKDF2-SHA256 (150 000 iteracji) — samego hasła nie ma w repo ani w tej instrukcji (zna je człowiek); odblokowanie pamiętane w przeglądarce 30 dni, przycisk „wyloguj”. **Bramka nie chroni danych**: wszystkie pliki, które czyta strona, są w publicznym repo (zasada 5 — żadnych sekretów w danych strony).
+- **Źródła** (odświeżane tylko przy otwartej karcie): `telemetry/state.json` i `telemetry/vi.json` (co 60 s), `forecast.json` z `fx-live` (co 30 s, API GitHub z ETag), `research/strategies.jsonl`, `research/status.json`, `fx/runs.jsonl` (co 15 min), lista commitów `main` (co 3 min, API), `telemetry/fx-vi.json` (przyszły inwestor FX; brak pliku = panel „nieaktywny”). Pliki godzinowe — przez `raw.githubusercontent.com` (bez limitu, do ok. 5 min opóźnienia); przy limicie API strona przechodzi na 10 min na raw.
+- **Wygląd:** konsola terminala — ciemne tło, panele z tytułem w ramce, fosfor bursztynowy dla interakcji, cyjan dla prognoz, zieleń i czerwień tylko dla kierunku i stanu. Klawisze 1–3 przełączają zakładki, adres zakładki w `#`.
+- **Magistrala** (pasek pod nagłówkiem, na każdej zakładce): ogniwa przepływu danych **Yahoo → Apps Script → Firestore → GitHub → Mac (FX-real-time) → ta strona**; każde z lampką (zielona / żółta / czerwona / szara = nie dotyczy teraz), wiekiem ostatniego znaku życia tykającym co sekundę i paskiem „ile z typowego odstępu minęło”; ogniwo z nowym znakiem życia błyska. Znacznik w nagłówku: „system żyje”, gdy Apps Script i GitHub dały znak w ciągu 80 min.
+- **Zakładka System:** stan składników (automat, zbieranie akcji i FX, paper trading, telemetria, nocne odświeżenie, FX-real-time, FX-research, poszukiwanie, strona — ostatni znak życia, rytm, szczegóły, odliczanie do następnej świecy); **strumień zdarzeń** (`tail -f`: commity, świece akcji i FX, transakcje i sygnały inwestora, przeliczenia — nowe podświetlone); parametry (wersja — ostrzeżenie, gdy Apps Script ma inną niż strona; czas pracy automatu wobec limitu 90 min; uruchomienia, świece i błędy dziś; świece w bazie; ostatni błąd); spływ ostatniej świecy akcji (kiedy który etap był gotowy, od zamknięcia); siatka wszystkich instrumentów; stan źródeł danych.
+- **Zakładka Inwestor:** odczyty (wynik zrealizowany i niezrealizowany $, średni wynik z przedziałem 95%, skuteczność TP i wyjścia, mediana świec, koszty, od kiedy), krzywa wyniku, sygnały z ostatnich świec, otwarte pozycje (z położeniem ceny między SL i TP), strategie (filtry „for VI” / „z wynikiem na żywo” / wszystkie, wyszukiwarka, sortowanie: PF z poszukiwania, $ na żywo, pierwszeństwo), zamknięte transakcje, spółki (pozycje, sygnały, wynik). Zanim pojawi się `vi.json` — samo podsumowanie z `state.json`.
+- **Zakładka FX:** stan Maca, rynku, model na żywo, sprawdzian, ratingi; lista 11 instrumentów (mini-wykres 48 świec, zamknięcie, P(wzrost)); wykres wybranego instrumentu z prognozą rozkładu i odczytami (jak dawny dashboard, 4c.10); **spływ świec 1h** — po komórce na świecę z ostatnich 24 godzin rynku, ramka dla świecy, która trwa, migająca ramka dla spóźnionej, godzina i wiek ostatniej świecy, odliczanie do następnej (świece z `state.json` nowsze niż prognoza też są widoczne); scenariusze i okoliczności o najwyższym ratingu; przeliczenia FX-research (`fx/runs.jsonl`); **wirtualny inwestor FX** — miejsce zarezerwowane: gdy powstaną strategie FX, Apps Script będzie wysyłał `telemetry/fx-vi.json` w formacie `vi.json` i panel pokaże go tym samym widokiem co inwestora akcji (format i powstanie pliku — dopiero za zgodą człowieka, nowa wersja instrukcji).
+- **Telefon** (szerokość ≤ 760 px): przede wszystkim stan — na zakładce System magistrala w pionie i składniki z wiekiem; na pozostałych magistrala zwinięta do siatki lampek; odczyty po dwa w rzędzie; tabele szczegółowe (strategie, transakcje, siatki, przeliczenia, źródła) ukryte; wykres FX z 24 świecami wstecz.
+- **`telemetry/vi.json`** (pisze `Telemetry.gs`, woła go `Paper.gs` po każdym przeliczeniu świecy i po „zacznij od nowa”; commit tylko przy zmianie treści — `VI_HASH`): `version`, `generatedAt`, `lastCandleKey` / `lastCandlePL`, `since`, `capital`, `stake`, `costPct`, `maxPerTicker`, `summary` (closed, open, pending, avgPct, ci95Pct, realizedUsd, unrealizedUsd, tpShare, exits TP/SL/FC/LIMIT, medianBars, costsUsd), `open` (każda pozycja otwarta i oczekująca: nr, strategia, spółka, kierunek, status, sygnał, wejście, SL/TP % i ceny, cena teraz, wynik % i $, świece), `closed` (ostatnie 150, od najnowszej: wejście, wyjście, powód, wynik % i $, świece), `equity` (skumulowany $ po każdej zamkniętej, najwyżej 2000 punktów), `strategies` (aktywne i „for VI”: opis, for VI, pierwszeństwo, zamknięte, otwarte, średni wynik, skuteczność, $), `signals` (ostatnie 35 świec: chwila, klucz, lista [strategia, spółka]). Wszystko pochodzi ze stanu inwestora (11a) — nic nie jest liczone na nowo. Ostatnie sygnały: `sigLog` w stanie inwestora (`_IA4_DANE`). Po świecy `Paper.gs` wysyła też od razu `state.json` (najwyżej raz na 10 min), żeby strona widziała świeżą świecę.
+
+---
+
 ## 12. Wdrożenie i uruchamianie
 
 ### Apps Script — skład
 
-Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `Fx.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min (STRATEGIE, BACKTEST PORTFELA, OKOLICZNOSCI_FX). Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY`, `BT_DP_AT`, `BT_PF_AT`, `CANDLE_LOG`, `FX1H_STATE`, `FX1H_CHECK`, `FX_RUNS`, `ACTIVE_IDS`, `PRIORITY`, `VI_BY_STRAT`, `VI_SUMMARY` i inne — nie edytować). Arkusze: STATS, FX, OKOLICZNOSCI_FX (od FX-3), STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
+Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `Fx.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min (STRATEGIE, BACKTEST PORTFELA, OKOLICZNOSCI_FX). Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY`, `BT_DP_AT`, `BT_PF_AT`, `CANDLE_LOG`, `FX1H_STATE`, `FX1H_CHECK`, `FX_RUNS`, `ACTIVE_IDS`, `PRIORITY`, `VI_BY_STRAT`, `VI_SUMMARY`, `VI_HASH`, `TELEMETRY_HASH` i inne — nie edytować). Arkusze: STATS, FX, OKOLICZNOSCI_FX (od FX-3), STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
 
 ### Aktualizacja do nowej wersji
 
 1. Wypchnięcie pakietu `.bundle` (polecenia niżej).
 2. Apps Script: podmienić pliki `.gs` zmienione w pakiecie (Claude podaje listę) — najprościej zawsze wszystkie sześć; nowy plik dodać przez „+ → Skrypt” z tą samą nazwą. Zapisać, odświeżyć arkusz.
 3. „⚙️ Konfiguruj i włącz automat” — tylko gdy zmieniła się lista instrumentów, układ STATS albo triggery (Claude o tym mówi). Konfiguruj odtwarza STATS, triggery i `system/universe` oraz uzupełnia ostatni miesiąc (ok. 2500 zapisów).
-4. Mac: `cd ~/Desktop/IA4 && git pull`; `pip install -r requirements.txt`, gdy zmieniły się zależności; zatrzymać program (Ctrl+C) i uruchomić ponownie, gdy zmienił się kod Pythona.
+4. Strona IA4 (`docs/`) aktualizuje się sama po pushu — nic do zrobienia.
+5. Mac: `cd ~/Desktop/IA4 && git pull`; `pip install -r requirements.txt`, gdy zmieniły się zależności; zatrzymać program (Ctrl+C) i uruchomić ponownie, gdy zmienił się kod Pythona.
 
 ### Mac — na co dzień
 
@@ -785,7 +802,7 @@ python -m ia4.lab.portfolio --force     # backtest portfela → BACKTEST PORTFEL
 python -m ia4.lab.selftest              # test silnika
 ```
 
-Prognoza FX 1h (sekcja 4c) — Mac włączony, gdy używasz dashboardu:
+Prognoza FX 1h (sekcja 4c) — Mac włączony, gdy używasz zakładki FX strony IA4:
 
 ```bash
 cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate
@@ -794,7 +811,7 @@ python -m ia4.fx.sync                  # kopia świec 1h 11 instrumentów → da
 python -m ia4.fx.catalog               # kalibracja próbna → data/fx1h/catalog-preview.csv (nic nie wysyła)
 python -m ia4.fx.catalog --commit      # kalibracja właściwa → fx/conditions.json (RAZ, zasada 14)
 python -m ia4.fx.research              # ręcznie: przeliczenie wszystkich okoliczności i ratingów → branch fx
-python -m ia4.fx.live                  # prognoza na żywo co 30 s → branch fx-live → dashboard (Ctrl+C kończy)
+python -m ia4.fx.live                  # prognoza na żywo co 30 s → branch fx-live → strona IA4, zakładka FX (Ctrl+C kończy)
 ```
 
 Poszukiwanie (gdy zostanie wznowione, `search_closed: false`): `python -m ia4.lab --workers 4` (alias `ia4`); opcje: `--hours N`, `--workers N`, `--check`, `--no-sync`, `--no-push`.
@@ -840,6 +857,7 @@ cd ~/Desktop/IA4 && git pull
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.28 | 2026-10-11 | Strona IA4 — konsola systemu (nowa sekcja 11b): GitHub Pages z `main/docs` zamiast dashboardu z brancha `fx`, moduły bez buildu (`docs/README.md` — jak rozwijać), bramka hasła (tylko skrót PBKDF2 w kodzie; dane nadal publiczne), zakładki System (magistrala Yahoo → Apps Script → Firestore → GitHub → Mac → strona z wiekiem każdego ogniwa, stan składników, strumień zdarzeń, parametry, spływ świecy akcji, instrumenty, źródła), Inwestor (wyniki, krzywa, pozycje z SL–TP, strategie z filtrami, transakcje, spółki, sygnały) i FX (prognoza 11 instrumentów, spływ świec 1h, scenariusze, przeliczenia, miejsce na inwestora FX), wersja telefonu nastawiona na stan. Nowy plik `telemetry/vi.json` (`Telemetry.gs`, wysyła go `Paper.gs` po każdej świecy; `sigLog` w stanie inwestora) i `state.json` od razu po świecy. Python: FX-research i FX-real-time nie kopiują już dashboardu na branch `fx` (`ia4/fx/dashboard/` usunięty, 4c.10). |
 | 1.27 | 2026-10-10 | Krok FX-7 — świece 1h i 11 instrumentów zamiast EURUSD 5 min (decyzja człowieka z 10.10.2026): `Fx.gs` od nowa — kolekcja `fx1h/{ID}/days` + `system/fx1h`, 10 par walutowych (EURUSD, USDJPY, GBPUSD, AUDUSD, USDCAD, USDCHF, NZDUSD, EURJPY, GBPJPY, EURGBP) i BTCUSD (4b, uzasadnienie doboru), historia 728 dni jednym zapytaniem na instrument, na żywo wszystkie instrumenty jednym `fetchAll`, kontrola dni i uśrednienie jak dotąd, arkusz FX z kolumną na instrument (`24/24 (1)`), STATS „FX 1h”, menu „usuń stare świece EURUSD 5 min” (zasada 2.2 — jedyne skasowanie danych, z potwierdzeniem), Script Properties `FX1H_STATE`, `FX1H_CHECK`. Python: `instruments.py`, `sync.py` → `data/fx1h/`, katalog `fx-cond/2` (cechy bezwymiarowe w ATR100, okresy 9/20/24/50/100/120/200, kalibracja na puli wszystkich instrumentów, `covInstMin/Max`), `fx-cond/1` do `fx/archive/fx-cond-1-5m/` (zasada 14: nowy katalog → `fx-cond/3`); FX-research na puli instrumentów: zmiany w ATR100, części walk-forward po kalendarzu, `n_ind` na instrument, ID przeliczeń `H-…`; scenariusze: `pora` w instrumencie, `analogi` w grupie (pary razem, BTC osobno), odstęp ≥ 12 h w kalendarzu, skalowanie √(ρt/ρa), ρ = ATR12/ATR100, λ > 0 tylko przy przewadze środka ≥ 1%, wyniki części B na każdym instrumencie; horyzont 48 świec w godzinach rynku; `forecast.json` z listą `instruments` (bez NaN); dashboard z zakładkami instrumentów; OKOLICZNOSCI_FX `okol-3`. Nowy `synth.py`, selftest od nowa (ok. 3 min). Wszystko liczone od nowa (kalibracja, H-001). |
 | 1.26 | 2026-10-09 | Kroki FX-5 i FX-6 — prognoza rozkładu zamiast jednej uśrednionej linii (4c.0, zasada 15): badanie na danych R-001 (kierunek ≈ rzut monetą, zakres i rozrzut przewidywalne dzięki porze dnia i zmienności); `scenario.py` — 80 prawdziwych ścieżek z historii (pora dnia ±1 h, metoda `pora` albo `analogi` z Jaccardem ważonym ratingiem, odstęp ≥ 12 świec, skalowanie √(ATR100·ATR12)), środek = λ × średnia profili ważona ratingiem, stożek 10/25/75/90%, P(wzrost), oczekiwany zakres 4 h, 3 scenariusze; sprawdzian walk-forward 70–85% kalibracja / 85–100% ocena (pinball, pokrycie, Brier, błąd zakresu), wybór modelu, λ = 0 bez przewagi środka (4c.7); `forecast.json`, dashboard i nagłówki OKOLICZNOSCI_FX (`okol-2`) na nowo; stary sprawdzian średniej (`check`) zastąpiony przez `scenario`. |
 | 1.25 | 2026-10-09 | Krok FX-4: `python -m ia4.fx.live` — prognoza na żywo (pętla 30 s, ok. 2 odczyty Firestore na świecę, zero przy zamkniętym rynku, sygnał życia co 2 min, `stoppedAt` po Ctrl+C), `forecast.json` na branchu `fx-live` (jeden commit); dashboard `index.html` na GitHub Pages z brancha `fx` (status Maca, rynek, wykres 48 + 48, kafelki, top 5 okoliczności), kopiowany przez FX-research i FX-real-time. Selftest: symulacja piątek → niedziela. PRZEWODNIK: sekcja o prognozie. |

@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.27 (2026-10-10)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.28 (2026-10-11)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
@@ -10,6 +10,12 @@ Nic nie musisz uruchamiać. Apps Script co minutę:
 - zbiera świece 1h 10 par walutowych i Bitcoina (zapis zwykle ok. 20 s – 3 min po zamknięciu świecy).
 
 Mac jest potrzebny tylko do jednorazowych przeliczeń, kiedy Claude o to poprosi.
+
+**Wszystko na jednej stronie:** https://miszyszka.github.io/IA4/ (hasło znasz; przeglądarka pamięta je 30 dni).
+- **System** — czy wszystko żyje. Pasek u góry pokazuje drogę danych: Yahoo → Apps Script → Firestore → GitHub → Mac → strona; przy każdym ogniwie lampka i „ile minut temu” był ostatni znak życia. Zielone = w porządku, żółte = opóźnienie, czerwone = coś stoi, szare = teraz nie dotyczy (np. Mac wyłączony, giełda zamknięta). Napis w rogu „system żyje” = automat i GitHub odezwały się w ciągu 80 min.
+- **Inwestor** — wynik wirtualnego inwestora, otwarte pozycje (gdzie jest cena między SL i TP), strategie, transakcje, spółki, sygnały.
+- **FX** — prognoza 11 instrumentów i „spływ świec”: każda kratka to jedna świeca 1h; migająca ramka = świeca spóźniona.
+- Na telefonie strona pokazuje głównie stan i podstawowe liczby; tabele są na komputerze.
 
 ## 2. Arkusze
 
@@ -46,11 +52,11 @@ Jeden wiersz na dzień (UTC), jedna kolumna na instrument: **zapisanych/oczekiwa
 - Pojedyncze uśrednione świece są normalne. Wiele żółtych komórek przez kilka dni z rzędu oznacza problem po stronie Yahoo; napisz wtedy do Claude.
 - Historia (2 lata wstecz) pobiera się sama po wdrożeniu 1.27 w kilkanaście minut. Starą bazę EURUSD 5 min usuwasz raz z menu „🗑 FX — usuń stare świece EURUSD 5 min”.
 
-## 3b. Prognoza FX — dashboard i OKOLICZNOSCI_FX
+## 3b. Prognoza FX — strona (zakładka FX) i OKOLICZNOSCI_FX
 
-**Dashboard:** https://miszyszka.github.io/IA4/ — działa tylko, gdy na Macu chodzi `python -m ia4.fx.live`
+**Strona, zakładka FX:** https://miszyszka.github.io/IA4/#fx — prognoza na żywo tylko, gdy na Macu chodzi `python -m ia4.fx.live`
 (Terminal: `cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && python -m ia4.fx.live`; Ctrl+C kończy).
-U góry zakładki 11 instrumentów (przy nazwie P(wzrost) za 48 świec); dashboard pamięta ostatnio wybraną.
+Po lewej lista 11 instrumentów (przy nazwie P(wzrost) za 48 świec); strona pamięta ostatnio wybrany.
 
 Prognoza na **48 świec 1h** (pary walutowe — 48 godzin handlu, weekend pomijany; BTC — 48 godzin) to **rozkład, nie jedna linia** — bo jedna uśredniona linia zawsze wychodzi prawie pozioma:
 - **Stożek** (niebieskie pasma): ciemny — gdzie cena była w 50% podobnych przypadków, jasny — w 80%. Szeroki stożek = spodziewane duże wahania, wąski = spokój.

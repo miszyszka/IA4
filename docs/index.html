@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#05080d">
+<title>IA4 · konsola</title>
+<!-- IA 4 — strona systemu (instrukcja, sekcja 11b). Wersja projektu: 1.28 (2026-10-11).
+     Bez buildu: zwykłe pliki, moduły ES. Jak dodać zakładkę: docs/README.md. -->
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/ia4.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%2305080d'/%3E%3Cpath d='M3 4l4 4-4 4' stroke='%23ffb547' stroke-width='2' fill='none'/%3E%3Crect x='8' y='11' width='5' height='2' fill='%235fd4e6'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<!-- ============ bramka hasła ============ -->
+<section id="gate" class="gate" aria-label="Logowanie">
+  <form id="gateForm" class="gate-box" autocomplete="off">
+    <div class="gate-brand" aria-hidden="true"><span class="prompt">ia4://</span>login<span class="cursor"></span></div>
+    <p class="gate-sub dim">konsola systemu IA 4 · tylko dla operatora</p>
+    <p class="gate-line"><span class="dim">ia4 login:</span> operator</p>
+    <label class="gate-line" for="gatePw"><span class="dim">password:</span></label>
+    <input id="gatePw" type="password" class="gate-in" autocomplete="current-password" spellcheck="false" autofocus>
+    <p id="gateMsg" class="gate-msg" role="status"></p>
+    <button type="submit" class="btn">Zaloguj</button>
+  </form>
+</section>
+
+<!-- ============ konsola ============ -->
+<div id="app" class="app" hidden>
+  <header class="top">
+    <div class="brand"><span class="prompt">ia4://</span><span id="brandView">system</span><span class="cursor" aria-hidden="true"></span></div>
+    <nav class="tabs" role="tablist" aria-label="Zakładki">
+      <a role="tab" href="#system" data-view="system"><kbd>1</kbd>System</a>
+      <a role="tab" href="#inwestor" data-view="inwestor"><kbd>2</kbd>Inwestor</a>
+      <a role="tab" href="#fx" data-view="fx"><kbd>3</kbd>FX</a>
+    </nav>
+    <div class="clocks">
+      <span title="czas polski"><span class="dim">PL</span> <b id="clkPL">--:--:--</b></span>
+      <span title="Nowy Jork"><span class="dim">NY</span> <b id="clkNY">--:--</b></span>
+      <span id="liveTag" class="live-tag">łączenie</span>
+      <button id="logout" class="btn ghost" type="button" title="Wyloguj">wyloguj</button>
+    </div>
+  </header>
+
+  <!-- magistrala: przepływ danych od Yahoo do tej strony; wiek każdego ogniwa tyka co sekundę -->
+  <section class="bus" id="bus" aria-label="Przepływ danych"></section>
+
+  <main>
+    <section class="view" id="view-system" data-view="system" aria-labelledby="brandView"></section>
+    <section class="view" id="view-inwestor" data-view="inwestor" hidden></section>
+    <section class="view" id="view-fx" data-view="fx" hidden></section>
+  </main>
+
+  <footer class="foot">
+    <span>IA 4 <span id="ver">1.28</span></span>
+    <span>dane: publiczne repo GitHub · odświeżanie 30–60 s</span>
+    <span id="netStat"></span>
+  </footer>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

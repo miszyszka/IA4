@@ -1,7 +1,7 @@
 """
 IA 4 — FX-research: wystąpienia, profile, ratingi i sprawdzian okoliczności na świecach 1h
 11 instrumentów (instrukcja, sekcje 4c.4–4c.8).
-Wersja projektu: 1.27 (2026-10-10) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.28 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.research              # synchronizacja, przeliczenie od zera, zapis i push na branch fx
   python -m ia4.fx.research --no-sync    # bez Firestore (kopia lokalna)
@@ -380,7 +380,6 @@ def summary(res: dict, conds: list[dict], log=print) -> None:
 
 
 def main() -> None:
-    from .live import publish_dashboard
     from .store import fx_repo
     from .sync import load_all, sync
 
@@ -397,8 +396,6 @@ def main() -> None:
         print(f"Brak fx/conditions.json ({cat.CATALOG}) na branchu fx — najpierw kalibracja: python -m ia4.fx.catalog --commit")
         sys.exit(1)
     conds = doc["conditions"]
-    if publish_dashboard(repo):
-        print("  dashboard zaktualizowany na branchu fx (index.html)")
     dfs = load_all() if a.no_sync else sync()
     runs_path = repo.dir / "runs.jsonl"
     n_runs = sum(1 for _ in runs_path.open(encoding="utf-8")) if runs_path.exists() else 0
