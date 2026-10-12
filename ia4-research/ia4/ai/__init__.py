@@ -1,4 +1,4 @@
-"""IA 4 — AI Investor: trzej agenci na Macu (Etap 6, instrukcja, sekcja 11c). Wersja projektu: 1.34 (2026-10-12).
+"""IA 4 — AI Investor: trzej agenci na Macu (Etap 6, instrukcja, sekcja 11c). Wersja projektu: 1.35 (2026-10-12).
 
   python -m ia4.ai              # nadzorca — to samo co `ia4 start` i dwuklik IA4-start.command (11c.3)
   python -m ia4.ai.selftest     # test na danych syntetycznych — „WYNIK: OK”

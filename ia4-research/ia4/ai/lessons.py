@@ -1,6 +1,6 @@
 """
 IA 4 — wnioski startowe AI Investor (instrukcja, sekcja 11c.5): destylowana wiedza z historii projektu.
-Wersja projektu: 1.34 (2026-10-12) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.35 (2026-10-12) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Zasiewane raz, gdy hub nie ma żadnych wniosków (autor „Claude”). Od kroku AI-4 listę prowadzi
 Strategy-Manager (najwyżej `lessons_max` aktywnych).

@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.34 (2026-10-12)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.35 (2026-10-12)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
@@ -100,6 +100,21 @@ Różnica wobec mechanicznego inwestora (sekcja 4): tu stawka zależy od ryzyka 
 Chcesz go w Arkuszach Google — przenieś ścieżkę do folderu Dysku Google (Claude zmieni `xlsx_path`).
 
 **Jak oceniać:** tak jak sekcja 4 — średni wynik transakcji z przedziałem 95%. **Przed 30 zamkniętymi transakcjami nie ma werdyktu.** Najważniejsze pytanie to nie „czy zarabia”, tylko „czy wybór modelu jest lepszy niż losowy” (percentyl) — inaczej wystarczyłby mechaniczny inwestor.
+
+## 3d. Test One-Day — plik ONE-DAY-STRATEGY.xlsx
+
+**Uruchamianie (raz, kiedy chcesz):** w Terminalu `cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && python -m ia4.oneday`. Liczy kilka sekund i zapisuje `~/Desktop/IA4/ONE-DAY-STRATEGY.xlsx` (każde uruchomienie przepisuje plik — zamknij go wcześniej w Excelu).
+
+**O co chodzi:** 100 prostych strategii na **świecach dobowych** (cała sesja = jedna świeca). Każda transakcja otwiera się rano i zamyka na koniec tego samego dnia. Po serii N świec spadkowych gramy na wzrost (po wzrostowych — na spadek), a gdy dzień znów jest stratny, następnego dnia gramy większą kwotą — aż do pierwszego zysku. Każda spółka ma osobne 100 000 $. Szczegóły i lista strategii: instrukcja, sekcja 6c, oraz arkusz OPIS w pliku.
+
+**Jak czytać arkusz ONE-DAY-STRATEGY:**
+- wiersz = strategia (OD-001…OD-100, opis słowny), kolumna = spółka (4 kolumny: transakcje, zyskowne, wynik %, obsunięcie %); „· dP” — spółki doubleProof,
+- żółte kolumny na początku — **podsumowanie wszystkich spółek**: patrz najpierw na **medianę wyniku %** i „spółek na plusie” — średnia bywa ciągnięta przez jedną spółkę,
+- **obsunięcie %** — o ile najgłębiej spadł kapitał od swojego szczytu; przy podwajaniu stawek to ono pokazuje prawdziwe ryzyko,
+- czerwony pogrubiony wynik = **upadłość** (kapitał spadł do 10 000 $),
+- porównuj zawsze z **OD-099 / OD-100** (long / short codziennie bez żadnej reguły): strategia, która nie bije OD-099, tylko jedzie na hossie.
+
+**Wniosek do zapamiętania:** zwiększanie stawki po stracie nie zmienia tego, czy pojedynczy dzień jest „na plusie” — zamienia wiele drobnych zysków na rzadkie, duże straty. Ważne są: obsunięcie, upadłości, wynik na doubleProof i wariant z filtrem SMA50 (blok C), który w bessie przestaje dawać sygnały long.
 
 ## 4. VIRTUAL-INVESTOR — jak czytać wynik
 

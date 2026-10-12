@@ -1,8 +1,8 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.34
+**Wersja:** 1.35
 **Data:** 12 października 2026
-**Aktualny etap:** ✅ Etap 1 — baza akcji (działa bez końca) · 🟨 Etap 2 — poszukiwanie strategii (wstrzymane od 3.10.2026, 60 aktywnych strategii) · 🟨 Etap 3 — paper trading i wirtualny inwestor akcji · 🟨 Etap 4 — FX na świecach 1h: zbieranie 10 par + BTC (od 1.27) i prognoza rozkładu (krok FX-7: katalog `fx-cond/2`, H-001 i H-002 zapisane 11.10.2026) · 🟨 Etap 5 — strona IA4 `https://miszyszka.github.io/IA4/` (od 1.28) · 🟨 Etap 6 — AI Investor: trzej agenci na Macu (sekcja 11c; AI-1 — nadzorca i feed świec, 1.33; AI-2 — Agent-Investor, kod gotowy w 1.34). Mapa całości i lista otwartych kroków: sekcja 0. Jak czytać arkusze i stronę: `PRZEWODNIK.md`.
+**Aktualny etap:** ✅ Etap 1 — baza akcji (działa bez końca) · 🟨 Etap 2 — poszukiwanie strategii (wstrzymane od 3.10.2026, 60 aktywnych strategii) · 🟨 Etap 3 — paper trading i wirtualny inwestor akcji · 🟨 Etap 4 — FX na świecach 1h: zbieranie 10 par + BTC (od 1.27) i prognoza rozkładu (krok FX-7: katalog `fx-cond/2`, H-001 i H-002 zapisane 11.10.2026) · 🟨 Etap 5 — strona IA4 `https://miszyszka.github.io/IA4/` (od 1.28) · 🟨 Etap 6 — AI Investor: trzej agenci na Macu (sekcja 11c; AI-1 — nadzorca i feed świec, 1.33; AI-2 — Agent-Investor, kod gotowy w 1.34). Poza etapami: jednorazowy test One-Day na świecach dobowych (sekcja 6c, 1.35). Mapa całości i lista otwartych kroków: sekcja 0. Jak czytać arkusze i stronę: `PRZEWODNIK.md`.
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jeśli kod, arkusz albo telemetria się z nim rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -35,8 +35,9 @@ IA 4 to system, który **zbiera świece z Yahoo do Firestore** (Apps Script, bez
 | arkusz Google | STATS, FX, OKOLICZNOSCI_FX, STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, `_IA4_DANE` | Apps Script |
 | Mac `ia4-research/data/` | kopie lokalne (akcje `*.parquet`, FX `fx1h/`) — robocze, do odtworzenia; hub AI Investor `ai/hub.sqlite` (odtwarzalny z brancha `ai`, 11c.5) | Mac |
 | Mac `~/Desktop/IA4/AI-INVESTOR.xlsx` | transakcje, decyzje i dziennik AI Investor (11c.11) | Mac (`ia4.ai`) |
+| Mac `~/Desktop/IA4/ONE-DAY-STRATEGY.xlsx` | test One-Day: 100 strategii kaskadowych na świecach dobowych × 75 instrumentów (6c) | Mac (`ia4.oneday`) |
 
-**Historia w skrócie:** 1.0–1.1 baza akcji i poszukiwanie · 1.2–1.14 sita, skarbiec, doubleProof, paper trading (1.8), poszukiwanie wstrzymane (1.14) · 1.15–1.19 szybka ścieżka, wirtualny inwestor z kosztami, backtest portfela, moduł EURUSD 5 min · 1.20–1.26 prognoza EURUSD 5 min (katalog `fx-cond/1`, ratingi, dashboard, prognoza rozkładu) · 1.27 FX na świecach 1h, 11 instrumentów, wszystko liczone od nowa · 1.28 strona IA4 i `telemetry/vi.json` · 1.29 porządek instrukcji (ta sekcja) · 1.30 kalibracja FX: warunek częstości na pojedynczym instrumencie · 1.31 środek prognozy: kandydat „mediana analogów” · 1.32 AI Investor — instrukcja (sekcja 11c, Etap 6) · 1.33 AI-1: nadzorca `ia4 start`, feed świec, hub, zakładka AI · 1.34 AI-2: Agent-Investor (silnik portfela, model, branch `ai`, Excel). Szczegóły: sekcja 13.
+**Historia w skrócie:** 1.0–1.1 baza akcji i poszukiwanie · 1.2–1.14 sita, skarbiec, doubleProof, paper trading (1.8), poszukiwanie wstrzymane (1.14) · 1.15–1.19 szybka ścieżka, wirtualny inwestor z kosztami, backtest portfela, moduł EURUSD 5 min · 1.20–1.26 prognoza EURUSD 5 min (katalog `fx-cond/1`, ratingi, dashboard, prognoza rozkładu) · 1.27 FX na świecach 1h, 11 instrumentów, wszystko liczone od nowa · 1.28 strona IA4 i `telemetry/vi.json` · 1.29 porządek instrukcji (ta sekcja) · 1.30 kalibracja FX: warunek częstości na pojedynczym instrumencie · 1.31 środek prognozy: kandydat „mediana analogów” · 1.32 AI Investor — instrukcja (sekcja 11c, Etap 6) · 1.33 AI-1: nadzorca `ia4 start`, feed świec, hub, zakładka AI · 1.34 AI-2: Agent-Investor (silnik portfela, model, branch `ai`, Excel) · 1.35 test One-Day na świecach dobowych (plik Excel). Szczegóły: sekcja 13.
 
 **Otwarte kroki (stan 12.10.2026, 13:00)** — do odhaczenia przez Claude na podstawie telemetrii i branchy (zrobione: historia FX 1h `11/11`, GitHub Pages z `main/docs`, katalog `fx-cond/2`, H-001 i H-002, pakiety 1.32 i 1.33 wypchnięte, `ia4 start` uruchomiony 11.10.2026 21:44–22:47 — świeca BTC w kopii 19 s po zapisie w Firestore):
 1. Apps Script w wersji 1.34 (`telemetry/state.json` → `version`; 12.10.2026 12:13 wciąż `1.27`) — podmienić wszystkie pliki `.gs` (sekcja 12). Strona ostrzega o różnicy wersji.
@@ -44,7 +45,8 @@ IA 4 to system, który **zbiera świece z Yahoo do Firestore** (Apps Script, bez
 3. Stara baza EURUSD 5 min usunięta z menu „🗑 FX — usuń stare świece EURUSD 5 min” (nieodwracalne, 4b) — potwierdzić.
 4. FX-7 do zamknięcia — potwierdzenie człowieka: arkusz OKOLICZNOSCI_FX ma kolumny H-001 i H-002, zakładka FX pokazuje stożek (sekcja 7).
 5. Etap 6 na Macu (1.34): `git pull`, `pip install -r requirements.txt` (nowe: `openpyxl`), funkcja `ia4` w `~/.zshrc` w wersji `function ia4 { … }` (11c.3), `python -m ia4.ai.selftest` i `python -m ia4.ai.replay` („WYNIK: OK”), potem `ia4 start` w sesji NYSE (od 18:00). AI-1 zamyka się, gdy spływ świec akcji pokaże świece w kopii ≤ 2 min po zapisie w Firestore; AI-2 — gdy pierwsza transakcja z notatką, SL i TP jest w `AI-INVESTOR.xlsx`, na branchu `ai` (`ai/trades.jsonl`) i w zakładce AI.
-6. Później, tylko za zgodą człowieka: strategie FX i wirtualny inwestor FX (krok FX-8) — H-001 i H-002 nie pokazały przewagi kierunku; Etap 6, kroki AI-3 (Strategy-Maker) i AI-4 (Strategy-Manager).
+6. Test One-Day (1.35, sekcja 6c): `git pull`, `python -m ia4.oneday --selftest` („WYNIK: OK”), `python -m ia4.oneday` → `~/Desktop/IA4/ONE-DAY-STRATEGY.xlsx`; Claude przegląda wynik z człowiekiem. Apps Script: podmienić sześć plików `.gs` (w 1.35 zmienia się tylko numer wersji).
+7. Później, tylko za zgodą człowieka: strategie FX i wirtualny inwestor FX (krok FX-8) — H-001 i H-002 nie pokazały przewagi kierunku; Etap 6, kroki AI-3 (Strategy-Maker) i AI-4 (Strategy-Manager).
 
 ---
 
@@ -133,6 +135,7 @@ GitHub main: telemetry/state.json, telemetry/vi.json · research · fx · fx-liv
 | `ia4-research/ia4/lab/portfolio.py` | jednorazowy backtest portfela (wirtualny inwestor na historii) → `research/portfolio-backtest.json` (sekcja 6b) |
 | `ia4-research/ia4/lab/backtest_dp.py` | jednorazowy backtest strategii aktywnych na doubleProof → `research/backtest-doubleproof.json` (sekcja 6a) |
 | `ia4-research/ia4/lab/selftest.py` | test silnika na danych syntetycznych |
+| `ia4-research/ia4/oneday.py` | test One-Day: świece dobowe, 100 strategii kaskadowych, plik `ONE-DAY-STRATEGY.xlsx`, selftest (`--selftest`) (sekcja 6c) |
 | `ia4-research/README.md` | instalacja i użycie |
 | `telemetry/state.json` | stan automatu, generowany — nie edytować |
 | `telemetry/vi.json` | wirtualny inwestor dla strony IA4 (pozycje, transakcje, strategie, sygnały), generowany po każdej świecy — nie edytować (11b) |
@@ -493,6 +496,7 @@ Wynik: `data/{SYMBOL}.parquet`, jedna tabela na instrument, kolumny `symbol, dat
 - 20 spółek spoza grupy głównej i kontrolnej (sekcja 4), zbierane tak samo jak pozostałe: na żywo, nocne odświeżenie, pełna historia do granicy Yahoo.
 - **Poszukiwanie nigdy ich nie używa** — ani grupa główna, ani skarbiec, ani sita. `python -m ia4.lab` bierze tylko `main` + `proof` z `system/universe`; bez Firestore wyklucza doubleProof po liście w `ia4/config.py` i po polu `group` w manifeście synchronizacji.
 - Paper trading (sekcja 11a) też ich nie używa.
+- Wyjątek informacyjny (decyzja człowieka z 12.10.2026): test One-Day (6c) liczy je razem ze wszystkimi instrumentami, w osobnym bloku kolumn.
 - Służą do weryfikacji strategii na spółkach, których system nigdy nie widział. Synchronizacja (`python -m ia4.sync`) ściąga je na Maca jak pozostałe instrumenty.
 
 **Weryfikacja (`ia4/lab/verify.py`):**
@@ -521,6 +525,44 @@ Jednorazowa symulacja wirtualnego inwestora na historii: wszystkie strategie akt
 - „Wybrane” wybrano według doubleProof, więc ich wynik na doubleProof jest zawyżony — uczciwą ocenę wyboru dają grupa główna i skarbiec.
 - **Uruchomienie:** `python -m ia4.lab.portfolio` (synchronizacja, przeliczenie, zapis, push); istniejący zapis zmienia tylko `--force`.
 - **Wynik:** `research/portfolio-backtest.json` (branch `research`, zapisany raz) → arkusz BACKTEST PORTFELA (sekcja 11); lista `priority` → pierwszeństwo strategii w wirtualnym inwestorze (11a).
+
+## 6c. Test One-Day — kaskady na świecach dobowych (`ia4/oneday.py`)
+
+Jednorazowy test informacyjny (decyzja człowieka z 12.10.2026): jak zachowują się proste strategie „wejdź po serii świec, zwiększaj stawkę z każdą kolejną świecą”, gdy każda transakcja trwa jeden dzień sesyjny. **Nie są to strategie `ia4-rule/1`** (zasada 9): nie trafiają do `research/`, paper tradingu, AI Investor ani do strony; wynik niczego nie przyjmuje i nie zmienia.
+
+**Dane.** Kopia lokalna (sekcja 5) wszystkich 75 instrumentów — 53 handlowane, 20 doubleProof (wyjątek 6a) i SPY, QQQ (tylko informacyjnie, poza podsumowaniem). Cała historia, bez podziału na skarbiec i okresy (skarbiec dotyczy poszukiwania `ia4.lab`, sekcja 6). Program synchronizuje kopię przyrostowo (`ia4.sync`), chyba że działa `ia4 start` — wtedy kopię trzyma feed (11c.4).
+
+**Świeca dobowa** = sesja NYSE: open pierwszej świecy 1h, close ostatniej (7., w dzień skrócony 4.), high i low z całej sesji. Sesja bez pierwszej albo ostatniej świecy 1h (albo brakująca w kopii) jest **niepełna**: nie jest handlowana, przerywa serię i trwającą kaskadę. Świeca **spadkowa**: close < open, **wzrostowa**: close > open, **doji** (close = open) przerywa serię i kończy kaskadę.
+
+**Żelazna zasada testu:** każda transakcja otwiera się na open dnia i zamyka na close tego samego dnia (mediana trzymania = 1 świeca dobowa, zasada 13). Bez kosztów transakcyjnych (zasada 10).
+
+**Kaskada (long):** gdy seria świec spadkowych dojdzie do N, w dniu N+1 wejście z kwotą k₁ (krok 1). Jeśli ten dzień też jest spadkowy (strata), następnego dnia krok 2 z kwotą k₂, potem k₃… Świeca wzrostowa (zysk) albo doji kończy kaskadę; nowa zaczyna się dopiero, gdy seria znów dojdzie dokładnie do N (seria dłuższa niż N po zakończonej kaskadzie nie otwiera nowej). **Short** — lustrzanie: po N świecach wzrostowych, kaskada trwa, dopóki świece rosną.
+
+**Portfel:** każda para spółka × strategia ma osobne **100 000 $**. Kwota **x = 5 000 $** (5% kapitału startowego). Stawka nigdy nie przekracza bieżącego kapitału (bez dźwigni). Kapitał ≤ 10 000 $ (10% startowego) = **upadłość** — koniec handlu tej strategii na tej spółce. Wspólny start: pierwsza transakcja po 55 pełnych sesjach instrumentu (rozgrzewka r i SMA50) — ten sam dla wszystkich strategii.
+
+**Zmienne:**
+- **r** = średni zakres dziennej świecy (H − L) / open w % z 20 poprzednich pełnych sesji (bez dnia wejścia), ustalony na początku kaskady. **1R** = 500 $ / (r / 100) — stawka, przy której ruch o r to 500 $ (0,5% kapitału startowego).
+- **SMA50** z dziennych zamknięć pełnych sesji; **rosnąca** = SMA50 wczoraj > SMA50 sprzed 5 pełnych sesji, **spadkowa** — odwrotnie. Filtr sprawdzany tylko przy pierwszym wejściu kaskady; rozpoczętej kaskady nie przerywa.
+- **D** = suma korpusów |close − open| / open w % wszystkich świec serii (N świec + stratne dni kaskady) — rośnie z każdym stratnym dniem.
+
+**Progresje** (mnożnik kroku k = 1, 2, 3…): stała 1-1-1, liniowa / +1R 1-2-3, ×2 1-2-4-8, ×3 1-3-9-27, Fibonacci 1-1-2-3-5.
+
+**Lista 100 strategii** (`OD-001`…`OD-100`, kolejność: kierunek long → short, potem N, potem wariant):
+
+| Blok | Id | Stawka | Warianty |
+|---|---|---|---|
+| A | 001–030 | x × mnożnik | long/short × N 2, 3, 4 × stała, liniowa, ×2, ×3, Fibonacci |
+| B | 031–054 | 1R × mnożnik | long/short × N 2, 3, 4 × stała, +1R, ×2, ×3 |
+| C | 055–078 | x albo 1R, ×2 | long/short × N 2, 3, 4 × (x, 1R) × SMA50 rosnąca / spadkowa |
+| D | 079–090 | (x albo 1R) × D / r | long/short × N 2, 3, 4 × (x, 1R) |
+| E | 091–098 | x albo 1R, ×2, najwyżej 4 kroki | long/short × N 2, 3 × (x, 1R); po 4. stracie kaskada się kończy, nowa — po nowej serii |
+| F | 099–100 | x codziennie | punkt odniesienia: long i short każdego pełnego dnia |
+
+**Wynik — `~/Desktop/IA4/ONE-DAY-STRATEGY.xlsx`** (poza gitem, `.gitignore`; zapis atomowy; każde uruchomienie przepisuje plik):
+- arkusz **ONE-DAY-STRATEGY**: wiersze — strategie (Id, opis, blok); kolumny — **podsumowanie** (spółki bez SPY i QQQ: transakcji łącznie, zyskownych łącznie, średni i mediana wyniku %, spółek na plusie, upadłości, średnie i mediana obsunięcia %, średni wynik % 53 handlowanych i 20 doubleProof), potem **4 kolumny na każdy instrument** w kolejności z sekcji 4: transakcje, zyskowne (wynik > 0), wynik % (kapitał końcowy / 100 000 − 1), obsunięcie % (największy spadek krzywej kapitału od szczytu, liczonej po zamknięciu każdego dnia); upadłość — wynik pogrubiony na czerwono, doubleProof oznaczone „· dP”,
+- arkusz **OPIS**: zasady i parametry tej sekcji, zakres danych, dla każdego instrumentu dni sesyjne, pełne, niepełne i pierwszy dzień handlu.
+
+**Uruchomienie:** `python -m ia4.oneday` (synchronizacja + przeliczenie + plik, kilka sekund), `--no-sync`, `--out ŚCIEŻKA`; `python -m ia4.oneday --selftest` — dane syntetyczne, wyniki liczone ręcznie („WYNIK: OK”). Nie koliduje z `ia4 start` (sam rachunek, bez modelu).
 
 ---
 
@@ -1052,6 +1094,8 @@ cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate
 python -m ia4.lab.backtest_dp --force   # backtest strategii na doubleProof → kolumny doubleProof w STRATEGIE
 python -m ia4.lab.portfolio --force     # backtest portfela → BACKTEST PORTFELA, pierwszeństwo, „wybrane”
 python -m ia4.lab.selftest              # test silnika
+python -m ia4.oneday --selftest         # test One-Day (6c) — „WYNIK: OK”
+python -m ia4.oneday                    # test One-Day → ~/Desktop/IA4/ONE-DAY-STRATEGY.xlsx
 ```
 
 Prognoza FX 1h (sekcja 4c) — Mac włączony, gdy używasz zakładki FX strony IA4:
@@ -1124,6 +1168,7 @@ cd ~/Desktop/IA4 && git pull
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.35 | 2026-10-12 | Test One-Day (nowa sekcja 6c; decyzje człowieka z 12.10.2026): `ia4/oneday.py` — świece dobowe z sesji 1h (open 1. świecy, close ostatniej; sesja niepełna bez handlu, przerywa serię), 100 strategii kaskadowych (bloki A–F: stała kwota x = 5 000 $, jednostki 1R = 500 $ / r, filtr SMA50 rosnąca/spadkowa, stawka wg skali spadku D / r, limit 4 kroków, punkty odniesienia), long po świecach spadkowych i short lustrzanie, transakcja zawsze open → close tego samego dnia, portfel 100 000 $ na spółkę bez dźwigni, upadłość ≤ 10%; wynik: transakcje, zyskowne, wynik %, obsunięcie szczyt → dołek na każdym z 75 instrumentów + podsumowanie (średnie i mediany) w pliku `~/Desktop/IA4/ONE-DAY-STRATEGY.xlsx` (poza gitem); selftest `--selftest`. doubleProof liczone informacyjnie (dopisek w 6a). Sekcje 0, 3, 12. PRZEWODNIK: sekcja 3d. Pliki `.gs` i strona — tylko numer wersji. |
 | 1.34 | 2026-10-12 | Etap 6, krok AI-2 — Agent-Investor (11c.3–11c.12): silnik portfela `engine.py` (wejście po open świecy po decyzji, luka / FC / zamknięcie decyzją / SL / TP / limit jak 8.6, poziomy bez zaokrągleń — zgodność z `ia4/lab/sim` sprawdzana transakcja po transakcji; koszty akcji, FX i BTC; USD kursem z chwili wejścia i z zamknięcia świecy wyjścia; wielkość z ryzyka 0,5% przycięta do limitu wartości, pozostałe limity 11c.7 odrzucają; ryzyko w budżecie do bieżącego SL; stop dzienny wg stanu przy pierwszej rundzie doby; zatrzymanie przy 20% zdejmowane `halt_ack`), dwie księgi (Inwestor i cienie kandydatów); playbook z brancha `research` (60 strategii, 52 wybrane — mnożnik 1,0, reszta 0,5; sygnały i FC silnikiem `ia4/lab`; mechaniczny inwestor z `vi.json`/`state.json`); kandydaci: jedna strategia na spółkę wg pierwszeństwa, najwyżej 12; prognoza FX jako kandydat tylko przy przewadze kierunku (SL/TP na granicach stożka 80%, mnożnik 0,5); własny pomysł: ceny SL/TP od modelu, mnożnik 0,25, najwyżej 1 na rundę; model: schemat JSON (`enter`/`skip`, `hold`/`close`/`tighten_sl`, `own_ideas`, `round_note`), sprawdzenie w kodzie, 2 ponowienia, częściowa odpowiedź, „brak decyzji”; kolejka modelu z pierwszeństwem; wątek agentów (pominięcie przestarzałej rundy); wnioski startowe (10); punkty odniesienia z cieni, losowanie 200, kalibracja pewności; automatyczne wycofanie strategii (≥ 30 transakcji, średnia ≤ 0); hub schemat 2; branch `ai` (+ `shadow.jsonl`, `state.json`) i odtworzenie huba (`python -m ia4.ai.restore`, samo przy pustym hubie); `AI-INVESTOR.xlsx` (8 arkuszy, zapis atomowy, `.gitignore`); `python -m ia4.ai.replay` (test na historii); `requirements.txt`: openpyxl. Strona: zakładka AI — portfel, krzywa, pozycje z notatkami, ostatnia runda, punkty odniesienia, transakcje, playbook, wnioski; źródła `ai/trades.jsonl`, `ai/playbook.json`, `ai/lessons.json`. 11c.3: funkcja `ia4` jako `function ia4 { … }` + usunięcie dawnego aliasu (zsh rozwijał alias przed definicją). PRZEWODNIK: sekcja 3c. |
 | 1.33 | 2026-10-11 | Etap 6, krok AI-1 — kod (11c.2–11c.5, 11c.11): nowy pakiet `ia4/ai/` — nadzorca `python -m ia4.ai` (`ia4 start`, `IA4-start.command`, funkcja `ia4` w `~/.zshrc` zamiast aliasu), blokada `data/ai/ia4-start.lock` (`ia4.fx.research`, `ia4.fx.live`, `ia4.lab` odmawiają startu; `ia4 start` — gdy one działają), sprawdzenie Ollamy i `qwen2.5:14b`, feed akcji (`system/status` → szybka synchronizacja `quick` w `ia4.sync`: tylko dokumenty zmienione od poprzedniego razu; kalendarz NYSE z sesjami skróconymi; ściganie spóźnionych najwyżej 60 min; synchronizacja po sesji), feed FX (pętla `ia4.fx.live` wewnątrz nadzorcy, bez prognozy, gdy brak ratingów), hub SQLite (`meta`, `runs`, `events`, `notes`, `feed_log`), `ai-live/status.json` co 5 min i po zdarzeniach (zamiast 2 min — limit API GitHub na stronie), selftest. `ia4/fx/live.py`: `LiveRepo` wspólny dla `fx-live` i `ai-live`, `updatedAt` z `system/fx1h`. Strona: źródło `ai-live`, ogniwo „Mac · AI Investor” (magistrala 7 ogniw), zakładka AI (klawisz 4), składnik i zdarzenia AI na zakładce System. |
 | 1.32 | 2026-10-11 | Etap 6 — AI Investor, filar D (nowa sekcja 11c; sama instrukcja, kod w krokach AI-1…AI-5; decyzje człowieka z 11.10.2026): trzej agenci na lokalnym modelu `qwen2.5:14b` (Ollama, MacBook Air M2 16 GB) — Agent-Investor (wirtualny portfel 100 000 $ na 53 spółkach, 10 parach i BTC, long i short, decyzja po open następnej świecy, notatka + SL + TP, tryb rygorystyczny: wejścia z playbooka albo z prognozy FX z udowodnioną przewagą, własne pomysły ≤ 10% budżetu ryzyka, koszty i przeliczenie na USD, limity ryzyka w kodzie), Strategy-Maker (hipotezy `ia4-hyp/1`, ocena walk-forward z kosztami, sito AI, sejf AI: doubleProof i FX sprzed 2025-04-01, inkubacja) i Strategy-Manager (briefy, dyrektywy, rekomendacje, wnioski, statusy playbooka); hub SQLite, feed akcji przez `system/status`, uruchamianie `ia4 start`, punkty odniesienia (wszyscy kandydaci, losowy wybór, mechaniczny inwestor, SPY), branche `ai` i `ai-live`, plik `AI-INVESTOR.xlsx`, zakładka AI strony. Nowe zasady 16 (LLM myśli, Python liczy) i 17 (sejf AI); dopiski w zasadach 7, 10, 11, 12; sekcja 0 (filar D, otwarte kroki), Etap 4 (wynik H-001), nowy Etap 6, sekcje 1, 3, 11b, 12. `Telemetry.gs`: etap w telemetrii. |
