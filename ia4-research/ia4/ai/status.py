@@ -1,6 +1,6 @@
 """
 IA 4 — branch `ai-live`: stan AI Investor na żywo (instrukcja, sekcja 11c.11).
-Wersja projektu: 1.33 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.34 (2026-10-12) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 `status.json` — zawsze jeden commit, force push (ten sam mechanizm co `fx-live`, ia4/fx/live.py:
 LiveRepo). Sygnał życia co 5 min i od razu po zdarzeniu (nie częściej niż co 20 s). Plik bez NaN.
@@ -22,6 +22,38 @@ AGENTS = [
     {"id": "maker", "name": "Strategy-Maker", "step": "AI-3", "role": "hipotezy i backtesty w wolnym czasie"},
     {"id": "manager", "name": "Strategy-Manager", "step": "AI-4", "role": "przegląd, cele, wnioski"},
 ]
+
+
+def agents(sup) -> list[dict]:
+    w = getattr(sup, "agent", None)
+    out = []
+    for a in AGENTS:
+        if a["id"] == "investor" and w is not None:
+            st = w.inv.status()
+            q = w.pending()
+            out.append(dict(a, state="on", note=st["doing"] + (f" · w kolejce {q}" if q else ""), since=st["since"],
+                            llm=st.get("llm"), rounds=w.done))
+        else:
+            out.append(dict(a, state="off", note=f"nieaktywny — od kroku {a['step']}"))
+    return out
+
+
+def bench_view(b: dict | None) -> dict | None:
+    if not b:
+        return None
+    return {k: b.get(k) for k in ("investor", "own", "all", "random", "mechanical", "spy", "calibration", "verdict", "investorR")}
+
+
+def equity_curve(hub, n: int = 300) -> list:
+    """[czas, stan konta] — najwyżej n punktów (co k-ty), ostatni zawsze."""
+    rows = hub.equity_series(20000)
+    if not rows:
+        return []
+    step = max(1, len(rows) // n)
+    pick = rows[::step]
+    if pick[-1] is not rows[-1]:
+        pick.append(rows[-1])
+    return [[iso(r["at"]), round(r["equity"], 2)] for r in pick]
 
 
 class AiLiveRepo(LiveRepo):
@@ -61,10 +93,18 @@ def document(sup, now: float, stopped: bool = False) -> dict:
                  "fx": sup.fx.status() if sup.fx else None,
                  "readsToday": sup.reads_today()},
         "fxForecast": {"on": bool(sup.fx_ratings), "ratings": sup.fx_ratings, "note": sup.fx_note},
-        "agents": [dict(a, state="off", note=f"nieaktywny — od kroku {a['step']}") for a in AGENTS],
+        "agents": agents(sup),
         "flow": {"stocks": flow(sup.hub, "stocks", 14), "fx": flow(sup.hub, "fx", 24)},
         "events": [{"at": iso(e["at"]), "kind": e["kind"], "agent": e["agent"], "text": e["text"]} for e in sup.hub.events(40)],
     }
+    inv = getattr(getattr(sup, "agent", None), "inv", None)
+    if inv is not None and inv.public:
+        pub = inv.public
+        doc["investor"] = {k: pub.get(k) for k in ("startedAt", "capital", "portfolio", "positions", "lastRound")}
+        doc["investor"]["bench"] = bench_view(pub.get("bench"))
+        doc["investor"]["equity"] = equity_curve(sup.hub)
+        doc["investor"]["notes"] = [{"at": iso(n["at"]), "agent": n["agent"], "kind": n["kind"], "text": n["text"][:700]}
+                                    for n in sup.hub.notes(30)]
     if stopped:
         doc["stoppedAt"] = iso(now)
     return doc

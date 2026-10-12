@@ -1,5 +1,5 @@
 // IA 4 — start strony: bramka, zakładki, magistrala, zegary (instrukcja, sekcja 11b).
-// Wersja projektu: 1.33 (2026-10-11)
+// Wersja projektu: 1.34 (2026-10-12)
 //
 // Nowa zakładka: plik js/views/<nazwa>.js eksportujący { id, title, render(el, changed), tick?(el) },
 // wpis w VIEWS niżej i link w <nav> w index.html (docs/README.md). Zakładki: #system, #inwestor, #fx, #ai (klawisze 1–4).

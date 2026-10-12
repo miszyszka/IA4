@@ -1,6 +1,6 @@
 # IA 4 — Python na Macu: kopia bazy i poszukiwanie strategii
 
-**Wersja projektu: 1.33 (2026-10-11)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.34 (2026-10-12)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Dwie rzeczy:
 1. `python -m ia4.sync` — ściąga świece z Firestore na dysk (`data/*.parquet`), przy
@@ -105,28 +105,34 @@ Format bazy, skarbiec, język reguł i kryteria: `IA4_INSTRUKCJA.md`.
 
 ## AI Investor — `ia4 start` (instrukcja, sekcja 11c, Etap 6)
 
-Krok AI-1: nadzorca, który utrzymuje kopię lokalną akcji i FX na bieżąco z Firestore, liczy w sobie prognozę FX
-(zamiast osobnego `python -m ia4.fx.live`) i publikuje stan na branch `ai-live` → strona IA4, zakładka AI.
-Agenci (Investor, Maker, Manager) dochodzą w krokach AI-2…AI-4.
+Nadzorca utrzymuje kopię lokalną akcji i FX na bieżąco z Firestore, liczy w sobie prognozę FX (zamiast osobnego
+`python -m ia4.fx.live`) i publikuje stan na branch `ai-live` → strona IA4, zakładka AI. Od AI-2 (1.34) po każdej
+świecy akcji i co godzinę na FX rundę robi **Agent-Investor**: portfel 100 000 $ (papier), decyzje modelu z notatką,
+SL i TP → branch `ai`, `~/Desktop/IA4/AI-INVESTOR.xlsx`, zakładka AI. Maker i Manager — kroki AI-3, AI-4.
 
-Raz: Ollama z modelem (`ollama pull qwen2.5:14b`) i funkcja w `~/.zshrc` (zastępuje dawny alias `ia4`):
+Raz: Ollama z modelem (`ollama pull qwen2.5:14b`), `pip install -r requirements.txt` (openpyxl) i funkcja w
+`~/.zshrc` (zastępuje dawny alias `ia4`; zapis `function ia4 { … }`, bo zsh rozwija alias przed `ia4() { … }`):
 
 ```bash
-ia4() { cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && if [ "$1" = start ]; then shift; python -m ia4.ai "$@"; else python -m ia4.lab --workers 4 "$@"; fi; }
+unalias ia4 2>/dev/null; sed -i '' '/^alias ia4=/d' ~/.zshrc
+function ia4 { cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && if [ "$1" = start ]; then shift; python -m ia4.ai "$@"; else python -m ia4.lab --workers 4 "$@"; fi; }
 ```
 
 Potem `source ~/.zshrc` (albo nowe okno terminala) i:
 
 ```bash
-python -m ia4.ai.selftest   # test na danych syntetycznych — „WYNIK: OK”
+python -m ia4.ai.selftest   # test na danych syntetycznych (ok. 1 min) — „WYNIK: OK”
+python -m ia4.ai.replay     # test silnika portfela na 20 ostatnich sesjach kopii lokalnej (bez modelu, nic nie zapisuje)
 ia4 start                   # albo dwuklik IA4-start.command (można go skopiować na Pulpit); Ctrl+C kończy
-ia4 start --no-llm-check    # bez sprawdzania Ollamy (w AI-1 model nie jest jeszcze używany)
+ia4 start --no-llm-check    # bez sprawdzania Ollamy (rundy bez modelu = „brak decyzji”)
+python -m ia4.ai.restore    # hub od nowa z brancha `ai` (gdy zginął data/ai/hub.sqlite; przy pustym hubie start robi to sam)
 ia4 start --no-push         # test bez GitHub
 ```
 
 Przy działającym `ia4 start` nie uruchamiaj osobno `ia4.fx.live`, `ia4.fx.research` ani `ia4.lab` — odmówią
-startu (pamięć 16 GB zajmie model językowy). Noc: laptop otwarty i na zasilaczu. Hub (pamięć agentów):
-`data/ai/hub.sqlite`, poza gitem.
+startu (pamięć 16 GB zajmie model językowy). Noc: laptop otwarty i na zasilaczu. Hub (pamięć agentów, wszystkie
+decyzje, pełne prompty modelu): `data/ai/hub.sqlite`, poza gitem; klony branchy `ai-repo/`, `ai-live-repo/`.
+Ustawienia (limity, model, ścieżka Excela) nadpisuje `ai/config.json` na branchu `ai` — klucze: `ia4/ai/config.py`.
 
 ## Prognoza FX 1h — 10 par walutowych + BTC/USD (instrukcja, sekcje 4b i 4c)
 

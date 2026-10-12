@@ -1,5 +1,5 @@
 #!/bin/zsh
-# IA 4 — AI Investor: dwuklik uruchamia `ia4 start` (instrukcja, sekcja 11c.3). Wersja projektu: 1.33 (2026-10-11)
+# IA 4 — AI Investor: dwuklik uruchamia `ia4 start` (instrukcja, sekcja 11c.3). Wersja projektu: 1.34 (2026-10-12)
 # Plik można skopiować na Pulpit. Folder projektu: $IA4_DIR (domyślnie ~/Desktop/IA4). Ctrl+C kończy.
 IA4_DIR="${IA4_DIR:-$HOME/Desktop/IA4}"
 cd "$IA4_DIR/ia4-research" || { echo "Brak folderu $IA4_DIR/ia4-research"; read "?Enter zamyka okno…"; exit 1; }

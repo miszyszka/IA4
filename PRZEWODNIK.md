@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.33 (2026-10-11)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.34 (2026-10-12)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
@@ -9,12 +9,13 @@ Nic nie musisz uruchamiać. Apps Script co minutę:
 - liczy sygnały 60 strategii i prowadzi wirtualnego inwestora (ok. +0:45 po zamknięciu świecy),
 - zbiera świece 1h 10 par walutowych i Bitcoina (zapis zwykle ok. 20 s – 3 min po zamknięciu świecy).
 
-Mac jest potrzebny tylko do jednorazowych przeliczeń, kiedy Claude o to poprosi.
+Mac jest potrzebny do jednorazowych przeliczeń, kiedy Claude o to poprosi, oraz do **AI Investora** (`ia4 start`, sekcja 3c) — agenci pracują tylko wtedy, gdy Mac jest włączony.
 
 **Wszystko na jednej stronie:** https://miszyszka.github.io/IA4/ (hasło znasz; przeglądarka pamięta je 30 dni).
 - **System** — czy wszystko żyje. Pasek u góry pokazuje drogę danych: Yahoo → Apps Script → Firestore → GitHub → Mac → strona; przy każdym ogniwie lampka i „ile minut temu” był ostatni znak życia. Zielone = w porządku, żółte = opóźnienie, czerwone = coś stoi, szare = teraz nie dotyczy (np. Mac wyłączony, giełda zamknięta). Napis w rogu „system żyje” = automat i GitHub odezwały się w ciągu 80 min.
 - **Inwestor** — wynik wirtualnego inwestora, otwarte pozycje (gdzie jest cena między SL i TP), strategie, transakcje, spółki, sygnały.
 - **FX** — prognoza 11 instrumentów i „spływ świec”: każda kratka to jedna świeca 1h; migająca ramka = świeca spóźniona.
+- **AI** — AI Investor na Macu: czy działa, portfel Agent-Investora, pozycje z notatką „dlaczego”, ostatnia runda decyzji, porównanie z punktami odniesienia (sekcja 3c).
 - Na telefonie strona pokazuje głównie stan i podstawowe liczby; tabele są na komputerze.
 
 ## 2. Arkusze
@@ -73,6 +74,33 @@ trafność stożka, Brier i błąd zakresu każdego przeliczenia.
 - Patrz, czy te same okoliczności trzymają wysoki rating w kolejnych kolumnach i czy Brier zaczyna schodzić poniżej 0,245.
 - Szara komórka = okoliczność wypadła poza 10–50% świec — tylko informacja.
 
+## 3c. AI Investor — zakładka AI i plik AI-INVESTOR.xlsx
+
+**Uruchamianie:** w Terminalu `ia4 start` (albo dwuklik `IA4-start.command`). Okno zostaw otwarte; Ctrl+C kończy (jeśli Inwestor właśnie myśli — poczeka do końca rundy, najwyżej 3 min). Na noc: laptop otwarty i na zasilaczu.
+
+**Agent-Investor** prowadzi własny, papierowy portfel **100 000 $** na 53 spółkach, 10 parach walutowych i BTC. Po każdej świecy akcji (16:30–22:00) i co godzinę na FX:
+1. kod rozlicza pozycje (SL, TP, FC, limit — jak w backteście) i wybiera **kandydatów**: sygnały 60 strategii na tej świecy, najwyżej 12, w kolejności pierwszeństwa;
+2. model językowy (`qwen2.5:14b`) decyduje „wchodzę / pomijam”, może zamknąć albo zacieśnić SL otwartej pozycji, czasem zgłosić własny pomysł — **każda decyzja ma notatkę „dlaczego” i pewność 0–100**;
+3. kod liczy wielkość pozycji i pilnuje limitów; pozycja wchodzi na otwarciu następnej świecy.
+
+Różnica wobec mechanicznego inwestora (sekcja 4): tu stawka zależy od ryzyka — strata na SL to ok. **0,5% stanu konta (ok. 500 $)**, połowa tego dla strategii spoza „wybranych”, ćwierć dla własnych pomysłów. Dlatego wynik w dolarach jest tu realny, a nie symboliczny.
+
+**Na stronie (zakładka AI):**
+- **portfel**: stan konta, wynik zrealizowany i otwarty, średni wynik transakcji, ryzyko otwarte (budżet 6%), obsunięcie; czerwony napis = blokada (stop dzienny −2% albo zatrzymanie przy obsunięciu 20%),
+- **pozycje**: gdzie jest cena między SL i TP, ile świec, pewność i notatka — kliknij notatkę, żeby rozwinąć,
+- **ostatnia runda**: każda decyzja z notatką i skutkiem; „odrzucone przez kod” = model chciał, ale limit nie pozwolił,
+- **punkty odniesienia**: czy Inwestor wybiera lepiej niż „wszyscy kandydaci” (cienie) i niż losowy wybór (percentyl; ≥ 97,5 = lepiej niż przypadek), mechaniczny inwestor, SPY,
+- **dziennik**: zdarzenia nadzorcy i notatki Inwestora na bieżąco.
+
+**Plik `~/Desktop/IA4/AI-INVESTOR.xlsx`** (przepisywany po każdej rundzie; jeśli masz go otwartego — zamknij i otwórz ponownie, żeby zobaczyć nowy stan):
+- PODSUMOWANIE — liczby portfela i punkty odniesienia,
+- TRANSAKCJE — każda pozycja: wejście, SL, TP, wielkość, ryzyko, notatka „dlaczego”, wyjście i wynik netto,
+- DECYZJE — każda decyzja modelu (też pominięcia i odrzucenia przez kod),
+- PORTFEL, DZIENNIK, PLAYBOOK (strategie z wynikami), HIPOTEZY i PRZEGLĄDY (od kolejnych kroków).
+Chcesz go w Arkuszach Google — przenieś ścieżkę do folderu Dysku Google (Claude zmieni `xlsx_path`).
+
+**Jak oceniać:** tak jak sekcja 4 — średni wynik transakcji z przedziałem 95%. **Przed 30 zamkniętymi transakcjami nie ma werdyktu.** Najważniejsze pytanie to nie „czy zarabia”, tylko „czy wybór modelu jest lepszy niż losowy” (percentyl) — inaczej wystarczyłby mechaniczny inwestor.
+
 ## 4. VIRTUAL-INVESTOR — jak czytać wynik
 
 Stawka to 100 $ na transakcję przy kapitale 100 000 $, więc **„% kapitału” zawsze będzie bardzo małe**. To nie jest miara, na którą patrzysz. Patrz na trzy liczby:
@@ -129,3 +157,4 @@ Kolejność wierszy to **pierwszeństwo**. Gdy kilka strategii daje sygnał na t
 - Status BŁĄD przez kilka godzin, „⚠ brak uruchomień”, czas pracy automatu > 70 min.
 - Po ok. 300 zamkniętych transakcjach: przegląd wyników na żywo.
 - Gdy chcesz wznowić poszukiwanie (strategie SHORT z SL/TP w ATR).
+- AI Investor: czerwony napis blokady w zakładce AI, „brak decyzji modelu” w kilku rundach z rzędu, po ok. 30 zamkniętych transakcjach (pierwsza ocena) albo gdy notatki Inwestora wyglądają na bezsensowne.

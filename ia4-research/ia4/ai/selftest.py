@@ -1,6 +1,6 @@
 """
 IA 4 — test AI Investor (krok AI-1) na danych syntetycznych (instrukcja, sekcja 11c).
-Wersja projektu: 1.33 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.34 (2026-10-12) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.ai.selftest          # kilka sekund; wynik musi brzmieć „WYNIK: OK”
 
@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import feed, lock, nyse, status
+from . import feed, lock, nyse, selftest2, status
 from .__main__ import Supervisor, describe
 from .hub import Hub
 
@@ -315,12 +315,14 @@ def test_supervisor(tmp: Path) -> bool:
 
 def main() -> None:
     from .. import __version__
-    print(f"IA 4 — selftest AI Investor, krok AI-1 (wersja {__version__})\n")
+    print(f"IA 4 — selftest AI Investor, kroki AI-1 i AI-2 (wersja {__version__})\n")
     tmp = Path(tempfile.mkdtemp(prefix="ia4-ai-"))
     ok = True
     for name, fn in (("kalendarz NYSE", test_calendar), ("feed akcji", lambda: test_stock_feed(tmp)),
                      ("feed FX", lambda: test_fx_feed(tmp)), ("szybka synchronizacja", lambda: test_quick_sync(tmp / "q")),
-                     ("blokada", lambda: test_lock(tmp)), ("nadzorca i status.json", lambda: test_supervisor(tmp))):
+                     ("blokada", lambda: test_lock(tmp)), ("nadzorca i status.json", lambda: test_supervisor(tmp)),
+                     ("AI-2: silnik portfela", lambda: selftest2.test_engine()),
+                     ("AI-2: runda Agent-Investora", lambda: selftest2.test_round(tmp / "inv"))):
         print(f"\n{name}")
         try:
             ok &= fn()

@@ -1,10 +1,10 @@
 // IA 4 — rdzeń strony: źródła danych, odświeżanie, formaty, bramka hasła (instrukcja, sekcja 11b).
-// Wersja projektu: 1.33 (2026-10-11)
+// Wersja projektu: 1.34 (2026-10-12)
 //
 // Każde źródło = jeden plik w publicznym repo. Nowe źródło: dopisz do SOURCES, a widok
 // przeczyta je przez store.get("id"). Dane są tylko czytane — strona niczego nie zapisuje.
 
-export const VERSION = "1.33";
+export const VERSION = "1.34";
 export const REPO = "miszyszka/IA4";
 const RAW = (branch, path) => `https://raw.githubusercontent.com/${REPO}/${branch}/${path}`;
 const API = (branch, path) => `https://api.github.com/repos/${REPO}/contents/${path}?ref=${branch}`;
@@ -17,6 +17,9 @@ export const SOURCES = {
   fxvi:       { label: "telemetry/fx-vi.json", branch: "main", path: "telemetry/fx-vi.json", every: 300 },   // przyszły inwestor FX
   forecast:   { label: "fx-live/forecast.json", branch: "fx-live", path: "forecast.json", every: 30, api: true },
   ailive:     { label: "ai-live/status.json", branch: "ai-live", path: "status.json", every: 60, api: true },   // AI Investor (11c.11)
+  aitrades:   { label: "ai/trades.jsonl", branch: "ai", path: "ai/trades.jsonl", every: 300, jsonl: true },
+  aipb:       { label: "ai/playbook.json", branch: "ai", path: "ai/playbook.json", every: 900 },
+  ailessons:  { label: "ai/lessons.json", branch: "ai", path: "ai/lessons.json", every: 900 },
   strategies: { label: "research/strategies.jsonl", branch: "research", path: "research/strategies.jsonl", every: 900, jsonl: true },
   research:   { label: "research/status.json", branch: "research", path: "research/status.json", every: 900 },
   fxruns:     { label: "fx/runs.jsonl", branch: "fx", path: "fx/runs.jsonl", every: 900, jsonl: true },

@@ -1,16 +1,17 @@
 """
 IA 4 — nadzorca AI Investor: `ia4 start` (instrukcja, sekcja 11c.3).
-Wersja projektu: 1.33 (2026-10-11) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.34 (2026-10-12) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.ai                    # to samo co `ia4 start` i dwuklik IA4-start.command; Ctrl+C kończy
   python -m ia4.ai --no-push          # bez GitHub (test)
   python -m ia4.ai --no-sync          # bez synchronizacji przy starcie (praca na kopii lokalnej)
-  python -m ia4.ai --no-llm-check     # bez sprawdzania Ollamy (w kroku AI-1 model nie jest jeszcze używany)
+  python -m ia4.ai --no-llm-check     # bez sprawdzania Ollamy (Inwestor bez modelu = „brak decyzji”)
 
-Start: Ollama i model → caffeinate i blokada → synchronizacja akcji i FX → rozliczenie przerwy (od AI-2)
-→ przegląd Managera (od AI-4) → praca. Pętla co 5 s: feed akcji (system/status → szybka synchronizacja),
-feed FX i prognoza FX (kod ia4.fx.live), zapis do huba, sygnał życia ai-live/status.json co 5 min
-i po każdym zdarzeniu. W terminalu co minutę jedna linia stanu.
+Start: Ollama i model → caffeinate i blokada → synchronizacja akcji i FX → playbook i Agent-Investor
+(rozliczenie przerwy) → przegląd Managera (od AI-4) → praca. Pętla co 5 s: feed akcji (system/status →
+szybka synchronizacja), feed FX i prognoza FX (kod ia4.fx.live), zapis do huba, sygnał życia
+ai-live/status.json co 5 min i po każdym zdarzeniu. Nowa świeca akcji / godzina FX → runda Inwestora
+w wątku agentów (agents.py). W terminalu co minutę jedna linia stanu.
 """
 
 from __future__ import annotations
@@ -80,6 +81,7 @@ class Supervisor:
         self.last_line = clock()
         self.errors: dict[str, float] = {}
         self.publishes = 0
+        self.agent = None                      # AgentWorker (AI-2), ustawia main()
 
     @property
     def step(self):           # nazwa kroku do status.json (status.document czyta sup.step)
@@ -111,9 +113,14 @@ class Supervisor:
         sl, fl = s.get("last") or {}, f.get("last") or {}
         nx = s.get("nextCandle")
         ol = "✓" if self.ollama.get("present") else "—" if self.ollama.get("skipped") else "✗"
+        pf = ""
+        if self.agent is not None and self.agent.inv.public:
+            p = self.agent.inv.public["portfolio"]
+            eq = f"{p['equity']:,.0f}".replace(",", " ")
+            pf = f" · portfel {eq} $ ({p['open']} otw., {p['pending']} oczek.)"
         return (f"  {datetime.fromtimestamp(now, PL):%H:%M:%S}  akcje {sl.get('candle', '—')} {sl.get('have', '—')}/{sl.get('need', '—')}"
                 f"{' · następna ' + nx[5:] if nx else ''} · FX {(fl.get('candle') or '—')[11:16]} UTC {fl.get('have', '—')}/{fl.get('need', '—')}"
-                f" · Firestore dziś {self.reads_today()} · model {self.ollama.get('model', '—')} {ol}")
+                f"{pf} · Firestore dziś {self.reads_today()} · model {self.ollama.get('model', '—')} {ol}")
 
     def step_once(self) -> list[dict]:
         now = self.clock()
@@ -129,6 +136,12 @@ class Supervisor:
             txt = describe(e)
             self.hub.event(e["kind"], txt, data={k: v for k, v in e.items() if k in ("candle", "have", "need", "missing")}, at=now)
             self.log(f"  {datetime.fromtimestamp(now, PL):%H:%M:%S}  {txt}")
+            if self.agent is not None:
+                if e["kind"] == "stocks":
+                    self.agent.submit("stocks", int(e["key"]), e["candle"], e["close_at"])
+                elif e["kind"] == "fx":
+                    T = int(e["close_at"]) - 3600
+                    self.agent.submit("fx", T, f"FX {hm(T)}–{hm(T + 3600)}", e["close_at"])
         if ev:
             self.pending = True
         if (self.pending and now - self.last_pub >= EVENT_PUB_SEC) or now - self.last_pub >= ALIVE_SEC:
@@ -162,6 +175,45 @@ def _universe() -> tuple[list[str], list[str]]:
         m = sync.load_manifest()
         traded = [s for s, v in m.items() if v.get("group") in ("main", "proof")]
         return traded, [s for s, v in m.items() if v.get("group") == "context"]
+
+
+def start_investor(hub, push, traded, context, live, model, info):
+    """Branch `ai` (+ odtworzenie pustego huba), ai/config.json, playbook, Investor, rozliczenie przerwy, wątek agentów."""
+    from . import config as aicfg
+    from . import excel, playbook
+    from .agents import AgentWorker, RoundData
+    from .investor import Investor
+    from .llm import LLM
+    from .store import AiStore, restore
+    try:
+        store = AiStore(push=push)
+    except Exception as e:
+        print(f"  ! branch ai niedostępny ({type(e).__name__}: {e}) — Agent-Investor bez zapisu na GitHub")
+        store = None
+    cfg = aicfg.load(store.config_path if store else None)
+    empty = not hub.db.execute("SELECT COUNT(*) FROM positions").fetchone()[0] and not hub.meta("round_n")
+    if empty and store is not None and restore(hub, store.repo.dir):
+        print("  hub był pusty — odtworzony z brancha ai")
+    ihub = Hub()                                           # osobne połączenie dla wątku agentów
+    llm = LLM(cfg, record=lambda **k: ihub.llm_call(**k))
+    inv = Investor(cfg, ihub, llm, out=store, xlsx=lambda i, b, p: excel.write(i, b, p))
+    pb = playbook.load(refresh=True)
+    mech = playbook.mechanical()
+    inv.set_playbook(pb, mech)
+    sel = sum(1 for s in pb["strategies"] if s["selected"])
+    print(f"  playbook: {len(pb['strategies'])} strategii (wybranych {sel}, mnożnik 1,0; pozostałe 0,5) · "
+          f"mechaniczny inwestor: {(mech or {}).get('closed', '—')} zamkniętych")
+    data = RoundData(traded, context, live, model)
+    t0 = time.time()
+    prices, sig, _ = data.get(need_signals=bool(inv.main.active() or inv.shadow.active()))
+    r = inv.startup(prices, sig)
+    pf = inv.public["portfolio"]
+    eq = f"{pf['equity']:,.0f}".replace(",", " ")
+    print(f"  Agent-Investor: rozliczenie przerwy — wejść {r['entries']}, wyjść {r['exits']} · stan konta {eq} $, "
+          f"pozycji {pf['positions']} ({time.time() - t0:.0f} s) · Excel: {aicfg.xlsx_path(cfg)}")
+    if not info.get("present") and not info.get("skipped"):
+        print("  ! model językowy niedostępny — rundy skończą się „brak decyzji”")
+    return AgentWorker(inv, data, store=store, pb_loader=lambda: playbook.load(refresh=True), mech_loader=playbook.mechanical)
 
 
 def main() -> None:
@@ -238,9 +290,6 @@ def main() -> None:
                           f"FX {len(dfs)} instrumentów ({time.time() - t0:.0f} s)")
         print(f"  kopia akcji do {nyse.label(newest) if newest else '—'} · FX {len(dfs)} instrumentów ({time.time() - t0:.0f} s)")
 
-        # 3–4. rozliczenie przerwy i przegląd Managera — od kroków AI-2 i AI-4
-        print("  rozliczenie przerwy: brak pozycji (Agent-Investor od kroku AI-2) · przegląd Managera: od kroku AI-4")
-
         # 5. prognoza FX wewnątrz nadzorcy (kod ia4.fx.live) albo sam feed FX
         now = time.time()
         fx_ratings, fx_note, live, model = None, None, None, None
@@ -262,6 +311,9 @@ def main() -> None:
             model = None
         hub.event("fx", "prognoza FX " + (f"działa (ratingi {model.run})" if model else "wyłączona — sam feed FX"))
 
+        # 3. Agent-Investor: branch ai, ustawienia, playbook, rozliczenie przerwy (przegląd Managera — od AI-4)
+        worker = start_investor(hub, push, traded, context, live, model, info)
+
         stocks = feed.StockFeed(feed.StockSource(), traded, context, have, hub)
         if synced:
             stocks.startup_synced(time.time())
@@ -269,6 +321,10 @@ def main() -> None:
         out = status.AiLiveRepo(config.RESEARCH_DIR / "ai-live-repo", push=push)
         out.ensure(ResultsRepo(config.RESEARCH_DIR / "ai-live-repo")._origin() if push else None)
         sup = Supervisor(hub, stocks, fx, out, info, fx_ratings, fx_note)
+        sup.agent = worker
+        if worker is not None:
+            worker.on_change = lambda: setattr(sup, "pending", True)
+            worker.start()
         sup.publish(time.time())
         print(f"\n  strona: https://miszyszka.github.io/IA4/#ai  (Ctrl+C kończy)\n")
         print(sup.line(time.time()))
@@ -278,6 +334,14 @@ def main() -> None:
                 time.sleep(LOOP_SEC)
         except KeyboardInterrupt:
             print("\n  zatrzymuję… (zapis huba i ostatnia publikacja)")
+            if worker is not None and worker.busy:
+                print("  czekam na koniec rundy Inwestora (najwyżej 3 min; Ctrl+C jeszcze raz — przerwij)…")
+                try:
+                    worker.stop(timeout=180)
+                except KeyboardInterrupt:
+                    print("  ! runda przerwana — ostatnia decyzja może nie być zapisana")
+            elif worker is not None:
+                worker.stop(timeout=5)
             now = time.time()
             hub.event("stop", "zatrzymano (Ctrl+C)", at=now)
             try:
