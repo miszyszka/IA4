@@ -1,6 +1,6 @@
 """
 IA 4 — wątek agentów AI Investor (instrukcja, sekcje 11c.3, 11c.6).
-Wersja projektu: 1.35 (2026-10-12) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.36 (2026-10-13) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Nadzorca (wątek główny) pilnuje feedu świec i sygnału życia; agenci liczą w osobnym wątku, żeby
 myślenie modelu (1–2 min) nie wstrzymywało feedu. Kolejka rund: na każdy rynek tylko najnowsza

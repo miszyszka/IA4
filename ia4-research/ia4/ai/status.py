@@ -1,6 +1,6 @@
 """
 IA 4 — branch `ai-live`: stan AI Investor na żywo (instrukcja, sekcja 11c.11).
-Wersja projektu: 1.35 (2026-10-12) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.36 (2026-10-13) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 `status.json` — zawsze jeden commit, force push (ten sam mechanizm co `fx-live`, ia4/fx/live.py:
 LiveRepo). Sygnał życia co 5 min i od razu po zdarzeniu (nie częściej niż co 20 s). Plik bez NaN.

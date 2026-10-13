@@ -1,6 +1,6 @@
 """
 IA 4 — symulacja transakcji (zasady: IA4_INSTRUKCJA.md, sekcja 8.6).
-Wersja projektu: 1.35 (2026-10-12) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.36 (2026-10-13) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Jeden przebieg liczy KAŻDĄ kombinację SL × TP naraz (domyślnie 1–10% × 1–10%).
 

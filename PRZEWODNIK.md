@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.35 (2026-10-12)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.36 (2026-10-13)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
@@ -113,6 +113,8 @@ Chcesz go w Arkuszach Google — przenieś ścieżkę do folderu Dysku Google (C
 - **obsunięcie %** — o ile najgłębiej spadł kapitał od swojego szczytu; przy podwajaniu stawek to ono pokazuje prawdziwe ryzyko,
 - czerwony pogrubiony wynik = **upadłość** (kapitał spadł do 10 000 $),
 - porównuj zawsze z **OD-099 / OD-100** (long / short codziennie bez żadnej reguły): strategia, która nie bije OD-099, tylko jedzie na hossie.
+
+**Arkusz PORTFEL OD-080** — co by było, gdyby jeden inwestor z **10 000 $** grał tę strategię na wszystkich 73 spółkach naraz. Wiersz = jedna transakcja (dzień, spółka, która to świeca w serii, stawka, zysk/strata, zarobiony % i stan portfela po niej). Na górze podsumowanie. Uwaga „stawki dnia ×0,6” znaczy: tego dnia sygnałów było tyle, że suma stawek przekroczyłaby portfel, więc wszystkie zmniejszono — bez pożyczania pieniędzy. Inną strategię dodasz poleceniem `python -m ia4.oneday --portfolio OD-080 OD-034`.
 
 **Wniosek do zapamiętania:** zwiększanie stawki po stracie nie zmienia tego, czy pojedynczy dzień jest „na plusie” — zamienia wiele drobnych zysków na rzadkie, duże straty. Ważne są: obsunięcie, upadłości, wynik na doubleProof i wariant z filtrem SMA50 (blok C), który w bessie przestaje dawać sygnały long.
 

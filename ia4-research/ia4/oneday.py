@@ -1,6 +1,6 @@
 """
 IA 4 — test One-Day: kaskady na świecach dobowych (instrukcja, sekcja 6c).
-Wersja projektu: 1.35 (2026-10-12) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.36 (2026-10-13) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Jednorazowy test informacyjny (decyzja człowieka z 12.10.2026). Nie jest strategią `ia4-rule/1`
 (zasada 9), nie zmienia poszukiwania, paper tradingu ani AI Investor.
@@ -16,9 +16,12 @@ Jednorazowy test informacyjny (decyzja człowieka z 12.10.2026). Nie jest strate
   kapitał ≤ 10% startowego = upadłość (koniec handlu na tej spółce).
 - Wynik: transakcje, zyskowne, wynik % portfela, maksymalne obsunięcie (szczyt → dołek krzywej kapitału
   po zamknięciu każdego dnia). Plik: ~/Desktop/IA4/ONE-DAY-STRATEGY.xlsx (poza gitem).
+- Od 1.36 arkusz PORTFEL OD-080: jedna strategia na wszystkich spółkach naraz, wspólny portfel 10 000 $,
+  kolejne transakcje dzień po dniu (portfolio()).
 
     python -m ia4.oneday              # synchronizacja (gdy nie działa `ia4 start`), test, plik Excel
     python -m ia4.oneday --no-sync    # tylko kopia lokalna
+    python -m ia4.oneday --portfolio OD-080 OD-034 --capital 10000   # arkusze PORTFEL (domyślnie OD-080, 10 000 $)
     python -m ia4.oneday --selftest   # test na danych syntetycznych — „WYNIK: OK”
 """
 
@@ -235,62 +238,142 @@ def _indicators(dd: Days) -> None:
 # ---------------------------------------------------------------------------
 #  Symulacja
 # ---------------------------------------------------------------------------
-def simulate(s: Strat, dd: Days, trace: list | None = None) -> dict:
-    """Jeden portfel 100 000 $: strategia s na świecach dobowych jednego instrumentu."""
-    eq = peak = CAPITAL
-    mdd = 0.0
-    trades = wins = 0
-    ruined = False
-    ruin_at = CAPITAL * RUIN_PCT / 100.0
+def events(s: Strat, dd: Days) -> list[tuple[int, int, float, float]]:
+    """Transakcje strategii s na jednym instrumencie, niezależnie od kapitału:
+    [(dzień t, krok kaskady k, mnożnik stawki, r z początku kaskady)]. Stawka = jednostka × mnożnik,
+    jednostka: x = 5% kapitału odniesienia, 1R = 0,5% kapitału odniesienia / (r / 100)."""
+    out = []
     trig = -s.dir                      # kolor świecy serii: long — spadkowe, short — wzrostowe
     streak = 0                         # długość bieżącej serii (do wczoraj)
     body = 0.0                         # D: suma korpusów serii w % (kierunek serii)
     k = 0                              # 0 = brak kaskady; inaczej numer kroku do zagrania dziś
     r0 = float("nan")
-    first_day = None
     for t, ok in enumerate(dd.valid):
         if not ok:                     # niepełna sesja: bez handlu, koniec serii i kaskady
             streak, body, k = 0, 0.0, 0
             continue
-        p = dd.pos[t]
         col = dd.color[t]
-        if p >= WARMUP:
-            if first_day is None:
-                first_day = dd.dates[t]
-            stake = 0.0
-            if not ruined:
-                if s.daily:
-                    stake = X_USD
-                else:
-                    if k == 0 and streak == s.n and (s.filt is None or dd.sma_up[t] == (1 if s.filt == "up" else -1)):
-                        if dd.r[t] > 0 or (s.size == "x" and not s.dsize):
-                            k, r0 = 1, dd.r[t]
-                    if k:
-                        base = X_USD if s.size == "x" else R_USD / (r0 / 100.0)
-                        stake = base * (body / r0 if s.dsize else mult(s.prog, k))
-            if stake > 0:
-                stake = min(stake, eq)
-                pnl = stake * s.dir * (dd.c[t] / dd.o[t] - 1.0)
-                eq += pnl
-                trades += 1
-                wins += pnl > 0
-                if trace is not None:
-                    trace.append((dd.dates[t], k, round(stake, 6), round(pnl, 6), round(eq, 6)))
-                if not s.daily:
+        if dd.pos[t] >= WARMUP:
+            if s.daily:
+                out.append((t, 0, 1.0, dd.r[t]))
+            else:
+                if k == 0 and streak == s.n and (s.filt is None or dd.sma_up[t] == (1 if s.filt == "up" else -1)):
+                    if dd.r[t] > 0 or (s.size == "x" and not s.dsize):
+                        k, r0 = 1, dd.r[t]
+                if k:
+                    out.append((t, k, body / r0 if s.dsize else mult(s.prog, k), r0))
                     k = k + 1 if col == trig else 0          # strata → następny krok; zysk/doji → koniec
                     if s.max_steps and k > s.max_steps:
                         k = 0
-                if eq <= ruin_at:
-                    ruined, k = True, 0
-            peak = max(peak, eq)
-            mdd = max(mdd, (peak - eq) / peak * 100.0)
         if col == trig:
             streak += 1
             body += abs(dd.c[t] - dd.o[t]) / dd.o[t] * 100.0
         else:
             streak, body = 0, 0.0
+    return out
+
+
+def unit(s: Strat, ref: float, r0: float) -> float:
+    """Jednostka stawki przy kapitale odniesienia ref: x albo 1R (instrukcja 6c)."""
+    if s.daily or s.size == "x":
+        return ref * X_USD / CAPITAL
+    return ref * R_USD / CAPITAL / (r0 / 100.0)
+
+
+def first_trade_day(dd: Days) -> str | None:
+    for t, ok in enumerate(dd.valid):
+        if ok and dd.pos[t] >= WARMUP:
+            return dd.dates[t]
+    return None
+
+
+def simulate(s: Strat, dd: Days, trace: list | None = None) -> dict:
+    """Jeden portfel 100 000 $: strategia s na świecach dobowych jednego instrumentu (stawki stałe w $)."""
+    eq = peak = CAPITAL
+    mdd = 0.0
+    trades = wins = 0
+    ruined = False
+    ruin_at = CAPITAL * RUIN_PCT / 100.0
+    for t, k, m, r0 in events(s, dd):
+        stake = min(unit(s, CAPITAL, r0) * m, eq)
+        if stake <= 0:
+            continue
+        pnl = stake * s.dir * (dd.c[t] / dd.o[t] - 1.0)
+        eq += pnl
+        trades += 1
+        wins += pnl > 0
+        if trace is not None:
+            trace.append((dd.dates[t], k, round(stake, 6), round(pnl, 6), round(eq, 6)))
+        peak = max(peak, eq)                       # krzywa po każdym dniu z transakcją (bez niej się nie zmienia)
+        mdd = max(mdd, (peak - eq) / peak * 100.0)
+        if eq <= ruin_at:
+            ruined = True
+            break
     return {"trades": trades, "wins": wins, "ret": (eq / CAPITAL - 1.0) * 100.0, "mdd": mdd,
-            "ruined": ruined, "first": first_day}
+            "ruined": ruined, "first": first_trade_day(dd)}
+
+
+# ---------------------------------------------------------------------------
+#  Portfel — jedna strategia na wszystkich spółkach naraz (instrukcja 6c, „Portfel”)
+# ---------------------------------------------------------------------------
+PORTFOLIO_CAPITAL = 10_000.0
+PORTFOLIO_STRATS = ("OD-080",)
+
+
+def portfolio(s: Strat, data: dict[str, Days], symbols: list[str], capital: float = PORTFOLIO_CAPITAL) -> dict:
+    """Wspólny portfel: wszystkie transakcje strategii s na spółkach `symbols`, dzień po dniu.
+    Jednostka stawki liczona od stanu portfela na początku kaskady (dla F — na początku dnia);
+    suma stawek dnia > stan portfela na początku dnia → wszystkie stawki dnia zmniejszone proporcjonalnie
+    (bez dźwigni). Stan portfela ≤ 10% startowego → upadłość, koniec handlu."""
+    by_day: dict[str, list] = {}
+    order = {sym: i for i, sym in enumerate(symbols)}
+    for sym in symbols:
+        dd = data.get(sym)
+        if dd is None:
+            continue
+        for t, k, m, r0 in events(s, dd):
+            by_day.setdefault(dd.dates[t], []).append((order[sym], sym, t, k, m, r0))
+    eq = peak = capital
+    mdd, ruined = 0.0, False
+    ruin_at = capital * RUIN_PCT / 100.0
+    ref: dict[str, float] = {}          # stan portfela na początku bieżącej kaskady spółki
+    rows, n_scaled, max_load = [], 0, 0.0
+    trades = wins = 0
+    for day in sorted(by_day):
+        e0 = eq
+        evs = sorted(by_day[day])
+        stakes = []
+        for _o, sym, t, k, m, r0 in evs:
+            if k <= 1:
+                ref[sym] = e0
+            stakes.append(unit(s, ref[sym], r0) * m)
+        total = sum(stakes)
+        scale = min(1.0, e0 / total) if total > 0 else 1.0
+        max_load = max(max_load, total / e0 if e0 > 0 else 0.0)
+        if scale < 1.0:
+            n_scaled += 1
+        for (_o, sym, t, k, m, r0), st0 in zip(evs, stakes):
+            dd = data[sym]
+            stake = st0 * scale
+            move = (dd.c[t] / dd.o[t] - 1.0) * 100.0
+            pnl = stake * s.dir * move / 100.0
+            eq += pnl
+            trades += 1
+            wins += pnl > 0
+            rows.append({"day": day, "sym": sym, "candle": (s.n + k) if not s.daily else 1, "k": k,
+                         "o": dd.o[t], "c": dd.c[t], "move": move, "stake": stake, "pnl": pnl,
+                         "trade_pct": s.dir * move, "ret": (eq / capital - 1.0) * 100.0, "eq": eq,
+                         "scale": scale})
+        peak = max(peak, eq)
+        mdd = max(mdd, (peak - eq) / peak * 100.0)
+        if eq <= ruin_at:
+            ruined = True
+            break
+    days = sorted(by_day)
+    return {"rows": rows, "capital": capital, "end": eq, "ret": (eq / capital - 1.0) * 100.0, "mdd": mdd,
+            "trades": trades, "wins": wins, "ruined": ruined, "days": len({r["day"] for r in rows}),
+            "scaled": n_scaled, "max_load": max_load, "first": days[0] if days else None,
+            "last": rows[-1]["day"] if rows else None, "max_k": max((r["k"] for r in rows), default=0)}
 
 
 # ---------------------------------------------------------------------------
@@ -349,8 +432,60 @@ def summarize(res: dict, insts: list[tuple[str, str]]) -> list:
             mean([res[s]["ret"] for s in traded]), mean([res[s]["ret"] for s in dp])]
 
 
+PF_HEAD = ["Nr", "Dzień", "Spółka", "Świeca w serii", "Krok kaskady", "Stawka $", "Wynik transakcji %",
+           "Zysk / strata $", "Zarobiony % (portfel od startu)", "Stan portfela $", "Uwagi"]
+
+
+def write_portfolio(wb, s: Strat, pf: dict, n_syms: int) -> None:
+    """Arkusz PORTFEL <id>: kolejne transakcje wspólnego portfela (instrukcja 6c, „Portfel”)."""
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    ws = wb.create_sheet(f"PORTFEL {s.id}")
+    head = PatternFill("solid", fgColor="1F2A37")
+    sumf = PatternFill("solid", fgColor="FEF3C7")
+    bold = Font(bold=True)
+    usd, pct = '#,##0.00;[Red]-#,##0.00', "0.00;[Red]-0.00"
+    ws["A1"] = f"PORTFEL {s.id} — {s.desc}"
+    ws["A1"].font = Font(bold=True, size=13)
+    summ = [("Start", pf["capital"], usd), ("Koniec", pf["end"], usd), ("Zarobiony %", pf["ret"], pct),
+            ("Maks. obsunięcie %", pf["mdd"], pct), ("Transakcji", pf["trades"], "0"),
+            ("Zyskownych", pf["wins"], "0"), ("Dni z transakcjami", pf["days"], "0"),
+            ("Dni przycięte do kapitału", pf["scaled"], "0"), ("Najdłuższa kaskada (kroki)", pf["max_k"], "0")]
+    for j, (lab, v, fmt) in enumerate(summ):
+        a = ws.cell(2, 1 + j, lab)
+        a.font, a.fill = bold, sumf
+        a.alignment = Alignment(wrap_text=True, vertical="center")
+        b = ws.cell(3, 1 + j, round(v, 4) if isinstance(v, float) else v)
+        b.number_format, b.fill = fmt, sumf
+    ws.cell(4, 1, f"Spółki: {n_syms} (53 handlowane + doubleProof, bez SPY i QQQ) · "
+                  f"{pf['first'] or '—'} – {pf['last'] or '—'}"
+                  + (" · UPADŁOŚĆ — portfel spadł do 10% startu, koniec handlu" if pf["ruined"] else ""))
+    hr = 6
+    for j, h in enumerate(PF_HEAD, start=1):
+        c = ws.cell(hr, j, h)
+        c.font, c.fill = Font(bold=True, color="FFFFFF"), head
+        c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    for i, r in enumerate(pf["rows"], start=1):
+        note = f"stawki dnia ×{r['scale']:.3f} (suma > stan portfela)" if r["scale"] < 1 else None
+        vals = [i, r["day"], r["sym"], r["candle"], r["k"], round(r["stake"], 2), round(r["trade_pct"], 4),
+                round(r["pnl"], 2), round(r["ret"], 4), round(r["eq"], 2), note]
+        ws.append(vals)
+        row = ws.max_row
+        for col, fmt in ((6, usd), (7, pct), (8, usd), (9, pct), (10, usd)):
+            ws.cell(row, col).number_format = fmt
+    widths = [7, 11, 9, 9, 9, 13, 11, 13, 13, 14, 34]
+    for j, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(j)].width = w
+    ws.row_dimensions[2].height = 32
+    ws.row_dimensions[hr].height = 32
+    ws.freeze_panes = ws.cell(hr + 1, 1)
+    if pf["rows"]:
+        ws.auto_filter.ref = f"A{hr}:{get_column_letter(len(PF_HEAD))}{ws.max_row}"
+
+
 def write_xlsx(path: Path, strats: list[Strat], results: dict, insts: list[tuple[str, str]],
-               info: dict, meta: list[tuple[str, str]]) -> Path:
+               info: dict, meta: list[tuple[str, str]], portfolios: list | None = None) -> Path:
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
@@ -428,6 +563,10 @@ def write_xlsx(path: Path, strats: list[Strat], results: dict, insts: list[tuple
     ws.row_dimensions[2].height = 45
     ws.auto_filter.ref = f"A2:{get_column_letter(i0 + 4 * len(present) - 1)}{len(strats) + 2}"
 
+    stock_n = sum(g != "context" for _, g in present)
+    for s, pf in portfolios or []:
+        write_portfolio(wb, s, pf, stock_n)
+
     op = wb.create_sheet("OPIS")
     op.column_dimensions["A"].width = 34
     op.column_dimensions["B"].width = 110
@@ -490,13 +629,21 @@ def meta_rows(strats, data_note: str, first: str, last: str) -> list[tuple[str, 
         ("Kolumny spółki", "Transakcje · Zyskowne (wynik > 0) · Wynik % (kapitał końcowy / 100 000 − 1) · "
                            "Obsunięcie % (największy spadek krzywej kapitału od szczytu, po zamknięciu każdego dnia)."),
         ("Podsumowanie", "spółki bez SPY i QQQ (ETF-y tylko informacyjnie); dP = doubleProof."),
+        ("Arkusze PORTFEL …", f"jedna strategia na wszystkich spółkach naraz, wspólny portfel {PORTFOLIO_CAPITAL:,.0f} $"
+                              .replace(",", " ") + "; kolejne transakcje dzień po dniu (w dniu — kolejność spółek z sekcji 4). "
+                              "Jednostka stawki (x = 5%, 1R = 0,5% / r) od stanu portfela na początku kaskady spółki "
+                              "(rośnie i maleje z portfelem); suma stawek dnia > stan portfela na początku dnia → wszystkie "
+                              "stawki dnia zmniejszone proporcjonalnie (bez dźwigni); ≤ 10% startu = upadłość. "
+                              "Świeca w serii = N + krok (np. 3 = trzecia świeca po dwóch spadkowych). "
+                              "Wynik transakcji % = ruch open → close w kierunku pozycji; obsunięcie — po zamknięciu każdego dnia."),
         ("Uwaga", "Wynik informacyjny na ok. 2 latach danych. Strategie One-Day nie trafiają do paper tradingu "
                   "ani do AI Investor. doubleProof policzone za zgodą człowieka (6a, 6c)."),
         ("Strategii", str(len(strats))),
     ]
 
 
-def run(no_sync: bool = False, out: Path | None = None) -> Path:
+def run(no_sync: bool = False, out: Path | None = None, pf_ids: tuple[str, ...] = PORTFOLIO_STRATS,
+        pf_capital: float = PORTFOLIO_CAPITAL) -> Path:
     t0 = time.time()
     print("IA 4 — test One-Day (instrukcja, sekcja 6c)\n")
     u = universe()
@@ -524,8 +671,15 @@ def run(no_sync: bool = False, out: Path | None = None) -> Path:
     results = {st.id: {s: simulate(st, dd) for s, dd in data.items()} for st in strats}
     first = min(i["first"] for i in info.values())
     last = max(i["last"] for i in info.values())
+    by_id = {st.id: st for st in strats}
+    stock_syms = [s for s, g in insts if g != "context" and s in data]
+    pfs = []
+    for pid in pf_ids:
+        if pid not in by_id:
+            raise SystemExit(f"Nieznana strategia {pid} (OD-001 … OD-100).")
+        pfs.append((by_id[pid], portfolio(by_id[pid], data, stock_syms, pf_capital)))
     path = write_xlsx(out or default_path(), strats, results, insts, info,
-                      meta_rows(strats, note, first, last))
+                      meta_rows(strats, note, first, last), pfs)
     present = [(s, g) for s, g in insts if s in info]
     rank = sorted(strats, key=lambda st: -(summarize(results[st.id], present)[3] or -1e9))
     print(f"\n  {len(data)} instrumentów · {len(strats)} strategii · dane {first} – {last} · {time.time() - t0:.0f} s")
@@ -533,6 +687,10 @@ def run(no_sync: bool = False, out: Path | None = None) -> Path:
     for st in rank[:5]:
         sm = summarize(results[st.id], present)
         print(f"    {st.id}  mediana {sm[3]:+8.2f}%  średnia {sm[2]:+8.2f}%  na plusie {sm[4]:>7}  · {st.desc}")
+    for st, pf in pfs:
+        print(f"\n  PORTFEL {st.id} ({pf['capital']:,.0f} $, {len(stock_syms)} spółek): koniec {pf['end']:,.2f} $ · "
+              f"{pf['ret']:+.2f}% · obsunięcie {pf['mdd']:.2f}% · transakcji {pf['trades']} "
+              f"(zyskownych {pf['wins']}) · dni przycięte {pf['scaled']}".replace(",", " "))
     print(f"\nPlik: {path}")
     return path
 
@@ -704,14 +862,38 @@ def selftest() -> None:
     check("upadłość", (res["ruined"], res["ret"] <= RUIN_PCT - 100), (True, True))
     check("po upadłości bez handlu", len(tr), 10)
 
+    # Wspólny portfel 10 000 $: trzy spółki z tym samym przebiegiem, OD-003 (x, ×2) i OD-004 (x, ×3).
+    data3 = {"A": dd, "B": dd, "C": dd}
+    pf = portfolio(st["OD-003"], data3, ["A", "B", "C"])
+    check("portfel: transakcje", (pf["trades"], pf["wins"], pf["days"]), (9, 3, 3))
+    check("portfel: kolejność", [(r["day"], r["sym"]) for r in pf["rows"][:3]], [(seq[62][0], "A"), (seq[62][0], "B"), (seq[62][0], "C")])
+    check("portfel: świeca w serii", [r["candle"] for r in pf["rows"][::3]], [3, 4, 5])
+    check("portfel: stawki od stanu na początku kaskady", [round(r["stake"], 6) for r in pf["rows"][::3]], [500.0, 1000.0, 2000.0])
+    check("portfel: koniec", pf["end"], 10000 + 3 * (500 * -0.03 + 1000 * -0.01 + 2000 * 0.04))
+    check("portfel: obsunięcie", pf["mdd"], 3 * (15 + 10) / 10000 * 100)
+    pf = portfolio(st["OD-004"], data3, ["A", "B", "C"])  # krok 3: 3 × 4500 > stan portfela → przycięcie
+    e3 = 10000 - 3 * (500 * 0.03 + 1500 * 0.01)
+    check("portfel: przycięcie dnia", (pf["scaled"], round(pf["rows"][-1]["scale"], 9)), (1, round(e3 / 13500, 9)))
+    check("portfel: koniec po przycięciu", pf["end"], e3 * 1.04)
+    check("portfel: suma stawek ≤ stan", round(sum(r["stake"] for r in pf["rows"][-3:]), 6), round(e3, 6))
+    pf = portfolio(st["OD-003"], {"A": daily(_frame(seq6)), "B": dd}, ["A", "B"])
+    check("portfel: upadłość", (pf["ruined"], pf["end"] <= 1000), (True, True))
+    portfolios = [(st["OD-003"], portfolio(st["OD-003"], data3, ["A", "B", "C"]))]
+
     # Plik Excel z jednym instrumentem.
     out = Path(tempfile.mkdtemp()) / "t.xlsx"
     strats = strategies()
     results = {s.id: {"AAPL": simulate(s, dd)} for s in strats}
     info = {"AAPL": {"first": dd.dates[0], "last": dd.dates[-1], "days": len(dd.dates), "valid": 67, "start": dd.dates[55]}}
-    write_xlsx(out, strats, results, [("AAPL", "main")], info, meta_rows(strats, "selftest", dd.dates[0], dd.dates[-1]))
+    write_xlsx(out, strats, results, [("AAPL", "main")], info, meta_rows(strats, "selftest", dd.dates[0], dd.dates[-1]),
+               portfolios)
     from openpyxl import load_workbook
-    ws = load_workbook(out)["ONE-DAY-STRATEGY"]
+    wbk = load_workbook(out)
+    check("Excel: arkusze", wbk.sheetnames, ["ONE-DAY-STRATEGY", "PORTFEL OD-003", "OPIS"])
+    pw = wbk["PORTFEL OD-003"]
+    check("Excel: portfel wiersze", pw.max_row, 6 + 9)
+    check("Excel: portfel ostatni stan", pw.cell(15, 10).value, round(10000 + 3 * (500 * -0.03 + 1000 * -0.01 + 2000 * 0.04), 2))
+    ws = wbk["ONE-DAY-STRATEGY"]
     check("Excel: wiersze i kolumny", (ws.max_row, ws.max_column), (102, 3 + len(SUMMARY) + 4))
     check("Excel: OD-003 wynik", ws.cell(5, 3 + len(SUMMARY) + 3).value, round(results["OD-003"]["AAPL"]["ret"], 4))
 
@@ -723,12 +905,15 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="IA 4 — test One-Day (instrukcja, sekcja 6c)")
     ap.add_argument("--no-sync", action="store_true", help="bez synchronizacji z Firestore")
     ap.add_argument("--out", type=Path, help="ścieżka pliku (domyślnie ~/Desktop/IA4/ONE-DAY-STRATEGY.xlsx)")
+    ap.add_argument("--portfolio", nargs="+", default=list(PORTFOLIO_STRATS), metavar="OD-NNN",
+                    help="strategie do arkuszy PORTFEL (domyślnie OD-080)")
+    ap.add_argument("--capital", type=float, default=PORTFOLIO_CAPITAL, help="kapitał portfela (domyślnie 10 000 $)")
     ap.add_argument("--selftest", action="store_true", help="test na danych syntetycznych")
     a = ap.parse_args()
     if a.selftest:
         selftest()
     else:
-        run(no_sync=a.no_sync, out=a.out)
+        run(no_sync=a.no_sync, out=a.out, pf_ids=tuple(x.upper() for x in a.portfolio), pf_capital=a.capital)
 
 
 if __name__ == "__main__":

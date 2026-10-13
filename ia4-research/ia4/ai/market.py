@@ -1,6 +1,6 @@
 """
 IA 4 — ceny dla AI Investor: świece akcji i FX w jednym kształcie (instrukcja, sekcje 11c.4, 11c.6).
-Wersja projektu: 1.35 (2026-10-12) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.36 (2026-10-13) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Każdy instrument = tablice k (klucz świecy, rośnie), tc (zamknięcie, s UTC), o, h, l, c.
 Akcje: k = RRRRMMDDn (data sesji i numer świecy), zamknięcie wg kalendarza NYSE (świeca 7 — 16:00 ET,
