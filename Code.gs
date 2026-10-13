@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — zbieranie świec 1h  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 1.37 (2026-10-13) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.38 (2026-10-13) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Jedyne zadanie tego pliku: żeby baza świec w Firestore była kompletna
  *  i rosła każdego dnia. Zasady i format bazy: IA4_INSTRUKCJA.md.
@@ -15,6 +15,8 @@
  *    uruchamia paper trading (Paper.gs). Uruchomienie, które wypada tuż przed
  *    zamknięciem świecy, czeka na nie i pobiera 15 s po zamknięciu.
  *  • W każdym uruchomieniu moduł FX (Fx.gs) dociąga świece 1h 10 par walutowych i BTC.
+ *  • W wolnych uruchomieniach (poza sesją) moduł Daily.gs pobiera historię świec dobowych
+ *    wszystkich instrumentów, a raz na dzień sesyjny po zamknięciu dopisuje nowe (sekcja 4d).
  *  • Raz na dobę, po sesji, przepisuje ostatnie 5 sesji wszystkich instrumentów
  *    (nocne odświeżenie) — dziura z dowolnego dnia łata się sama następnej nocy.
  *    Zaraz potem liczy, ile świec ma w bazie każdy instrument.
@@ -31,7 +33,7 @@
 //  KONFIGURACJA
 // ============================================================================
 const CONFIG = {
-  VERSION: '1.37',
+  VERSION: '1.38',
 
   // Trzy grupy instrumentów — nazwy kolekcji w Firestore są historyczne
   // i zostają bez zmian (instrukcja, sekcja 4).
@@ -161,6 +163,8 @@ function onOpen() {
     .addItem('💱 FX 1h — przelicz arkusz FX', 'fxRebuildNow')
     .addItem('💱 FX — odśwież OKOLICZNOSCI_FX teraz', 'fxOkolNow')
     .addItem('🗑 FX — usuń stare świece EURUSD 5 min', 'fxLegacyDelete')
+    .addItem('📅 Świece dobowe — porcja historii teraz', 'dailyHistoryNow')
+    .addItem('📅 Świece dobowe — aktualizuj teraz', 'dailyUpdateNow')
     .addItem('🔥 Test połączenia z Firestore', 'testFirestore')
     .addSeparator()
     .addItem('📡 Wyślij stan do GitHub teraz', 'telemetryPublishNow')
@@ -237,7 +241,8 @@ function execute_(mode, initMessage) {
         summary = fastCollect_(ctx);
       } else {
         action = gate.reason;
-        const extra = nightlyIfDue_(ctx) || countIfDue_() || backfillIfDue_(ctx) || fxHistoryIfDue_();   // Fx.gs: historia 1h
+        const extra = nightlyIfDue_(ctx) || countIfDue_() || backfillIfDue_(ctx) || fxHistoryIfDue_() ||   // Fx.gs: historia 1h
+                      dailyIfDue_(ctx);                                                     // Daily.gs: świece dobowe
         if (extra) action += ' · ' + extra;
       }
     } else if (mode === 'nightly') {

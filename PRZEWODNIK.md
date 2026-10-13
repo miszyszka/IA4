@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.37 (2026-10-13)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.38 (2026-10-13)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
@@ -118,18 +118,28 @@ Chcesz go w Arkuszach Google — przenieś ścieżkę do folderu Dysku Google (C
 
 **Wniosek do zapamiętania:** zwiększanie stawki po stracie nie zmienia tego, czy pojedynczy dzień jest „na plusie” — zamienia wiele drobnych zysków na rzadkie, duże straty. Ważne są: obsunięcie, upadłości, wynik na doubleProof i wariant z filtrem SMA50 (blok C), który w bessie przestaje dawać sygnały long.
 
-## 3e. Poszukiwanie stabilnych strategii — plik ONE-DAY-SEARCH.xlsx
+## 3e. Poszukiwanie stabilnych strategii — pliki ONE-DAY-SEARCH.xlsx i ONE-DAY-SEARCH-DAILY.xlsx
 
-**Uruchamianie:** `cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && python -m ia4.odsearch` (ok. 1 min; zamknij wcześniej plik w Excelu).
+**Uruchamianie:** `cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate`, potem:
+- `python -m ia4.odsearch` — na świecach z ostatnich ok. 2 lat (ok. 1 min) → `ONE-DAY-SEARCH.xlsx`,
+- `python -m ia4.daily` i `python -m ia4.odsearch --source daily` — na pełnej historii od 1990 r. (ok. 3–5 min) → `ONE-DAY-SEARCH-DAILY.xlsx`. Najpierw automat musi pobrać historię (niżej).
 
-**O co chodzi:** program sprawdza ok. 16 700 prostych reguł „wejdź rano, wyjdź wieczorem” (np. „long po 2 spadkowych świecach, gdy cena nad SMA50, w poniedziałek”). Zostają tylko te, które w **10 kolejnych okresach** (po ok. 2 miesiące) były stratne **najwyżej raz**. Szuka tylko na 53 spółkach handlowanych; 20 spółek doubleProof służy do sprawdzenia, czy reguła działa też tam.
+Zamknij wcześniej plik w Excelu / Numbers. Mac bez programu do `.xlsx`: przeciągnij plik na Dysk Google (otworzy się w Arkuszach) albo zainstaluj darmowe Numbers.
 
-**Jak czytać arkusz WYNIKI:**
-- 10 kolorowych kolumn okresów — zielony = okres na plusie, czerwony = na minusie, szary = za mało transakcji; tu widać „konsekwentny wzrost”,
-- **dP potwierdzona ✓** — reguła zarabia równo także na spółkach, których program nie widział; reguły bez ✓ traktuj jak przypadek,
-- **nadwyżka nad bazą** — o ile reguła jest lepsza od kupowania (albo sprzedawania) każdego dnia; około 0 = reguła tylko płynie z rynkiem (w hossie long „zawsze” też rośnie),
-- arkusz **OPIS → Placebo** — ile reguł „przeszłoby” z czystego przypadku na tych samych danych; jeśli prawdziwych ✓ jest niewiele więcej niż w placebo, nic nie znaleźliśmy,
-- arkusze **PORTFEL #1–#3** — jak rósłby portfel 10 000 $ trzech najlepszych reguł, transakcja po transakcji.
+**O co chodzi:** program sprawdza ok. 17 300 prostych reguł „wejdź rano, wyjdź wieczorem”. Dwie rodziny:
+- **kierunkowe** — np. „long po 2 spadkowych świecach, gdy cena nad SMA50, w poniedziałek”,
+- **neutralne** — każdego dnia kupujemy k spółek, które np. wczoraj najmocniej spadły, i sprzedajemy k, które najmocniej wzrosły (albo odwrotnie). Tyle samo long i short, więc wynik prawie nie zależy od tego, czy rynek rośnie, czy spada.
+
+Zostają tylko reguły, które w **10 kolejnych okresach** były stratne **najwyżej raz**. Program szuka tylko na 53 spółkach handlowanych; 20 spółek doubleProof służy do sprawdzenia.
+
+**Jak czytać arkusze WYNIKI i WYNIKI NEUTRALNE:**
+- 10 kolorowych kolumn okresów — zielony = okres na plusie, czerwony = na minusie, szary = za mało transakcji,
+- **dP potwierdzona ✓** — reguła zarabia także na spółkach, których program nie widział, i to po odjęciu ruchu całego rynku; próg jest wysoki (przy 200 regułach t ≥ 3,5), bo inaczej przypadek dawałby ✓; reguły bez ✓ traktuj jak przypadek,
+- **nadwyżka nad bazą** — o ile reguła jest lepsza od kupowania (albo sprzedawania) każdego dnia; około 0 = reguła tylko płynie z rynkiem,
+- arkusz **OPIS → Placebo** — ile reguł „przeszłoby” z czystego przypadku na tych samych danych; jeśli prawdziwych ✓ jest tyle co w placebo, nic nie znaleźliśmy,
+- arkusze **PORTFEL #1–#3** (kierunkowe) i **N1–N2** (neutralne) — jak rósłby portfel 10 000 $, transakcja po transakcji.
+
+**Baza świec dobowych (od 1.38):** automat w Apps Script sam pobiera pełną historię świec dobowych wszystkich 75 instrumentów — porcjami po 6, tylko poza sesją (wieczorem, w nocy, w weekend), razem ok. 13 porcji. Postęp: strona IA4 / `telemetry/state.json` → `daily.history` (np. `42/75`). Potem raz na dzień sesyjny, wieczorem, dopisuje nowy dzień. Ręcznie: menu IA 4 → „📅 Świece dobowe — porcja historii teraz”.
 
 ## 4. VIRTUAL-INVESTOR — jak czytać wynik
 

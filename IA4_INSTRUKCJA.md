@@ -1,8 +1,8 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.37
+**Wersja:** 1.38
 **Data:** 13 października 2026
-**Aktualny etap:** ✅ Etap 1 — baza akcji (działa bez końca) · 🟨 Etap 2 — poszukiwanie strategii (wstrzymane od 3.10.2026, 60 aktywnych strategii) · 🟨 Etap 3 — paper trading i wirtualny inwestor akcji · 🟨 Etap 4 — FX na świecach 1h: zbieranie 10 par + BTC (od 1.27) i prognoza rozkładu (krok FX-7: katalog `fx-cond/2`, H-001 i H-002 zapisane 11.10.2026) · 🟨 Etap 5 — strona IA4 `https://miszyszka.github.io/IA4/` (od 1.28) · 🟨 Etap 6 — AI Investor: trzej agenci na Macu (sekcja 11c; AI-1 — nadzorca i feed świec, 1.33; AI-2 — Agent-Investor, kod gotowy w 1.34). Poza etapami: test One-Day na świecach dobowych i symulacja portfela OD-080 (sekcja 6c, 1.35–1.36), poszukiwanie stabilnych strategii One-Day (sekcja 6d, 1.37). Mapa całości i lista otwartych kroków: sekcja 0. Jak czytać arkusze i stronę: `PRZEWODNIK.md`.
+**Aktualny etap:** ✅ Etap 1 — baza akcji (działa bez końca) · 🟨 Etap 2 — poszukiwanie strategii (wstrzymane od 3.10.2026, 60 aktywnych strategii) · 🟨 Etap 3 — paper trading i wirtualny inwestor akcji · 🟨 Etap 4 — FX na świecach 1h: zbieranie 10 par + BTC (od 1.27) i prognoza rozkładu (krok FX-7: katalog `fx-cond/2`, H-001 i H-002 zapisane 11.10.2026) · 🟨 Etap 5 — strona IA4 `https://miszyszka.github.io/IA4/` (od 1.28) · 🟨 Etap 6 — AI Investor: trzej agenci na Macu (sekcja 11c; AI-1 — nadzorca i feed świec, 1.33; AI-2 — Agent-Investor, kod gotowy w 1.34). Poza etapami: test One-Day na świecach dobowych i symulacja portfela OD-080 (sekcja 6c, 1.35–1.36), poszukiwanie stabilnych strategii One-Day (sekcja 6d, 1.37–1.38). Baza świec dobowych — pełna historia wszystkich instrumentów (sekcja 4d, od 1.38). Mapa całości i lista otwartych kroków: sekcja 0. Jak czytać arkusze i stronę: `PRZEWODNIK.md`.
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jeśli kod, arkusz albo telemetria się z nim rozjeżdżają, obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -25,7 +25,7 @@ IA 4 to system, który **zbiera świece z Yahoo do Firestore** (Apps Script, bez
 
 | Miejsce | Zawartość | Kto pisze |
 |---|---|---|
-| Firestore | `stocks`, `proof`, `context`, `doubleProof` (akcje, 4), `fx1h` + `system/fx1h` (FX, 4b), `system/universe`, `system/status` | Apps Script |
+| Firestore | `stocks`, `proof`, `context`, `doubleProof` (akcje, 4), `daily` + `system/daily` (świece dobowe wszystkich instrumentów, pełna historia, 4d), `fx1h` + `system/fx1h` (FX, 4b), `system/universe`, `system/status` | Apps Script |
 | branch `main` | kod (`*.gs`, `ia4-research/`), ta instrukcja, `PRZEWODNIK.md`, `telemetry/state.json`, `telemetry/vi.json`, strona `docs/` | Claude (pakiety `.bundle`), Apps Script (`telemetry/`) |
 | branch `research` | strategie, dziennik poszukiwania, doubleProof, backtest portfela (10) | Mac (`ia4.lab`) |
 | branch `fx` | katalog okoliczności, ratingi, przeliczenia FX-research, archiwum `fx-cond/1` (4c.12) | Mac (`ia4.fx`) |
@@ -33,22 +33,23 @@ IA 4 to system, który **zbiera świece z Yahoo do Firestore** (Apps Script, bez
 | branch `ai` | AI Investor: transakcje, decyzje, hipotezy, playbook, przeglądy, wnioski (11c.11) | Mac (`ia4.ai`) |
 | branch `ai-live` | `status.json` — stan agentów i portfela na żywo (11c.11) | Mac (`ia4.ai`) |
 | arkusz Google | STATS, FX, OKOLICZNOSCI_FX, STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, `_IA4_DANE` | Apps Script |
-| Mac `ia4-research/data/` | kopie lokalne (akcje `*.parquet`, FX `fx1h/`) — robocze, do odtworzenia; hub AI Investor `ai/hub.sqlite` (odtwarzalny z brancha `ai`, 11c.5) | Mac |
+| Mac `ia4-research/data/` | kopie lokalne (akcje `*.parquet`, świece dobowe `daily/`, FX `fx1h/`) — robocze, do odtworzenia; hub AI Investor `ai/hub.sqlite` (odtwarzalny z brancha `ai`, 11c.5) | Mac |
 | Mac `~/Desktop/IA4/AI-INVESTOR.xlsx` | transakcje, decyzje i dziennik AI Investor (11c.11) | Mac (`ia4.ai`) |
 | Mac `~/Desktop/IA4/ONE-DAY-STRATEGY.xlsx` | test One-Day: 100 strategii kaskadowych na świecach dobowych × 75 instrumentów i wspólny portfel OD-080 (6c) | Mac (`ia4.oneday`) |
-| Mac `~/Desktop/IA4/ONE-DAY-SEARCH.xlsx` | poszukiwanie stabilnych strategii One-Day: reguły spełniające warunek 10 okresów, potwierdzenie doubleProof, placebo, portfele (6d) | Mac (`ia4.odsearch`) |
+| Mac `~/Desktop/IA4/ONE-DAY-SEARCH.xlsx`, `ONE-DAY-SEARCH-DAILY.xlsx` | poszukiwanie stabilnych strategii One-Day (świece z 1h / baza dobowa): reguły kierunkowe i neutralne spełniające warunek 10 okresów, potwierdzenie doubleProof, placebo, portfele (6d) | Mac (`ia4.odsearch`) |
 
-**Historia w skrócie:** 1.0–1.1 baza akcji i poszukiwanie · 1.2–1.14 sita, skarbiec, doubleProof, paper trading (1.8), poszukiwanie wstrzymane (1.14) · 1.15–1.19 szybka ścieżka, wirtualny inwestor z kosztami, backtest portfela, moduł EURUSD 5 min · 1.20–1.26 prognoza EURUSD 5 min (katalog `fx-cond/1`, ratingi, dashboard, prognoza rozkładu) · 1.27 FX na świecach 1h, 11 instrumentów, wszystko liczone od nowa · 1.28 strona IA4 i `telemetry/vi.json` · 1.29 porządek instrukcji (ta sekcja) · 1.30 kalibracja FX: warunek częstości na pojedynczym instrumencie · 1.31 środek prognozy: kandydat „mediana analogów” · 1.32 AI Investor — instrukcja (sekcja 11c, Etap 6) · 1.33 AI-1: nadzorca `ia4 start`, feed świec, hub, zakładka AI · 1.34 AI-2: Agent-Investor (silnik portfela, model, branch `ai`, Excel) · 1.35 test One-Day na świecach dobowych (plik Excel) · 1.36 arkusz PORTFEL OD-080 (wspólny portfel 10 000 $) · 1.37 poszukiwanie stabilnych strategii One-Day (warunek 10 okresów). Szczegóły: sekcja 13.
+**Historia w skrócie:** 1.0–1.1 baza akcji i poszukiwanie · 1.2–1.14 sita, skarbiec, doubleProof, paper trading (1.8), poszukiwanie wstrzymane (1.14) · 1.15–1.19 szybka ścieżka, wirtualny inwestor z kosztami, backtest portfela, moduł EURUSD 5 min · 1.20–1.26 prognoza EURUSD 5 min (katalog `fx-cond/1`, ratingi, dashboard, prognoza rozkładu) · 1.27 FX na świecach 1h, 11 instrumentów, wszystko liczone od nowa · 1.28 strona IA4 i `telemetry/vi.json` · 1.29 porządek instrukcji (ta sekcja) · 1.30 kalibracja FX: warunek częstości na pojedynczym instrumencie · 1.31 środek prognozy: kandydat „mediana analogów” · 1.32 AI Investor — instrukcja (sekcja 11c, Etap 6) · 1.33 AI-1: nadzorca `ia4 start`, feed świec, hub, zakładka AI · 1.34 AI-2: Agent-Investor (silnik portfela, model, branch `ai`, Excel) · 1.35 test One-Day na świecach dobowych (plik Excel) · 1.36 arkusz PORTFEL OD-080 (wspólny portfel 10 000 $) · 1.37 poszukiwanie stabilnych strategii One-Day (warunek 10 okresów) · 1.38 baza świec dobowych z pełną historią, strategie neutralne wobec rynku. Szczegóły: sekcja 13.
 
 **Otwarte kroki (stan 12.10.2026, 13:00)** — do odhaczenia przez Claude na podstawie telemetrii i branchy (zrobione: historia FX 1h `11/11`, GitHub Pages z `main/docs`, katalog `fx-cond/2`, H-001 i H-002, pakiety 1.32 i 1.33 wypchnięte, `ia4 start` uruchomiony 11.10.2026 21:44–22:47 — świeca BTC w kopii 19 s po zapisie w Firestore):
-1. Apps Script w wersji 1.37 (`telemetry/state.json` → `version`; 13.10.2026 15:13 wciąż `1.34`) — podmienić wszystkie pliki `.gs` (sekcja 12). Strona ostrzega o różnicy wersji.
+1. Apps Script w wersji 1.38 (`telemetry/state.json` → `version`; 13.10.2026 15:13 wciąż `1.34`) — podmienić wszystkie pliki `.gs` i **dodać nowy plik `Daily.gs`** (sekcja 12). Od tej chwili automat sam pobiera historię świec dobowych (4d) poza sesją; postęp: `telemetry/state.json` → `daily.history`. Strona ostrzega o różnicy wersji.
 2. `telemetry/vi.json` pojawia się po pierwszej świecy sesji po wdrożeniu 1.28+ (11b) — zależy od pkt 1. Do tego czasu punkt odniesienia „mechaniczny inwestor” bierze podsumowanie z `state.json` → `vi`.
 3. Stara baza EURUSD 5 min usunięta z menu „🗑 FX — usuń stare świece EURUSD 5 min” (nieodwracalne, 4b) — potwierdzić.
 4. FX-7 do zamknięcia — potwierdzenie człowieka: arkusz OKOLICZNOSCI_FX ma kolumny H-001 i H-002, zakładka FX pokazuje stożek (sekcja 7).
 5. Etap 6 na Macu (1.34): `git pull`, `pip install -r requirements.txt` (nowe: `openpyxl`), funkcja `ia4` w `~/.zshrc` w wersji `function ia4 { … }` (11c.3), `python -m ia4.ai.selftest` i `python -m ia4.ai.replay` („WYNIK: OK”), potem `ia4 start` w sesji NYSE (od 18:00). AI-1 zamyka się, gdy spływ świec akcji pokaże świece w kopii ≤ 2 min po zapisie w Firestore; AI-2 — gdy pierwsza transakcja z notatką, SL i TP jest w `AI-INVESTOR.xlsx`, na branchu `ai` (`ai/trades.jsonl`) i w zakładce AI.
 6. Test One-Day (1.35–1.36, sekcja 6c; pakiet 1.35 wypchnięty 12.10.2026, człowiek wskazał OD-080 jako najlepszą): `git pull`, `python -m ia4.oneday --selftest` („WYNIK: OK”), `python -m ia4.oneday` → `~/Desktop/IA4/ONE-DAY-STRATEGY.xlsx`; Claude przegląda z człowiekiem wynik i arkusz PORTFEL OD-080. Apps Script: podmienić sześć plików `.gs` (w 1.35–1.37 zmienia się tylko numer wersji). Przegląd 1.36 (13.10.2026): portfel OD-080 falował — po ok. 1600 transakcjach bilans ujemny; człowiek szuka strategii, która rośnie konsekwentnie.
-7. Poszukiwanie stabilnych strategii One-Day (1.37, sekcja 6d): `git pull`, `python -m ia4.odsearch --selftest` („WYNIK: OK”), `python -m ia4.odsearch` → `~/Desktop/IA4/ONE-DAY-SEARCH.xlsx`; Claude przegląda z człowiekiem reguły z ✓ na doubleProof na tle placebo.
-8. Później, tylko za zgodą człowieka: strategie FX i wirtualny inwestor FX (krok FX-8) — H-001 i H-002 nie pokazały przewagi kierunku; Etap 6, kroki AI-3 (Strategy-Maker) i AI-4 (Strategy-Manager).
+7. Poszukiwanie stabilnych strategii One-Day (1.37, sekcja 6d): `git pull`, `python -m ia4.odsearch --selftest` („WYNIK: OK”), `python -m ia4.odsearch` → `~/Desktop/IA4/ONE-DAY-SEARCH.xlsx`; Claude przegląda z człowiekiem reguły z ✓ na doubleProof na tle placebo. Przegląd 1.37 (13.10.2026): na świecach z 1h warunek spełnia 159 reguł (placebo 115), potwierdzonych 0 (placebo 6) — brak stabilnej przewagi; decyzja człowieka: baza dobowa z pełną historią (4d) i strategie neutralne wobec rynku (6d).
+8. Baza dobowa i poszukiwanie na długiej historii (1.38): po wdrożeniu `Daily.gs` czekać na `daily.history` = `75/75` w telemetrii (porcje po 6 instrumentów poza sesją), potem na Macu `python -m ia4.daily` (kopia lokalna) i `python -m ia4.odsearch --source daily` → `~/Desktop/IA4/ONE-DAY-SEARCH-DAILY.xlsx`; Claude przegląda wynik z człowiekiem na tle placebo.
+9. Później, tylko za zgodą człowieka: strategie FX i wirtualny inwestor FX (krok FX-8) — H-001 i H-002 nie pokazały przewagi kierunku; Etap 6, kroki AI-3 (Strategy-Maker) i AI-4 (Strategy-Manager).
 
 ---
 
@@ -113,6 +114,7 @@ GitHub main: telemetry/state.json, telemetry/vi.json · research · fx · fx-liv
 | Plik | Rola |
 |---|---|
 | `Code.gs` | automat: listy instrumentów, zbieranie na żywo (szybka ścieżka po zamknięciu świecy), nocne odświeżenie, liczenie bazy, pobieranie historii doubleProof, zapis do Firestore, arkusz STATS, menu, triggery |
+| `Daily.gs` | baza świec dobowych: pełna historia z Yahoo wszystkich instrumentów w porcjach poza sesją, aktualizacja raz na dzień sesyjny, `daily/`, `system/daily` (sekcja 4d) |
 | `Fx.gs` | moduł FX 1h: świece 1h 10 par walutowych i BTC z Yahoo → Firestore `fx1h`, arkusz FX, opóźnienia w STATS (sekcja 4b); arkusz OKOLICZNOSCI_FX (4c.11) |
 | `Telemetry.gs` | stan zbierania → `telemetry/state.json`, stan wirtualnego inwestora → `telemetry/vi.json` w GitHub (branch `main`) |
 | `Research.gs` | branch `research` (`strategies.jsonl`, `backtest-doubleproof.json`, `portfolio-backtest.json`) → arkusze STRATEGIE i BACKTEST PORTFELA; listy `ACTIVE_IDS` i `PRIORITY` dla paper tradingu |
@@ -137,7 +139,9 @@ GitHub main: telemetry/state.json, telemetry/vi.json · research · fx · fx-liv
 | `ia4-research/ia4/lab/portfolio.py` | jednorazowy backtest portfela (wirtualny inwestor na historii) → `research/portfolio-backtest.json` (sekcja 6b) |
 | `ia4-research/ia4/lab/backtest_dp.py` | jednorazowy backtest strategii aktywnych na doubleProof → `research/backtest-doubleproof.json` (sekcja 6a) |
 | `ia4-research/ia4/lab/selftest.py` | test silnika na danych syntetycznych |
-| `ia4-research/ia4/odsearch.py` | poszukiwanie stabilnych strategii One-Day: panel świec dobowych, cechy bez zaglądania w przyszłość, siatka reguł, warunek 10 okresów, potwierdzenie doubleProof, placebo, `ONE-DAY-SEARCH.xlsx`, selftest (sekcja 6d) |
+| `ia4-research/ia4/daily.py` | Firestore `daily/` → `data/daily/*.parquet`, przyrostowo (sekcja 4d) |
+| `ia4-research/tests/daily.js` | test `Daily.gs` w Node na atrapach Apps Script i odpowiedziach w formacie Yahoo (`node ia4-research/tests/daily.js`) |
+| `ia4-research/ia4/odsearch.py` | poszukiwanie stabilnych strategii One-Day (kierunkowe i neutralne, źródło 1h albo baza dobowa): panel świec dobowych, cechy bez zaglądania w przyszłość, siatka reguł, warunek 10 okresów, potwierdzenie doubleProof, placebo, `ONE-DAY-SEARCH.xlsx`, selftest (sekcja 6d) |
 | `ia4-research/ia4/oneday.py` | test One-Day: świece dobowe, 100 strategii kaskadowych, plik `ONE-DAY-STRATEGY.xlsx`, selftest (`--selftest`) (sekcja 6c) |
 | `ia4-research/README.md` | instalacja i użycie |
 | `telemetry/state.json` | stan automatu, generowany — nie edytować |
@@ -472,6 +476,32 @@ fx-live (FX-real-time, zawsze jeden commit, force push):
   forecast.json       stan na żywo (4c.9) — czyta go strona IA4 (zakładka FX)
 ```
 
+### 4d. Baza świec dobowych (`Daily.gs`, `ia4/daily.py`)
+
+Decyzja człowieka z 13.10.2026: osobna baza świec dobowych z **pełną historią** z Yahoo (świec 1h Yahoo nie oddaje starszych niż ~730 dni, świece dobowe — od początku notowań), **wszystkie instrumenty w jednym miejscu**, bez podziału na grupy; kopia lokalna na Macu do liczenia w Pythonie. Pierwsze zastosowanie: poszukiwanie One-Day na długiej historii (6d).
+
+**Instrumenty:** wszystkie 75 z `CONFIG` (sekcja 4) — 53 handlowane, 20 doubleProof, SPY, QQQ. Grupa zostaje tylko polem informacyjnym (`group` w podsumowaniu); rozdział „poszukiwanie / potwierdzenie” robi program liczący, nie baza.
+
+**Świeca dobowa:** sesja regularna NYSE z Yahoo `interval=1d` (open — otwarcie sesji, close — zamknięcie, high/low, wolumen); data = dzień sesji w Nowym Jorku. Ceny **skorygowane o splity** (tak oddaje je Yahoo), **bez korekty o dywidendy**; zapisane z dokładnością **6 cyfr znaczących** (ceny sprzed wielu splitów bywają < 0,01 $, 4 miejsca po przecinku zgubiłyby ruchy). Tylko zamknięte sesje: dzisiejsza dopiero 30 min po zamknięciu. Dni bez wartości, weekendy i dni z `US_MARKET_HOLIDAYS` są pomijane. Uwaga: świeca dobowa Yahoo nie jest identyczna ze świecą złożoną ze świec 1h (6c) — open dobowy to oficjalne otwarcie, nie open pierwszej świecy 1h.
+
+**Format w Firestore:**
+```
+daily/{SYMBOL}/years/{RRRR}     dokument = rok: symbol, year, n, d [] (RRRR-MM-DD), o [], h [], l [], c [], v [], updatedAt
+                                 (tablice równoległe, posortowane po dacie)
+daily/{SYMBOL}                  podsumowanie: symbol, group, first, last, lastClose, n, splits [] („RRRR-MM-DD 4:1”), historyAt, updatedAt
+system/daily                    symbols [], hist [] (historia gotowa), first [], last [], updated (ostatni dzień aktualizacji), version, updatedAt
+```
+
+**Historia (jednorazowo, sama się kończy):** w wolnych uruchomieniach `runCollector`, **tylko poza sesją** (od 60 min po zamknięciu do 15 min przed otwarciem, weekendy, święta) — nie opóźnia świec 1h ani nocnego odświeżenia. Co najmniej 3 min odstępu; porcja: **6 instrumentów**, jedno zapytanie Yahoo na instrument (`range=max`; gdy Yahoo odda inną granulację niż 1d — zapasowo `period1=0`, od 1970 r.). Zapis dokumentów lat (po 40 w jednym zapisie), potem podsumowanie i `system/daily`; stan instrumentu zmienia się dopiero po potwierdzonym zapisie. Instrument z błędem — ponowienie najwcześniej po 30 min. 75 instrumentów ≈ 13 porcji. Ręcznie: menu „📅 Świece dobowe — porcja historii teraz” (także w czasie sesji).
+
+**Aktualizacja (każdy dzień sesyjny):** 75 min po zamknięciu (po nocnym odświeżeniu) — wszystkie instrumenty z gotową historią jednym `fetchAll`, od 1 stycznia bieżącego roku (do 15 stycznia — od 1 stycznia poprzedniego), i **przepisanie w całości** dokumentu roku (bez odczytów). Bezpiecznik: rok jest przepisywany tylko, gdy Yahoo oddał go od początku stycznia (do 8.01) albo instrument zaczyna się w tym roku. **Nowy split** w danych (późniejszy niż znany) → historia instrumentu pobierana od nowa w najbliższej porcji (Yahoo przelicza wtedy wszystkie starsze ceny). Dzień aktualizacji: dziś po zamknięciu + 75 min, inaczej poprzedni dzień sesyjny (zaległy dzień nadrabia się sam, także w weekend). Błąd → ponowienie co 30 min, po 3 próbach dzień uznany (błąd w dzienniku). Ręcznie: menu „📅 Świece dobowe — aktualizuj teraz”.
+
+**Stan:** Script Properties `DAILY_STATE` (na instrument: historia gotowa, pierwsza i ostatnia data, ostatni split; ok. 4 KB). Telemetria: `telemetry/state.json` → `daily` (`history` „x/75”, najstarsza i najnowsza data, ostatnia aktualizacja, instrumenty w kolejce).
+
+**Kopia lokalna:** `python -m ia4.daily` → `data/daily/{SYMBOL}.parquet` (kolumny `date, o, h, l, c, v`) + `_manifest.json`. Najpierw `system/daily` (1 odczyt), potem dla każdego instrumentu z gotową historią dokumenty lat zmienione od poprzedniej synchronizacji (minus 30 min); dokument roku zastępuje lokalnie cały rok. Pierwszy raz: wszystkie lata (kilka tysięcy odczytów, raz), potem ok. 76 odczytów. `--full` — od nowa. W kodzie: `from ia4.daily import load; df = load("KO")`.
+
+**Test:** `node ia4-research/tests/daily.js` — `Daily.gs` w Node na atrapach Apps Script (parser, 6 cyfr, pory, porcje do kompletu, dokumenty lat, zapasowa granulacja, aktualizacja, styczeń, split, bezpiecznik, ponowienia, dzień docelowy, rozmiar stanu) → „WYNIK: OK”.
+
 ---
 
 ## 5. Kopia lokalna na Macu (`ia4-research/`)
@@ -581,29 +611,35 @@ Decyzja człowieka z 13.10.2026, po przeglądzie 1.36 (portfel OD-080 falował, 
 
 **Zasady wspólne z 6c:** świeca dobowa, sesja niepełna, wejście na open i wyjście na close tego samego dnia, bez kosztów. Inaczej niż w 6c: **stała stawka, bez kaskady** — piramidowanie zamienia drobne zyski na rzadkie duże straty, czyli dokładnie to, czego szukamy uniknąć.
 
-**Dane i grupy.** Kopia lokalna (synchronizacja jak w 6c). **Poszukiwanie widzi tylko 53 spółki handlowane.** doubleProof (20) — tylko potwierdzenie reguł już wybranych (6a). SPY — tylko filtr rynku.
+**Dane i grupy.** Dwa źródła (od 1.38): `--source 1h` (domyślnie) — świece dobowe złożone ze świec 1h jak w 6c (ok. 2 lata; kalendarz NYSE, sesja niepełna); `--source daily` — baza świec dobowych z pełną historią (4d; kopia `ia4.daily`), domyślnie od 1990-01-01 (`--since`), kalendarz = wszystkie daty w danych, dzień ważny tylko przy spójnych cenach (low ≤ open, close ≤ high, nie płaski o = h = l = c). **Poszukiwanie widzi tylko 53 spółki handlowane.** doubleProof (20) — tylko potwierdzenie reguł już wybranych (6a). SPY — tylko filtr rynku (w bazie dobowej od 1993 r.; wcześniej filtry SPY nie przepuszczają żadnego dnia).
 
 **Reguła** = kierunek (long / short) + **jeden setup** + **najwyżej 2 filtry z różnych grup**. Wszystko, co reguła widzi, jest znane przed open dnia wejścia: świece do poprzedniej pełnej sesji i data. Dzień t jest handlowany tylko, gdy sesja t i sesja t−1 są pełne i instrument ma za sobą **105 pełnych sesji** (rozgrzewka SMA100 + 5). Bez luki na otwarciu (open dnia wejścia nie jest znany przed wejściem).
 - **Setupy (48):** każdy dzień; ≥ N świec spadkowych / wzrostowych z rzędu (N 1–5); wczorajszy korpus ≤ −k·r / ≥ k·r (k 0,5; 1; 1,5; 2); zmiana z M sesji ≤ −k·r / ≥ k·r (M 3, 5, 10; k 1, 2, 3); wczorajsze zamknięcie w dolnych / górnych 20% zakresu; RSI(2) < 5, < 10, > 90, > 95; zamknięcie najniższe / najwyższe z 10 i z 20 sesji; wczoraj najwęższy zakres z 7 sesji (NR7). r — jak w 6c (średni zakres (H−L)/open z 20 sesji, ostatnia = wczoraj).
 - **Filtry (19, w 8 grupach):** cena powyżej / poniżej SMA20, SMA50, SMA100 (każda średnia — osobna grupa); SMA50 rosnąca / spadkowa (jak 6c); SPY powyżej / poniżej SMA50; SPY wczoraj spadkowa / wzrostowa; zmienność wysoka / niska (r wobec średniej r z 60 sesji); dzień tygodnia.
-- Razem 48 × 174 kombinacje filtrów × 2 kierunki = **16 704 reguły**, każda liczona w całości (bez losowania).
+- Razem 48 × 174 kombinacje filtrów × 2 kierunki = **16 704 reguły kierunkowe**, każda liczona w całości (bez losowania).
+
+**Reguły neutralne wobec rynku (od 1.38, decyzja człowieka z 13.10.2026).** Każdego dnia ranking 53 spółek (z prawem handlu w tym dniu) według **cechy znanej przed open**; **long k spółek z najniższą i short k z najwyższą wartością** (`rev` — odwrócenie) albo odwrotnie (`mom` — kontynuacja), ta sama stawka na każdą transakcję, open → close. Portfel ma zawsze tyle samo pozycji long i short, więc kierunek rynku prawie się znosi — dobry kandydat do równego wzrostu niezależnie od hossy i bessy. Dzień handlowany, gdy co najmniej 2k spółek ma wartość cechy.
+- **Cechy (10):** zmiana wczoraj (zamknięcie → zamknięcie) w r; korpus wczorajszej świecy w r; zmiana 3, 5 i 10 sesji w r; RSI(2); położenie wczorajszego zamknięcia w zakresie dnia; odległość od SMA20 w r; zmiana wczoraj i zmiana 5 sesji **względem SPY** w r.
+- **k** = 3, 5, 10; **filtr dnia** (10): brak, SPY > / < SMA50, SPY wczoraj spadkowa / wzrostowa, dzień tygodnia. Razem 10 × 3 × 10 × 2 = **600 reguł**.
+- Na doubleProof (20 spółek) k przeliczone proporcjonalnie: k × 20/53, zaokrąglone, co najmniej 1 (1, 2, 4).
+- Baza (punkt odniesienia) = 0; „nadwyżka nad bazą” = średni wynik transakcji.
 
 **Okresy i warunek konieczny (decyzja człowieka).** Okno handlu zaczyna się w dniu, w którym połowa z 53 spółek ma rozgrzewkę, i trwa do końca danych; dzieli się je na **10 równych okresów kalendarza** (ok. 2 miesiące). Wynik okresu = suma wyników transakcji % (każda transakcja ta sama stawka). Reguła przechodzi, gdy: **najwyżej 1 okres stratny** (suma < 0), najwyżej 1 okres pusty (< 3 transakcje), co najmniej 50 transakcji, suma > 0.
 
 **Przypadek — trzy zabezpieczenia.** Reguła bez przewagi spełnia warunek 9/10 z prawdopodobieństwem ok. 1%, więc przy 16 704 regułach przypadek daje ich ponad sto.
 1. **Podobne reguły** (wspólne transakcje ≥ 70%, Jaccard) — zostaje lepsza; arkusz pokazuje najwyżej 200.
-2. **Potwierdzenie na doubleProof (✓):** ta sama reguła na 20 spółkach, których poszukiwanie nie widzi: suma > 0, t-stat dziennych wyników ≥ 2,5 i najwyżej 2 okresy stratne. Próg skalibrowany na danych syntetycznych: na czystym szumie 0 potwierdzeń w 4 próbach, przewaga +0,4% na transakcję wykryta (t ≈ 4,6). Uwaga: doubleProof to inne spółki, ale **te same dni** — reguła zarabiająca na ruchu całego rynku zarobi i tam; dlatego punkt 3.
+2. **Potwierdzenie na doubleProof (✓):** ta sama reguła na 20 spółkach, których poszukiwanie nie widzi, liczona na **wyniku bez rynku** (od 1.38): open→close spółki minus średni open→close wszystkich spółek tego dnia. Warunki: suma > 0, najwyżej 2 okresy stratne i **t-stat dziennych wyników ≥ próg Bonferroniego** dla liczby reguł w arkuszu (jednostronnie, 5% szans na choćby jedno fałszywe ✓ na całej liście; przy 200 regułach t ≥ 3,48; nie mniej niż 2,5). Dlaczego bez rynku: doubleProof to inne spółki, ale **te same dni** — na długiej historii syntetycznej bez żadnej przewagi reguły „long w dni X” dostawały 12 fałszywych ✓ na surowym wyniku; po odjęciu rynku i z progiem Bonferroniego — 0 (przewagi zaszyte w testach: t 7–15). Przewagę samego wyczucia rynku (które dni) sprawdzają tylko kolejne okresy i nowe dane. Arkusz pokazuje też surową sumę doubleProof.
 3. **Placebo:** to samo poszukiwanie na tych samych danych z losowym znakiem każdego dnia (wspólnym dla wszystkich spółek; ziarno 2026) — zero przewagi, ta sama zmienność i korelacja spółek. Liczba reguł spełniających warunek i potwierdzonych w placebo to poziom przypadku; wynik prawdziwy jest wart uwagi tylko wtedy, gdy wyraźnie go przewyższa.
 
 **Kolejność:** najmniej okresów stratnych, potem t-stat dziennych wyników (średni dzienny wynik / odchylenie × √dni — im wyżej, tym równiej rośnie). Punkt odniesienia (**baza**): wejście w tym samym kierunku każdego dnia (reguły `L|all`, `S|all`); w hossie long-baza sama może spełniać warunek — dlatego kolumna **nadwyżka nad bazą**.
 
-**Wynik — `~/Desktop/IA4/ONE-DAY-SEARCH.xlsx`** (poza gitem, zapis atomowy, każde uruchomienie przepisuje plik):
-- **WYNIKI** — wiersz = reguła: kod (np. `L|dn2|c>sma50|pon`), opis, transakcje, zyskownych %, średni wynik transakcji %, suma %, PF, t-stat, R² krzywej sumy wyników, maksymalne obsunięcie (suma %), okresy stratne i puste, najgorszy okres, okresy lepsze niż baza, nadwyżka nad bazą; 10 okresów (transakcje, suma %; zielony / czerwony / szary = pusty); doubleProof: transakcje, suma %, średni %, t-stat, okresy stratne, ✓,
+**Wynik — `~/Desktop/IA4/ONE-DAY-SEARCH.xlsx`** (źródło 1h) albo **`ONE-DAY-SEARCH-DAILY.xlsx`** (baza dobowa) (poza gitem, zapis atomowy, każde uruchomienie przepisuje plik):
+- **WYNIKI** (kierunkowe) i **WYNIKI NEUTRALNE** — wiersz = reguła: kod (np. `L|dn2|c>sma50|pon`), opis, transakcje, zyskownych %, średni wynik transakcji %, suma %, PF, t-stat, R² krzywej sumy wyników, maksymalne obsunięcie (suma %), okresy stratne i puste, najgorszy okres, okresy lepsze niż baza, nadwyżka nad bazą; 10 okresów (transakcje, suma %; zielony / czerwony / szary = pusty); doubleProof: transakcje, suma % surowa, suma %, średni %, t-stat i okresy stratne bez rynku, ✓,
 - **OKRESY** — granice okresów i baza long / short (średni wynik dnia, 53 spółki),
-- **PORTFEL #1–#3** — trzy pierwsze reguły na wszystkich 73 spółkach (doubleProof oznaczone „· dP”) od początku okresu 1, wspólny portfel 10 000 $, stawka 5% stanu portfela na transakcję, suma stawek dnia ≤ stan portfela (proporcjonalne zmniejszenie), układ kolumn jak w 6c,
+- **PORTFEL #1–#3** (kierunkowe) i **PORTFEL N1–N2** (neutralne; „(short)” przy spółce) — najlepsze reguły na wszystkich 73 spółkach (doubleProof oznaczone „· dP”) od początku okresu 1, wspólny portfel 10 000 $, stawka 5% stanu portfela na transakcję, suma stawek dnia ≤ stan portfela (proporcjonalne zmniejszenie), układ kolumn jak w 6c,
 - **OPIS** — zasady, liczby reguł, poziom przypadku i wynik placebo.
 
-**Uruchomienie:** `python -m ia4.odsearch` (synchronizacja, poszukiwanie, placebo, plik — ok. 1 min), `--no-sync`, `--out ŚCIEŻKA`; `python -m ia4.odsearch --selftest` — cechy liczone ręcznie, brak zaglądania w przyszłość (zmiana świecy t nie zmienia cech dnia t), ocena okresów, zaszyta przewaga odnaleziona i potwierdzona, szum bez potwierdzeń, placebo, portfel, plik („WYNIK: OK”).
+**Uruchomienie:** `python -m ia4.odsearch` (świece z 1h: synchronizacja, obie rodziny, placebo, plik — ok. 1 min), `python -m ia4.odsearch --source daily` (baza dobowa od 1990: ok. 3–5 min, ok. 1 GB pamięci), `--since RRRR-MM-DD`, `--no-sync`, `--out ŚCIEŻKA`; `python -m ia4.odsearch --selftest` — cechy liczone ręcznie i wektorowo = pętla, brak zaglądania w przyszłość (także cech rankingu), ocena okresów, ranking neutralny, zaszyta przewaga kierunkowa i zaszyte odwrócenie neutralne odnalezione i potwierdzone, szum (także ze wspólnym rynkiem) bez potwierdzeń, placebo, portfel (long i short), baza dobowa (kalendarz, odrzucanie niespójnych dni, scalanie lat), plik („WYNIK: OK”).
 
 **Dalej (tylko za zgodą człowieka):** reguła z ✓, z nadwyżką nad bazą i wyraźnie ponad placebo — obserwacja na nowych świecach (do przygotowania jako osobny krok).
 
@@ -1118,12 +1154,12 @@ Ocena jak w PRZEWODNIKU (sekcja 4): mediana i przedział 95% średniego wyniku t
 
 ### Apps Script — skład
 
-Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `Fx.gs` (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min (STRATEGIE, BACKTEST PORTFELA, OKOLICZNOSCI_FX). Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY`, `BT_DP_AT`, `BT_PF_AT`, `CANDLE_LOG`, `FX1H_STATE`, `FX1H_CHECK`, `FX_RUNS`, `ACTIVE_IDS`, `PRIORITY`, `VI_BY_STRAT`, `VI_SUMMARY`, `VI_HASH`, `TELEMETRY_HASH` i inne — nie edytować). Arkusze: STATS, FX, OKOLICZNOSCI_FX (od FX-3), STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
+Pliki: `Code.gs`, `Telemetry.gs`, `Research.gs`, `PaperEngine.gs`, `Paper.gs`, `Fx.gs`, `Daily.gs` (od 1.38) (+ manifest `appsscript.json`). Triggery (zakłada je „⚙️ Konfiguruj i włącz automat”): `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min (STRATEGIE, BACKTEST PORTFELA, OKOLICZNOSCI_FX). Script Properties: `GITHUB_TOKEN` (menu „Ustaw token GitHub”) oraz stan automatu (`LIVE_STATE`, `BACKFILL_DP`, `VI_IDS`, `PAPER_LAST_KEY`, `BT_DP_AT`, `BT_PF_AT`, `CANDLE_LOG`, `FX1H_STATE`, `FX1H_CHECK`, `FX_RUNS`, `DAILY_STATE`, `ACTIVE_IDS`, `PRIORITY`, `VI_BY_STRAT`, `VI_SUMMARY`, `VI_HASH`, `TELEMETRY_HASH` i inne — nie edytować). Arkusze: STATS, FX, OKOLICZNOSCI_FX (od FX-3), STRATEGIE, BACKTEST PORTFELA, SIGNALS-REALTIME, VIRTUAL-INVESTOR, ukryty `_IA4_DANE`.
 
 ### Aktualizacja do nowej wersji
 
 1. Wypchnięcie pakietu `.bundle` (polecenia niżej).
-2. Apps Script: podmienić pliki `.gs` zmienione w pakiecie (Claude podaje listę) — najprościej zawsze wszystkie sześć; nowy plik dodać przez „+ → Skrypt” z tą samą nazwą. Zapisać, odświeżyć arkusz.
+2. Apps Script: podmienić pliki `.gs` zmienione w pakiecie (Claude podaje listę) — najprościej zawsze wszystkie siedem; nowy plik dodać przez „+ → Skrypt” z tą samą nazwą. Zapisać, odświeżyć arkusz.
 3. „⚙️ Konfiguruj i włącz automat” — tylko gdy zmieniła się lista instrumentów, układ STATS albo triggery (Claude o tym mówi). Konfiguruj odtwarza STATS, triggery i `system/universe` oraz uzupełnia ostatni miesiąc (ok. 2500 zapisów).
 4. Strona IA4 (`docs/`) aktualizuje się sama po pushu — nic do zrobienia.
 5. Mac: `cd ~/Desktop/IA4 && git pull`; `pip install -r requirements.txt`, gdy zmieniły się zależności; zatrzymać program (Ctrl+C) i uruchomić ponownie, gdy zmienił się kod Pythona.
@@ -1141,6 +1177,8 @@ python -m ia4.oneday --selftest         # test One-Day (6c) — „WYNIK: OK”
 python -m ia4.oneday                    # test One-Day → ~/Desktop/IA4/ONE-DAY-STRATEGY.xlsx
 python -m ia4.odsearch --selftest       # poszukiwanie One-Day (6d) — „WYNIK: OK”
 python -m ia4.odsearch                  # poszukiwanie stabilnych strategii → ~/Desktop/IA4/ONE-DAY-SEARCH.xlsx
+python -m ia4.daily                     # kopia lokalna bazy świec dobowych (4d) → data/daily/
+python -m ia4.odsearch --source daily   # poszukiwanie na pełnej historii → ~/Desktop/IA4/ONE-DAY-SEARCH-DAILY.xlsx
 ```
 
 Prognoza FX 1h (sekcja 4c) — Mac włączony, gdy używasz zakładki FX strony IA4:
@@ -1188,6 +1226,9 @@ Poszukiwanie (gdy zostanie wznowione, `search_closed: false`): `python -m ia4.la
 | Mac: `ia4.fx.sync` (FX-research, start FX-real-time) | — | pierwszy raz ok. 7000 (wszystkie dni 11 instrumentów), potem ok. 1–3 na instrument / start |
 | Mac: FX-real-time | — | ok. 12 / godzinę: ok. 290 / pełny dzień roboczy, w weekend ok. 50 (BTC) |
 | Mac: AI Investor — feed akcji (`ia4 start`, 11c.4) | — | ok. 950 / dzień sesyjny + kilkaset przy starcie (FX — wspólne z FX-real-time) |
+| baza dobowa — historia (`Daily.gs`, raz, 4d) | ok. 2500–3000 (dokument na rok instrumentu) + 2 na porcję | — |
+| baza dobowa — aktualizacja (dzień sesyjny) | ok. 151 (75 lat + 75 podsumowań + `system/daily`), w styczniu ok. 226 | — |
+| Mac: `ia4.daily` | — | pierwszy raz ok. 2500–3000, potem ok. 76 / synchronizację |
 
 ### Limity Apps Script (konto Gmail)
 
@@ -1213,6 +1254,7 @@ cd ~/Desktop/IA4 && git pull
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.38 | 2026-10-13 | Baza świec dobowych (nowa sekcja 4d; decyzja człowieka z 13.10.2026 po przeglądzie 1.37 — na 2 latach świec 1h brak stabilnej przewagi): nowy plik `Daily.gs` — pełna historia z Yahoo (`interval=1d`, `range=max`, zapasowo od 1970) wszystkich 75 instrumentów w jednej kolekcji `daily/{SYMBOL}/years/{RRRR}` (+ `daily/{SYMBOL}`, `system/daily`), porcje po 6 instrumentów tylko poza sesją, aktualizacja raz na dzień sesyjny 75 min po zamknięciu (bieżący rok przepisany w całości, bezpiecznik niepełnego roku, nowy split → historia od nowa, 3 próby), 6 cyfr znaczących, `DAILY_STATE`, menu (2 pozycje), telemetria `daily`; `Code.gs`: wywołanie w wolnym uruchomieniu i menu; `Telemetry.gs`: pole `daily`. Python: `ia4/daily.py` (kopia lokalna `data/daily/`, przyrostowo po `updatedAt`), test `tests/daily.js` (Node, atrapy Apps Script). `odsearch.py` (6d): źródło `--source daily` (od 1990, `--since`, kalendarz z danych, odrzucanie niespójnych dni), **reguły neutralne wobec rynku** (B: ranking 53 spółek wg 10 cech, long k + short k, k 3/5/10, filtr dnia, 600 reguł), potwierdzenie doubleProof na wyniku **bez rynku** i z progiem **Bonferroniego** (test na długiej historii syntetycznej: 12 fałszywych ✓ → 0), surowa suma doubleProof obok, placebo dla obu rodzin, portfele N1–N2, cechy liczone wektorowo; selftest rozszerzony. Sekcje 0, 3, 6d, 12. PRZEWODNIK 3e. Pozostałe pliki `.gs` i strona — tylko numer wersji. |
 | 1.37 | 2026-10-13 | Poszukiwanie stabilnych strategii One-Day (nowa sekcja 6d; decyzja człowieka z 13.10.2026 po przeglądzie 1.36 — portfel OD-080 falował): `ia4/odsearch.py` — panel świec dobowych na wspólnym kalendarzu, cechy znane przed open (setupy serii, korpusu, zmiany M sesji w r, położenia zamknięcia, RSI(2), minimów/maksimów, NR7; filtry SMA20/50/100, nachylenie SMA50, SPY, zmienność, dzień tygodnia), 16 704 reguły liczone w całości, transakcja open → close ze stałą stawką (bez kaskady); warunek konieczny: 10 równych okresów, najwyżej 1 stratny i 1 pusty, ≥ 50 transakcji; tylko 53 spółki handlowane; potwierdzenie na doubleProof (suma > 0, t ≥ 2,5, ≤ 2 okresy stratne — skalibrowane na szumie), placebo z losowym znakiem dni, odrzucanie podobnych (Jaccard ≥ 0,7), nadwyżka nad bazą, portfele 10 000 $ dla 3 najlepszych; plik `~/Desktop/IA4/ONE-DAY-SEARCH.xlsx` (poza gitem); selftest. `oneday.py`: arkusz PORTFEL zapisywany bez `ws.max_row` w pętli (był czas kwadratowy). Dopisek w 6a; sekcje 0, 3, 12; PRZEWODNIK 3e. Pliki `.gs` i strona — tylko numer wersji. |
 | 1.36 | 2026-10-13 | Test One-Day — arkusz PORTFEL OD-080 (6c, „Portfel”; decyzja człowieka z 13.10.2026 po przeglądzie wyników 1.35): jedna strategia na 73 spółkach z jednego portfela 10 000 $, jednostka stawki od stanu portfela na początku kaskady, suma stawek dnia ≤ stan portfela (proporcjonalne przycięcie, bez dźwigni), wiersz = transakcja (dzień, spółka, świeca w serii, krok, stawka, wynik %, zysk/strata $, zarobiony % portfela, stan portfela). `oneday.py`: kaskada wydzielona do `events()` — wspólna dla wyników na spółkę i portfela (wyniki na spółkę bez zmian, sprawdzone na 7500 parach strategia × instrument), `portfolio()`, opcje `--portfolio`, `--capital`, testy portfela w selfteście. Sekcja 0, PRZEWODNIK 3d. Pliki `.gs` i strona — tylko numer wersji. |
 | 1.35 | 2026-10-12 | Test One-Day (nowa sekcja 6c; decyzje człowieka z 12.10.2026): `ia4/oneday.py` — świece dobowe z sesji 1h (open 1. świecy, close ostatniej; sesja niepełna bez handlu, przerywa serię), 100 strategii kaskadowych (bloki A–F: stała kwota x = 5 000 $, jednostki 1R = 500 $ / r, filtr SMA50 rosnąca/spadkowa, stawka wg skali spadku D / r, limit 4 kroków, punkty odniesienia), long po świecach spadkowych i short lustrzanie, transakcja zawsze open → close tego samego dnia, portfel 100 000 $ na spółkę bez dźwigni, upadłość ≤ 10%; wynik: transakcje, zyskowne, wynik %, obsunięcie szczyt → dołek na każdym z 75 instrumentów + podsumowanie (średnie i mediany) w pliku `~/Desktop/IA4/ONE-DAY-STRATEGY.xlsx` (poza gitem); selftest `--selftest`. doubleProof liczone informacyjnie (dopisek w 6a). Sekcje 0, 3, 12. PRZEWODNIK: sekcja 3d. Pliki `.gs` i strona — tylko numer wersji. |

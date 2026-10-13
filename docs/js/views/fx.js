@@ -1,5 +1,5 @@
 // IA 4 — zakładka FX: 10 par walutowych + BTC, świece 1h, prognoza rozkładu, spływ świec,
-// przeliczenia FX-research i (w przyszłości) wirtualny inwestor FX. Wersja projektu: 1.37 (2026-10-13)
+// przeliczenia FX-research i (w przyszłości) wirtualny inwestor FX. Wersja projektu: 1.38 (2026-10-13)
 
 import { store, num, pct, esc, age, t, fxOpen, pref } from "../core.js";
 import { fxChart, spark, inst, SC_COL } from "../chart.js";
