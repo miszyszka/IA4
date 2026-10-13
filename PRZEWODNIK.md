@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.36 (2026-10-13)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.37 (2026-10-13)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
@@ -117,6 +117,19 @@ Chcesz go w Arkuszach Google — przenieś ścieżkę do folderu Dysku Google (C
 **Arkusz PORTFEL OD-080** — co by było, gdyby jeden inwestor z **10 000 $** grał tę strategię na wszystkich 73 spółkach naraz. Wiersz = jedna transakcja (dzień, spółka, która to świeca w serii, stawka, zysk/strata, zarobiony % i stan portfela po niej). Na górze podsumowanie. Uwaga „stawki dnia ×0,6” znaczy: tego dnia sygnałów było tyle, że suma stawek przekroczyłaby portfel, więc wszystkie zmniejszono — bez pożyczania pieniędzy. Inną strategię dodasz poleceniem `python -m ia4.oneday --portfolio OD-080 OD-034`.
 
 **Wniosek do zapamiętania:** zwiększanie stawki po stracie nie zmienia tego, czy pojedynczy dzień jest „na plusie” — zamienia wiele drobnych zysków na rzadkie, duże straty. Ważne są: obsunięcie, upadłości, wynik na doubleProof i wariant z filtrem SMA50 (blok C), który w bessie przestaje dawać sygnały long.
+
+## 3e. Poszukiwanie stabilnych strategii — plik ONE-DAY-SEARCH.xlsx
+
+**Uruchamianie:** `cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && python -m ia4.odsearch` (ok. 1 min; zamknij wcześniej plik w Excelu).
+
+**O co chodzi:** program sprawdza ok. 16 700 prostych reguł „wejdź rano, wyjdź wieczorem” (np. „long po 2 spadkowych świecach, gdy cena nad SMA50, w poniedziałek”). Zostają tylko te, które w **10 kolejnych okresach** (po ok. 2 miesiące) były stratne **najwyżej raz**. Szuka tylko na 53 spółkach handlowanych; 20 spółek doubleProof służy do sprawdzenia, czy reguła działa też tam.
+
+**Jak czytać arkusz WYNIKI:**
+- 10 kolorowych kolumn okresów — zielony = okres na plusie, czerwony = na minusie, szary = za mało transakcji; tu widać „konsekwentny wzrost”,
+- **dP potwierdzona ✓** — reguła zarabia równo także na spółkach, których program nie widział; reguły bez ✓ traktuj jak przypadek,
+- **nadwyżka nad bazą** — o ile reguła jest lepsza od kupowania (albo sprzedawania) każdego dnia; około 0 = reguła tylko płynie z rynkiem (w hossie long „zawsze” też rośnie),
+- arkusz **OPIS → Placebo** — ile reguł „przeszłoby” z czystego przypadku na tych samych danych; jeśli prawdziwych ✓ jest niewiele więcej niż w placebo, nic nie znaleźliśmy,
+- arkusze **PORTFEL #1–#3** — jak rósłby portfel 10 000 $ trzech najlepszych reguł, transakcja po transakcji.
 
 ## 4. VIRTUAL-INVESTOR — jak czytać wynik
 

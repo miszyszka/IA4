@@ -1,6 +1,6 @@
 # IA 4 — Python na Macu: kopia bazy i poszukiwanie strategii
 
-**Wersja projektu: 1.36 (2026-10-13)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.37 (2026-10-13)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Dwie rzeczy:
 1. `python -m ia4.sync` — ściąga świece z Firestore na dysk (`data/*.parquet`), przy
@@ -73,6 +73,14 @@ python -m ia4.oneday              # synchronizacja (gdy nie działa `ia4 start`)
                                   # → ~/Desktop/IA4/ONE-DAY-STRATEGY.xlsx (poza gitem)
 python -m ia4.oneday --no-sync    # tylko kopia lokalna
 python -m ia4.oneday --portfolio OD-080 OD-034 --capital 10000   # arkusze PORTFEL (domyślnie OD-080, 10 000 $)
+```
+
+## Poszukiwanie stabilnych strategii One-Day (instrukcja, sekcja 6d)
+
+```bash
+python -m ia4.odsearch --selftest   # „WYNIK: OK”
+python -m ia4.odsearch              # 16 704 reguły, warunek 10 okresów, doubleProof, placebo
+                                    # → ~/Desktop/IA4/ONE-DAY-SEARCH.xlsx (poza gitem)
 ```
 
 ## Test zgodności z paper tradingiem

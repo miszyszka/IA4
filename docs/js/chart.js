@@ -1,5 +1,5 @@
 // IA 4 — wykresy SVG bez bibliotek: prognoza FX, mini-wykres, krzywa wyniku.
-// Wersja projektu: 1.36 (2026-10-13)
+// Wersja projektu: 1.37 (2026-10-13)
 
 import { t } from "./core.js";
 

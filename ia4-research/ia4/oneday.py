@@ -1,6 +1,6 @@
 """
 IA 4 — test One-Day: kaskady na świecach dobowych (instrukcja, sekcja 6c).
-Wersja projektu: 1.36 (2026-10-13) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.37 (2026-10-13) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Jednorazowy test informacyjny (decyzja człowieka z 12.10.2026). Nie jest strategią `ia4-rule/1`
 (zasada 9), nie zmienia poszukiwania, paper tradingu ani AI Investor.
@@ -470,8 +470,10 @@ def write_portfolio(wb, s: Strat, pf: dict, n_syms: int) -> None:
         note = f"stawki dnia ×{r['scale']:.3f} (suma > stan portfela)" if r["scale"] < 1 else None
         vals = [i, r["day"], r["sym"], r["candle"], r["k"], round(r["stake"], 2), round(r["trade_pct"], 4),
                 round(r["pnl"], 2), round(r["ret"], 4), round(r["eq"], 2), note]
-        ws.append(vals)
-        row = ws.max_row
+        row = hr + i                                   # bez ws.max_row w pętli (czas kwadratowy)
+        for col, v in enumerate(vals, start=1):
+            if v is not None:
+                ws.cell(row, col, v)
         for col, fmt in ((6, usd), (7, pct), (8, usd), (9, pct), (10, usd)):
             ws.cell(row, col).number_format = fmt
     widths = [7, 11, 9, 9, 9, 13, 11, 13, 13, 14, 34]
@@ -481,7 +483,7 @@ def write_portfolio(wb, s: Strat, pf: dict, n_syms: int) -> None:
     ws.row_dimensions[hr].height = 32
     ws.freeze_panes = ws.cell(hr + 1, 1)
     if pf["rows"]:
-        ws.auto_filter.ref = f"A{hr}:{get_column_letter(len(PF_HEAD))}{ws.max_row}"
+        ws.auto_filter.ref = f"A{hr}:{get_column_letter(len(PF_HEAD))}{hr + len(pf['rows'])}"
 
 
 def write_xlsx(path: Path, strats: list[Strat], results: dict, insts: list[tuple[str, str]],
