@@ -1,5 +1,5 @@
 // IA 4 — zakładka AI: AI Investor na Macu — nadzorca, feed świec, Agent-Investor (instrukcja, sekcja 11c.11).
-// Wersja projektu: 1.39 (2026-10-14)
+// Wersja projektu: 1.40 (2026-10-14)
 //
 // Źródła: ai-live/status.json (sygnał życia co 5 min i po każdym zdarzeniu: nadzorca, feed, agenci, portfel,
 // pozycje, ostatnia runda, punkty odniesienia, krzywa, notatki) oraz branch ai: trades.jsonl, playbook.json, lessons.json.

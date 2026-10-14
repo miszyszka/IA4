@@ -1,4 +1,4 @@
-"""IA 4 — prognoza FX na świecach 1h: 10 par walutowych + BTC/USD (Etap 4). Wersja projektu: 1.39 (2026-10-14).
+"""IA 4 — prognoza FX na świecach 1h: 10 par walutowych + BTC/USD (Etap 4). Wersja projektu: 1.40 (2026-10-14).
 
 Zasady, dane, okoliczności, rating i prognoza: IA4_INSTRUKCJA.md, sekcja 4c.
 """

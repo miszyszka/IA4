@@ -1,6 +1,6 @@
 """
 IA 4 — One-Day: poszukiwanie strategii stabilnych (instrukcja, sekcja 6d).
-Wersja projektu: 1.39 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Szuka reguł wejścia na świecach dobowych, które rosną konsekwentnie, a nie tylko „na koniec”.
 Żelazna zasada z 6c zostaje: wejście na open dnia, wyjście na close tego samego dnia, stała stawka
@@ -14,7 +14,7 @@ Szuka reguł wejścia na świecach dobowych, które rosną konsekwentnie, a nie 
 - Dwa źródła danych: `1h` — świece dobowe złożone ze świec 1h (ok. 2 lata), `daily` — baza świec
   dobowych z pełną historią (sekcja 4d, kopia lokalna `ia4.daily`), domyślnie od 2000 r.
 - Poszukiwanie widzi tylko 53 spółki handlowane. Okno handlu podzielone na 20 równych okresów
-  kalendarza (od 1.39; wcześniej 10). Warunek konieczny: najwyżej 1 okres stratny, najwyżej 1 pusty (< 3 transakcji),
+  kalendarza (od 1.39; wcześniej 10). Warunek konieczny: najwyżej 3 okresy stratne (od 1.40), najwyżej 1 pusty (< 3 transakcji),
   co najmniej 50 transakcji, suma > 0. doubleProof (20 spółek) — tylko potwierdzenie (6a).
 - Wynik: ~/Desktop/IA4/ONE-DAY-SEARCH.xlsx (1h) albo ONE-DAY-SEARCH-DAILY.xlsx (daily), poza gitem.
 
@@ -49,7 +49,7 @@ from .lab.check import trading_days
 #  Parametry (instrukcja 6d — zmiana tylko razem z instrukcją)
 # ---------------------------------------------------------------------------
 N_PERIODS = 20            # od 1.39 (decyzja człowieka z 14.10.2026); wcześniej 10; --periods
-MAX_LOSING = 1            # okresów stratnych (suma < 0) najwyżej
+MAX_LOSING = 3            # okresów stratnych (suma < 0) najwyżej — od 1.40 (decyzja człowieka z 14.10.2026; wcześniej 1); --max-losing
 MAX_EMPTY = 1             # okresów pustych (< MIN_TRADES_PERIOD transakcji) najwyżej
 MIN_TRADES_PERIOD = 3
 MIN_TRADES = 50
@@ -439,6 +439,20 @@ class Stats:
     worst: float
     better_than_base: int
     excess: float = 0.0       # śr. wynik transakcji − śr. baza ważona transakcjami okresów
+
+    @property
+    def why_not(self) -> str:
+        """Dlaczego reguła nie spełnia warunku (pusty tekst — spełnia)."""
+        r = []
+        if self.losing > MAX_LOSING:
+            r.append(f"okresy stratne {self.losing} > {MAX_LOSING}")
+        if self.empty > MAX_EMPTY:
+            r.append(f"okresy puste {self.empty} > {MAX_EMPTY}")
+        if self.n < MIN_TRADES:
+            r.append(f"transakcji {self.n} < {MIN_TRADES}")
+        if self.total <= 0:
+            r.append("suma ≤ 0")
+        return ", ".join(r)
 
     @property
     def ok(self) -> bool:
@@ -835,8 +849,8 @@ def write_xlsx(path: Path, P: Panel, res: dict, neu: dict | None, meta: list[tup
     sheets = [(f"#{k + 1}", it, "") for k, it in enumerate(res["kept"][:pf_n])]
     sh = res.get("short")
     if sh is not None and not any(it["rule"].dir < 0 for _, it, _ in sheets):
-        note = "" if sh["st"].ok else (f" · UWAGA: nie spełnia warunku {N_PERIODS} okresów (okresy stratne: "
-                                       f"{sh['st'].losing}) — najlepszy short, pokazany dla porównania")
+        note = "" if sh["st"].ok else (f" · UWAGA: nie spełnia warunku {N_PERIODS} okresów ({sh['st'].why_not}) — "
+                                       "najlepszy short, pokazany dla porównania")
         sheets.append(("S1", sh, note))                     # zawsze co najmniej jeden portfel short (decyzja z 14.10.2026)
     if neu is not None:
         sheets += [(f"N{k + 1}", it, "") for k, it in enumerate(neu["kept"][:pf_nn])]
@@ -898,7 +912,7 @@ def meta_rows(P: Panel, res: dict, neu: dict | None, note: str, plc: dict | None
                                         "baza = 0 (portfel bez kierunku rynku). doubleProof: k × 20/53 (1, 2, 4)."
                                         + (f" Reguł {neu['tested']}." if neu else "")),
         ("Warunek konieczny", f"okno handlu podzielone na {N_PERIODS} równych okresów kalendarza; najwyżej {MAX_LOSING} "
-                              f"okres stratny (suma < 0) i najwyżej {MAX_EMPTY} pusty (< {MIN_TRADES_PERIOD} transakcji); "
+                              f"okresy stratne (suma < 0) i najwyżej {MAX_EMPTY} pusty (< {MIN_TRADES_PERIOD} transakcji); "
                               f"co najmniej {MIN_TRADES} transakcji; suma > 0. Liczone na 53 spółkach handlowanych."),
         ("Spełnia warunek", f"kierunkowe {res['passed']}, neutralne {neu['passed'] if neu else '—'}; po odrzuceniu podobnych "
                             f"(wspólne transakcje ≥ {DEDUP_JACCARD:.0%}) w arkuszach: {len(res['kept'])} i "
@@ -1028,7 +1042,7 @@ def run(source: str = "1h", no_sync: bool = False, out: Path | None = None, sinc
         if extra and extra[0].get("pf"):
             sh = extra[0]
             print(f"  SHORT S1: {sh['rule'].code} — " + ("spełnia warunek" if sh["st"].ok else
-                  f"nie spełnia warunku (okresy stratne {sh['st'].losing})") +
+                  f"nie spełnia warunku ({sh['st'].why_not})") +
                   f"; {sh['pf']['capital']:,.0f} $ → {sh['pf']['end']:,.2f} $ ({sh['pf']['ret']:+.2f}%)".replace(",", " "))
         for k, it in enumerate(rr["kept"][:n_pf], start=1):
             pf = it.get("pf")
@@ -1148,11 +1162,15 @@ def selftest() -> None:
     check("ocena: transakcji / pusty / stratny", (st.n, st.empty, st.losing) == (n_exp, 1, 1), (st.n, st.empty, st.losing))
     check("ocena: suma i najgorszy", abs(st.total - (n_exp - 6)) < 1e-9 and abs(st.worst + 3) < 1e-9, (st.total, st.worst))
     check("ocena: short odwraca", abs(evaluate(m, R, -1, w, z).total + st.total) < 1e-9)
-    check("ocena: 1 stratny i 1 pusty okres → spełnia", st.ok)
+    check("ocena: 1 stratny i 1 pusty okres → spełnia", st.ok and st.why_not == "")
     R2 = R.copy()
-    a6, _ = w[1][6]
-    R2[0, a6] = -5.0                                # drugi stratny okres
-    check("ocena: 2 stratne okresy → nie spełnia", not evaluate(m, R2, 1, w, z).ok)
+    for p in range(6, 6 + MAX_LOSING - 1):          # razem MAX_LOSING stratnych → nadal spełnia
+        R2[0, w[1][p][0]] = -5.0
+    st2 = evaluate(m, R2, 1, w, z)
+    check(f"ocena: {MAX_LOSING} stratne okresy → spełnia", st2.ok and st2.losing == MAX_LOSING, st2.losing)
+    R2[0, w[1][6 + MAX_LOSING - 1][0]] = -5.0       # o jeden więcej
+    st3 = evaluate(m, R2, 1, w, z)
+    check(f"ocena: {MAX_LOSING + 1} stratne okresy → nie spełnia (z powodem)", not st3.ok and "stratne" in st3.why_not, st3.why_not)
     check("próg Bonferroniego", abs(t_crit(200) - 3.4808) < 1e-3 and t_crit(1) == DP_MIN_T, round(t_crit(200), 4))
     check("ocena: nadwyżka nad bazą", abs(evaluate(m, R, 1, w, [0.5] * N_PERIODS).excess - (st.avg - 0.5)) < 1e-12)
 
@@ -1261,17 +1279,19 @@ def selftest() -> None:
 
 
 def main() -> None:
-    global N_PERIODS
+    global N_PERIODS, MAX_LOSING
     ap = argparse.ArgumentParser(description="IA 4 — One-Day: poszukiwanie strategii stabilnych (instrukcja, 6d)")
     ap.add_argument("--source", choices=["1h", "daily"], default="1h",
                     help="1h — świece dobowe ze świec 1h (ok. 2 lata); daily — baza dobowa (sekcja 4d)")
     ap.add_argument("--since", default=None, help=f"daily: od daty (domyślnie {DAILY_SINCE})")
     ap.add_argument("--no-sync", action="store_true", help="bez synchronizacji z Firestore")
     ap.add_argument("--out", type=Path, help="ścieżka pliku (domyślnie ~/Desktop/IA4/ONE-DAY-SEARCH[-DAILY].xlsx)")
-    ap.add_argument("--periods", type=int, default=N_PERIODS, help=f"liczba okresów (domyślnie {N_PERIODS}; najwyżej 1 stratny)")
+    ap.add_argument("--periods", type=int, default=N_PERIODS, help=f"liczba okresów (domyślnie {N_PERIODS})")
+    ap.add_argument("--max-losing", type=int, default=MAX_LOSING, help=f"najwyżej tyle okresów stratnych (domyślnie {MAX_LOSING})")
     ap.add_argument("--selftest", action="store_true", help="test na danych syntetycznych")
     a = ap.parse_args()
     N_PERIODS = max(2, a.periods)
+    MAX_LOSING = max(0, min(a.max_losing, N_PERIODS - 1))
     if a.selftest:
         selftest()
     else:

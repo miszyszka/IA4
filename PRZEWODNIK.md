@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.39 (2026-10-14)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.40 (2026-10-14)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
@@ -130,7 +130,7 @@ Zamknij wcześniej plik w Excelu / Numbers. Mac bez programu do `.xlsx`: przeci�
 - **kierunkowe** — np. „long po 2 spadkowych świecach, gdy cena nad SMA50, w poniedziałek”,
 - **neutralne** — każdego dnia kupujemy k spółek, które np. wczoraj najmocniej spadły, i sprzedajemy k, które najmocniej wzrosły (albo odwrotnie). Tyle samo long i short, więc wynik prawie nie zależy od tego, czy rynek rośnie, czy spada.
 
-Zostają tylko reguły, które w **20 kolejnych okresach** były stratne **najwyżej raz**. Program szuka tylko na 53 spółkach handlowanych; 20 spółek doubleProof służy do sprawdzenia.
+Zostają tylko reguły, które w **20 kolejnych okresach** (od 2000 r. — po ok. 1,3 roku) były stratne **najwyżej 3 razy**. Takich reguł przypadek daje ok. 20 — dlatego liczą się ✓ na doubleProof i porównanie z placebo. Program szuka tylko na 53 spółkach handlowanych; 20 spółek doubleProof służy do sprawdzenia.
 
 **Jak czytać arkusze WYNIKI i WYNIKI NEUTRALNE:**
 - 20 kolorowych kolumn okresów — zielony = okres na plusie, czerwony = na minusie, szary = za mało transakcji,

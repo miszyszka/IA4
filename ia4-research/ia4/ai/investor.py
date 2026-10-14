@@ -1,6 +1,6 @@
 """
 IA 4 — Agent-Investor (instrukcja, sekcje 11c.6–11c.7, krok AI-2).
-Wersja projektu: 1.39 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Runda po każdej świecy akcji i każdej godzinie FX:
   1. rozliczenie (kod): obie księgi, wszystkie nowe świece — wejścia po open, luka / FC / zamknięcie
