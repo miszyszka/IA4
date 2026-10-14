@@ -1,5 +1,5 @@
 // IA 4 — test Daily.gs (baza świec dobowych, instrukcja 4d) w Node na atrapach Apps Script.
-// Wersja projektu: 1.38 (2026-10-13). Uruchomienie: node ia4-research/tests/daily.js  → „WYNIK: OK”
+// Wersja projektu: 1.39 (2026-10-14). Uruchomienie: node ia4-research/tests/daily.js  → „WYNIK: OK”
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');

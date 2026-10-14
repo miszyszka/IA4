@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — BAZA ŚWIEC DOBOWYCH  (Yahoo 1d, pełna historia → Firestore daily/)
  *
- *  Wersja projektu: 1.38 (2026-10-13) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.39 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Osobna baza (instrukcja, sekcja 4d): wszystkie instrumenty w jednym miejscu,
  *  bez podziału na grupy. Pełna historia z Yahoo (świece dobowe sesji regularnej,

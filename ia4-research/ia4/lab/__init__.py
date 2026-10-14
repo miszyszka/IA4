@@ -1,4 +1,4 @@
-"""IA 4 — poszukiwanie strategii (Etap 2). Wersja projektu: 1.38 (2026-10-13).
+"""IA 4 — poszukiwanie strategii (Etap 2). Wersja projektu: 1.39 (2026-10-14).
 
 Język reguł, symulacja i kryteria: IA4_INSTRUKCJA.md, sekcje 8–10.
 """

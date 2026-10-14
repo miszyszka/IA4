@@ -1,6 +1,6 @@
 """
 IA 4 — One-Day: poszukiwanie strategii stabilnych (instrukcja, sekcja 6d).
-Wersja projektu: 1.38 (2026-10-13) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.39 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Szuka reguł wejścia na świecach dobowych, które rosną konsekwentnie, a nie tylko „na koniec”.
 Żelazna zasada z 6c zostaje: wejście na open dnia, wyjście na close tego samego dnia, stała stawka
@@ -12,15 +12,15 @@ Szuka reguł wejścia na świecach dobowych, które rosną konsekwentnie, a nie 
     i short w k o najwyższym (albo odwrotnie), ta sama stawka; filtr dnia opcjonalny.
   Wszystko, co reguła widzi, jest znane przed open dnia wejścia — bez luki na otwarciu.
 - Dwa źródła danych: `1h` — świece dobowe złożone ze świec 1h (ok. 2 lata), `daily` — baza świec
-  dobowych z pełną historią (sekcja 4d, kopia lokalna `ia4.daily`), domyślnie od 1990 r.
-- Poszukiwanie widzi tylko 53 spółki handlowane. Okno handlu podzielone na 10 równych okresów
-  kalendarza. Warunek konieczny: najwyżej 1 okres stratny, najwyżej 1 pusty (< 3 transakcji),
+  dobowych z pełną historią (sekcja 4d, kopia lokalna `ia4.daily`), domyślnie od 2000 r.
+- Poszukiwanie widzi tylko 53 spółki handlowane. Okno handlu podzielone na 20 równych okresów
+  kalendarza (od 1.39; wcześniej 10). Warunek konieczny: najwyżej 1 okres stratny, najwyżej 1 pusty (< 3 transakcji),
   co najmniej 50 transakcji, suma > 0. doubleProof (20 spółek) — tylko potwierdzenie (6a).
 - Wynik: ~/Desktop/IA4/ONE-DAY-SEARCH.xlsx (1h) albo ONE-DAY-SEARCH-DAILY.xlsx (daily), poza gitem.
 
     python -m ia4.odsearch                      # świece 1h (ok. 2 lata)
-    python -m ia4.odsearch --source daily       # baza dobowa od 1990 (najpierw: python -m ia4.daily)
-    python -m ia4.odsearch --source daily --since 1970-01-01
+    python -m ia4.odsearch --source daily       # baza dobowa od 2000 (najpierw: python -m ia4.daily)
+    python -m ia4.odsearch --source daily --since 1990-01-01 --periods 10
     python -m ia4.odsearch --selftest           # „WYNIK: OK”
 """
 
@@ -48,7 +48,7 @@ from .lab.check import trading_days
 # ---------------------------------------------------------------------------
 #  Parametry (instrukcja 6d — zmiana tylko razem z instrukcją)
 # ---------------------------------------------------------------------------
-N_PERIODS = 10
+N_PERIODS = 20            # od 1.39 (decyzja człowieka z 14.10.2026); wcześniej 10; --periods
 MAX_LOSING = 1            # okresów stratnych (suma < 0) najwyżej
 MAX_EMPTY = 1             # okresów pustych (< MIN_TRADES_PERIOD transakcji) najwyżej
 MIN_TRADES_PERIOD = 3
@@ -57,7 +57,7 @@ MAX_FILTERS = 2
 WARM_Q = 105              # rozgrzewka: pełnych sesji instrumentu (SMA100 + 5)
 DEDUP_JACCARD = 0.7       # reguła podobna (wspólne transakcje ≥ 70%) do lepszej → pominięta
 TOP = 200                 # najwyżej tyle reguł w arkuszu WYNIKI (na rodzinę)
-DP_MAX_LOSING = 2         # potwierdzenie na doubleProof: suma > 0, najwyżej 2 okresy stratne
+DP_LOSING_SHARE = 0.2     # potwierdzenie na doubleProof: suma > 0, stratnych najwyżej 20% okresów (4 z 20)
 DP_MIN_T = 2.5            # … i t-stat dziennych wyników ≥ max(2,5; próg Bonferroniego dla liczby reguł w arkuszu)
 DP_ALPHA = 0.05           # szansa choćby jednego fałszywego ✓ w całej liście (Bonferroni)
 PLACEBO_SEED = 2026       # placebo: losowy znak każdego dnia (ten sam dla wszystkich spółek)
@@ -66,7 +66,7 @@ PF_STAKE_PCT = 5.0
 PF_SHEETS = 3             # kierunkowe
 PF_SHEETS_N = 2           # neutralne
 R_DAYS = od.R_DAYS        # r — jak w 6c
-DAILY_SINCE = "1990-01-01"
+DAILY_SINCE = "2000-01-01"   # od 1.39 (decyzja człowieka z 14.10.2026); --since
 NEUTRAL_K = (3, 5, 10)    # spółek w każdej nodze (53 spółki); doubleProof: k × 20/53, zaokrąglone, ≥ 1
 NEUTRAL_MIN = 2           # dzień handlowany, gdy ≥ 2k spółek ma wynik cechy
 
@@ -523,6 +523,7 @@ def search(P: Panel, log=print, sign: np.ndarray | None = None) -> dict:
     bases = {d: base_avgs(P, rows, d, win, R) for d in (1, -1)}
     passed = []
     tested = 0
+    best_short = None                  # najlepszy short ogółem (także niespełniający warunku) — arkusz PORTFEL S1
     t0 = time.time()
     for si, (sc, _) in enumerate(S):
         sm = smask[si][rows] & Am
@@ -538,7 +539,10 @@ def search(P: Panel, log=print, sign: np.ndarray | None = None) -> dict:
                 st = evaluate_x(x * d, m, win, bases[d])
                 if st.ok:
                     passed.append((Rule(d, sc, tuple(F[j][0] for j in cmb)), st, si, cmb))
-    log(f"  kierunkowe: reguł {tested} · spełnia warunek 10 okresów: {len(passed)} · {time.time() - t0:.0f} s")
+                if d < 0 and st.total > 0 and (best_short is None or
+                                               (st.losing, -st.tstat) < (best_short[1].losing, -best_short[1].tstat)):
+                    best_short = (Rule(d, sc, tuple(F[j][0] for j in cmb)), st, si, cmb)
+    log(f"  kierunkowe: reguł {tested} · spełnia warunek {N_PERIODS} okresów: {len(passed)} · {time.time() - t0:.0f} s")
     passed.sort(key=lambda x: (x[1].losing, -x[1].tstat))
 
     def full_mask(item):
@@ -549,17 +553,22 @@ def search(P: Panel, log=print, sign: np.ndarray | None = None) -> dict:
         return m
 
     H = hedged(P, sign)
-    out = []
-    for item in _dedupe(passed, full_mask, rows):
+
+    def entry(item):
         rule, st = item[0], item[1]
         mk = full_mask(item)
         dp = dp_raw = None
         if win_dp is not None:
             dp = evaluate(mk[dprows], H[dprows], rule.dir, win_dp, [0.0] * N_PERIODS)
             dp_raw = evaluate(mk[dprows], R[dprows], rule.dir, win_dp, [0.0] * N_PERIODS)
-        out.append({"rule": rule, "st": st, "dp": dp, "dp_raw": dp_raw, "sgn": np.where(mk, rule.dir, 0).astype(np.int8)})
+        return {"rule": rule, "st": st, "dp": dp, "dp_raw": dp_raw, "sgn": np.where(mk, rule.dir, 0).astype(np.int8)}
+
+    out = [entry(item) for item in _dedupe(passed, full_mask, rows)]
+    short = next((it for it in out if it["rule"].dir < 0), None)
+    if short is None and best_short is not None and sign is None:
+        short = entry(best_short)
     return {"tested": tested, "passed": len(passed), "kept": out, "win": win, "win_dp": win_dp,
-            "bases": bases, "rows": rows, "dprows": dprows, "tcrit": t_crit(len(out))}
+            "bases": bases, "rows": rows, "dprows": dprows, "tcrit": t_crit(len(out)), "short": short}
 
 
 def search_neutral(P: Panel, log=print, sign: np.ndarray | None = None) -> dict:
@@ -593,7 +602,7 @@ def search_neutral(P: Panel, log=print, sign: np.ndarray | None = None) -> dict:
                     if st.ok:
                         passed.append((NRule(mode, sc, k, dc), st))
                         cache[(sc.code, k)] = (low, high, rk_dp.get(k_dp(k, len(dprows), len(rows))))
-    log(f"  neutralne: reguł {tested} · spełnia warunek 10 okresów: {len(passed)} · {time.time() - t0:.0f} s")
+    log(f"  neutralne: reguł {tested} · spełnia warunek {N_PERIODS} okresów: {len(passed)} · {time.time() - t0:.0f} s")
     passed.sort(key=lambda x: (x[1].losing, -x[1].tstat))
     S, T = P.o.shape
 
@@ -642,8 +651,12 @@ def t_crit(n: int) -> float:
     return max(DP_MIN_T, NormalDist().inv_cdf(1.0 - DP_ALPHA / max(1, n)))
 
 
+def dp_max_losing() -> int:
+    return max(1, int(round(N_PERIODS * DP_LOSING_SHARE)))
+
+
 def confirmed(dp: Stats | None, tc: float = DP_MIN_T) -> bool:
-    return (dp is not None and dp.n > 0 and dp.total > 0 and dp.losing <= DP_MAX_LOSING
+    return (dp is not None and dp.n > 0 and dp.total > 0 and dp.losing <= dp_max_losing()
             and dp.tstat >= tc)
 
 
@@ -819,13 +832,18 @@ def write_xlsx(path: Path, P: Panel, res: dict, neu: dict | None, meta: list[tup
         ok.column_dimensions[get_column_letter(j)].width = w
 
     allrows = np.concatenate([res["rows"], res["dprows"]]).astype(int)
-    sheets = [(f"#{k + 1}", it) for k, it in enumerate(res["kept"][:pf_n])]
+    sheets = [(f"#{k + 1}", it, "") for k, it in enumerate(res["kept"][:pf_n])]
+    sh = res.get("short")
+    if sh is not None and not any(it["rule"].dir < 0 for _, it, _ in sheets):
+        note = "" if sh["st"].ok else (f" · UWAGA: nie spełnia warunku {N_PERIODS} okresów (okresy stratne: "
+                                       f"{sh['st'].losing}) — najlepszy short, pokazany dla porównania")
+        sheets.append(("S1", sh, note))                     # zawsze co najmniej jeden portfel short (decyzja z 14.10.2026)
     if neu is not None:
-        sheets += [(f"N{k + 1}", it) for k, it in enumerate(neu["kept"][:pf_nn])]
-    for name, it in sheets:
+        sheets += [(f"N{k + 1}", it, "") for k, it in enumerate(neu["kept"][:pf_nn])]
+    for name, it, note in sheets:
         pf = portfolio(P, it["sgn"], allrows, g0=res["win"][0])
         od.write_portfolio(wb, SimpleNamespace(id=name, desc=f"{it['rule'].code} — {it['rule'].desc} · "
-                                                             f"stawka {PF_STAKE_PCT:g}% portfela na transakcję"),
+                                                             f"stawka {PF_STAKE_PCT:g}% portfela na transakcję{note}"),
                            pf, len(allrows))
         it["pf"] = pf
 
@@ -890,7 +908,7 @@ def meta_rows(P: Panel, res: dict, neu: dict | None, note: str, plc: dict | None
                               "„trafień” z przypadku. Dlatego liczą się potwierdzenie na doubleProof i placebo."),
         ("Potwierdzenie doubleProof", f"te same reguły na 20 spółkach, których poszukiwanie nie widzi, na wyniku BEZ RYNKU "
                                       "(open→close spółki − średni open→close wszystkich spółek tego dnia): suma > 0, najwyżej "
-                                      f"{DP_MAX_LOSING} okresy stratne i t-stat ≥ próg Bonferroniego dla liczby reguł w "
+                                      f"{dp_max_losing()} okresy stratne ({DP_LOSING_SHARE:.0%} okresów) i t-stat ≥ próg Bonferroniego dla liczby reguł w "
                                       f"arkuszu (kierunkowe {res['tcrit']:.2f}, neutralne {neu['tcrit'] if neu else 0:.2f}; "
                                       f"{DP_ALPHA:.0%} szans na choćby jedno fałszywe ✓ na liście, nie mniej niż {DP_MIN_T:g}) → ✓. Potwierdzonych: "
                                       f"kierunkowe {conf} z {len(res['kept'])}, neutralne {conf_n} z "
@@ -904,7 +922,10 @@ def meta_rows(P: Panel, res: dict, neu: dict | None, note: str, plc: dict | None
                     "(1 = idealnie równy wzrost; ujemne = krzywa spada); maks. obsunięcie — w sumie % transakcji; "
                     "okresy lepsze niż baza i nadwyżka nad bazą — wobec wejścia w ten sam kierunek każdego dnia "
                     "(arkusz OKRESY; dla neutralnych baza = 0)."),
-        ("Arkusze PORTFEL", f"#1–#{PF_SHEETS} — najlepsze kierunkowe, N1–N{PF_SHEETS_N} — najlepsze neutralne, na wszystkich "
+        ("Arkusze PORTFEL", f"#1–#{PF_SHEETS} — najlepsze kierunkowe; S1 — najlepszy short, gdy wśród #1–#{PF_SHEETS} nie ma "
+                            "żadnego (pierwszy short z listy WYNIKI, a gdy żaden short nie spełnia warunku — najlepszy short "
+                            "ogółem, z uwagą w nagłówku); "
+                            f"N1–N{PF_SHEETS_N} — najlepsze neutralne, na wszystkich "
                             f"73 spółkach (doubleProof „· dP”), wspólny portfel {PF_CAPITAL:,.0f} $, stawka {PF_STAKE_PCT:g}% "
                             "stanu portfela na transakcję; suma stawek dnia ≤ stan portfela (proporcjonalne zmniejszenie); "
                             "„(short)” przy spółce = pozycja krótka.".replace(",", " ")),
@@ -1003,6 +1024,12 @@ def run(source: str = "1h", no_sync: bool = False, out: Path | None = None, sinc
             print(f"  {k:>2}. {it['rule'].code:<28} trans. {st.n:>6}  śr. {st.avg:+.3f}%  nadw. {st.excess:+.3f}%  "
                   f"stratne {st.losing}  t {st.tstat:5.2f}  dP {'✓' if confirmed(dp, rr['tcrit']) else '—'}"
                   + (f" (bez rynku: t {dp.tstat:+.2f}, {dp.total:+.1f}%)" if dp else ""))
+        extra = [rr["short"]] if rr is res and rr.get("short") is not None and rr["short"] not in rr["kept"][:n_pf] else []
+        if extra and extra[0].get("pf"):
+            sh = extra[0]
+            print(f"  SHORT S1: {sh['rule'].code} — " + ("spełnia warunek" if sh["st"].ok else
+                  f"nie spełnia warunku (okresy stratne {sh['st'].losing})") +
+                  f"; {sh['pf']['capital']:,.0f} $ → {sh['pf']['end']:,.2f} $ ({sh['pf']['ret']:+.2f}%)".replace(",", " "))
         for k, it in enumerate(rr["kept"][:n_pf], start=1):
             pf = it.get("pf")
             if pf:
@@ -1102,26 +1129,32 @@ def selftest() -> None:
     check("cechy rankingu dnia t nie widzą świecy t", all(np.array_equal(nn(a), nn(b)) for a, b in zip(v1, v2)))
     check("rozgrzewka", not P.base[:, :WARM_Q].any() and P.base[:, WARM_Q + 5:].any())
     w = periods(P, np.arange(4))
-    check("10 okresów pokrywa okno", len(w[1]) == 10 and w[1][0][0] == w[0] and w[1][-1][1] == len(P.dates))
+    check(f"{N_PERIODS} okresów pokrywa okno", len(w[1]) == N_PERIODS and w[1][0][0] == w[0] and w[1][-1][1] == len(P.dates))
 
     # 3. Ocena na ręcznej masce
     m = np.zeros_like(P.base)
     a, b = w[1][0]
     m[0, a] = m[1, a] = True
-    for p in range(1, 10):
+    for p in range(1, N_PERIODS):
         a, b = w[1][p]
         m[0, a:a + 3] = True
     R = np.zeros_like(P.ret)
     R[m] = 1.0
     a, b = w[1][4]
     R[0, a] = -5.0
-    st = evaluate(m, R, 1, w, [0.0] * 10)
-    check("ocena: transakcji / pusty / stratny", (st.n, st.empty, st.losing) == (29, 1, 1), (st.n, st.empty, st.losing))
-    check("ocena: suma i najgorszy", abs(st.total - 23) < 1e-9 and abs(st.worst + 3) < 1e-9, (st.total, st.worst))
-    check("ocena: short odwraca", abs(evaluate(m, R, -1, w, [0.0] * 10).total + st.total) < 1e-9)
-    check("ocena: za mało transakcji → nie spełnia", not st.ok)
+    z = [0.0] * N_PERIODS
+    n_exp = 2 + 3 * (N_PERIODS - 1)
+    st = evaluate(m, R, 1, w, z)
+    check("ocena: transakcji / pusty / stratny", (st.n, st.empty, st.losing) == (n_exp, 1, 1), (st.n, st.empty, st.losing))
+    check("ocena: suma i najgorszy", abs(st.total - (n_exp - 6)) < 1e-9 and abs(st.worst + 3) < 1e-9, (st.total, st.worst))
+    check("ocena: short odwraca", abs(evaluate(m, R, -1, w, z).total + st.total) < 1e-9)
+    check("ocena: 1 stratny i 1 pusty okres → spełnia", st.ok)
+    R2 = R.copy()
+    a6, _ = w[1][6]
+    R2[0, a6] = -5.0                                # drugi stratny okres
+    check("ocena: 2 stratne okresy → nie spełnia", not evaluate(m, R2, 1, w, z).ok)
     check("próg Bonferroniego", abs(t_crit(200) - 3.4808) < 1e-3 and t_crit(1) == DP_MIN_T, round(t_crit(200), 4))
-    check("ocena: nadwyżka nad bazą", abs(evaluate(m, R, 1, w, [0.5] * 10).excess - (st.avg - 0.5)) < 1e-12)
+    check("ocena: nadwyżka nad bazą", abs(evaluate(m, R, 1, w, [0.5] * N_PERIODS).excess - (st.avg - 0.5)) < 1e-12)
 
     # 4. Ranking neutralny
     sc = np.array([[3.0, 1, np.nan], [1.0, 2, 5], [2.0, 3, 4], [0.0, np.nan, 3]])
@@ -1214,8 +1247,12 @@ def selftest() -> None:
     write_xlsx(out, P, res, neu, meta_rows(P, res, neu, "selftest"))
     from openpyxl import load_workbook
     wb = load_workbook(out)
-    check("Excel: arkusze", wb.sheetnames == ["WYNIKI", "WYNIKI NEUTRALNE", "OKRESY", "PORTFEL #1", "PORTFEL #2",
-                                              "PORTFEL #3", "PORTFEL N1", "PORTFEL N2", "OPIS"], wb.sheetnames)
+    check("Excel: arkusze (z portfelem short S1)", wb.sheetnames == ["WYNIKI", "WYNIKI NEUTRALNE", "OKRESY", "PORTFEL #1",
+                                              "PORTFEL #2", "PORTFEL #3", "PORTFEL S1", "PORTFEL N1", "PORTFEL N2", "OPIS"],
+          wb.sheetnames)
+    s1 = wb["PORTFEL S1"]
+    check("Excel: S1 to short", res["short"]["rule"].dir < 0 and all("(short)" in str(s1.cell(r, 3).value)
+                                                                     for r in range(7, min(s1.max_row, 50) + 1)))
     check("Excel: wiersze WYNIKI", wb["WYNIKI"].max_row == 2 + len(res["kept"]), wb["WYNIKI"].max_row)
     check("Excel: kod pierwszej reguły neutralnej", wb["WYNIKI NEUTRALNE"].cell(3, 2).value == neu["kept"][0]["rule"].code)
 
@@ -1224,14 +1261,17 @@ def selftest() -> None:
 
 
 def main() -> None:
+    global N_PERIODS
     ap = argparse.ArgumentParser(description="IA 4 — One-Day: poszukiwanie strategii stabilnych (instrukcja, 6d)")
     ap.add_argument("--source", choices=["1h", "daily"], default="1h",
                     help="1h — świece dobowe ze świec 1h (ok. 2 lata); daily — baza dobowa (sekcja 4d)")
     ap.add_argument("--since", default=None, help=f"daily: od daty (domyślnie {DAILY_SINCE})")
     ap.add_argument("--no-sync", action="store_true", help="bez synchronizacji z Firestore")
     ap.add_argument("--out", type=Path, help="ścieżka pliku (domyślnie ~/Desktop/IA4/ONE-DAY-SEARCH[-DAILY].xlsx)")
+    ap.add_argument("--periods", type=int, default=N_PERIODS, help=f"liczba okresów (domyślnie {N_PERIODS}; najwyżej 1 stratny)")
     ap.add_argument("--selftest", action="store_true", help="test na danych syntetycznych")
     a = ap.parse_args()
+    N_PERIODS = max(2, a.periods)
     if a.selftest:
         selftest()
     else:

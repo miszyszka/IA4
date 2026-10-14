@@ -1,6 +1,6 @@
 """
 IA 4 — nadzorca AI Investor: `ia4 start` (instrukcja, sekcja 11c.3).
-Wersja projektu: 1.38 (2026-10-13) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.39 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.ai                    # to samo co `ia4 start` i dwuklik IA4-start.command; Ctrl+C kończy
   python -m ia4.ai --no-push          # bez GitHub (test)

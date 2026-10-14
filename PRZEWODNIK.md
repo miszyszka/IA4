@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie, jak czytać, jakie wnioski
 
-**Wersja projektu: 1.38 (2026-10-13)** · zasady techniczne: `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.39 (2026-10-14)** · zasady techniczne: `IA4_INSTRUKCJA.md`
 
 ## 1. Co działa samo
 
@@ -122,7 +122,7 @@ Chcesz go w Arkuszach Google — przenieś ścieżkę do folderu Dysku Google (C
 
 **Uruchamianie:** `cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate`, potem:
 - `python -m ia4.odsearch` — na świecach z ostatnich ok. 2 lat (ok. 1 min) → `ONE-DAY-SEARCH.xlsx`,
-- `python -m ia4.daily` i `python -m ia4.odsearch --source daily` — na pełnej historii od 1990 r. (ok. 3–5 min) → `ONE-DAY-SEARCH-DAILY.xlsx`. Najpierw automat musi pobrać historię (niżej).
+- `python -m ia4.daily` i `python -m ia4.odsearch --source daily` — na historii od 2000 r. (ok. 2–4 min) → `ONE-DAY-SEARCH-DAILY.xlsx`. Najpierw automat musi pobrać historię (niżej).
 
 Zamknij wcześniej plik w Excelu / Numbers. Mac bez programu do `.xlsx`: przeciągnij plik na Dysk Google (otworzy się w Arkuszach) albo zainstaluj darmowe Numbers.
 
@@ -130,16 +130,16 @@ Zamknij wcześniej plik w Excelu / Numbers. Mac bez programu do `.xlsx`: przeci�
 - **kierunkowe** — np. „long po 2 spadkowych świecach, gdy cena nad SMA50, w poniedziałek”,
 - **neutralne** — każdego dnia kupujemy k spółek, które np. wczoraj najmocniej spadły, i sprzedajemy k, które najmocniej wzrosły (albo odwrotnie). Tyle samo long i short, więc wynik prawie nie zależy od tego, czy rynek rośnie, czy spada.
 
-Zostają tylko reguły, które w **10 kolejnych okresach** były stratne **najwyżej raz**. Program szuka tylko na 53 spółkach handlowanych; 20 spółek doubleProof służy do sprawdzenia.
+Zostają tylko reguły, które w **20 kolejnych okresach** były stratne **najwyżej raz**. Program szuka tylko na 53 spółkach handlowanych; 20 spółek doubleProof służy do sprawdzenia.
 
 **Jak czytać arkusze WYNIKI i WYNIKI NEUTRALNE:**
-- 10 kolorowych kolumn okresów — zielony = okres na plusie, czerwony = na minusie, szary = za mało transakcji,
+- 20 kolorowych kolumn okresów — zielony = okres na plusie, czerwony = na minusie, szary = za mało transakcji,
 - **dP potwierdzona ✓** — reguła zarabia także na spółkach, których program nie widział, i to po odjęciu ruchu całego rynku; próg jest wysoki (przy 200 regułach t ≥ 3,5), bo inaczej przypadek dawałby ✓; reguły bez ✓ traktuj jak przypadek,
 - **nadwyżka nad bazą** — o ile reguła jest lepsza od kupowania (albo sprzedawania) każdego dnia; około 0 = reguła tylko płynie z rynkiem,
 - arkusz **OPIS → Placebo** — ile reguł „przeszłoby” z czystego przypadku na tych samych danych; jeśli prawdziwych ✓ jest tyle co w placebo, nic nie znaleźliśmy,
-- arkusze **PORTFEL #1–#3** (kierunkowe) i **N1–N2** (neutralne) — jak rósłby portfel 10 000 $, transakcja po transakcji.
+- arkusze **PORTFEL #1–#3** (kierunkowe), **S1** (najlepszy short — zawsze jest przynajmniej jeden; jeśli w nagłówku jest „UWAGA: nie spełnia warunku”, to tylko porównanie) i **N1–N2** (neutralne) — jak rósłby portfel 10 000 $, transakcja po transakcji.
 
-**Baza świec dobowych (od 1.38):** automat w Apps Script sam pobiera pełną historię świec dobowych wszystkich 75 instrumentów — porcjami po 6, tylko poza sesją (wieczorem, w nocy, w weekend), razem ok. 13 porcji. Postęp: strona IA4 / `telemetry/state.json` → `daily.history` (np. `42/75`). Potem raz na dzień sesyjny, wieczorem, dopisuje nowy dzień. Ręcznie: menu IA 4 → „📅 Świece dobowe — porcja historii teraz”.
+**Baza świec dobowych (od 1.38):** automat w Apps Script sam pobiera pełną historię świec dobowych wszystkich 75 instrumentów — porcjami po 6, tylko poza sesją (wieczorem, w nocy, w weekend), razem ok. 13 porcji. Postęp: plik `telemetry/state.json` na GitHubie (https://github.com/miszyszka/IA4/blob/main/telemetry/state.json), pole `daily` → `history` (np. `42/75`; odświeżany ok. co godzinę), albo komunikat po menu „📅 Świece dobowe — porcja historii teraz”. Strona IA4 tego jeszcze nie pokazuje. Potem raz na dzień sesyjny, wieczorem, dopisuje nowy dzień. Ręcznie: menu IA 4 → „📅 Świece dobowe — porcja historii teraz”.
 
 ## 4. VIRTUAL-INVESTOR — jak czytać wynik
 
