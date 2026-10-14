@@ -1,6 +1,6 @@
 # IA 4 — Python na Macu: kopia bazy i poszukiwanie strategii
 
-**Wersja projektu: 1.40 (2026-10-14)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.41 (2026-10-14)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Dwie rzeczy:
 1. `python -m ia4.sync` — ściąga świece z Firestore na dysk (`data/*.parquet`), przy
@@ -124,12 +124,14 @@ sig_t, fc, _ = rules.entries(s["rule"], m)      # świece sygnału i świece FC
 
 Format bazy, skarbiec, język reguł i kryteria: `IA4_INSTRUKCJA.md`.
 
-## AI Investor — `ia4 start` (instrukcja, sekcja 11c, Etap 6)
+## AI Investor — `ia4 start` (instrukcja, sekcja 8, Etap 6)
 
 Nadzorca utrzymuje kopię lokalną akcji i FX na bieżąco z Firestore, liczy w sobie prognozę FX (zamiast osobnego
 `python -m ia4.fx.live`) i publikuje stan na branch `ai-live` → strona IA4, zakładka AI. Od AI-2 (1.34) po każdej
 świecy akcji i co godzinę na FX rundę robi **Agent-Investor**: portfel 100 000 $ (papier), decyzje modelu z notatką,
-SL i TP → branch `ai`, `~/Desktop/IA4/AI-INVESTOR.xlsx`, zakładka AI. Maker i Manager — kroki AI-3, AI-4.
+SL i TP → branch `ai`, `~/Desktop/IA4/AI-INVESTOR.xlsx`, zakładka AI. Od 1.41 dyspozytor uruchamia agentów po kolei
+(jeden naraz, bez przerwy): Inwestor (tryb nauki) po świecy, Krytyk co kilka rund, Badacz (hipotezy liczone na historii)
+w pozostałym czasie; każde zadanie widać w panelu „praca agentów” na stronie i w `ai/runs.jsonl`.
 
 Raz: Ollama z modelem (`ollama pull qwen2.5:14b`), `pip install -r requirements.txt` (openpyxl) i funkcja w
 `~/.zshrc` (zastępuje dawny alias `ia4`; zapis `function ia4 { … }`, bo zsh rozwija alias przed `ia4() { … }`):

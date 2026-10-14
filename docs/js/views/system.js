@@ -1,7 +1,8 @@
 // IA 4 — zakładka System: czy wszystko żyje, strumień zdarzeń, parametry, instrumenty.
-// Wersja projektu: 1.40 (2026-10-14)
+// Wersja projektu: 1.41 (2026-10-14)
 
 import { store, SOURCES, VERSION, age, num, pct, esc, t, nyseOpen, fxOpen, stockClose, plStamp } from "../core.js";
+import { help } from "../help.js";
 import { nodes, fxLast, stamp } from "../health.js";
 
 const MIN = 60e3, H = 3600e3;
@@ -175,16 +176,16 @@ export default {
     const C = components(), E = events();
     const fresh = E.filter(e => !seen.has(e.k));
     el.innerHTML = `<div class="grid">
-      <div class="pane c7 hero"><h2>stan składników<span class="dim">${C.filter(c => c.s === "ok").length}/${C.length} ok</span></h2>
+      <div class="pane c7 hero"><h2>stan składników<span class="dim">${C.filter(c => c.s === "ok").length}/${C.length} ok</span></h2>${help("sys.components")}
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>składnik</th><th>ostatni znak życia</th><th class="desk-only">rytm</th><th class="desk-only">szczegóły</th></tr></thead><tbody>` +
         C.map(c => `<tr><td>${led(c.s)} ${c.name}</td><td>${ageCell(c.ts)} <span class="dim">temu</span></td><td class="desk-only dim">${c.every}</td><td class="desk-only wrap">${c.detail}</td></tr>`).join("") +
         `</tbody></table></div></div>
-      <div class="pane c5"><h2>strumień zdarzeń<span class="dim">tail -f · ${E.length}</span></h2>
+      <div class="pane c5"><h2>strumień zdarzeń<span class="dim">tail -f · ${E.length}</span></h2>${help("sys.stream")}
         <ul class="log">${E.map(e => `<li class="${!firstPaint && fresh.includes(e) ? "new" : ""}"><span class="t">${t.short(e.t)}</span><span class="src ${e.cls}">${e.src}</span><span class="m">${e.m}</span></li>`).join("") || `<li><span class="m dim">czekam na dane…</span></li>`}</ul></div>
-      <div class="pane c7"><h2>parametry</h2>${params()}</div>
-      <div class="pane c5"><h2>ostatnia świeca akcji<span class="dim">spływ</span></h2>${stockFlow()}</div>
-      <div class="pane c8 desk-only"><h2>instrumenty</h2>${matrix()}</div>
-      <div class="pane c4 desk-only"><h2>źródła danych</h2>${sources()}</div>
+      <div class="pane c7"><h2>parametry</h2>${help("sys.params")}${params()}</div>
+      <div class="pane c5"><h2>ostatnia świeca akcji<span class="dim">spływ</span></h2>${help("sys.candle")}${stockFlow()}</div>
+      <div class="pane c8 desk-only"><h2>instrumenty</h2>${help("sys.grid")}${matrix()}</div>
+      <div class="pane c4 desk-only"><h2>źródła danych</h2>${help("sys.sources")}${sources()}</div>
     </div>`;
     E.forEach(e => seen.add(e.k));
     if (E.length) firstPaint = false;

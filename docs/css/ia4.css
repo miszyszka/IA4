@@ -1,4 +1,4 @@
-/* IA 4 — konsola. Wersja projektu: 1.40 (2026-10-14).
+/* IA 4 — konsola. Wersja projektu: 1.38 (2026-10-13).
    Estetyka: terminal TUI (panele z tytułem wpisanym w ramkę, jak htop), fosfor bursztynowy
    jako kolor interakcji, cyjan — prognozy i dane, zieleń/czerwień — tylko kierunek i stan. */
 
@@ -111,10 +111,10 @@ kbd { font: 600 10px var(--f-mono); color: var(--amber); border: 1px solid var(-
   transform: rotate(45deg); z-index: 2;
 }
 .node:last-child::after { display: none; }
-.node-h { display: flex; align-items: center; gap: 7px; font: 600 12.5px var(--f-ui); color: #e3ebf3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.node-h { display: flex; align-items: center; gap: 7px; font: 600 12.5px var(--f-ui); color: #e3ebf3; line-height: 1.25; }
 .node-age { font-size: 20px; font-weight: 500; color: #eef4fa; margin: 2px 0 0; white-space: nowrap; }
 .node-age small { font-size: 12px; color: var(--dim); margin-left: 3px; }
-.node-sub { color: var(--dim); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.node-sub { color: var(--dim); font-size: 11.5px; line-height: 1.35; overflow-wrap: anywhere; }
 .node-bar { height: 2px; background: var(--grid); margin-top: 8px; overflow: hidden; }
 .node-bar i { display: block; height: 100%; background: var(--dim); transition: width .9s linear; }
 .node.ok .node-bar i { background: var(--ok); } .node.warn .node-bar i { background: var(--warn); } .node.bad .node-bar i { background: var(--bad); }
@@ -133,10 +133,10 @@ kbd { font: 600 10px var(--f-mono); color: var(--amber); border: 1px solid var(-
 .c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c5 { grid-column: span 5; } .c6 { grid-column: span 6; }
 .c7 { grid-column: span 7; } .c8 { grid-column: span 8; } .c9 { grid-column: span 9; } .c12 { grid-column: span 12; }
 .pane { position: relative; border: 1px solid var(--grid); background: var(--panel); padding: 18px 14px 12px; min-width: 0; margin-top: 7px; }
-.pane > h2 {
-  position: absolute; top: -9px; left: 10px; margin: 0; padding: 0 6px; background: var(--void);
-  font: 600 12.5px/18px var(--f-ui); color: var(--amber); letter-spacing: .02em; white-space: nowrap;
-  max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis;
+.pane > h2 {   /* tytuł w ramce; w przepływie — dłuższy zawija się do drugiej linii zamiast znikać */
+  position: relative; display: table; margin: -27px 0 8px -4px; padding: 0 6px; background: var(--void);
+  font: 600 12.5px/18px var(--f-ui); color: var(--amber); letter-spacing: .02em;
+  max-width: calc(100% - 40px);
 }
 .pane > h2 .dim { font-family: var(--f-mono); font-weight: 400; font-size: 11.5px; margin-left: 6px; }
 .pane > .act { position: absolute; top: -9px; right: 10px; padding: 0 6px; background: var(--void); font-size: 11.5px; color: var(--dim); line-height: 18px; }
@@ -149,8 +149,8 @@ kbd { font: 600 10px var(--f-mono); color: var(--amber); border: 1px solid var(-
 .reads { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0; border-top: 1px solid var(--grid); }
 .read { padding: 10px 12px 9px 0; border-bottom: 1px solid var(--grid); min-width: 0; }
 .read .k { color: var(--dim); font-size: 11.5px; }
-.read .v { font: 500 20px var(--f-mono); color: #eef4fa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.read .s { color: var(--dim); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.read .v { font: 500 20px var(--f-mono); color: #eef4fa; overflow-wrap: anywhere; line-height: 1.3; }
+.read .s { color: var(--dim); font-size: 11.5px; line-height: 1.35; overflow-wrap: anywhere; }
 
 /* klucz : wartość */
 .kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 16px; margin: 0; }
@@ -162,7 +162,8 @@ kbd { font: 600 10px var(--f-mono); color: var(--amber); border: 1px solid var(-
 table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .tbl th { text-align: left; font-weight: 500; color: var(--dim); padding: 4px 10px 6px 0; border-bottom: 1px solid var(--grid-2); white-space: nowrap; position: sticky; top: 0; background: var(--panel); }
 .tbl td { padding: 4px 10px 4px 0; border-bottom: 1px solid var(--grid); white-space: nowrap; vertical-align: top; }
-.tbl td.wrap { white-space: normal; min-width: 260px; color: var(--ink-2); }
+.tbl td.wrap { white-space: normal; min-width: 220px; color: var(--ink-2); overflow-wrap: anywhere; }
+.tbl td.wrap-s { white-space: normal; min-width: 120px; overflow-wrap: anywhere; }
 .tbl .num { text-align: right; }
 .tbl tr:hover td { background: rgba(255,255,255,.02); }
 .tbl tr.sel td { background: rgba(255,181,71,.07); }
@@ -199,10 +200,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .tape .hd { color: var(--dim); font-size: 11.5px; }
 
 /* macierz instrumentów (spółki) */
-.matrix { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 3px; }
+.matrix { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 3px; }
 .cell { border: 1px solid var(--grid); padding: 4px 6px 5px; font-size: 11.5px; min-width: 0; background: var(--panel-2); }
 .cell b { display: block; font: 600 12.5px var(--f-ui); }
-.cell .q { display: block; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell .q { display: block; color: var(--dim); overflow-wrap: anywhere; line-height: 1.3; }
 .cell.pos { border-color: var(--amber-dim); } .cell.pos b::after { content: " ▪"; color: var(--amber); }
 .cell.stale { border-style: dashed; opacity: .6; }
 .cell.grp-context { background: transparent; }
@@ -306,3 +307,35 @@ ol.lessons li { margin: 0 0 6px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before { animation: none !important; transition: none !important; }
 }
+
+/* ---------------------------------------------------------------- 1.41: opisy „?”, przewodnik, praca agentów */
+details.help > summary {
+  position: absolute; top: -10px; right: 10px; z-index: 3; list-style: none; cursor: pointer;
+  width: 20px; height: 20px; line-height: 18px; text-align: center; font: 600 12px var(--f-ui);
+  color: var(--dim); background: var(--void); border: 1px solid var(--grid-2);
+}
+details.help > summary::-webkit-details-marker { display: none; }
+details.help > summary:hover, details.help[open] > summary { color: var(--void); background: var(--amber); border-color: var(--amber); }
+details.help .help-body { margin: 0 0 12px; padding: 8px 12px; border-left: 2px solid var(--amber); background: rgba(255,181,71,.05);
+  color: var(--ink-2); font-size: 12.5px; line-height: 1.5; max-width: 110ch; }
+details.help .help-body p { margin: 0 0 4px; }
+.guide { border: 1px solid var(--amber-dim); background: rgba(255,181,71,.04); padding: 12px 18px; margin: -6px 0 18px; font-size: 13px; line-height: 1.55; color: var(--ink-2); }
+.guide h3 { margin: 0 0 6px; font: 600 13px var(--f-ui); color: var(--amber); }
+.guide ol { margin: 0; padding-left: 20px; } .guide li { margin-bottom: 3px; }
+.btn[aria-pressed="true"] { color: var(--void); background: var(--amber); border-color: var(--amber); }
+.agents-tl { width: 100%; height: 84px; display: block; margin: 6px 0 2px; }
+.agents-tl text { fill: var(--dim); font: 11px var(--f-mono); }
+.ag-investor { color: var(--amber); } .ag-critic { color: var(--cyan); } .ag-researcher { color: #b79cff; } .ag-system { color: var(--dim); }
+.lvl { display: inline-flex; gap: 3px; vertical-align: middle; margin-left: 6px; }
+.lvl i { width: 14px; height: 8px; background: var(--grid); } .lvl i.on { background: var(--amber); }
+.parts { font-family: var(--f-mono); letter-spacing: 1px; }
+.tl { margin: 10px 0 12px; font-size: 11.5px; }
+.tl-row { display: grid; grid-template-columns: 82px 1fr; gap: 10px; align-items: center; margin-bottom: 4px; }
+.tl-bar { position: relative; height: 12px; background: var(--grid); overflow: hidden; }
+.tl-bar i { position: absolute; top: 0; bottom: 0; background: currentColor; opacity: .85; }
+.tl-bar i.x { background: var(--bad); opacity: 1; }
+.tl-ax { position: relative; height: 14px; color: var(--dim); }
+.tl-ax span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.tl-ax span:first-child { transform: none; } .tl-ax span:last-child { transform: translateX(-100%); }
+ul.plain { margin: 2px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); } ul.plain li { margin-bottom: 2px; }
+.read .v.am, .v.am { color: var(--amber); } .read .v.cy, .v.cy { color: var(--cyan); }

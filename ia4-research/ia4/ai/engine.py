@@ -1,7 +1,7 @@
 """
 IA 4 — silnik portfela AI Investor: wielkość pozycji, limity, koszty, rozliczanie świeca po świecy
 (instrukcja, sekcje 11c.6–11c.7; kolejność zdarzeń jak 8.6).
-Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.41 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Każda liczba portfela powstaje tutaj — model językowy tylko wybiera (zasada 16).
 
@@ -48,6 +48,7 @@ class Pos:
     mult: float
     confidence: int | None = None
     note_in: str = ""
+    hypothesis: str = ""              # własny pomysł: co transakcja sprawdza (1.41)
     status: str = "pending"           # pending | open | closed
     entry_k: int | None = None
     entry_t: float | None = None

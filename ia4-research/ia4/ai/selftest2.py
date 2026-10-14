@@ -1,6 +1,6 @@
 """
 IA 4 — testy kroku AI-2 (Agent-Investor) na danych syntetycznych — część `python -m ia4.ai.selftest`.
-Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.41 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Silnik portfela: zgodność z symulacją backtestu (ia4/lab/sim) transakcja po transakcji, koszty, USD,
 luka, SL przed TP, zamknięcie decyzją, zacieśnianie SL, limity 11c.7, test na historii (replay).
@@ -155,11 +155,11 @@ def test_engine() -> bool:
             bb.add(pf, round_id="r", inst=s, side=1, basis=basis, basis_kind=basis, decided_k=pf.last(s)[0], now=0, sl_pct=1, tp_pct=1,
                    max_bars=10, has_fc=False, qty=value_pct / 100 * 100000 / (px * (pf.conv(s, pf.last(s)[2]) or 1)), risk=risk, mult=1)
         return bb
-    b1 = book_with([("EURUSD", 10, 125, "own"), ("USDJPY", 10, 125, "own")])
+    b1 = book_with([("EURUSD", 10, 900, "own"), ("USDJPY", 10, 900, "own")])
     _, _, why_hold = b1.plan(pf, "EURUSD", 1, 0.5, 1.0, 100000, 1.0, 0)
     _, _, why_own = b1.plan(pf, "GBPUSD", 1, 2.0, 1.0, 100000, 1.0, 0, own=True)
     _, _, ok_own = b1.plan(pf, "GBPUSD", 1, 2.0, 0.25, 100000, 1.0, 0, own=True)
-    ok &= _check("limity: 1 pozycja na instrument; budżet własnych pomysłów 0,6% (3 × 0,125% mieści się, + 0,5% — nie)",
+    ok &= _check("limity: 1 pozycja na instrument; budżet własnych pomysłów 2% (1800 $ + 125 $ mieści się, + 500 $ — nie)",
                  why_hold and "jest już" in why_hold and why_own and "własnych" in why_own and ok_own is None, f"{why_hold} · {why_own}")
     b2b = book_with([(s, 50, 100, "S") for s in ("EURUSD", "USDJPY", "GBPUSD", "EURGBP")])
     _, _, why_gross = b2b.plan(pf, "BTCUSD", 1, 2.0, 1.0, 100000, 1.0, 0)
@@ -307,8 +307,10 @@ def test_round(tmp: Path) -> bool:
 
     class W:
         inv = None
+        critic = researcher = None
         done = 7
         def pending(self): return 0
+        def now_doing(self): return None
     w = W()
     w.inv = inv
 

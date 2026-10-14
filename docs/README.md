@@ -1,6 +1,6 @@
 # docs/ — strona IA4 (konsola systemu)
 
-**Wersja projektu: 1.40 (2026-10-14)** · zasady: `IA4_INSTRUKCJA.md`, sekcja 11b
+**Wersja projektu: 1.41 (2026-10-14)** · zasady: `IA4_INSTRUKCJA.md`, sekcja 9
 
 Adres: https://miszyszka.github.io/IA4/ (GitHub Pages z brancha `main`, folder `/docs`).
 Każdy `git push` na `main` publikuje stronę w ok. minutę. Bez buildu i bez bibliotek: zwykłe
@@ -13,6 +13,7 @@ css/fonts.css         kroje pisma z fonts/ (Chakra Petch, IBM Plex Mono — lice
 js/core.js            źródła danych (SOURCES), odświeżanie, formaty dat i liczb, godziny rynków, bramka hasła
 js/health.js          „czy system żyje”: stan ogniw magistrali (Yahoo → Apps Script → Firestore → GitHub → Mac FX → Mac AI → strona)
 js/chart.js           wykresy SVG: prognoza FX, mini-wykres, krzywa wyniku
+js/help.js            opisy „?” przy panelach i przewodnik w nagłówku (te same zdania co PRZEWODNIK.md)
 js/main.js            start: bramka, zakładki (#system, #inwestor, #fx, #ai; klawisze 1–4), zegary, magistrala
 js/views/system.js    zakładka System
 js/views/investor.js  zakładka Inwestor (+ renderInvestor — wspólne z przyszłym inwestorem FX)
@@ -43,7 +44,9 @@ przez `raw.githubusercontent.com` (bez limitu, do ok. 5 min opóźnienia); pliki
 
 ## Klocki wyglądu
 
-- `.pane` + `<h2>` — panel z tytułem w ramce; szerokość `c3` … `c12` (siatka 12 kolumn),
+- `.pane` + `<h2>` — panel z tytułem w ramce; szerokość `c3` … `c12` (siatka 12 kolumn); zaraz po `</h2>` —
+  `${help("klucz")}` (opis w `js/help.js`; nowy panel = nowy opis),
+- teksty się nie ucinają: odczyty, tytuły i kafelki zawijają się; długie komórki tabel — klasa `wrap` (albo `wrap-s`),
 - `.reads` / `.read` (`.k` etykieta, `.v` wartość, `.s` opis) — odczyty,
 - `.tbl` w `.tbl-wrap` (`.scroll` — z przewijaniem), `.num` — liczby do prawej,
 - `.log` — strumień zdarzeń, `.tape` — taśma świec, `.matrix` / `.cell` — siatka instrumentów,

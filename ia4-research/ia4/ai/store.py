@@ -1,6 +1,6 @@
 """
-IA 4 — branch `ai`: trwała historia AI Investor i odtworzenie huba (instrukcja, sekcje 11c.1 p. 8, 11c.11).
-Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+IA 4 — branch `ai`: trwała historia AI Investor i odtworzenie huba (instrukcja, sekcja 8).
+Wersja projektu: 1.41 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Klon w ia4-research/ai-repo/ (poza gitem głównego repo). Pisze wyłącznie Python z Maca; człowiek
 (z Claude) zmienia tylko ai/config.json. Commit i push po każdej rundzie Inwestora.
@@ -22,7 +22,7 @@ from .market import iso
 
 README = """# IA 4 — AI Investor (branch `ai`)
 
-Ten branch zapisuje wyłącznie Python z Maca (`ia4 start`). Zasady: `IA4_INSTRUKCJA.md` na branchu `main`, sekcja 11c.
+Ten branch zapisuje wyłącznie Python z Maca (`ia4 start`). Zasady: `IA4_INSTRUKCJA.md` na branchu `main`, sekcja 8.
 Ręcznie (człowiek z Claude) zmienia się tylko `ai/config.json` — nadpisania limitów i ustawień (klucze: `ia4/ai/config.py`).
 
 - `ai/trades.jsonl` — zamknięta transakcja Agent-Investora = wiersz (wejście, wyjście, powód, wynik netto, koszty, notatki, pewność)
@@ -32,6 +32,9 @@ Ręcznie (człowiek z Claude) zmienia się tylko `ai/config.json` — nadpisania
 - `ai/playbook.json` — strategie, których Inwestor może używać, ze statusem i wynikami na żywo
 - `ai/benchmarks.json` — punkty odniesienia (11c.10)
 - `ai/lessons.json` — aktywne wnioski
+- `ai/runs.jsonl` — każde zadanie agenta = wiersz (agent, zadanie, start, czas, czas modelu, wynik) — od 1.41
+- `ai/hypotheses.jsonl` — hipotezy Badacza; każda zmiana statusu = nowy wiersz (obowiązuje ostatni o danym id) — od 1.41
+- `ai/reviews.jsonl` — przeglądy Krytyka (poziom nauki, uwagi, werdykty, wnioski) — od 1.41
 - `ai/config.json` — nadpisania ustawień
 """
 
@@ -43,7 +46,7 @@ def trade_row(p) -> dict:
             "qty": p.qty, "valueUsd": p.value_usd, "riskUsd": p.risk_usd, "maxBars": p.max_bars, "exitAt": iso(p.exit_t),
             "exit": p.exit_px, "reason": p.reason, "gap": p.gap, "bars": p.bars, "costUsd": p.cost_in_usd + p.cost_out_usd,
             "pnlGrossUsd": p.pnl_gross_usd, "pnlUsd": p.pnl_net_usd, "retPct": p.ret_net_pct, "R": p.r_mult,
-            "noteIn": p.note_in, "noteOut": p.note_out, "slMoves": p.sl_moves}
+            "noteIn": p.note_in, "hypothesis": p.hypothesis, "noteOut": p.note_out, "slMoves": p.sl_moves}
 
 
 class AiStore:
@@ -80,14 +83,51 @@ class AiStore:
         r.write_json("state.json", {
             "version": __version__, "savedAt": iso(time.time()), "startedAt": iso(inv.started_at), "peak": inv.peak,
             "halt": inv.halt, "roundN": inv.hub.meta("round_n"), "dayAnchor": inv.hub.meta("day_anchor"),
+            "explore": inv.hub.meta("explore"), "passiveN": inv.hub.meta("passive_n"),
             "positions": [p.to_dict() for p in inv.main.active() + inv.shadow.active()]})
         r.write_json("benchmarks.json", bench)
         r.write_json("lessons.json", inv.hub.lessons_active())
         r.write_json("playbook.json", playbook_view(inv))
+        self._work_rows(inv.hub)
         msg = f"ai: {record['id']} {record['candle']}" if record else "ai: rozliczenie przerwy"
         if closed_now:
             msg += " · zamknięte: " + ", ".join(f"#{p.id} {p.inst} {p.reason}" for p in closed_now[:5])
         return r.commit_push(msg)
+
+    def _work_rows(self, hub) -> int:
+        """Nowe wiersze pracy agentów, hipotez i przeglądów → pliki brancha (bez commitu)."""
+        r, n = self.repo, 0
+        runs = hub.runs_unsaved()
+        for x in runs:
+            r.append_jsonl("runs.jsonl", {"agent": x["agent"], "task": x["task"], "start": iso(x["start"]), "sec": round(x["sec"] or 0, 1),
+                                          "llmSec": round(x["llm_sec"] or 0, 1), "llmCalls": x["llm_calls"], "ok": bool(x["ok"]),
+                                          "summary": x["summary"]})
+        if runs:
+            hub.runs_mark_saved(runs[-1]["id"])
+        hs = hub.hyp_unsaved()
+        for h in hs:
+            row = {k: v for k, v in h.items() if k != "_ver"} | {"at": iso(h.get("at")), "updated": iso(h.get("updated"))}
+            if h["status"] == "odrzucona przez kod":            # ~95% hipotez — zwięźle: definicja + kluczowe liczby
+                res = h.get("result") or {}
+                row["result"] = {k: res.get(k) for k in ("n", "avg", "pf", "t")} | {"blind": {"avg": (res.get("blind") or {}).get("avg")}}
+                row.pop("note", None)
+            r.append_jsonl("hypotheses.jsonl", row)
+        hub.hyp_mark_saved(hs)
+        rv = hub.reviews_unsaved()
+        for x in rv:
+            r.append_jsonl("reviews.jsonl", x | {"at": iso(x["at"])})
+        if rv:
+            hub.reviews_mark_saved(rv[-1]["no"])
+        r.write_json("lessons.json", hub.lessons_active())
+        return len(runs) + len(hs) + len(rv)
+
+    def save_work(self, hub, inv=None) -> bool:
+        """Co `work_flush_min`: praca agentów, hipotezy, przeglądy (commit tylko, gdy coś przybyło)."""
+        n = self._work_rows(hub)
+        if not n:
+            return False
+        c = hub.hyp_counts()
+        return self.repo.commit_push(f"ai: praca agentów (+{n}) · hipotez {sum(c.values())}, w próbie {c.get('próba', 0)}")
 
     def _has_shadow(self, pid: int) -> bool:
         if not hasattr(self, "_shadow_ids"):
@@ -146,6 +186,27 @@ def restore(hub, repo_dir: Path, log=print) -> bool:
     hub.set_meta("halt", st.get("halt"))
     hub.set_meta("round_n", st.get("roundN") or 0)
     hub.set_meta("day_anchor", st.get("dayAnchor"))
+    hub.set_meta("explore", st.get("explore"))
+    hub.set_meta("passive_n", st.get("passiveN") or 0)
+    hp = repo_dir / "hypotheses.jsonl"
+    if hp.exists():
+        last = {}
+        for line in hp.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                h = json.loads(line)
+                last[h["id"]] = h
+        for h in sorted(last.values(), key=lambda h: h["id"]):
+            h["at"] = ts(h.get("at")) if isinstance(h.get("at"), str) else h.get("at")
+            h.pop("updated", None)
+            hub.hyp_add(h)
+        hub.db.execute("UPDATE hypotheses SET saved_ver=ver")
+    rp = repo_dir / "reviews.jsonl"
+    if rp.exists():
+        for line in rp.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                x = json.loads(line)
+                hub.review_add({k: v for k, v in x.items() if k not in ("no", "at")}, at=ts(x.get("at")))
+        hub.reviews_mark_saved(10 ** 9)
     lp = repo_dir / "lessons.json"
     if lp.exists() and not hub.lessons_active():
         for x in json.loads(lp.read_text(encoding="utf-8")):
@@ -164,6 +225,7 @@ def _pos_from_trade(t: dict):
                basis=t["basis"], basis_kind=t.get("basisKind", ""), decided_k=0, decided_at=ts(t["decidedAt"]) or 0,
                sl_pct=t["slPct"], tp_pct=t["tpPct"], max_bars=t.get("maxBars"), has_fc=False, qty=t["qty"], ref_px=t["entry"],
                risk_usd=t["riskUsd"], mult=t.get("mult") or 0, confidence=t.get("confidence"), note_in=t.get("noteIn", ""),
+               hypothesis=t.get("hypothesis", ""),
                status="closed", entry_t=ts(t["entryAt"]), entry_px=t["entry"], sl_px=t["sl"], tp_px=t["tp"], value_usd=t["valueUsd"],
                cost_in_usd=t["costUsd"], bars=t["bars"], note_out=t.get("noteOut", ""), sl_moves=t.get("slMoves") or [],
                exit_t=ts(t["exitAt"]), exit_px=t["exit"], reason=t["reason"], gap=t.get("gap", False),

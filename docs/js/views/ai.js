@@ -1,10 +1,11 @@
-// IA 4 — zakładka AI: AI Investor na Macu — nadzorca, feed świec, Agent-Investor (instrukcja, sekcja 11c.11).
-// Wersja projektu: 1.40 (2026-10-14)
+// IA 4 — zakładka AI: agenci na Macu — praca agentów, portfel Inwestora, Krytyk, Badacz, feed (instrukcja, sekcja 8–9).
+// Wersja projektu: 1.41 (2026-10-14)
 //
-// Źródła: ai-live/status.json (sygnał życia co 5 min i po każdym zdarzeniu: nadzorca, feed, agenci, portfel,
-// pozycje, ostatnia runda, punkty odniesienia, krzywa, notatki) oraz branch ai: trades.jsonl, playbook.json, lessons.json.
+// Źródła: ai-live/status.json (sygnał życia: nadzorca, feed, agenci, praca agentów `work`, portfel, pozycje, ostatnia runda,
+// punkty odniesienia, krzywa, notatki, `critic`, `research`) oraz branch ai: trades.jsonl, playbook.json, lessons.json.
 
 import { store, num, esc, age, t, usd, sgn, cls, pct } from "../core.js";
+import { help } from "../help.js";
 import { stamp } from "../health.js";
 import { equity } from "../chart.js";
 
@@ -18,9 +19,11 @@ const led = s => `<span class="led ${s}${s === "ok" ? " beat" : ""}"></span>`;
 const mmss = s => s === null || s === undefined ? "—" : `${s < 0 ? "−" : "+"}${Math.floor(Math.abs(s) / 60)}:${String(Math.abs(s) % 60).padStart(2, "0")}`;
 const KIND = { start: "start", stop: "stop", sync: "sync", ollama: "model", fx: "fx", "fx-late": "fx", stocks: "akcje",
                "stocks-late": "akcje", "stocks-night": "noc", error: "błąd", round: "runda", trade: "pozycja", investor: "inwestor",
-               playbook: "playbook", halt: "STOP", restore: "hub" };
-const KCLS = { fx: "cy", "fx-late": "cy", stocks: "ok", "stocks-late": "ok", error: "", "stocks-night": "dim", sync: "dim", round: "am", trade: "am" };
-const NOTE = { decyzja: "decyzja", pozycja: "pozycja", runda: "runda", "wejście": "wejście", "wyjście": "wyjście" };
+               playbook: "playbook", halt: "STOP", restore: "hub", hypothesis: "hipoteza", review: "Krytyk" };
+const KCLS = { fx: "cy", "fx-late": "cy", stocks: "ok", "stocks-late": "ok", error: "", "stocks-night": "dim", sync: "dim", round: "am", trade: "am",
+               hypothesis: "ag-researcher", review: "ag-critic" };
+const NOTE = { decyzja: "decyzja", pozycja: "pozycja", runda: "runda", "wejście": "wejście", "wyjście": "wyjście", "przegląd": "Krytyk" };
+const AG = { investor: "Inwestor", critic: "Krytyk", researcher: "Badacz", system: "dyspozytor" };
 const dir = d => d === "long" ? "▲ long" : "▼ short";
 const px = (v, d = 2) => v === null || v === undefined ? "—" : num(v, d);
 const pxd = p => p.kind === "stock" ? 2 : Math.min(p.digits || 5, 6);
@@ -50,8 +53,12 @@ function hero(ai) {
 }
 
 // ------------------------------------------------------------------ portfel
-function portfolio(I) {
-  const p = I.portfolio || {}, b = I.bench || {}, inv = b.investor || {};
+function level(n) {
+  return `<span class="lvl" title="poziom nauki ${n} z 3">${[1, 2, 3].map(i => `<i class="${i <= n ? "on" : ""}"></i>`).join("")}</span>`;
+}
+
+function portfolio(I, C) {
+  const p = I.portfolio || {}, b = I.bench || {}, inv = b.investor || {}, ex = (C || {}).explore;
   const cap = I.capital || 100000, total = p.equity - cap;
   return `<div class="reads">
     <div class="read"><div class="k">stan konta</div><div class="v ${cls(total)}">${num(p.equity, 0)} $</div><div class="s">${sgn(100 * total / cap, 2)}% od ${I.startedAt ? t.dm(stamp(I.startedAt)) : "startu"} · kapitał ${num(cap, 0)} $</div></div>
@@ -62,6 +69,8 @@ function portfolio(I) {
     <div class="read"><div class="k">ryzyko otwarte</div><div class="v">${num(p.riskPct, 2)}%</div>
       <div class="meter ${p.riskPct > 5 ? "warn" : ""}"><i style="width:${Math.min(100, 100 * (p.riskPct || 0) / 6)}%"></i></div><div class="s">budżet 6% · risk_dial ${num(p.dial, 2)}</div></div>
     <div class="read"><div class="k">obsunięcie</div><div class="v ${p.ddPct >= 10 ? "bad" : p.ddPct >= 5 ? "warn" : ""}">${num(p.ddPct, 2)}%</div><div class="s">doba UTC ${sgn(p.dayPct, 2)}% · stop −2%</div></div>
+    ${ex ? `<div class="read"><div class="k">poziom nauki</div><div class="v">${ex.level}${level(ex.level)}</div>
+      <div class="s">${esc(ex.name)} · bez wejścia ${ex.passive} rund${ex.auto ? " · podniósł automat bierności" : ""}</div></div>` : ""}
   </div>${(p.blocks || []).length ? `<p class="note"><b class="bad">${esc(p.blocks.join(" · "))}</b></p>` : ""}`;
 }
 
@@ -90,7 +99,7 @@ function positions(I) {
         <td class="num desk-only">${px(p.price, d)}</td><td class="num ${cls(p.pct)}">${p.status === "pending" ? "—" : sgn(p.pct, 2) + "%"}</td>
         <td class="num desk-only ${cls(p.pnl)}">${p.status === "pending" ? "" : usd(p.pnl, 0)}</td><td class="num desk-only">${p.status === "pending" ? "" : sgn(p.R, 2)}</td>
         <td class="desk-only">${track(p)}</td><td class="num desk-only">${p.bars}${p.maxBars ? `/${p.maxBars}` : ""}</td>
-        <td class="num desk-only">${p.confidence ?? "—"}</td><td class="desk-only wrap">${p.closeReq ? `<span class="am">zamknięcie zlecone</span> ` : ""}${noteCell(p.note)}</td></tr>`; }).join("") +
+        <td class="num desk-only">${p.confidence ?? "—"}</td><td class="desk-only wrap">${p.closeReq ? `<span class="am">zamknięcie zlecone</span> ` : ""}${noteCell(p.note)}${p.hypothesis ? `<br><span class="dim">hipoteza:</span> ${noteCell(p.hypothesis, 80)}` : ""}</td></tr>`; }).join("") +
     `</tbody></table></div>`;
 }
 
@@ -100,12 +109,13 @@ function lastRound(I) {
   const rows = [...(r.decisions || []), ...(r.ownIdeas || []), ...(r.positions || []).filter(d => d.action !== "hold")];
   const verb = { enter: "wchodzę", skip: "pomijam", hold: "trzymam", close: "zamykam", tighten_sl: "zacieśniam SL" };
   return `<p class="note" style="margin-top:0"><b>${esc(r.id)}</b> · ${esc(r.candle)} · ${t.short(stamp(r.at))} · kandydatów ${(r.candidates || []).length}` +
-    `${r.llm ? ` · model ${num(r.llm.sec, 0)} s, ${r.llm.promptTokens ?? "?"} tok. briefu${r.llm.attempts > 1 ? `, prób ${r.llm.attempts}` : ""}` : " · bez modelu"}</p>` +
+    `${r.llm ? ` · model ${num(r.llm.sec, 0)} s, ${r.llm.promptTokens ?? "?"} tok. briefu${r.llm.attempts > 1 ? `, prób ${r.llm.attempts}` : ""}` : " · bez modelu"}` +
+    `${r.explore !== undefined && r.explore !== null ? ` · poziom nauki ${r.explore}` : ""}</p>` +
     (r.roundNote ? `<p class="note"><b>notatka rundy:</b> ${esc(r.roundNote)}</p>` : "") +
     (rows.length ? `<ul class="log" style="max-height:420px">` + rows.map(d =>
       `<li><span class="t">${esc(d.ref === "own" ? "własny" : d.ref)}</span><span class="src ${d.action === "enter" ? "am" : "dim"}">${esc(verb[d.action] || d.action)}</span>` +
       `<span class="m"><b>${esc(d.inst)}</b> ${esc(d.dir)} · ${esc(d.basis)}${d.confidence !== null && d.confidence !== undefined ? ` · pewność ${d.confidence}` : ""}<br>` +
-      `${esc(d.note)}${d.outcome && !["pominięte", "bez zmian"].includes(d.outcome) ? `<br><span class="${d.outcome.startsWith("odrzucone") ? "warn" : "ok"}">→ ${esc(d.outcome)}</span>` : ""}</span></li>`).join("") + `</ul>`
+      `${esc(d.note)}${d.hypothesis ? `<br><span class="dim">hipoteza:</span> ${esc(d.hypothesis)}` : ""}${d.outcome && !["pominięte", "bez zmian"].includes(d.outcome) ? `<br><span class="${d.outcome.startsWith("odrzucone") ? "warn" : "ok"}">→ ${esc(d.outcome)}</span>` : ""}</span></li>`).join("") + `</ul>`
       : `<p class="empty">brak decyzji w tej rundzie</p>`) +
     ((r.skipped || []).length ? `<p class="note">pominięte przez kod: ${esc(r.skipped.slice(0, 6).join("; "))}</p>` : "");
 }
@@ -118,7 +128,7 @@ function trades() {
     L.map(p => `<tr><td class="dim">${p.no}</td><td><b>${esc(p.inst)}</b></td><td>${p.dir === "long" ? "▲" : "▼"}</td><td>${esc(p.basis)}</td>
       <td>${t.short(stamp(p.entryAt))}</td><td>${t.short(stamp(p.exitAt))}</td><td><span class="tag ${p.reason === "TP" ? "cy" : ""}">${esc(p.reason)}${p.gap ? " (luka)" : ""}</span></td>
       <td class="num ${cls(p.retPct)}">${sgn(p.retPct, 2)}%</td><td class="num ${cls(p.pnlUsd)}">${usd(p.pnlUsd, 0)}</td><td class="num">${sgn(p.R, 2)}</td>
-      <td class="num">${p.confidence ?? "—"}</td><td class="wrap">${noteCell(p.noteIn, 70)}</td><td class="wrap">${noteCell(p.noteOut, 50)}</td></tr>`).join("") +
+      <td class="num">${p.confidence ?? "—"}</td><td class="wrap">${noteCell(p.noteIn, 70)}${p.hypothesis ? `<br><span class="dim">hipoteza:</span> ${noteCell(p.hypothesis, 60)}` : ""}</td><td class="wrap">${noteCell(p.noteOut, 50)}</td></tr>`).join("") +
     `</tbody></table></div>`;
 }
 
@@ -128,7 +138,7 @@ function bench(I) {
     <td class="num">${s && s.ci95 ? "±" + num(s.ci95, 2) : "—"}</td><td class="num desk-only">${s && s.win !== null && s.win !== undefined ? pct(s.win) : "—"}</td><td class="dim wrap desk-only">${hint}</td></tr>`;
   const r = b.random, m = b.mechanical, spy = b.spy;
   return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>na transakcję, netto</th><th class="num">n</th><th class="num">śr.</th><th class="num">95%</th><th class="num desk-only">zysk.</th><th class="desk-only"></th></tr></thead><tbody>` +
-    row("Inwestor (playbook)", b.investor, "wybór i zarządzanie modelu") + row("Inwestor — własne pomysły", b.own, "osobny budżet 0,6%") +
+    row("Inwestor (kandydaci)", b.investor, "wybór i zarządzanie modelu") + row("Inwestor — własne pomysły", b.own, "osobny budżet 2%") +
     row("wszyscy kandydaci", b.all, "każdy sygnał bez limitów (cienie)") +
     `<tr><td>losowy wybór</td><td colspan="5" class="wrap">${r ? `percentyl Inwestora <b>${num(r.pctl, 0)}</b> · losowo śr. ${sgn(r.randomAvg, 2)}% (95%: ${sgn(r.lo, 2)} … ${sgn(r.hi, 2)}) · ${r.rounds} rund` : "<span class='dim'>czeka na rundy z zamkniętymi cieniami</span>"}</td></tr>` +
     `<tr><td>mechaniczny inwestor</td><td colspan="5">${m && m.avgPct !== null && m.avgPct !== undefined ? `${m.closed} zamkniętych · śr. ${sgn(m.avgPct, 2)}%${m.ci95Pct ? ` ± ${num(m.ci95Pct, 2)}` : ""}` : "<span class='dim'>brak danych</span>"}</td></tr>` +
@@ -152,6 +162,105 @@ function lessons() {
   const L = store.get("ailessons") || [];
   if (!L.length) return `<p class="empty">brak ai/lessons.json</p>`;
   return `<ol class="lessons">${L.map(x => `<li>${esc(x.text)} <span class="dim">— ${esc(x.author)}</span></li>`).join("")}</ol>`;
+}
+
+// ------------------------------------------------------------------ praca agentów (1.41)
+const dur = s => s === null || s === undefined ? "—" : s < 90 ? `${num(s, 0)} s` : s < 5400 ? `${num(s / 60, 1)} min` : `${num(s / 3600, 1)} h`;
+
+function work(ai) {
+  const W = ai.work;
+  if (!W) return `<p class="empty">brak danych o pracy agentów — pojawią się po pierwszym zadaniu dyspozytora (wersja 1.41+ na Macu)</p>`;
+  const now = Date.now(), S = W.stats || {}, span = W.spanSec || 86400;
+  const A = (ai.agents || []);
+  const cur = W.now;
+  const rows = A.map(a => {
+    const s = S[a.id] || {};
+    const working = cur && cur.agent === a.id;
+    const every = s.n ? span / s.n : null;
+    const last = stamp(s.last);
+    return `<tr><td class="ag-${a.id}"><b>${esc(a.name)}</b></td>
+      <td class="wrap-s">${working ? `${led("ok")} <b>pracuje</b> · ${esc(cur.task)} · od <span data-ts="${stamp(cur.since)}">${age((now - stamp(cur.since)) / 1000)}</span>`
+        : a.state === "off" ? `<span class="dim">wyłączony</span>` : `<span class="dim">${esc(a.note || "czeka")}</span>`}</td>
+      <td class="num">${s.n || 0}</td><td class="num">${every ? "co " + dur(every) : "—"}</td><td class="num">${dur(s.avg)}</td>
+      <td class="num desk-only">${dur(s.max)}</td><td class="num desk-only">${s.n ? dur(s.llmSec / s.n) : "—"}</td>
+      <td class="num desk-only">${num(s.busyPct || 0, 0)}%</td><td class="num ${s.fail ? "warn" : "dim"}">${s.fail || 0}</td>
+      <td class="desk-only">${isFinite(last) ? `<span data-ts="${last}">${age((now - last) / 1000)}</span> temu` : "—"}</td></tr>`;
+  }).join("");
+  return `<div class="reads">
+      <div class="read"><div class="k">teraz</div><div class="v ${cur ? "ok" : ""}">${cur ? esc(AG[cur.agent] || cur.agent) : "przerwa"}</div>
+        <div class="s">${cur ? esc(cur.task) : "następne zadanie za chwilę"}${W.queue ? ` · w kolejce świec ${W.queue}` : ""}</div></div>
+      <div class="read"><div class="k">zajęci</div><div class="v">${num(W.busyPct || 0, 0)}%</div><div class="s">czasu z ostatnich ${dur(span)} · jeden agent naraz</div></div>
+      <div class="read"><div class="k">zadań (24 h)</div><div class="v">${Object.values(S).reduce((a, s) => a + s.n, 0)}</div>
+        <div class="s">${Object.entries(S).map(([k, s]) => `${AG[k] || k} ${s.n}`).join(" · ")}</div></div>
+    </div>
+    ${timeline(W)}
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>agent</th><th>stan</th><th class="num">zadań 24 h</th><th class="num">rytm</th>
+      <th class="num">śr. czas</th><th class="num desk-only">najdłużej</th><th class="num desk-only">model / zad.</th><th class="num desk-only">czasu</th>
+      <th class="num">błędy</th><th class="desk-only">ostatnio</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <details class="nt desk-only" style="margin-top:8px;max-width:none"><summary>ostatnie zadania (${(W.runs || []).length}) ▸</summary>
+      <div class="tbl-wrap scroll" style="max-height:340px"><table class="tbl"><thead><tr><th>start</th><th>agent</th><th>zadanie</th><th class="num">czas</th>
+        <th class="num">model</th><th></th><th>wynik</th></tr></thead><tbody>` +
+    (W.runs || []).map(r => `<tr><td>${t.short(stamp(r.start))}</td><td class="ag-${r.agent}">${esc(AG[r.agent] || r.agent)}</td><td class="wrap-s">${esc(r.task)}</td>
+      <td class="num">${dur(r.sec)}</td><td class="num">${r.llmSec ? dur(r.llmSec) : "—"}</td><td class="${r.ok ? "ok" : "bad"}">${r.ok ? "✓" : "✗"}</td>
+      <td class="wrap">${esc(r.summary)}</td></tr>`).join("") + `</tbody></table></div></details>`;
+}
+
+function timeline(W) {
+  const T = W.timeline;
+  if (!T || !(T.runs || []).length) return "";
+  const from = stamp(T.from), span = 86400;
+  const rows = ["investor", "critic", "researcher"].map((id, ai) => {
+    const bars = T.runs.filter(r => r[0] === ai).map(r =>
+      `<i style="left:${(100 * r[1] / span).toFixed(2)}%;width:max(2px,${(100 * r[2] / span).toFixed(3)}%)" class="${r[3] ? "" : "x"}" title="${t.short(from + r[1] * 1e3)} · ${dur(r[2])}"></i>`).join("");
+    return `<div class="tl-row"><span class="ag-${id}">${AG[id]}</span><div class="tl-bar ag-${id}">${bars}</div></div>`;
+  }).join("");
+  const ticks = [0, 6, 12, 18, 24].map(h => `<span style="left:${(100 * h / 24).toFixed(1)}%">${t.hm(from + h * 3600e3)}</span>`).join("");
+  return `<div class="tl">${rows}<div class="tl-row"><span></span><div class="tl-ax">${ticks}</div></div></div>`;
+}
+
+// ------------------------------------------------------------------ Krytyk (1.41)
+function critic(ai) {
+  const C = ai.critic;
+  if (!C) return `<p class="empty">Krytyk jeszcze nie pracował (wersja 1.41+ na Macu)</p>`;
+  const ex = C.explore || {}, R = (C.reviews || [])[0];
+  const notes = (L, who) => (L || []).length ? `<p class="note"><b>dla ${who}:</b></p><ul class="plain">${L.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+  return `<div class="reads">
+      <div class="read"><div class="k">poziom nauki</div><div class="v">${ex.level}${level(ex.level)}</div>
+        <div class="s">${esc(ex.name || "")} · własne pomysły do ${ex.own}/rundę, ryzyko ×${num(ex.own_mult, 2)}${ex.min_enter ? " · wymagane wejście" : ""}</div></div>
+      <div class="read"><div class="k">ustawił</div><div class="v">${ex.auto ? "automat" : esc(ex.by || "—")}</div>
+        <div class="s">${ex.auto ? `bierność: ${ex.passive} rund bez wejścia` : esc(ex.reason || "")}</div></div>
+    </div>` +
+    (R ? `<p class="note"><b>ostatni przegląd</b> ${t.short(stamp(R.at))}: ${esc(R.summary || "")}</p>` +
+      notes(R.investorNotes, "Inwestora") + notes(R.researcherNotes, "Badacza") +
+      ((R.verdicts || []).length ? `<p class="note"><b>werdykty:</b> ${R.verdicts.map(v => `<span class="${v.applied ? "" : "dim"}">${esc(v.id)} → ${esc(v.verdict)}${v.applied ? "" : " (kod: " + esc(v.why || "odrzucony") + ")"}</span>`).join(" · ")}</p>` : "") +
+      `<p class="note">wnioski +${R.lessonsAdded || 0} / −${R.lessonsRemoved || 0} · przeglądów pokazanych ${(C.reviews || []).length}</p>`
+      : `<p class="empty">jeszcze bez przeglądu — pierwszy po kilku rundach Inwestora albo gdy czekają hipotezy do oceny</p>`);
+}
+
+// ------------------------------------------------------------------ Badacz (1.41)
+const HST = { "do oceny": "am", "próba": "cy", "zatwierdzona": "cy", "odrzucona przez kod": "", "odrzucona": "", "do poprawy": "am", "wycofana": "" };
+function research(ai) {
+  const R = ai.research;
+  if (!R) return `<p class="empty">Badacz jeszcze nie pracował (wersja 1.41+ na Macu)</p>`;
+  const c = R.counts || {};
+  const parts = L => (L || []).map(x => x === null || x === undefined ? "·" : x > 0 ? `<span class="up">+</span>` : `<span class="down">−</span>`).join("");
+  const row = h => `<tr><td>${esc(h.id)}</td><td><span class="tag ${HST[h.status] || ""}">${esc(h.status)}</span></td>
+    <td class="wrap">${esc(h.desc)}${h.idea ? `<br><span class="dim">${esc(h.idea)}</span>` : ""}${h.verdict ? `<br><span class="ag-critic">Krytyk:</span> ${esc(h.verdict)}` : ""}${(h.why || []).length ? `<br><span class="dim">sito: ${esc(h.why.join("; "))}</span>` : ""}</td>
+    <td class="num">${h.n ?? "—"}</td><td class="num ${cls(h.avg)}">${h.avg === null || h.avg === undefined ? "—" : sgn(h.avg, 3) + "%"}</td>
+    <td class="num dim desk-only">${h.blind === null || h.blind === undefined ? "—" : sgn(h.blind, 3) + "%"}</td>
+    <td class="num desk-only">${h.t === null || h.t === undefined ? "—" : num(h.t, 1)}</td><td class="parts desk-only">${parts(h.parts)}</td>
+    <td class="num">${h.live && h.live.n ? `${h.live.n} · ${sgn(h.live.avg, 2)}%` : "—"}</td></tr>`;
+  const head = `<thead><tr><th>ID</th><th>status</th><th>hipoteza</th><th class="num">trans.</th><th class="num">śr. netto</th><th class="num desk-only">na ślepo</th>
+    <th class="num desk-only">t</th><th class="desk-only">części</th><th class="num">na żywo</th></tr></thead>`;
+  return `<div class="reads">
+      <div class="read"><div class="k">sprawdzonych</div><div class="v">${R.total || 0}</div><div class="s">odrzuconych przez kod ${c["odrzucona przez kod"] || 0}</div></div>
+      <div class="read"><div class="k">do oceny</div><div class="v ${c["do oceny"] ? "am" : ""}">${c["do oceny"] || 0}</div><div class="s">czekają na Krytyka</div></div>
+      <div class="read"><div class="k">w próbie</div><div class="v ${c["próba"] ? "cy" : ""}">${c["próba"] || 0}</div><div class="s">Inwestor handluje nimi małym ryzykiem</div></div>
+      <div class="read"><div class="k">zatwierdzone / wycofane</div><div class="v">${c["zatwierdzona"] || 0} / ${c["wycofana"] || 0}</div><div class="s">po ≥ 20 transakcjach na żywo</div></div>
+    </div>` +
+    ((R.live || []).length ? `<p class="note"><b>na żywo</b> (próba i zatwierdzone)</p><div class="tbl-wrap"><table class="tbl">${head}<tbody>${R.live.map(row).join("")}</tbody></table></div>` : "") +
+    `<p class="note"><b>ostatnie hipotezy</b></p><div class="tbl-wrap scroll" style="max-height:460px"><table class="tbl">${head}<tbody>` +
+    ((R.recent || []).map(row).join("") || `<tr><td colspan="9" class="dim">brak — Badacz pracuje w wolnym czasie agentów</td></tr>`) + `</tbody></table></div>`;
 }
 
 // ------------------------------------------------------------------ feed (AI-1)
@@ -184,19 +293,10 @@ function flow(ai) {
     `</tbody></table></div><p class="note">świeca w kopii na Macu najpóźniej 2 min po zapisie w Firestore — spełnione w ${okN} z ${lags.length} ostatnich świec</p>`;
 }
 
-function agents(ai) {
-  return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>agent</th><th>stan</th></tr></thead><tbody>` +
-    (ai.agents || []).map(a => `<tr title="${esc(a.role || "")}"><td>${led(a.state === "on" ? "ok" : "off")} ${esc(a.name)}</td>` +
-      `<td class="wrap">${a.state === "on" ? esc(a.note || "działa") + (a.llm && a.llm.sec ? ` <span class="dim">· ostatnio model ${num(a.llm.sec, 0)} s</span>` : "") + (a.rounds ? ` <span class="dim">· rund ${a.rounds}</span>` : "")
-        : `<span class="dim">od kroku ${esc(a.step)}</span>`}</td></tr>`).join("") +
-    `</tbody></table></div>
-    <p class="note">${ai.fxForecast && ai.fxForecast.on ? `prognoza FX liczy się w nadzorcy (ratingi ${esc(ai.fxForecast.ratings.run)}) → zakładka FX` : esc((ai.fxForecast || {}).note || "prognoza FX wyłączona")}</p>`;
-}
-
 function journal(ai) {
   const I = ai.investor || {};
   const E = [...(ai.events || []).map(e => ({ t: stamp(e.at), src: KIND[e.kind] || e.kind, cls: (KCLS[e.kind] || "") + (e.kind === "error" || e.kind === "halt" ? " bad" : ""), text: e.text, k: "e" + e.at + e.kind + e.text })),
-             ...(I.notes || []).filter(n => n.agent === "investor" || n.agent === "kod").map(n => ({ t: stamp(n.at), src: NOTE[n.kind] || n.kind, cls: n.kind === "decyzja" ? "am" : "dim", text: n.text, k: "n" + n.at + n.text }))]
+             ...(I.notes || []).map(n => ({ t: stamp(n.at), src: NOTE[n.kind] || n.kind, cls: n.agent === "critic" ? "ag-critic" : n.kind === "decyzja" ? "am" : "dim", text: n.text, k: "n" + n.at + n.text }))]
     .filter((x, i, a) => a.findIndex(y => y.k === x.k) === i).sort((a, b) => b.t - a.t).slice(0, 60);
   const fresh = E.filter(e => !seen.has(e.k));
   const h = `<ul class="log">${E.map(e => `<li class="${!firstPaint && fresh.includes(e) ? "new" : ""}"><span class="t">${t.short(e.t)}</span>` +
@@ -216,27 +316,29 @@ export default {
         <p class="empty">${m && m.err && m.err !== "brak pliku" ? esc(m.err) + " — " : ""}AI Investor jeszcze nie był uruchomiony. Na Macu: <b>ia4 start</b> albo dwuklik <b>IA4-start.command</b> — po minucie pojawi się tu stan nadzorcy, feedu świec i agentów (instrukcja 11c.3).</p></div></div>`;
       return;
     }
-    const st = aiState(ai), fd = ai.feed || {}, I = ai.investor;
+    const st = aiState(ai), fd = ai.feed || {}, I = ai.investor, dim = st.s === "ok" ? "" : "stale";
+    const fxn = ai.fxForecast && ai.fxForecast.on ? `prognoza FX liczy się w nadzorcy (ratingi ${esc(ai.fxForecast.ratings.run)})` : esc((ai.fxForecast || {}).note || "prognoza FX wyłączona");
     el.innerHTML = `<div class="grid">
-      <div class="pane c12 hero ${st.s === "ok" ? "" : "stale"}"><h2>AI Investor<span class="dim">trzej agenci na Macu · ${esc(ai.step || "")}</span></h2>${hero(ai)}</div>
+      <div class="pane c12 hero ${dim}"><h2>AI Investor<span class="dim">agenci na Macu · ${esc(ai.step || "")}</span></h2>${help("ai.hero")}${hero(ai)}<p class="note">${fxn}</p></div>
+      <div class="pane c12 ${dim}"><h2>praca agentów<span class="dim">jeden naraz · bez przerwy · oś 24 h</span></h2>${help("ai.work")}${work(ai)}</div>
       ${I ? `
-      <div class="pane c12 ${st.s === "ok" ? "" : "stale"}"><h2>Agent-Investor · portfel<span class="dim">wszystko na papierze · USD</span></h2>${portfolio(I)}</div>
-      <div class="pane c8 desk-only"><h2>krzywa stanu konta<span class="dim">$ od startu, po każdej rundzie</span></h2><svg class="mini" data-eq></svg></div>
-      <div class="pane c4"><h2>agenci<span class="dim">${(ai.agents || []).filter(a => a.state === "on").length}/${(ai.agents || []).length} aktywnych</span></h2>${agents(ai)}</div>
-      <div class="pane c12"><h2>pozycje<span class="dim">otwarte i oczekujące · notatka = dlaczego</span></h2>${positions(I)}</div>
-      <div class="pane c7"><h2>ostatnia runda<span class="dim">decyzje modelu i kodu</span></h2>${lastRound(I)}</div>
-      <div class="pane c5"><h2>punkty odniesienia<span class="dim">11c.10</span></h2>${bench(I)}</div>
-      <div class="pane c12 desk-only"><h2>zamknięte transakcje<span class="dim">ai/trades.jsonl · ostatnie 60</span></h2>${trades()}</div>` : `
-      <div class="pane c5"><h2>agenci</h2>${agents(ai)}</div>`}
-      <div class="pane c7"><h2>dziennik<span class="dim">zdarzenia nadzorcy i notatki Inwestora</span></h2>${journal(ai)}</div>
-      <div class="pane c5 desk-only"><h2>feed świec<span class="dim">Firestore → kopia na Macu</span></h2>
+      <div class="pane c12 ${dim}"><h2>Agent-Investor · portfel<span class="dim">na papierze · USD</span></h2>${help("ai.portfolio")}${portfolio(I, ai.critic)}</div>
+      <div class="pane c7 desk-only"><h2>krzywa stanu konta<span class="dim">$ od startu</span></h2>${help("ai.curve")}<svg class="mini" data-eq></svg></div>
+      <div class="pane c5 ${dim}"><h2>Krytyk<span class="dim">poziom nauki · uwagi · werdykty</span></h2>${help("ai.critic")}${critic(ai)}</div>
+      <div class="pane c12"><h2>pozycje<span class="dim">otwarte i oczekujące · dlaczego</span></h2>${help("ai.positions")}${positions(I)}</div>
+      <div class="pane c7"><h2>ostatnia runda<span class="dim">decyzje modelu i kodu</span></h2>${help("ai.round")}${lastRound(I)}</div>
+      <div class="pane c5"><h2>punkty odniesienia</h2>${help("ai.bench")}${bench(I)}</div>
+      <div class="pane c12 ${dim}"><h2>Badacz · hipotezy<span class="dim">liczone na historii z kosztami</span></h2>${help("ai.research")}${research(ai)}</div>
+      <div class="pane c12 desk-only"><h2>zamknięte transakcje<span class="dim">ai/trades.jsonl · ostatnie 60</span></h2>${help("ai.trades")}${trades()}</div>` : ""}
+      <div class="pane c7"><h2>dziennik<span class="dim">zdarzenia i notatki agentów</span></h2>${help("ai.journal")}${journal(ai)}</div>
+      <div class="pane c5 desk-only"><h2>feed świec<span class="dim">Firestore → Mac</span></h2>${help("ai.feed")}
         ${feedBlock("akcje · 53 spółki + SPY, QQQ", fd.stocks, L => L.candle || "—")}
         ${feedBlock("FX · 10 par + BTC", fd.fx, L => L.closeAt ? t.hm(stamp(L.closeAt) - 3600e3) + "–" + t.hm(stamp(L.closeAt)) : "—")}</div>
-      ${I ? `<div class="pane c7 desk-only"><h2>playbook<span class="dim">strategie Inwestora · ai/playbook.json</span></h2>${playbook()}</div>
-      <div class="pane c5 desk-only"><h2>wnioski<span class="dim">ai/lessons.json</span></h2>${lessons()}</div>` : ""}
-      <div class="pane c12 desk-only"><h2>spływ świec<span class="dim">ostatnie 24</span></h2>${flow(ai)}</div>
+      ${I ? `<div class="pane c7 desk-only"><h2>playbook<span class="dim">ai/playbook.json</span></h2>${help("ai.playbook")}${playbook()}</div>
+      <div class="pane c5 desk-only"><h2>wnioski<span class="dim">ai/lessons.json</span></h2>${help("ai.lessons")}${lessons()}</div>` : ""}
+      <div class="pane c12 desk-only"><h2>spływ świec<span class="dim">ostatnie 24</span></h2>${help("ai.flow")}${flow(ai)}</div>
     </div>
-    <p class="note">Strategy-Maker (hipotezy) i Strategy-Manager (przeglądy) — kroki AI-3 i AI-4. Bez połączenia z Makiem panele są wyblakłe — to ostatni znany stan.</p>`;
+    <p class="note">Bez połączenia z Makiem panele są wyblakłe — to ostatni znany stan.</p>`;
     const svg = el.querySelector("[data-eq]");
     if (svg && I) equity(svg, (I.equity || []).map(([a, v]) => [a, v - (I.capital || 100000)]));
   },

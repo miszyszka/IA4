@@ -1,17 +1,18 @@
 """
-IA 4 — Agent-Investor (instrukcja, sekcje 11c.6–11c.7, krok AI-2).
-Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+IA 4 — Agent-Investor (instrukcja, sekcja 8). Tryb nauki od 1.41.
+Wersja projektu: 1.41 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Runda po każdej świecy akcji i każdej godzinie FX:
   1. rozliczenie (kod): obie księgi, wszystkie nowe świece — wejścia po open, luka / FC / zamknięcie
      decyzją / SL / TP / limit (engine.py),
   2. stan portfela, stop dzienny, obsunięcie, risk_dial,
-  3. kandydaci (kod): sygnały strategii z playbooka na tej świecy (najwyżej 12, wg pierwszeństwa);
+  3. kandydaci (kod): sygnały strategii z playbooka i hipotez Badacza w „próbie” na tej świecy (najwyżej 12);
      prognoza FX — tylko dla instrumentu z udowodnioną przewagą kierunku; każdy kandydat → księga cieni,
   4. brief (kod) → decyzja (model, JSON) → sprawdzenie (kod) → wykonanie: pozycja „oczekuje” do open
      następnej świecy instrumentu; odrzucone przez kod — z powodem,
   5. zapis: hub, branch `ai`, AI-INVESTOR.xlsx, status dla `ai-live`.
-Runda bez kandydatów i bez otwartych pozycji nie woła modelu.
+Tryb nauki (1.41): model jest wołany w każdej rundzie (własne pomysły z hipotezą), poziom śmiałości 0–3
+ustawia Krytyk, a automat bierności podnosi go sam, gdy Inwestor długo nie wchodzi.
 """
 
 from __future__ import annotations
@@ -22,22 +23,22 @@ import traceback
 
 import numpy as np
 
-from . import bench, engine, lessons, market
+from . import bench, engine, lessons, market, research
+from . import config as aicfg
 from .engine import Book, Pos
 from .market import Prices, iso, pl
 
 AGENT = "investor"
-SYSTEM = """Jesteś Agent-Investor w systemie IA 4. Prowadzisz wirtualny (papierowy) portfel w USD: akcje USA (NYSE, świece 1h) oraz 10 par walutowych i BTC (świece 1h). Tryb rygorystyczny.
+SYSTEM = """Jesteś Agent-Investor w systemie IA 4. Prowadzisz wirtualny (papierowy) portfel w USD: akcje USA (NYSE, świece 1h) oraz 10 par walutowych i BTC (świece 1h). TRYB NAUKI: portfel jest papierowy, a ryzyko każdej transakcji małe i pilnowane przez kod — uczysz się przez działanie. Każda transakcja to eksperyment, który coś sprawdza; brak transakcji niczego nie uczy. Krytyk ocenia także Twoje pominięcia (wiadomo, jak skończyłby każdy pominięty kandydat).
 
 Zasady:
-1. Wszystkie liczby w briefie policzył kod. Nie wymyślaj liczb i nie licz wyników. Wielkość pozycji, koszty i limity ryzyka liczy i pilnuje kod — może odrzucić Twoją decyzję.
-2. KANDYDACI (C1, C2, …) to sygnały strategii z playbooka (albo prognozy FX z udowodnioną przewagą). Dla każdego decydujesz "enter" albo "skip". Kierunek, SL, TP i limit świec są z reguły strategii — nie zmieniasz ich.
-3. POZYCJE (P1, …): "hold", "close" (zamknięcie po open następnej świecy) albo "tighten_sl" z polem new_sl = nowa cena SL (tylko w stronę zysku, po właściwej stronie bieżącej ceny). W pozostałych przypadkach new_sl = null.
-4. Własny pomysł (own_ideas): najwyżej 1 na rundę, tylko instrument wymieniony w briefie (KANDYDACI albo RYNEK FX), z cenami sl i tp: TP/SL od 1:3 do 3:1, SL co najmniej 1 × ATR14 od ceny, max_bars ≤ 120. Mały osobny budżet — tylko z konkretnego powodu; zwykle lista jest pusta.
-5. confidence (0–100) = Twoje prawdopodobieństwo, że transakcja skończy się zyskiem. 50 = rzut monetą. Kod mierzy Twoją kalibrację.
-6. note — po polsku, do 600 znaków: dlaczego, konkretnie, z odwołaniem do liczb z briefu (doubleProof, liczba transakcji, szacunek przewagi, wynik na żywo, odległość SL/TP, wnioski). Mało transakcji = niska pewność.
-7. Wyniki z danych, na których szukano strategii, są zawyżone — liczą się doubleProof i wynik na żywo. Kierunek FX bez udowodnionej przewagi to rzut monetą.
-8. round_note — 1–3 zdania o całej rundzie.
+1. Wszystkie liczby w briefie policzył kod. Nie wymyślaj liczb. Wielkość pozycji, koszty i limity ryzyka liczy kod — może odrzucić decyzję.
+2. KANDYDACI (C1, C2, …): sygnały strategii z playbooka, hipotez Badacza w próbie albo prognozy FX. Dla każdego "enter" albo "skip"; kierunek, SL, TP i limit są z reguły kandydata. Pomiń tylko z konkretnego powodu (podaj go w note).
+3. POZYCJE (P1, …): "hold", "close" (zamknięcie po open następnej świecy) albo "tighten_sl" z new_sl (tylko w stronę zysku). Inaczej new_sl = null.
+4. WŁASNE POMYSŁY (own_ideas): tyle, ile pozwala POZIOM NAUKI; instrument z briefu (KANDYDACI, RYNEK FX, RYNEK AKCJE). Ceny sl i tp: TP/SL od 1:3 do 3:1, SL co najmniej 1 × ATR14 od ceny, max_bars ≤ 120. Pole hypothesis: jedno zdanie, co ta transakcja sprawdza (np. „po 3 spadkowych godzinach EURUSD odbija w ciągu 12 h”) — po zamknięciu sprawdzisz, czy się potwierdziło.
+5. confidence (0–100) = prawdopodobieństwo zysku. 50 = moneta — w trybie nauki wolno wejść także przy 50, jeśli transakcja coś sprawdza. Kod mierzy kalibrację.
+6. note — po polsku, do 600 znaków, konkretnie, z odwołaniem do liczb z briefu. Ucz się z UWAG KRYTYKA i WNIOSKÓW.
+7. round_note — 1–3 zdania o całej rundzie: czego się nauczyłeś albo co sprawdzasz.
 Odpowiadasz wyłącznie JSON-em zgodnym ze schematem: dokładnie jedna decyzja dla każdego kandydata i każdej pozycji."""
 
 SCHEMA = {
@@ -54,8 +55,9 @@ SCHEMA = {
         "own_ideas": {"type": "array", "items": {"type": "object", "properties": {
             "instrument": {"type": "string"}, "direction": {"type": "string", "enum": ["long", "short"]},
             "sl": {"type": "number"}, "tp": {"type": "number"}, "max_bars": {"type": "integer"},
-            "confidence": {"type": "integer", "minimum": 0, "maximum": 100}, "note": {"type": "string"}},
-            "required": ["instrument", "direction", "sl", "tp", "max_bars", "confidence", "note"]}},
+            "confidence": {"type": "integer", "minimum": 0, "maximum": 100}, "hypothesis": {"type": "string"},
+            "note": {"type": "string"}},
+            "required": ["instrument", "direction", "sl", "tp", "max_bars", "confidence", "hypothesis", "note"]}},
         "round_note": {"type": "string"},
     },
     "required": ["candidates", "positions", "own_ideas", "round_note"],
@@ -93,9 +95,14 @@ class Investor:
         self.state = {"state": "on", "doing": "czeka na świecę", "since": clock()}
         self.public: dict = {}
         self.dirty: set = set()
+        self._blocked, self._movers = False, set()
         if not hub.lessons_active():
             for t in lessons.SEED:
                 hub.lesson_add("Claude", t)
+        if not hub.meta("lessons_141"):
+            for t in lessons.LEARNING:
+                hub.lesson_add("Claude", t)
+            hub.set_meta("lessons_141", True)
 
     # ------------------------------------------------------------ playbook
     def set_playbook(self, pb: dict, mech: dict | None = None) -> None:
@@ -118,6 +125,21 @@ class Investor:
                 s["status"], s["basis_kind"] = "wycofana", "wycofana"
                 self.hub.playbook_set_status(s["id"], "wycofana", "wycofana")
                 self.hub.event("playbook", f"{s['id']} wycofana przez kod: {len(cl)} transakcji, śr. {np.mean(cl):+.2f}% netto", agent=AGENT)
+
+    def explore(self) -> dict:
+        """Poziom nauki: ustawiony przez Krytyka (meta „explore”), podniesiony przez automat bierności."""
+        base = self.hub.meta("explore") or {"level": self.cfg["explore_start"], "by": "start", "reason": "poziom startowy"}
+        n = int(self.hub.meta("passive_n") or 0)
+        pr = int(self.cfg["passive_rounds"])
+        floor = 3 if n >= 2 * pr else 2 if n >= pr else 0
+        lv = max(int(base["level"]), floor)
+        out = aicfg.level(self.cfg, lv)
+        out.update({"base": int(base["level"]), "by": base.get("by"), "reason": base.get("reason"), "passive": n,
+                    "floor": floor, "auto": floor > int(base["level"])})
+        return out
+
+    def hyps_live(self) -> list[dict]:
+        return self.hub.hypotheses(200, statuses=("próba", "zatwierdzona"))
 
     def active_strategies(self) -> list[dict]:
         return [s for s in self.pb.get("strategies", []) if s.get("status") != "wycofana"]
@@ -243,7 +265,17 @@ class Investor:
                                 "mult": cfg["mult"]["fx_prognoza"], "sl": sl_pct, "tp": tp_pct, "max_bars": cfg["fx_forecast_limit"],
                                 "has_fc": False, "px": px, "atrp": None, "s": None, "k": int(last[0]), "also": [],
                                 "fc": {"pUp48": pu, "brier48": chk.get("brier48")}})
-        prio = lambda c: c["s"]["priority"] if c["s"] else 0
+        hc, hs = research.live_candidates(self.hyps_live(), prices, "stocks" if kind == "stocks" else "fx", key, cfg,
+                                          self.main.holding)
+        taken = {c["inst"] for c in out}
+        for c in hc:
+            if c["inst"] in taken:
+                skipped.append(f"{c['inst']} ({c['basis']}) — inny kandydat na tym instrumencie")
+                continue
+            taken.add(c["inst"])
+            out.append(c)
+        skipped += hs
+        prio = lambda c: c["s"]["priority"] if c["s"] else 0 if not c.get("h") else 500
         out.sort(key=lambda c: (prio(c), c["inst"]))
         if len(out) > cfg["max_candidates"]:
             skipped += [f"{c['inst']} ({c['basis']}) — poza 12 najwyższymi" for c in out[cfg["max_candidates"]:]]
@@ -264,12 +296,18 @@ class Investor:
               forecast: dict | None) -> tuple[str, list[Pos]]:
         cfg, now = self.cfg, self.clock()
         s, eq = rs["snap"], rs["equity"]
+        ex = self.explore()
+        self._movers = set()
         L = [f"RUNDA {rid} · {'akcje' if kind == 'stocks' else 'FX'} · świeca {label} (zamknięcie {pl(close_t)} PL) · teraz {pl(now)} PL",
              f"PORTFEL: stan konta {eq:.0f} $ (start {cfg['capital']:.0f} $, szczyt {self.peak:.0f} $, obsunięcie {rs['dd']:.2f}%) · "
              f"wynik doby UTC {rs['dayPct']:+.2f}% · zrealizowany {s['realized']:+.0f} $, niezrealizowany {s['unrealized']:+.0f} $ · "
              f"ekspozycja brutto {100 * s['gross'] / eq:.0f}% (limit {cfg['gross_max_pct']:.0f}%) · ryzyko otwarte {100 * s['risk'] / eq:.2f}% "
              f"(budżet {cfg['budget_pct']:.1f}%) · pozycji {s['positions']}/{cfg['max_positions']} · risk_dial {rs['dial']:.2f} · "
              f"własne pomysły: ryzyko {100 * s['ownRisk'] / eq:.2f}% (budżet {cfg['own_budget_pct']:.1f}%)"]
+        L.append(f"POZIOM NAUKI {ex['level']} ({ex['name']}): własne pomysły najwyżej {ex['own']} w rundzie (mnożnik ryzyka {ex['own_mult']:g})"
+                 + (f"; WYMAGANE co najmniej {ex['min_enter']} wejście (kandydat albo własny pomysł)" if ex["min_enter"] else "")
+                 + f" · rund z rzędu bez wejścia: {ex['passive']}" + (" · podniesiony przez automat bierności" if ex["auto"] else
+                                                                       f" · ustawił: {ex['by']}"))
         for b in rs["blocks"]:
             L.append(f"!!! {b} — nowe wejścia zablokowane przez kod.")
         cl = self.main.closed()
@@ -300,7 +338,15 @@ class Investor:
             L.append("KANDYDACI (SL/TP/limit z reguły; cena = zamknięcie świecy sygnału):" if cands else "KANDYDACI: brak")
         for c in ([] if rs["blocks"] else cands):
             dirn = "long" if c["side"] > 0 else "short"
-            if c["s"]:
+            if c.get("h"):
+                h = c["h"]
+                r = h.get("result") or {}
+                live = [p.ret_net_pct for p in self.main.closed() if p.basis == h["id"]]
+                L.append(f"{c['ref']} {c['inst']} {dirn} @ {px_fmt(prices, c['inst'], c['px'])} · hipoteza {h['id']} [{h['status']}] "
+                         f"„{research.describe(h)}” · pomysł: {h.get('idea', '')[:160]} · historia: {research.res_line(r)} · "
+                         f"na żywo: {len(live)} transakcji" + (f", śr. {np.mean(live):+.2f}% netto" if live else "") +
+                         f" · SL {c['sl']:.2f}% / TP {c['tp']:.2f}% / limit {c['max_bars']}")
+            elif c["s"]:
                 st, dp, vi = c["s"], c["s"]["dp"], c["s"].get("vi")
                 L.append(f"{c['ref']} {c['inst']} {dirn} @ {px_fmt(prices, c['inst'], c['px'])} · {st['id']} [{st['group']}] „{st['desc'].split(' · SL ')[0][:220]}” · "
                          f"SL {c['sl']:.0f}% / TP {c['tp']:.0f}% / limit {c['max_bars'] or 'brak'} · "
@@ -327,11 +373,35 @@ class Investor:
             L.append(f"{inst} {px_fmt(prices, inst, last[1])} (świeca {prices.label(inst, last[0])}) · ATR14 {px_fmt(prices, inst, a)}" +
                      (f" · oczekiwany zakres 48 h {px_fmt(prices, inst, rg.get('low'))}–{px_fmt(prices, inst, rg.get('high'))}" if rg else "") +
                      (f" · P(wzrost 48) {pu:.2f}" if pu is not None else ""))
-        L.append("REKOMENDACJE MANAGERA: brak (Strategy-Manager od kroku AI-4)")
+        if kind == "stocks":
+            mv = self.movers(prices, cands)
+            if mv:
+                L.append("RYNEK AKCJE (największe ruchy na tej świecy; do własnych pomysłów):")
+                L += mv
+        rv = self.hub.reviews(1)
+        notes = (rv[0].get("investor_notes") if rv else None) or []
+        L.append("UWAGI KRYTYKA:" if notes else "UWAGI KRYTYKA: brak")
+        L += [f"- {x}" for x in notes]
         L.append("WNIOSKI:")
         for i, x in enumerate(self.hub.lessons_active()[: cfg["lessons_max"]]):
             L.append(f"{i + 1}. {x['text']}")
         return "\n".join(L), poss
+
+    def movers(self, prices: Prices, cands, n: int = 8) -> list[str]:
+        """Spółki z największym ruchem ostatniej świecy (w ATR14) — materiał na własne pomysły."""
+        rows = []
+        cset = {c["inst"] for c in cands}
+        for inst, s in prices.S.items():
+            if s.kind != "stock" or inst in ("SPY", "QQQ") or inst in cset:
+                continue
+            m = prices._n(s)
+            a = prices.atr14(inst)
+            if m < 30 or not a:
+                continue
+            rows.append(((s.c[m - 1] - s.c[m - 2]) / a, inst, float(s.c[m - 1]), a))
+        rows.sort(key=lambda r: -abs(r[0]))
+        self._movers = {r[1] for r in rows[:n]}
+        return [f"{i} {px:.2f} · ruch ostatniej świecy {mv:+.2f} ATR14 · ATR14 {a:.2f}" for mv, i, px, a in rows[:n]]
 
     # ------------------------------------------------------------ odpowiedź modelu
     def check(self, obj, cands, poss) -> list[str]:
@@ -356,8 +426,15 @@ class Investor:
         for d in obj.get("candidates") or []:
             if isinstance(d, dict) and d.get("action") not in ("enter", "skip"):
                 err.append(f"kandydat {d.get('ref')}: action musi być enter albo skip")
-        if len(obj.get("own_ideas") or []) > self.cfg["own_per_round"]:
-            err.append(f"własnych pomysłów najwyżej {self.cfg['own_per_round']}")
+        ex = self.explore()
+        if len(obj.get("own_ideas") or []) > ex["own"]:
+            err.append(f"własnych pomysłów najwyżej {ex['own']}")
+        if ex["min_enter"] and not self._blocked and not err:
+            n_in = sum(1 for d in obj.get("candidates") or [] if isinstance(d, dict) and d.get("action") == "enter") + \
+                   len(obj.get("own_ideas") or [])
+            if n_in < ex["min_enter"]:
+                err.append(f"poziom nauki {ex['level']}: wymagane co najmniej {ex['min_enter']} wejście — kandydat \"enter\" "
+                           "albo własny pomysł z hipotezą")
         return err
 
     def _own(self, d: dict, allowed: set, prices: Prices) -> tuple[dict | None, str | None]:
@@ -382,7 +459,7 @@ class Investor:
         mb = int(d.get("max_bars") or 0)
         if not (1 <= mb <= cfg["own_max_bars"]):
             return None, f"max_bars {mb} poza 1…{cfg['own_max_bars']}"
-        return {"inst": inst, "side": side, "basis": "own", "basis_kind": "own", "mult": cfg["mult"]["own"],
+        return {"inst": inst, "side": side, "basis": "own", "basis_kind": "own", "mult": self.explore()["own_mult"],
                 "sl": 100 * dsl / px, "tp": 100 * dtp / px, "max_bars": mb, "has_fc": False, "px": px, "k": int(last[0])}, None
 
     # ------------------------------------------------------------ runda
@@ -396,6 +473,8 @@ class Investor:
         ev = self._settle(prices, "")
         rs = self._risk_state(prices, now)
         self.auto_withdraw()
+        for hid in research.auto_withdraw(self.hub, self.main.closed(), cfg):
+            self.hub.event("hypothesis", f"{hid} wycofana przez kod (średni wynik na żywo ≤ 0)", agent=AGENT)
         cands, skipped = self.candidates(kind, key, sig, prices, forecast)
         for c in cands:                                            # cienie — każdy kandydat, bez limitów
             q, r, _ = self.shadow.plan(prices, c["inst"], c["side"], c["sl"], c["mult"], cfg["capital"], 1.0, now, limits=False)
@@ -410,8 +489,9 @@ class Investor:
                   "candidates": [{"ref": c["ref"], "inst": c["inst"], "dir": "long" if c["side"] > 0 else "short", "basis": c["basis"]}
                                  for c in cands], "skipped": skipped, "blocks": rs["blocks"], "decisions": [], "ownIdeas": [],
                   "positions": [], "llm": None, "roundNote": ""}
-        if not shown and not self.main.active():
-            record["roundNote"] = "brak kandydatów i pozycji — bez modelu" if not cands else "wejścia zablokowane, brak pozycji — bez modelu"
+        self._blocked = bool(rs["blocks"])
+        if not self.main.active() and (rs["blocks"] or (not shown and not cfg["call_model_always"])):
+            record["roundNote"] = "wejścia zablokowane, brak pozycji — bez modelu" if rs["blocks"] else "brak kandydatów i pozycji — bez modelu"
             self._finish(rid, record, prices, rs, ev, now)
             return record
         self._set(f"runda {rid}: brief")
@@ -422,6 +502,9 @@ class Investor:
         record["llm"]["errors"] = meta.get("errors")[:5] if meta.get("errors") else []
         self._set(f"runda {rid}: wykonanie")
         self._execute(rid, record, obj, shown, poss, prices, rs, now, meta)
+        n_in = sum(1 for d in record["decisions"] + record["ownIdeas"] if d["outcome"].startswith("wykonano"))
+        self.hub.set_meta("passive_n", 0 if n_in else int(self.hub.meta("passive_n") or 0) + 1)
+        record["explore"] = self.explore()["level"]
         self._finish(rid, record, prices, rs, ev, now)
         return record
 
@@ -466,11 +549,11 @@ class Investor:
                 outcome = f"odrzucone przez kod: {why}" if why else f"SL {px_fmt(prices, p.inst, old)} → {px_fmt(prices, p.inst, p.sl_px)}"
             self.dirty.add(("main", p.id))
             self._decision(rid, record, ref, p.inst, p.side, p.basis, act, None, note, outcome, p.id, now, kind="positions")
-        allowed = {c["inst"] for c in cands} | {s for s in prices.S if prices.kind(s) in ("fx", "crypto")}
-        for d in (obj.get("own_ideas") or [] if ok else [])[: cfg["own_per_round"]]:
+        allowed = {c["inst"] for c in cands} | {s for s in prices.S if prices.kind(s) in ("fx", "crypto")} | getattr(self, "_movers", set())
+        for d in (obj.get("own_ideas") or [] if ok else [])[: self.explore()["own"]]:
             if not isinstance(d, dict):
                 continue
-            note, conf = cut(d.get("note")), d.get("confidence")
+            note, conf, hyp = cut(d.get("note")), d.get("confidence"), cut(d.get("hypothesis"))
             conf = int(conf) if isinstance(conf, (int, float)) else None
             c, why = self._own(d, allowed, prices)
             pid, inst = None, str(d.get("instrument", ""))
@@ -484,11 +567,12 @@ class Investor:
                     p = self.main.add(prices, round_id=rid, inst=c["inst"], side=side, basis="own", basis_kind="own", decided_k=c["k"],
                                       now=now, sl_pct=c["sl"], tp_pct=c["tp"], max_bars=c["max_bars"], has_fc=False, qty=q, risk=r,
                                       mult=c["mult"], confidence=conf, note=note)
+                    p.hypothesis = hyp
                     self.dirty.add(("main", p.id))
                     pid = p.id
             outcome = f"odrzucone przez kod: {why}" if why else f"wykonano: #{pid} oczekuje na open następnej świecy"
             self._decision(rid, record, "own", inst, side, "own", "enter", conf, note, outcome, pid, now, kind="ownIdeas",
-                           extra={"sl": d.get("sl"), "tp": d.get("tp"), "max_bars": d.get("max_bars")})
+                           extra={"sl": d.get("sl"), "tp": d.get("tp"), "max_bars": d.get("max_bars"), "hypothesis": hyp})
         if ok:
             record["roundNote"] = cut(obj.get("round_note")) or record["roundNote"]
             if meta.get("errors"):
@@ -548,7 +632,8 @@ class Investor:
                 "decidedAt": iso(p.decided_at), "entryAt": iso(p.entry_t), "entry": p.entry_px, "ref": p.ref_px,
                 "sl": p.sl_px, "tp": p.tp_px, "slPct": round(p.sl_pct, 3), "tpPct": round(p.tp_pct, 3), "price": m["px"],
                 "pnl": m["pnl"], "pct": m["pct"], "R": m["R"], "bars": p.bars, "maxBars": p.max_bars, "risk": p.risk_usd,
-                "value": p.value_usd, "confidence": p.confidence, "note": p.note_in[:400], "closeReq": p.close_req,
+                "value": p.value_usd, "confidence": p.confidence, "note": p.note_in[:400], "hypothesis": p.hypothesis[:300],
+                "closeReq": p.close_req,
                 "digits": prices.digits(p.inst) if p.kind != "stock" else 2}
 
     def _public(self, prices, rs, record, b) -> dict:
@@ -568,5 +653,4 @@ class Investor:
         }
 
     def status(self) -> dict:
-        return {"id": "investor", "state": "on", "doing": self.state["doing"], "since": iso(self.state["since"]),
-                "llm": getattr(self.llm, "last", None) or None}
+        return {"id": "investor", "state": "on", "doing": self.state["doing"], "since": iso(self.state["since"])}

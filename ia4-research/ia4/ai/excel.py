@@ -1,11 +1,11 @@
 """
-IA 4 — AI-INVESTOR.xlsx: dziennik Agent-Investora w Excelu (instrukcja, sekcja 11c.11).
-Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+IA 4 — AI-INVESTOR.xlsx: dziennik agentów w Excelu (instrukcja, sekcja 8).
+Wersja projektu: 1.41 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Przepisywany w całości po każdej rundzie (zapis atomowy: plik tymczasowy → zamiana; plik otwarty
 w Excelu/Numbers pokazuje stan z chwili otwarcia). Ścieżka: ai/config.json → xlsx_path (domyślnie
 ~/Desktop/IA4/AI-INVESTOR.xlsx; w folderze Dysku Google ten sam plik widać w Arkuszach Google).
-Arkusze: PODSUMOWANIE, TRANSAKCJE, DECYZJE, PORTFEL, DZIENNIK, PLAYBOOK, HIPOTEZY (AI-3), PRZEGLĄDY (AI-4).
+Arkusze: PODSUMOWANIE, TRANSAKCJE, DECYZJE, PORTFEL, DZIENNIK, PLAYBOOK, HIPOTEZY (Badacz), PRZEGLĄDY (Krytyk).
 Pełna historia jest też na branchu `ai`; DECYZJE, PORTFEL i DZIENNIK — ostatnie 5000 wierszy.
 """
 
@@ -178,8 +178,34 @@ def write(inv, bench: dict, prices, path: Path | None = None) -> Path:
              (s["vi"] or {}).get("avg"), s["ai"]["n"], s["ai"]["avg"], s["ai"]["usd"]) for s in pv],
            [7, 14, 10, 9, 14, 70, 6, 6, 8, 10, 10, 10, 10, 10, 10, 8, 9, 10], wrap=(6,),
            fmts={10: "0.00", 12: "0.00", 13: "0.00", 15: "0.00", 17: "0.00", 18: "#,##0.00"})
-    _sheet(wb, "HIPOTEZY", ["Hipotezy Strategy-Makera — od kroku AI-3"], [], [60])
-    _sheet(wb, "PRZEGLĄDY", ["Przeglądy Strategy-Managera — od kroku AI-4"], [], [60])
+    # HIPOTEZY (Badacz)
+    from .research import describe
+    hs = inv.hub.hypotheses(MAX_ROWS)
+    cl = inv.main.closed()
+
+    def live(h):
+        r = [p.ret_net_pct for p in cl if p.basis == h["id"]]
+        return len(r), (sum(r) / len(r) if r else None)
+    _sheet(wb, "HIPOTEZY", ["ID", "Czas (PL)", "Status", "Rynek", "Kierunek", "Definicja", "Pomysł", "Transakcji (historia)",
+                            "Śr. wynik netto %", "Na ślepo %", "PF", "t", "Części +", "Sito kodu", "Krytyk", "Na żywo: trans.",
+                            "Na żywo: śr. %"],
+           [(h["id"], _dt(h.get("at")), h["status"], h["market"], h["direction"], describe(h), h.get("idea"),
+             (h.get("result") or {}).get("n"), (h.get("result") or {}).get("avg"), ((h.get("result") or {}).get("blind") or {}).get("avg"),
+             (h.get("result") or {}).get("pf"), (h.get("result") or {}).get("t"),
+             sum(1 for x in (h.get("result") or {}).get("parts") or [] if (x.get("avg") or 0) > 0),
+             "; ".join(h.get("why") or []), h.get("verdict_note"), *live(h)) for h in hs],
+           [9, 16, 14, 7, 8, 60, 50, 10, 10, 10, 7, 7, 8, 40, 50, 9, 9], wrap=(6, 7, 14, 15),
+           fmts={2: "yyyy-mm-dd hh:mm", 9: "0.000", 10: "0.000", 11: "0.00", 12: "0.00", 17: "0.00"})
+    # PRZEGLĄDY (Krytyk)
+    rv = inv.hub.reviews(MAX_ROWS)
+    _sheet(wb, "PRZEGLĄDY", ["Czas (PL)", "Poziom nauki", "Dlaczego", "Podsumowanie", "Uwagi dla Inwestora", "Uwagi dla Badacza",
+                             "Werdykty", "Wnioski +/−"],
+           [(_dt(x["at"]), x.get("explore"), x.get("exploreReason"), x.get("summary"), "\n".join(x.get("investor_notes") or []),
+             "\n".join(x.get("researcher_notes") or []),
+             "\n".join(f"{v['id']} {v['verdict']}{'' if v.get('applied') else ' (odrzucony: ' + str(v.get('why')) + ')'}: {v.get('note')}"
+                       for v in x.get("verdicts") or []),
+             f"+{len(x.get('lessonsAdded') or [])} / −{len(x.get('lessonsRemoved') or [])}") for x in rv],
+           [16, 8, 40, 60, 50, 50, 60, 9], wrap=(3, 4, 5, 6, 7), fmts={1: "yyyy-mm-dd hh:mm"})
 
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(prefix=".AI-INVESTOR-", suffix=".xlsx", dir=str(path.parent))

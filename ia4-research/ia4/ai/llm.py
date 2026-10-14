@@ -1,12 +1,12 @@
 """
-IA 4 — wywołania lokalnego modelu językowego (Ollama) dla agentów (instrukcja, sekcje 11c.1–11c.2).
-Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+IA 4 — wywołania lokalnego modelu językowego (Ollama) dla agentów (instrukcja, sekcja 8).
+Wersja projektu: 1.41 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   • odpowiedź wyłącznie JSON zgodny ze schematem (Ollama `format`), sprawdzana jeszcze raz w kodzie,
   • odpowiedź niezgodna → najwyżej `llm_retries` ponowień z listą błędów, potem „brak decyzji”,
   • `num_ctx` ustawiany jawnie (domyślne 2048 ucina kontekst bez ostrzeżenia); ostrzeżenie, gdy brief
     zbliża się do limitu,
-  • kolejka z pierwszeństwem: Investor (0) → Manager (1) → Maker (2) — Investor nie czeka na Makera,
+  • jeden model naraz (dyspozytor i tak uruchamia jednego agenta naraz; blokada zostaje jako bezpiecznik),
   • każde wywołanie zapisane (pełny prompt i odpowiedź w hubie, skrót SHA-1, czas, tokeny).
 """
 
@@ -23,7 +23,7 @@ import urllib.request
 
 from . import ollama
 
-PRIORITY = {"investor": 0, "manager": 1, "maker": 2}
+PRIORITY = {"investor": 0, "critic": 1, "researcher": 2}
 
 
 class PriorityLock:
@@ -67,7 +67,9 @@ def http_post(path: str, payload: dict, timeout: float) -> dict:
 class LLM:
     def __init__(self, cfg: dict, record=None, post=None, lock: PriorityLock = LOCK):
         self.cfg, self.record, self.post, self.lock = cfg, record, post, lock
-        self.last: dict = {}
+        self.last: dict = {}                      # ostatnie wywołanie (dowolny agent)
+        self.last_by: dict = {}                   # ostatnie wywołanie każdego agenta
+        self.calls, self.sec_total = 0, 0.0       # liczniki dla dziennika pracy agentów
 
     def ask(self, agent: str, system: str, user: str, schema: dict, check, temperature: float) -> tuple[dict | None, dict]:
         """Zwraca (odpowiedź po sprawdzeniu albo None, meta). `check(obj) → lista błędów` (pusta = dobrze)."""
@@ -90,6 +92,8 @@ class LLM:
                     err = f"Ollama: {type(e).__name__}: {e}"
                 sec = time.time() - t0
                 meta["sec"] += sec
+                self.calls += 1
+                self.sec_total += sec
                 pt, et = resp.get("prompt_eval_count"), resp.get("eval_count")
                 meta["promptTokens"], meta["evalTokens"] = pt, et
                 obj, errors = None, []
@@ -110,13 +114,14 @@ class LLM:
                 meta["errors"] = errors
                 self.last = {"agent": agent, "at": time.time(), "sec": round(sec, 1), "promptTokens": pt, "evalTokens": et,
                              "ok": not errors}
+                self.last_by[agent] = self.last
                 if obj is not None and not [e for e in errors if not e.startswith("brief zajął")]:
                     return obj, meta
                 if err:                                   # model niedostępny — ponawianie nic nie da
                     break
                 msgs = msgs[:2] + [{"role": "assistant", "content": content or ""},
                                    {"role": "user", "content": "Odpowiedź ma błędy:\n- " + "\n- ".join(errors[:12]) +
-                                    "\nOdpowiedz jeszcze raz — cały JSON zgodny ze schematem, z decyzją dla każdego kandydata i każdej pozycji."}]
+                                    "\nOdpowiedz jeszcze raz — cały JSON zgodny ze schematem, bez tych błędów."}]
             return (obj if obj is not None and isinstance(obj, dict) else None), meta
         finally:
             self.lock.release()

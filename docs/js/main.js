@@ -1,5 +1,5 @@
-// IA 4 — start strony: bramka, zakładki, magistrala, zegary (instrukcja, sekcja 11b).
-// Wersja projektu: 1.40 (2026-10-14)
+// IA 4 — start strony: bramka, zakładki, magistrala, zegary (instrukcja, sekcja 9).
+// Wersja projektu: 1.41 (2026-10-14)
 //
 // Nowa zakładka: plik js/views/<nazwa>.js eksportujący { id, title, render(el, changed), tick?(el) },
 // wpis w VIEWS niżej i link w <nav> w index.html (docs/README.md). Zakładki: #system, #inwestor, #fx, #ai (klawisze 1–4).
@@ -10,6 +10,7 @@ import system from "./views/system.js";
 import investor from "./views/investor.js";
 import fx from "./views/fx.js";
 import ai from "./views/ai.js";
+import { initHelp } from "./help.js";
 
 const VIEWS = [system, investor, fx, ai];
 let current = null;
@@ -36,6 +37,7 @@ function start() {
   $("#gate").hidden = true;
   $("#app").hidden = false;
   $("#logout").addEventListener("click", () => { gateForget(); location.reload(); });
+  initHelp();
   document.addEventListener("keydown", e => {
     if (e.target.closest("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
     const v = VIEWS[+e.key - 1];

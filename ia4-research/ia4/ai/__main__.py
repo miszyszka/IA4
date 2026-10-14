@@ -1,6 +1,6 @@
 """
-IA 4 — nadzorca AI Investor: `ia4 start` (instrukcja, sekcja 11c.3).
-Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+IA 4 — nadzorca AI Investor: `ia4 start` (instrukcja, sekcja 8).
+Wersja projektu: 1.41 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.ai                    # to samo co `ia4 start` i dwuklik IA4-start.command; Ctrl+C kończy
   python -m ia4.ai --no-push          # bez GitHub (test)
@@ -8,10 +8,10 @@ Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
   python -m ia4.ai --no-llm-check     # bez sprawdzania Ollamy (Inwestor bez modelu = „brak decyzji”)
 
 Start: Ollama i model → caffeinate i blokada → synchronizacja akcji i FX → playbook i Agent-Investor
-(rozliczenie przerwy) → przegląd Managera (od AI-4) → praca. Pętla co 5 s: feed akcji (system/status →
-szybka synchronizacja), feed FX i prognoza FX (kod ia4.fx.live), zapis do huba, sygnał życia
-ai-live/status.json co 5 min i po każdym zdarzeniu. Nowa świeca akcji / godzina FX → runda Inwestora
-w wątku agentów (agents.py). W terminalu co minutę jedna linia stanu.
+(rozliczenie przerwy) → dyspozytor agentów (Inwestor, Krytyk, Badacz — jeden naraz, bez przerwy) → praca.
+Pętla co 5 s: feed akcji (system/status → szybka synchronizacja), feed FX i prognoza FX (kod ia4.fx.live),
+zapis do huba, sygnał życia ai-live/status.json. Nowa świeca akcji / godzina FX → runda Inwestora
+w wątku agentów (agents.py). W terminalu co minutę jedna linia stanu i jedna linia na każde zadanie agenta.
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ PL = ZoneInfo("Europe/Warsaw")
 LOOP_SEC = 5
 ALIVE_SEC = 300               # sygnał życia ai-live co 5 min (limit API GitHub na stronie, 11c.11)
 EVENT_PUB_SEC = 20
+SOFT_PUB_SEC = 120            # praca Krytyka i Badacza — publikacja najwyżej co 2 min (limit API GitHub na stronie)
 LINE_SEC = 60
 ERROR_REPEAT_SEC = 600
 
@@ -78,6 +79,7 @@ class Supervisor:
         self.started_at = clock()
         self.last_pub = 0.0
         self.pending = False
+        self.soft = False
         self.last_line = clock()
         self.errors: dict[str, float] = {}
         self.publishes = 0
@@ -95,7 +97,7 @@ class Supervisor:
 
     def publish(self, now: float, stopped: bool = False) -> bool:
         ok = self.out.publish(status.document(self, now, stopped))
-        self.last_pub, self.pending = now, False
+        self.last_pub, self.pending, self.soft = now, False, False
         self.publishes += 1
         if not ok:
             self._error(f"publikacja ai-live nieudana: {getattr(self.out, 'last_error', '')}", now)
@@ -118,6 +120,8 @@ class Supervisor:
             p = self.agent.inv.public["portfolio"]
             eq = f"{p['equity']:,.0f}".replace(",", " ")
             pf = f" · portfel {eq} $ ({p['open']} otw., {p['pending']} oczek.)"
+            cur = self.agent.now_doing()
+            pf += f" · teraz: {cur['agent']}" if cur else " · agenci: przerwa"
         return (f"  {datetime.fromtimestamp(now, PL):%H:%M:%S}  akcje {sl.get('candle', '—')} {sl.get('have', '—')}/{sl.get('need', '—')}"
                 f"{' · następna ' + nx[5:] if nx else ''} · FX {(fl.get('candle') or '—')[11:16]} UTC {fl.get('have', '—')}/{fl.get('need', '—')}"
                 f"{pf} · Firestore dziś {self.reads_today()} · model {self.ollama.get('model', '—')} {ol}")
@@ -144,7 +148,8 @@ class Supervisor:
                     self.agent.submit("fx", T, f"FX {hm(T)}–{hm(T + 3600)}", e["close_at"])
         if ev:
             self.pending = True
-        if (self.pending and now - self.last_pub >= EVENT_PUB_SEC) or now - self.last_pub >= ALIVE_SEC:
+        if (self.pending and now - self.last_pub >= EVENT_PUB_SEC) or (self.soft and now - self.last_pub >= SOFT_PUB_SEC) \
+                or now - self.last_pub >= ALIVE_SEC:
             try:
                 self.publish(now)
             except Exception as e:
@@ -182,7 +187,9 @@ def start_investor(hub, push, traded, context, live, model, info):
     from . import config as aicfg
     from . import excel, playbook
     from .agents import AgentWorker, RoundData
+    from .critic import Critic
     from .investor import Investor
+    from .research import Researcher
     from .llm import LLM
     from .store import AiStore, restore
     try:
@@ -213,7 +220,14 @@ def start_investor(hub, push, traded, context, live, model, info):
           f"pozycji {pf['positions']} ({time.time() - t0:.0f} s) · Excel: {aicfg.xlsx_path(cfg)}")
     if not info.get("present") and not info.get("skipped"):
         print("  ! model językowy niedostępny — rundy skończą się „brak decyzji”")
-    return AgentWorker(inv, data, store=store, pb_loader=lambda: playbook.load(refresh=True), mech_loader=playbook.mechanical)
+    critic = Critic(cfg, ihub, llm, inv)
+    researcher = Researcher(cfg, ihub, llm, data)
+    ex = inv.explore()
+    c = ihub.hyp_counts()
+    print(f"  dyspozytor: Inwestor › Krytyk › Badacz, jeden naraz · poziom nauki {ex['level']} ({ex['name']}) · "
+          f"hipotez {sum(c.values())}, w próbie {c.get('próba', 0)}")
+    return AgentWorker(inv, data, store=store, pb_loader=lambda: playbook.load(refresh=True), mech_loader=playbook.mechanical,
+                       critic=critic, researcher=researcher)
 
 
 def main() -> None:
@@ -323,7 +337,7 @@ def main() -> None:
         sup = Supervisor(hub, stocks, fx, out, info, fx_ratings, fx_note)
         sup.agent = worker
         if worker is not None:
-            worker.on_change = lambda: setattr(sup, "pending", True)
+            worker.on_change = lambda urgent=True: setattr(sup, "pending" if urgent else "soft", True)
             worker.start()
         sup.publish(time.time())
         print(f"\n  strona: https://miszyszka.github.io/IA4/#ai  (Ctrl+C kończy)\n")
@@ -335,7 +349,7 @@ def main() -> None:
         except KeyboardInterrupt:
             print("\n  zatrzymuję… (zapis huba i ostatnia publikacja)")
             if worker is not None and worker.busy:
-                print("  czekam na koniec rundy Inwestora (najwyżej 3 min; Ctrl+C jeszcze raz — przerwij)…")
+                print("  czekam na koniec bieżącego zadania agenta (najwyżej 3 min; Ctrl+C jeszcze raz — przerwij)…")
                 try:
                     worker.stop(timeout=180)
                 except KeyboardInterrupt:

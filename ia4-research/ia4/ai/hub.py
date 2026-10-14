@@ -1,10 +1,10 @@
 """
 IA 4 — hub: wspólna pamięć agentów AI Investor (instrukcja, sekcja 11c.5).
-Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.41 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Jeden plik SQLite (tryb WAL) w data/ai/hub.sqlite, poza gitem. Tabele powstają w kroku, który ich
 używa (AI-1: meta, runs, events, notes, feed_log; AI-2: positions, rounds, decisions, llm_calls,
-equity, playbook, lessons); kolejne kroki dopisują swoje (`meta.schema`). Czas zawsze w sekundach
+equity, playbook, lessons; 1.41: agent_runs, hypotheses, reviews); kolejne kroki dopisują swoje (`meta.schema`). Czas zawsze w sekundach
 UTC (REAL). Każdy wątek ma własne połączenie (nadzorca i agent).
 """
 
@@ -18,7 +18,7 @@ from pathlib import Path
 from .. import config
 
 PATH = config.CACHE_DIR / "ai" / "hub.sqlite"
-SCHEMA = 2
+SCHEMA = 3
 
 DDL = [
     """CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)""",
@@ -44,6 +44,15 @@ DDL = [
          risk REAL, positions INTEGER, dial REAL, dd REAL)""",
     """CREATE TABLE IF NOT EXISTS playbook (id TEXT PRIMARY KEY, status TEXT, basis_kind TEXT, updated REAL, data TEXT)""",
     """CREATE TABLE IF NOT EXISTS lessons (id INTEGER PRIMARY KEY, at REAL, author TEXT, text TEXT, active INTEGER DEFAULT 1)""",
+    # --- 1.41: praca agentów (dyspozytor), hipotezy Badacza, przeglądy Krytyka
+    """CREATE TABLE IF NOT EXISTS agent_runs (id INTEGER PRIMARY KEY, agent TEXT NOT NULL, task TEXT, start REAL NOT NULL,
+         end REAL, sec REAL, llm_sec REAL, llm_calls INTEGER, ok INTEGER, summary TEXT, saved INTEGER DEFAULT 0)""",
+    """CREATE INDEX IF NOT EXISTS agent_runs_start ON agent_runs(start)""",
+    """CREATE TABLE IF NOT EXISTS hypotheses (n INTEGER PRIMARY KEY, id TEXT UNIQUE, sig TEXT, at REAL, status TEXT,
+         market TEXT, data TEXT NOT NULL, updated REAL, ver INTEGER DEFAULT 1, saved_ver INTEGER DEFAULT 0)""",
+    """CREATE INDEX IF NOT EXISTS hyp_sig ON hypotheses(sig)""",
+    """CREATE INDEX IF NOT EXISTS hyp_status ON hypotheses(status)""",
+    """CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY, at REAL, data TEXT NOT NULL, saved INTEGER DEFAULT 0)""",
 ]
 
 
@@ -183,6 +192,101 @@ class Hub:
     def lesson_add(self, author: str, text: str, at: float | None = None) -> int:
         cur = self.db.execute("INSERT INTO lessons(at, author, text) VALUES(?,?,?)", (at or time.time(), author, text))
         return int(cur.lastrowid)
+
+    def lesson_remove(self, lid: int) -> bool:
+        return self.db.execute("UPDATE lessons SET active=0 WHERE id=? AND active=1", (int(lid),)).rowcount > 0
+
+    # ------------------------------------------------------------ 1.41: praca agentów
+    def agent_run(self, agent: str, task: str, start: float, end: float, llm_sec: float, llm_calls: int, ok: bool,
+                  summary: str) -> int:
+        cur = self.db.execute("INSERT INTO agent_runs(agent, task, start, end, sec, llm_sec, llm_calls, ok, summary) "
+                              "VALUES(?,?,?,?,?,?,?,?,?)", (agent, task, start, end, end - start, llm_sec, llm_calls,
+                                                            int(bool(ok)), (summary or "")[:600]))
+        return int(cur.lastrowid)
+
+    def agent_runs(self, limit: int = 100, since: float | None = None) -> list[dict]:
+        q, a = "SELECT * FROM agent_runs", ()
+        if since is not None:
+            q, a = q + " WHERE end >= ?", (since,)
+        return [dict(r) for r in self.db.execute(q + " ORDER BY id DESC LIMIT ?", a + (limit,))]
+
+    def runs_unsaved(self) -> list[dict]:
+        return [dict(r) for r in self.db.execute("SELECT * FROM agent_runs WHERE saved=0 ORDER BY id")]
+
+    def runs_mark_saved(self, upto: int) -> None:
+        self.db.execute("UPDATE agent_runs SET saved=1 WHERE id<=?", (upto,))
+
+    # ------------------------------------------------------------ 1.41: hipotezy Badacza
+    def _hyp(self, r) -> dict:
+        d = json.loads(r["data"])
+        d.update({"id": r["id"], "status": r["status"], "market": r["market"], "at": r["at"], "updated": r["updated"]})
+        return d
+
+    def hyp_add(self, h: dict) -> str:
+        n = int(self.db.execute("SELECT COALESCE(MAX(n), 0) FROM hypotheses").fetchone()[0]) + 1
+        hid = h.get("id") or f"HP-{n:04d}"
+        h = dict(h, id=hid)
+        self.db.execute("INSERT INTO hypotheses(n, id, sig, at, status, market, data, updated) VALUES(?,?,?,?,?,?,?,?)",
+                        (n, hid, h.get("sig"), h.get("at") or time.time(), h["status"], h["market"],
+                         json.dumps(h, ensure_ascii=False), time.time()))
+        return hid
+
+    def hyp_update(self, hid: str, **kw) -> None:
+        r = self.db.execute("SELECT * FROM hypotheses WHERE id=?", (hid,)).fetchone()
+        if r is None:
+            return
+        d = self._hyp(r)
+        d.update(kw)
+        self.db.execute("UPDATE hypotheses SET status=?, data=?, updated=?, ver=ver+1 WHERE id=?",
+                        (d["status"], json.dumps(d, ensure_ascii=False), time.time(), hid))
+
+    def hyp_get(self, hid: str) -> dict | None:
+        r = self.db.execute("SELECT * FROM hypotheses WHERE id=?", (hid,)).fetchone()
+        return None if r is None else self._hyp(r)
+
+    def hyp_by_sig(self, sig: str) -> dict | None:
+        r = self.db.execute("SELECT * FROM hypotheses WHERE sig=? LIMIT 1", (sig,)).fetchone()
+        return None if r is None else self._hyp(r)
+
+    def hypotheses(self, limit: int = 50, statuses: tuple | None = None) -> list[dict]:
+        q, a = "SELECT * FROM hypotheses", ()
+        if statuses:
+            q, a = q + f" WHERE status IN ({','.join('?' * len(statuses))})", tuple(statuses)
+        return [self._hyp(r) for r in self.db.execute(q + " ORDER BY n DESC LIMIT ?", a + (limit,))]
+
+    def hyp_count(self, status: str) -> int:
+        return int(self.db.execute("SELECT COUNT(*) FROM hypotheses WHERE status=?", (status,)).fetchone()[0])
+
+    def hyp_counts(self) -> dict:
+        return {r[0]: r[1] for r in self.db.execute("SELECT status, COUNT(*) FROM hypotheses GROUP BY status")}
+
+    def hyp_best(self, n: int = 5) -> list[dict]:
+        rows = [self._hyp(r) for r in self.db.execute("SELECT * FROM hypotheses WHERE status != 'odrzucona przez kod'")]
+        rows.sort(key=lambda h: -((h.get("result") or {}).get("t") or -99))
+        return rows[:n]
+
+    def hyp_unsaved(self) -> list[dict]:
+        return [self._hyp(r) | {"_ver": r["ver"]} for r in self.db.execute("SELECT * FROM hypotheses WHERE ver > saved_ver ORDER BY n")]
+
+    def hyp_mark_saved(self, rows: list[dict]) -> None:
+        for h in rows:
+            self.db.execute("UPDATE hypotheses SET saved_ver=? WHERE id=?", (h["_ver"], h["id"]))
+
+    # ------------------------------------------------------------ 1.41: przeglądy Krytyka
+    def review_add(self, d: dict, at: float | None = None) -> int:
+        cur = self.db.execute("INSERT INTO reviews(at, data) VALUES(?,?)", (at or time.time(), json.dumps(d, ensure_ascii=False)))
+        return int(cur.lastrowid)
+
+    def reviews(self, limit: int = 10) -> list[dict]:
+        return [json.loads(r["data"]) | {"no": r["id"], "at": r["at"]}
+                for r in self.db.execute("SELECT * FROM reviews ORDER BY id DESC LIMIT ?", (limit,))]
+
+    def reviews_unsaved(self) -> list[dict]:
+        return [json.loads(r["data"]) | {"no": r["id"], "at": r["at"]}
+                for r in self.db.execute("SELECT * FROM reviews WHERE saved=0 ORDER BY id")]
+
+    def reviews_mark_saved(self, upto: int) -> None:
+        self.db.execute("UPDATE reviews SET saved=1 WHERE id<=?", (upto,))
 
     def close(self) -> None:
         try:

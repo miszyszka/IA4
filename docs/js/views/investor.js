@@ -1,10 +1,11 @@
 // IA 4 — zakładka Inwestor: wirtualny inwestor, strategie i spółki (dane: telemetry/vi.json,
-// research/strategies.jsonl, telemetry/state.json). Wersja projektu: 1.40 (2026-10-14)
+// research/strategies.jsonl, telemetry/state.json). Wersja projektu: 1.41 (2026-10-14)
 //
 // renderInvestor() jest wspólne z przyszłym inwestorem FX (zakładka FX, telemetry/fx-vi.json) —
 // ten sam format pliku daje ten sam widok.
 
 import { store, num, pct, usd, sgn, esc, cls, age, t, plStamp, nyseOpen } from "../core.js";
+import { help } from "../help.js";
 import { equity } from "../chart.js";
 
 const ui = { filter: "vi", q: "", sort: "pf" };
@@ -104,14 +105,14 @@ function tickers(d) {
 export function renderInvestor(d, opts = {}) {
   const s = d.summary;
   return `<div class="grid">
-    <div class="pane c12 hero"><h2>${esc(opts.title || "wirtualny inwestor")}<span class="dim">ostatnia świeca ${esc(d.lastCandlePL || "—")}</span></h2>
+    <div class="pane c12 hero"><h2>${esc(opts.title || "wirtualny inwestor")}<span class="dim">ostatnia świeca ${esc(d.lastCandlePL || "—")}</span></h2>${help("vi.hero")}
       <span class="act">vi.json ${d.generatedAt ? age((Date.now() - Date.parse(d.generatedAt)) / 1000) + " temu" : ""}</span>${reads(d, s)}</div>
-    <div class="pane c8"><h2>krzywa wyniku<span class="dim">skumulowane $ po zamkniętych transakcjach</span></h2><svg class="mini" data-eq></svg></div>
-    <div class="pane c4"><h2>sygnały<span class="dim">ostatnie świece</span></h2>${signals(d)}</div>
-    <div class="pane c12"><h2>otwarte pozycje<span class="dim">${s.open} otwartych · ${s.pending} oczekuje</span></h2>${openTable(d)}</div>
+    <div class="pane c8"><h2>krzywa wyniku<span class="dim">skumulowane $ po zamkniętych transakcjach</span></h2>${help("vi.curve")}<svg class="mini" data-eq></svg></div>
+    <div class="pane c4"><h2>sygnały<span class="dim">ostatnie świece</span></h2>${help("vi.signals")}${signals(d)}</div>
+    <div class="pane c12"><h2>otwarte pozycje<span class="dim">${s.open} otwartych · ${s.pending} oczekuje</span></h2>${help("vi.open")}${openTable(d)}</div>
     ${opts.strategies ? `<div class="pane c12 desk-only" data-strat><h2>strategie</h2>${strategies(d)}</div>` : ""}
-    <div class="pane c7 desk-only"><h2>zamknięte transakcje<span class="dim">ostatnie ${(d.closed || []).length}</span></h2>${closedTable(d)}</div>
-    ${opts.tickers ? `<div class="pane c5 desk-only"><h2>spółki<span class="dim">53 handlowane</span></h2>${tickers(d)}</div>` : ""}
+    <div class="pane c7 desk-only"><h2>zamknięte transakcje<span class="dim">ostatnie ${(d.closed || []).length}</span></h2>${help("vi.closed")}${closedTable(d)}</div>
+    ${opts.tickers ? `<div class="pane c5 desk-only"><h2>spółki<span class="dim">53 handlowane</span></h2>${help("vi.stocks")}${tickers(d)}</div>` : ""}
   </div>`;
 }
 

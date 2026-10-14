@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#05080d">
 <title>IA4 · konsola</title>
-<!-- IA 4 — strona systemu (instrukcja, sekcja 11b). Wersja projektu: 1.40 (2026-10-14).
+<!-- IA 4 — strona systemu (instrukcja, sekcja 9). Wersja projektu: 1.41 (2026-10-14).
      Bez buildu: zwykłe pliki, moduły ES. Jak dodać zakładkę: docs/README.md. -->
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/ia4.css">
@@ -41,12 +41,16 @@
       <span title="czas polski"><span class="dim">PL</span> <b id="clkPL">--:--:--</b></span>
       <span title="Nowy Jork"><span class="dim">NY</span> <b id="clkNY">--:--</b></span>
       <span id="liveTag" class="live-tag">łączenie</span>
+      <button id="guideBtn" class="btn ghost" type="button" aria-pressed="false" title="Jak czytać tę stronę">? przewodnik</button>
       <button id="logout" class="btn ghost" type="button" title="Wyloguj">wyloguj</button>
     </div>
   </header>
 
   <!-- magistrala: przepływ danych od Yahoo do tej strony; wiek każdego ogniwa tyka co sekundę -->
   <section class="bus" id="bus" aria-label="Przepływ danych"></section>
+
+  <!-- przewodnik: jak czytać stronę (przycisk „? przewodnik”; treść w js/help.js = PRZEWODNIK.md) -->
+  <section class="guide" id="guide" aria-label="Przewodnik" hidden></section>
 
   <main>
     <section class="view" id="view-system" data-view="system" aria-labelledby="brandView"></section>
@@ -56,7 +60,7 @@
   </main>
 
   <footer class="foot">
-    <span>IA 4 <span id="ver">1.40</span></span>
+    <span>IA 4 <span id="ver">1.41</span></span>
     <span>dane: publiczne repo GitHub · odświeżanie 30–60 s</span>
     <span id="netStat"></span>
   </footer>

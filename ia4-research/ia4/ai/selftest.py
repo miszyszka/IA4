@@ -1,6 +1,6 @@
 """
 IA 4 — test AI Investor (krok AI-1) na danych syntetycznych (instrukcja, sekcja 11c).
-Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.41 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.ai.selftest          # kilka sekund; wynik musi brzmieć „WYNIK: OK”
 
@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import feed, lock, nyse, selftest2, status
+from . import feed, lock, nyse, selftest2, selftest3, status
 from .__main__ import Supervisor, describe
 from .hub import Hub
 
@@ -298,9 +298,9 @@ def test_supervisor(tmp: Path) -> bool:
     ok = True
     ok &= check("status.json co 5 min i po zdarzeniach (≤ 1 na 20 s), bez NaN", 36 <= len(out.docs) <= 60,
                 f"{len(out.docs)} publikacji w 3 h")
-    ok &= check("status.json: feed akcji i FX, agenci (nieaktywni do AI-2…AI-4), spływ, zdarzenia, maszyna",
+    ok &= check("status.json: feed akcji i FX, agenci (bez dyspozytora — wyłączeni), spływ, zdarzenia, maszyna",
                 d["feed"]["stocks"]["last"]["have"] == 53 and d["feed"]["fx"]["last"]["need"] == 3
-                and [a["id"] for a in d["agents"]] == ["investor", "maker", "manager"]
+                and [a["id"] for a in d["agents"]] == ["investor", "critic", "researcher"]
                 and all(a["state"] == "off" for a in d["agents"]) and len(d["flow"]["stocks"]) == 3
                 and any(e["kind"] == "stocks" for e in d["events"]) and "cpus" in d["machine"],
                 f"{len(json.dumps(d)) // 1024} KB, odczyty dziś {d['feed']['readsToday']}")
@@ -315,14 +315,16 @@ def test_supervisor(tmp: Path) -> bool:
 
 def main() -> None:
     from .. import __version__
-    print(f"IA 4 — selftest AI Investor, kroki AI-1 i AI-2 (wersja {__version__})\n")
+    print(f"IA 4 — selftest AI Investor (wersja {__version__})\n")
     tmp = Path(tempfile.mkdtemp(prefix="ia4-ai-"))
     ok = True
     for name, fn in (("kalendarz NYSE", test_calendar), ("feed akcji", lambda: test_stock_feed(tmp)),
                      ("feed FX", lambda: test_fx_feed(tmp)), ("szybka synchronizacja", lambda: test_quick_sync(tmp / "q")),
                      ("blokada", lambda: test_lock(tmp)), ("nadzorca i status.json", lambda: test_supervisor(tmp)),
                      ("AI-2: silnik portfela", lambda: selftest2.test_engine()),
-                     ("AI-2: runda Agent-Investora", lambda: selftest2.test_round(tmp / "inv"))):
+                     ("AI-2: runda Agent-Investora", lambda: selftest2.test_round(tmp / "inv")),
+                     ("1.41: Badacz — hipotezy", lambda: selftest3.test_research(tmp / "res")),
+                     ("1.41: zespół — Krytyk, tryb nauki, dyspozytor, zapis", lambda: selftest3.test_team(tmp / "team"))):
         print(f"\n{name}")
         try:
             ok &= fn()

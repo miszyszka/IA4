@@ -1,6 +1,6 @@
 """
 IA 4 — wyniki poszukiwania na branchu `research` w GitHub.
-Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.41 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Wyniki mają osobny branch, żeby commity co 30 minut nie mieszały się
 z `main` (kod, instrukcja, telemetria z Apps Script). Python trzyma własny
@@ -34,7 +34,10 @@ Ręcznie zmienia się tylko `research/config.json`.
 
 
 def _git(cwd: Path, *args, check=True) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=check)
+    r = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
+    if check and r.returncode != 0:                   # komunikat gita w błędzie — bez niego trudno zgadnąć przyczynę
+        raise RuntimeError(f"git {' '.join(args)} (kod {r.returncode}): {(r.stderr or r.stdout).strip()[:400]}")
+    return r
 
 
 class ResultsRepo:
@@ -62,7 +65,8 @@ class ResultsRepo:
             return
         self.root.mkdir(parents=True, exist_ok=True)
         if not self.push_enabled:
-            _git(self.root, "init", "-q", "-b", self.branch)
+            _git(self.root, "init", "-q")                 # bez „init -b” — starsze gity (< 2.28) go nie znają
+            _git(self.root, "symbolic-ref", "HEAD", f"refs/heads/{self.branch}")
             self.dir.mkdir(parents=True, exist_ok=True)
             return
         url = self._origin()

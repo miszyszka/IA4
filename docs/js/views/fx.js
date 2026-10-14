@@ -1,7 +1,8 @@
 // IA 4 — zakładka FX: 10 par walutowych + BTC, świece 1h, prognoza rozkładu, spływ świec,
-// przeliczenia FX-research i (w przyszłości) wirtualny inwestor FX. Wersja projektu: 1.40 (2026-10-14)
+// przeliczenia FX-research i (w przyszłości) wirtualny inwestor FX. Wersja projektu: 1.41 (2026-10-14)
 
 import { store, num, pct, esc, age, t, fxOpen, pref } from "../core.js";
+import { help } from "../help.js";
 import { fxChart, spark, inst, SC_COL } from "../chart.js";
 import { fxLast, stamp } from "../health.js";
 import { renderInvestor, mountInvestor } from "./investor.js";
@@ -102,7 +103,7 @@ function runs() {
 function fxInvestor() {
   const d = store.get("fxvi");
   if (d && d.summary) return `<div class="c12">${renderInvestor(d, { title: "wirtualny inwestor FX" })}</div>`;
-  return `<div class="pane c12 flat"><h2>wirtualny inwestor FX<span class="dim">nieaktywny</span></h2>
+  return `<div class="pane c12 flat"><h2>wirtualny inwestor FX<span class="dim">nieaktywny</span></h2>${help("fx.vi")}
     <p class="empty">Czeka na strategie FX. Gdy FX-research znajdzie reguły z udowodnioną przewagą, Apps Script zacznie wysyłać <b>telemetry/fx-vi.json</b> w tym samym formacie co inwestor akcji — ten panel pokaże wtedy wynik, krzywą, pozycje i transakcje bez zmian w stronie.</p></div>`;
 }
 
@@ -120,16 +121,16 @@ export default {
     const on = !fc.stoppedAt && Date.now() - stamp(fc.aliveAt) < 5 * 60e3;
     const m = fc.model || {};
     el.innerHTML = `<div class="grid">
-      <div class="pane c12 hero"><h2>prognoza FX<span class="dim">48 świec 1h · rozkład, nie jedna linia</span></h2>${hero(fc)}</div>
-      <div class="pane c3"><h2>instrumenty<span class="dim">${list.length}</span></h2>${rail(list, last)}</div>
+      <div class="pane c12 hero"><h2>prognoza FX<span class="dim">48 świec 1h · rozkład, nie jedna linia</span></h2>${help("fx.hero")}${hero(fc)}</div>
+      <div class="pane c3"><h2>instrumenty<span class="dim">${list.length}</span></h2>${help("fx.list")}${rail(list, last)}</div>
       <div class="pane c9 ${on ? "" : "stale"}"><h2>${esc(I.name)}<span class="dim">${METHOD[m.method] || esc(m.method || "")} · ${I.K || "?"} ścieżek</span></h2>
         <svg class="chart" data-chart></svg>
         <div class="legend"><span><i style="background:var(--cyan-dim2)"></i>50% przypadków</span><span><i style="background:var(--cyan-dim)"></i>80% przypadków</span>
           <span><i style="background:var(--cyan);height:2px"></i>środek</span><span><i style="background:linear-gradient(90deg,var(--sc-up),var(--sc-mid),var(--sc-down));height:2px"></i>scenariusze: prawdziwe ścieżki z podobnych chwil</span></div>
         ${detail(fc, I)}</div>
-      <div class="pane c7"><h2>spływ świec 1h<span class="dim">na żywo</span></h2>${tape(list, last)}</div>
-      <div class="pane c5"><h2>scenariusze ${esc(I.id)}<span class="dim">co działo się po podobnych chwilach</span></h2>${scen(I)}</div>
-      <div class="pane c12 desk-only"><h2>przeliczenia FX-research<span class="dim">fx/runs.jsonl</span></h2>${runs()}</div>
+      <div class="pane c7"><h2>spływ świec 1h<span class="dim">na żywo</span></h2>${help("fx.tape")}${tape(list, last)}</div>
+      <div class="pane c5"><h2>scenariusze ${esc(I.id)}<span class="dim">co działo się po podobnych chwilach</span></h2>${help("fx.scen")}${scen(I)}</div>
+      <div class="pane c12 desk-only"><h2>przeliczenia FX-research<span class="dim">fx/runs.jsonl</span></h2>${help("fx.runs")}${runs()}</div>
       ${fxInvestor()}
     </div>
     <p class="note">Linia środkowa odchyla się od ceny tylko wtedy, gdy sprawdzian na danych niewidzianych przez model potwierdził przewagę (instrukcja 4c.7). Bez połączenia z Makiem prognoza jest wyblakła — to ostatnia znana.</p>`;

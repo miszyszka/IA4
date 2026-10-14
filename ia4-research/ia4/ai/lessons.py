@@ -1,9 +1,9 @@
 """
-IA 4 — wnioski startowe AI Investor (instrukcja, sekcja 11c.5): destylowana wiedza z historii projektu.
-Wersja projektu: 1.40 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+IA 4 — wnioski startowe AI Investor (instrukcja, sekcja 8): destylowana wiedza z historii projektu.
+Wersja projektu: 1.41 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
 
-Zasiewane raz, gdy hub nie ma żadnych wniosków (autor „Claude”). Od kroku AI-4 listę prowadzi
-Strategy-Manager (najwyżej `lessons_max` aktywnych).
+Zasiewane raz, gdy hub nie ma żadnych wniosków (autor „Claude”); LEARNING — raz, także do istniejącego huba
+(1.41). Listę prowadzi Krytyk (najwyżej `lessons_max` aktywnych).
 """
 
 SEED = [
@@ -17,4 +17,9 @@ SEED = [
     "Decyzja na ostatniej świecy sesji NYSE (16:00 ET) wykona się dopiero na otwarciu następnej sesji — luka nocna może przeskoczyć SL (wyjście po cenie otwarcia, strata większa niż SL).",
     "Koszty akcji są małe (ok. 0,01% za transakcję), ale na FX spread (0,8–2,5 pipsa) zjada ruchy rzędu kilku pipsów — małe cele na FX rzadko się opłacają.",
     "Pewność 50 to moneta. Wysoka pewność bez mocnych liczb w briefie (dużo transakcji na doubleProof, dodatni wynik na żywo) to sygnał nadmiernej pewności siebie — kod mierzy kalibrację.",
+]
+
+LEARNING = [
+    "Tryb nauki (1.41): portfel jest papierowy, a ryzyko transakcji małe i pilnowane przez kod. Brak wejść niczego nie uczy — "
+    "lepiej mała transakcja z jasną hipotezą niż kolejne „skip”. Pominięcia ocenia Krytyk na podstawie cieni.",
 ]
