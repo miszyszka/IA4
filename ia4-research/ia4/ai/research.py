@@ -1,6 +1,6 @@
 """
 IA 4 — Badacz: hipotezy z klocków, liczone przez Python (instrukcja, sekcja 8 — „Badacz”).
-Wersja projektu: 1.41 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.42 (2026-10-15) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Cykl (w wolnym czasie dyspozytora):
   1. brief (kod): menu cech z typowymi wartościami (kwantyle), ostatnie hipotezy z wynikami, uwagi Krytyka,

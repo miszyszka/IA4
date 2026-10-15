@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie i jak to czytać
 
-**Wersja projektu: 1.41 (2026-10-14)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
+**Wersja projektu: 1.42 (2026-10-15)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
 
 ## 1. Co działa samo, a co wymaga Maca
 
@@ -38,7 +38,7 @@
 | STRATEGIE | 60 strategii: wyniki na doubleProof, na żywo i z poszukiwania; checkbox „for VI” — jedyne pole do zmiany ręcznie |
 | SIGNALS-REALTIME, VIRTUAL-INVESTOR | sygnały po każdej świecy i transakcje mechanicznego inwestora |
 | `~/Desktop/IA4/AI-INVESTOR.xlsx` | AI: transakcje z notatkami, decyzje, portfel, dziennik, playbook, hipotezy, przeglądy Krytyka |
-| `~/Desktop/IA4/ONE-DAY-*.xlsx` | badania One-Day (informacyjne); jak czytać arkusze — `archiwum/PRZEWODNIK-1.40.md`, sekcje 3d–3e |
+| `~/Desktop/IA4/ONE-DAY-*.xlsx` | badania One-Day (informacyjne); jak czytać arkusze — `archiwum/PRZEWODNIK-1.40.md`, sekcje 3d–3e. Od 1.42 `ONE-DAY-SEARCH*.xlsx` liczy **spread 0,3% na transakcję**: „śr. wynik netto” to wynik po spreadzie, „brutto” — przed; liczy się netto |
 
 ## 4. Jak oceniać wyniki
 

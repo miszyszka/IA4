@@ -1,6 +1,6 @@
 """
 IA 4 — test AI Investor (krok AI-1) na danych syntetycznych (instrukcja, sekcja 11c).
-Wersja projektu: 1.41 (2026-10-14) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.42 (2026-10-15) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.ai.selftest          # kilka sekund; wynik musi brzmieć „WYNIK: OK”
 
