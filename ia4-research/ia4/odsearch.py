@@ -1,6 +1,6 @@
 """
 IA 4 — One-Day: poszukiwanie strategii stabilnych (instrukcja, sekcja 6d).
-Wersja projektu: 1.42 (2026-10-15) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.43 (2026-10-15) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Szuka reguł wejścia na świecach dobowych, które rosną konsekwentnie, a nie tylko „na koniec”.
 Żelazna zasada z 6c zostaje: wejście na open dnia, wyjście na close tego samego dnia, stała stawka
@@ -230,13 +230,14 @@ def _features(P: Panel) -> None:
 
 def _spy(P: Panel, spy: od.Days | None) -> None:
     T = len(P.dates)
-    P.spy = {k: np.full(T, np.nan) for k in ("above50", "down", "chg1", "chg5")}
+    P.spy = {k: np.full(T, np.nan) for k in ("above50", "down", "chg1", "chg5", "r")}
     if spy is None:
         return
     pos = {d: i for i, d in enumerate(P.dates)}
     vi = [j for j, v in enumerate(spy.valid) if v]
-    o, c = (np.array([getattr(spy, k)[j] for j in vi], float) for k in ("o", "c"))
+    o, h, l, c = (np.array([getattr(spy, k)[j] for j in vi], float) for k in ("o", "h", "l", "c"))
     a50 = _sma(c, 50)
+    r20 = _sma((h - l) / o * 100.0, R_DAYS)               # zmienność SPY (od 1.43, odport)
     ch1, ch5 = np.full(len(c), np.nan), np.full(len(c), np.nan)
     ch1[1:] = (c[1:] / c[:-1] - 1) * 100
     ch5[5:] = (c[5:] / c[:-5] - 1) * 100
@@ -247,6 +248,7 @@ def _spy(P: Panel, spy: od.Days | None) -> None:
         P.spy["above50"][t + 1] = np.nan if np.isnan(a50[q]) else float(c[q] > a50[q])
         P.spy["down"][t + 1] = float(c[q] < o[q])
         P.spy["chg1"][t + 1], P.spy["chg5"][t + 1] = ch1[q], ch5[q]
+        P.spy["r"][t + 1] = r20[q]
 
 
 # ---------------------------------------------------------------------------

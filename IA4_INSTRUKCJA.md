@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.42 · **Data:** 15 października 2026
+**Wersja:** 1.43 · **Data:** 15 października 2026
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jest celowo krótki: zasady, liczby ważne dla człowieka, stan. Jeśli kod, arkusz albo telemetria rozjeżdżają się z tym plikiem — obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -24,7 +24,7 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jes
 **Otwarte kroki** (Claude odhacza je na podstawie telemetrii i branchy):
 1. **Wdrożenie 1.41–1.42:** wypchnąć pakiety; Apps Script — podmienić 7 plików `.gs` (zmienia się tylko numer wersji; 15.10.2026 telemetria: `1.38`); Mac — `git pull`, `python -m ia4.ai.selftest` („WYNIK: OK”), ponownie `ia4 start`.
 2. **AI, pierwsza doba 1.41:** panel „praca agentów” — zajętość ≥ 70%, Inwestor wchodzi w transakcje (pierwsza transakcja z notatką, SL i TP zamyka krok AI-2), Krytyk pisze przeglądy, Badacz zapisuje hipotezy.
-3. **One-Day na bazie dobowej (1.42):** historia kompletna (`75/75`) → Mac: `python -m ia4.daily`, `python -m ia4.odsearch --source daily` (od 2000 r., 20 okresów, najwyżej 3 stratne, **spread 0,3% na transakcję**); przegląd wyniku z Claude na tle placebo.
+3. **One-Day — portfel strategii (1.43):** wynik 1.42 (15.10.2026, spread 0,6%): żadna pojedyncza reguła nie spełniła warunku 20 okresów, placebo też 0. Mac: `python -m ia4.odport --cost 0.6` (ok. 10–20 min, ok. 1,5 GB pamięci) → `ONE-DAY-PORTFEL.xlsx`; przegląd z Claude: portfel na 53 spółkach, doubleProof i placebo.
 4. **Do potwierdzenia przez człowieka:** usunięcie starej bazy EURUSD 5 min (menu „🗑 FX — usuń stare świece EURUSD 5 min”); zamknięcie FX-7 (arkusz OKOLICZNOSCI_FX ma kolumny H-001 i H-002).
 5. **Później, tylko za zgodą:** strategie i wirtualny inwestor FX (gdy prognoza dowiedzie przewagi kierunku); bramka sejfu AI dla hipotez; cechy pisane przez model w piaskownicy.
 
@@ -82,7 +82,7 @@ Yahoo ──(Apps Script, trigger co minutę)──▶ Firestore ──▶ Mac: 
 | Mac `~/Desktop/IA4/` | repo, kopie lokalne w `ia4-research/data/`, pliki Excel (`AI-INVESTOR.xlsx`, `ONE-DAY-*.xlsx`) | Mac |
 
 **Pliki Apps Script:** `Code.gs` (zbieranie, STATS, menu, triggery) · `Daily.gs` (świece dobowe) · `Fx.gs` (FX 1h) · `Research.gs` (arkusz STRATEGIE) · `Paper.gs` + `PaperEngine.gs` (sygnały i mechaniczny inwestor) · `Telemetry.gs` (telemetria na GitHub). Triggery: `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min.
-**Python** (`ia4-research/ia4/`): `sync.py`, `daily.py` (kopie), `lab/` (reguły), `fx/` (prognoza), `ai/` (agenci), `oneday.py`, `odsearch.py` (badania).
+**Python** (`ia4-research/ia4/`): `sync.py`, `daily.py` (kopie), `lab/` (reguły), `fx/` (prognoza), `ai/` (agenci), `oneday.py`, `odsearch.py`, `odport.py` (badania One-Day).
 
 ---
 
@@ -126,6 +126,13 @@ Yahoo ──(Apps Script, trigger co minutę)──▶ Firestore ──▶ Mac: 
 Transakcja trwa jeden dzień (open → close). `ia4.oneday` — kaskady i portfel OD-080: bilans ujemny. `ia4.odsearch` — reguły rosnące równo: **20 okresów kalendarza, najwyżej 3 stratne** (decyzje człowieka z 14.10.2026; przypadek daje ok. 20 takich reguł, więc rozstrzygają potwierdzenie na doubleProof i placebo), zawsze co najmniej jeden portfel short. Na 2 latach świec 1h — brak stabilnej przewagi; następny krok — baza dobowa od 2000 r. Wyniki niczego nie zmieniają bez zgody człowieka.
 
 **Spread (od 1.42, decyzja człowieka z 15.10.2026):** każda transakcja płaci **0,3%** stawki (wejście i wyjście razem; `--cost`). Wynik transakcji = ruch open → close w kierunku pozycji − 0,3; warunek okresów, punkt odniesienia (wejście każdego dnia), placebo i portfele liczone są netto, arkusz pokazuje obok średnią brutto. Skutek: reguły z tysiącami małych transakcji spadają pod zero — zostają rzadkie sytuacje z dużym ruchem. Dlatego siatka ma bardziej skrajne setupy (6–7 świec z rzędu, korpus ≥ 3r, spadek / wzrost 5 sesji ≥ 4r i 10 sesji ≥ 5r, RSI(2) < 2 / > 98) i filtr **zmienności bezwzględnej** (r ≥ 2%, 3%, 4% — spread jest stały w %, więc relatywnie tańszy przy dużych ruchach): razem 60 setupów × 234 kombinacje filtrów × 2 kierunki = 28 080 reguł kierunkowych + 600 neutralnych (neutralne płacą spread na obu nogach). Potwierdzenie ✓ na doubleProof wymaga teraz także dodatniego wyniku netto po spreadzie. Gdy żadna reguła nie spełnia warunku, plik i tak pokazuje najlepszy long (#1) i najlepszy short (S1) z uwagą „nie spełnia warunku” i powodem.
+
+**Portfel strategii wybieranych krok po kroku w czasie — `ia4.odport` (od 1.43, decyzja człowieka z 15.10.2026, po wyniku 1.42: przy spreadzie 0,6% żadna pojedyncza reguła nie spełniła warunku):**
+1. **Poszukiwanie szersze, z przycinaniem:** kierunek + setup (82: dotychczasowe + ruchy w procentach bezwzględnych — korpus i zmiana wczoraj ≥ 3/5/8%, zmiana 3 sesji ≥ 8/12%, słabość / siła względem SPY ≥ 3/5 pkt proc., roczny dołek / szczyt) + **do 3 filtrów** z różnych grup (33: dotychczasowe + r ≥ 5%, szeroka wyprzedaż / szeroki wzrost rynku wczoraj — ≥ 80% / ≤ 20% spółek spadkowych, SPY wczoraj ≤ −1,5% / ≤ −3% / ≥ +1,5%, zmienność SPY ≥ 1,5% / 2,5%, pierwsze 3 i ostatnie 2 sesje miesiąca, sesja przed świętem). Kombinacja z < 30 transakcjami nie jest rozwijana (filtr tylko zmniejsza liczbę transakcji) — ok. 450 tys. reguł. Dla każdej reguły — wyniki netto **rok po roku** (53 spółki). Pojedyncza reguła może być rzadka.
+2. **Wybór co rok (walk-forward):** na początku każdego roku — **wyłącznie na danych sprzed tego roku** — najwyżej 20 reguł: ≥ 30 transakcji, suma netto > 0, t-stat dziennych wyników ≥ 3, dodatnie ≥ 60% lat z transakcjami, najwyżej 2 reguły z tego samego setupu i kierunku. Pierwszy rok portfela — po 5 latach historii. Każdy dzień portfela jest grany regułami wybranymi bez wiedzy o nim, więc wynik portfela jest w całości **poza próbą**.
+3. **Portfel:** głosy wybranych reguł sumowane w każdej spółce i dniu (long +1, short −1), pozycja = znak sumy, jedna transakcja na spółkę i dzień, spread od każdej.
+4. **Ocena portfela:** **20 okresów, najwyżej 3 stratne** — warunek człowieka, teraz na całym portfelu; rok po roku (z liczbą kandydatów i najlepszym t w historii); doubleProof (te same wybory, 20 spółek); placebo (cały proces z losowym znakiem dni); portfel 10 000 $ (5% na transakcję). Arkusz REGUŁY (pełna próba) — tylko do wglądu, zawyżony.
+Test na syntetycznej historii 2000–2026 bez przewagi (spread 0,6%): żadna reguła nie przeszła wyboru w żadnym roku — 0 transakcji; z zaszytą przewagą: portfel spełnia warunek, doubleProof dodatni, placebo nie.
 
 ---
 
@@ -229,7 +236,8 @@ python -m ia4.lab.selftest         # test silnika reguł
 python -m ia4.fx.selftest          # test modułu FX
 python -m ia4.fx.research          # przeliczenie okoliczności FX (ręcznie, bez ia4 start)
 python -m ia4.daily                # kopia świec dobowych
-python -m ia4.odsearch [--source daily]   # badania One-Day
+python -m ia4.odsearch [--source daily]   # badania One-Day — pojedyncze reguły
+python -m ia4.odport --cost 0.6     # badania One-Day — portfel strategii walk-forward (10–20 min)
 ```
 
 `ia4` to funkcja w `~/.zshrc`: `function ia4 { cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && if [ "$1" = start ]; then shift; python -m ia4.ai "$@"; else python -m ia4.lab --workers 4 "$@"; fi; }`
@@ -242,6 +250,7 @@ Starsze wpisy: `archiwum/IA4_INSTRUKCJA-1.40.md`, sekcja 13, i historia gita.
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.43 | 2026-10-15 | One-Day — **portfel strategii wybieranych krok po kroku w czasie** (`ia4/odport.py`, sekcja 7; decyzja człowieka z 15.10.2026): 82 setupy × do 3 filtrów (33) z przycinaniem — ok. 450 tys. reguł, wyniki rok po roku; co rok wybór do 20 reguł tylko na danych sprzed tego roku; portfel z głosów reguł; ocena portfela: 20 okresów / ≤ 3 stratne, doubleProof, placebo, 10 000 $; plik `ONE-DAY-PORTFEL.xlsx`. `odsearch.py`: zmienność SPY w cechach. |
 | 1.42 | 2026-10-15 | One-Day (`ia4.odsearch`, sekcja 7; decyzja człowieka z 15.10.2026): **spread 0,3% na każdą transakcję** (`--cost`), wszystkie wyniki, warunek okresów, baza, placebo i portfele netto, kolumna „brutto”; skrajniejsze setupy i filtr zmienności bezwzględnej (r ≥ 2/3/4%) — 28 080 reguł kierunkowych; ✓ na doubleProof wymaga też wyniku netto > 0; zapasowe portfele #1 (long) i S1 (short) z uwagą, gdy nic nie spełnia warunku. Zasada 5 — koszty także w One-Day. Baza dobowa kompletna (75/75). Pozostałe pliki — tylko numer wersji. |
 | 1.41 | 2026-10-14 | **Instrukcja-esencja** (decyzja człowieka): pełny tekst 1.40 przeniesiony do `archiwum/` jako opis techniczny, nowy krótki `PRZEWODNIK.md`. **AI — zespół agentów** (decyzja człowieka: Inwestor nie wchodził w transakcje — w 23 rundach 2 kandydatów, oba pominięte, a w rundach FX model nie był wołany): dyspozytor — jeden agent naraz, bez przerwy, każde zadanie mierzone (`agent_runs`, `ai/runs.jsonl`); **Inwestor w trybie nauki** (model w każdej rundzie, własne pomysły z hipotezą, budżet własnych pomysłów 0,6% → 2%, poziomy nauki 0–3, automat bierności); **Krytyk** (przeglądy, poziom nauki, werdykty, wnioski — wersja 1 kroku AI-4); **Badacz** (hipotezy z menu cech, liczone z kosztami walk-forward, sito, próba na żywo — wersja 1 kroku AI-3; język `ia4-hyp/1` z 1.32 zastąpiony menu cech). Strona: panel „praca agentów” (oś 24 h, rytm, czasy), panele Krytyk i Badacz, opisy „?” przy każdym panelu, przewodnik w nagłówku, teksty zawijane zamiast ucinanych. Apps Script — tylko numer wersji. |
 | 1.40 | 2026-10-14 | One-Day: warunek — najwyżej 3 stratne okresy z 20 (`--max-losing`). |

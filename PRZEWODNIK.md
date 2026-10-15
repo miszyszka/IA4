@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie i jak to czytać
 
-**Wersja projektu: 1.42 (2026-10-15)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
+**Wersja projektu: 1.43 (2026-10-15)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
 
 ## 1. Co działa samo, a co wymaga Maca
 
@@ -39,6 +39,7 @@
 | SIGNALS-REALTIME, VIRTUAL-INVESTOR | sygnały po każdej świecy i transakcje mechanicznego inwestora |
 | `~/Desktop/IA4/AI-INVESTOR.xlsx` | AI: transakcje z notatkami, decyzje, portfel, dziennik, playbook, hipotezy, przeglądy Krytyka |
 | `~/Desktop/IA4/ONE-DAY-*.xlsx` | badania One-Day (informacyjne); jak czytać arkusze — `archiwum/PRZEWODNIK-1.40.md`, sekcje 3d–3e. Od 1.42 `ONE-DAY-SEARCH*.xlsx` liczy **spread 0,3% na transakcję**: „śr. wynik netto” to wynik po spreadzie, „brutto” — przed; liczy się netto |
+| `~/Desktop/IA4/ONE-DAY-PORTFEL.xlsx` | portfel strategii wybieranych co rok tylko na przeszłości (od 1.43): **PODSUMOWANIE** — wynik portfela na 53 spółkach, doubleProof i placebo, 20 okresów (zielony / czerwony); **ROK PO ROKU** — ile reguł było kandydatami i ile wybrano, wynik każdego roku; **STRATEGIE W PORTFELU** — które reguły grały w danym roku; **REGUŁY (pełna próba)** — tylko do wglądu (zawyżone); **PORTFEL WF** — 10 000 $ transakcja po transakcji |
 
 ## 4. Jak oceniać wyniki
 
