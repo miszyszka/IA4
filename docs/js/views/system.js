@@ -1,5 +1,5 @@
 // IA 4 — zakładka System: czy wszystko żyje, strumień zdarzeń, parametry, instrumenty.
-// Wersja projektu: 1.43 (2026-10-15)
+// Wersja projektu: 1.44 (2026-10-15)
 
 import { store, SOURCES, VERSION, age, num, pct, esc, t, nyseOpen, fxOpen, stockClose, plStamp } from "../core.js";
 import { help } from "../help.js";

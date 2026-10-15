@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.43 · **Data:** 15 października 2026
+**Wersja:** 1.44 · **Data:** 15 października 2026
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jest celowo krótki: zasady, liczby ważne dla człowieka, stan. Jeśli kod, arkusz albo telemetria rozjeżdżają się z tym plikiem — obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -24,7 +24,7 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jes
 **Otwarte kroki** (Claude odhacza je na podstawie telemetrii i branchy):
 1. **Wdrożenie 1.41–1.42:** wypchnąć pakiety; Apps Script — podmienić 7 plików `.gs` (zmienia się tylko numer wersji; 15.10.2026 telemetria: `1.38`); Mac — `git pull`, `python -m ia4.ai.selftest` („WYNIK: OK”), ponownie `ia4 start`.
 2. **AI, pierwsza doba 1.41:** panel „praca agentów” — zajętość ≥ 70%, Inwestor wchodzi w transakcje (pierwsza transakcja z notatką, SL i TP zamyka krok AI-2), Krytyk pisze przeglądy, Badacz zapisuje hipotezy.
-3. **One-Day — portfel strategii (1.43):** wynik 1.42 (15.10.2026, spread 0,6%): żadna pojedyncza reguła nie spełniła warunku 20 okresów, placebo też 0. Mac: `python -m ia4.odport --cost 0.6` (ok. 10–20 min, ok. 1,5 GB pamięci) → `ONE-DAY-PORTFEL.xlsx`; przegląd z Claude: portfel na 53 spółkach, doubleProof i placebo.
+3. **One-Day — siła ruchu (1.44):** wyniki 1.42–1.43 (15.10.2026, spread 0,6%): żadna pojedyncza reguła ani portfel walk-forward bez przewagi. Nowa hipoteza człowieka: przewidywalna jest siła ruchu, nie kierunek. Mac: `python -m ia4.odbreak --cost 0.6` (kilkanaście sekund) → `ONE-DAY-WYBICIA.xlsx`; przegląd z Claude: arkusz ANALIZA (czy po konsolidacji ruch jest większy), STRATEGIE na tle placebo.
 4. **Do potwierdzenia przez człowieka:** usunięcie starej bazy EURUSD 5 min (menu „🗑 FX — usuń stare świece EURUSD 5 min”); zamknięcie FX-7 (arkusz OKOLICZNOSCI_FX ma kolumny H-001 i H-002).
 5. **Później, tylko za zgodą:** strategie i wirtualny inwestor FX (gdy prognoza dowiedzie przewagi kierunku); bramka sejfu AI dla hipotez; cechy pisane przez model w piaskownicy.
 
@@ -82,7 +82,7 @@ Yahoo ──(Apps Script, trigger co minutę)──▶ Firestore ──▶ Mac: 
 | Mac `~/Desktop/IA4/` | repo, kopie lokalne w `ia4-research/data/`, pliki Excel (`AI-INVESTOR.xlsx`, `ONE-DAY-*.xlsx`) | Mac |
 
 **Pliki Apps Script:** `Code.gs` (zbieranie, STATS, menu, triggery) · `Daily.gs` (świece dobowe) · `Fx.gs` (FX 1h) · `Research.gs` (arkusz STRATEGIE) · `Paper.gs` + `PaperEngine.gs` (sygnały i mechaniczny inwestor) · `Telemetry.gs` (telemetria na GitHub). Triggery: `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min.
-**Python** (`ia4-research/ia4/`): `sync.py`, `daily.py` (kopie), `lab/` (reguły), `fx/` (prognoza), `ai/` (agenci), `oneday.py`, `odsearch.py`, `odport.py` (badania One-Day).
+**Python** (`ia4-research/ia4/`): `sync.py`, `daily.py` (kopie), `lab/` (reguły), `fx/` (prognoza), `ai/` (agenci), `oneday.py`, `odsearch.py`, `odport.py`, `odbreak.py` (badania One-Day).
 
 ---
 
@@ -133,6 +133,12 @@ Transakcja trwa jeden dzień (open → close). `ia4.oneday` — kaskady i portfe
 3. **Portfel:** głosy wybranych reguł sumowane w każdej spółce i dniu (long +1, short −1), pozycja = znak sumy, jedna transakcja na spółkę i dzień, spread od każdej.
 4. **Ocena portfela:** **20 okresów, najwyżej 3 stratne** — warunek człowieka, teraz na całym portfelu; rok po roku (z liczbą kandydatów i najlepszym t w historii); doubleProof (te same wybory, 20 spółek); placebo (cały proces z losowym znakiem dni); portfel 10 000 $ (5% na transakcję). Arkusz REGUŁY (pełna próba) — tylko do wglądu, zawyżony.
 Test na syntetycznej historii 2000–2026 bez przewagi (spread 0,6%): żadna reguła nie przeszła wyboru w żadnym roku — 0 transakcji; z zaszytą przewagą: portfel spełnia warunek, doubleProof dodatni, placebo nie.
+
+**Siła ruchu po konsolidacji i long + short naraz — `ia4.odbreak` (od 1.44, hipoteza człowieka z 15.10.2026: kierunku nie da się przewidzieć, siłę — może):**
+- **Jednostka R** = normalna dynamika spółki: średni zakres dnia (H − L)/open ze 100 poprzednich sesji — każda spółka liczona względem siebie.
+- **Analiza:** 35 stanów przed open (z punktem odniesienia „każdy dzień”) (konsolidacja 3/5/10/20 sesji o średnim zakresie < 0,5/0,7/0,85 R, ciasny przedział 5/10/20 sesji, najciaśniejsze 10%/20% w roku danej spółki, dni wewnętrzne, NR4, NR7, połączenia; dla kontrastu rozruszany rynek i duży zakres wczoraj) → ruch dnia w R: zakres, największe oddalenie od open, |close − open|, oddalenie w 3 sesje, P(oddalenie ≥ 0,5/1/1,5/2 R), „piła” (obie strony ≥ 0,5 R); wzrost wobec wszystkich dni; arkusz SPÓŁKI — R i wzrost dla każdej spółki.
+- **Strategie:** stan × SL 0,25/0,5/0,75/1 R × TP 2 albo 3 × SL × sposób wejścia: **LS — long i short naraz na open** (decyzja człowieka; spread od każdej nogi) oraz porównawczo **BO — wybicie zleceniami buy-stop / sell-stop** s od open (jedno anuluje drugie, SL na open, spread raz). Zawsze w ciągu dnia; kolejność ruchów w świecy dobowej nieznana → zawsze najgorszy wariant (zasada 5): LS — dzień sięgnął obu SL = −2s; BO — po wejściu cena była po drugiej stronie open = SL.
+- **Ocena:** 20 okresów / ≤ 3 stratne, część A (< 2013) i B (≥ 2013) obie > 0, doubleProof (t ≥ próg Bonferroniego), placebo — stan przesunięty w czasie o ≥ 252 sesje (ta sama częstość, zero związku z dniem); portfele 10 000 $ najlepszej LS i BO.
 
 ---
 
@@ -238,6 +244,7 @@ python -m ia4.fx.research          # przeliczenie okoliczności FX (ręcznie, be
 python -m ia4.daily                # kopia świec dobowych
 python -m ia4.odsearch [--source daily]   # badania One-Day — pojedyncze reguły
 python -m ia4.odport --cost 0.6     # badania One-Day — portfel strategii walk-forward (10–20 min)
+python -m ia4.odbreak --cost 0.6    # badania One-Day — siła ruchu po konsolidacji, long + short naraz
 ```
 
 `ia4` to funkcja w `~/.zshrc`: `function ia4 { cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && if [ "$1" = start ]; then shift; python -m ia4.ai "$@"; else python -m ia4.lab --workers 4 "$@"; fi; }`
@@ -250,6 +257,7 @@ Starsze wpisy: `archiwum/IA4_INSTRUKCJA-1.40.md`, sekcja 13, i historia gita.
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.44 | 2026-10-15 | One-Day — **siła ruchu po konsolidacji** (`ia4/odbreak.py`, sekcja 7; hipoteza człowieka z 15.10.2026): analiza ruchu dnia w jednostkach R (normalna dynamika każdej spółki) po 35 stanach konsolidacji / ekspansji; strategie **long + short naraz** z TP 2 albo 3 × SL i porównawczo wybicie zleceniami oczekującymi; rozliczenie pesymistyczne ze świec dobowych; 20 okresów, część A/B, doubleProof, placebo przesunięte w czasie, portfele 10 000 $; plik `ONE-DAY-WYBICIA.xlsx`. |
 | 1.43 | 2026-10-15 | One-Day — **portfel strategii wybieranych krok po kroku w czasie** (`ia4/odport.py`, sekcja 7; decyzja człowieka z 15.10.2026): 82 setupy × do 3 filtrów (33) z przycinaniem — ok. 450 tys. reguł, wyniki rok po roku; co rok wybór do 20 reguł tylko na danych sprzed tego roku; portfel z głosów reguł; ocena portfela: 20 okresów / ≤ 3 stratne, doubleProof, placebo, 10 000 $; plik `ONE-DAY-PORTFEL.xlsx`. `odsearch.py`: zmienność SPY w cechach. |
 | 1.42 | 2026-10-15 | One-Day (`ia4.odsearch`, sekcja 7; decyzja człowieka z 15.10.2026): **spread 0,3% na każdą transakcję** (`--cost`), wszystkie wyniki, warunek okresów, baza, placebo i portfele netto, kolumna „brutto”; skrajniejsze setupy i filtr zmienności bezwzględnej (r ≥ 2/3/4%) — 28 080 reguł kierunkowych; ✓ na doubleProof wymaga też wyniku netto > 0; zapasowe portfele #1 (long) i S1 (short) z uwagą, gdy nic nie spełnia warunku. Zasada 5 — koszty także w One-Day. Baza dobowa kompletna (75/75). Pozostałe pliki — tylko numer wersji. |
 | 1.41 | 2026-10-14 | **Instrukcja-esencja** (decyzja człowieka): pełny tekst 1.40 przeniesiony do `archiwum/` jako opis techniczny, nowy krótki `PRZEWODNIK.md`. **AI — zespół agentów** (decyzja człowieka: Inwestor nie wchodził w transakcje — w 23 rundach 2 kandydatów, oba pominięte, a w rundach FX model nie był wołany): dyspozytor — jeden agent naraz, bez przerwy, każde zadanie mierzone (`agent_runs`, `ai/runs.jsonl`); **Inwestor w trybie nauki** (model w każdej rundzie, własne pomysły z hipotezą, budżet własnych pomysłów 0,6% → 2%, poziomy nauki 0–3, automat bierności); **Krytyk** (przeglądy, poziom nauki, werdykty, wnioski — wersja 1 kroku AI-4); **Badacz** (hipotezy z menu cech, liczone z kosztami walk-forward, sito, próba na żywo — wersja 1 kroku AI-3; język `ia4-hyp/1` z 1.32 zastąpiony menu cech). Strona: panel „praca agentów” (oś 24 h, rytm, czasy), panele Krytyk i Badacz, opisy „?” przy każdym panelu, przewodnik w nagłówku, teksty zawijane zamiast ucinanych. Apps Script — tylko numer wersji. |

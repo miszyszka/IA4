@@ -1,6 +1,6 @@
 """
 IA 4 — One-Day: portfel strategii wybieranych krok po kroku w czasie (instrukcja, sekcja 7).
-Wersja projektu: 1.43 (2026-10-15) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.44 (2026-10-15) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Decyzja człowieka z 15.10.2026 po wyniku 1.42 (spread 0,6%: żadna reguła nie spełniła warunku 20 okresów):
 „10 razy więcej strategii, rzadsze strategie dozwolone, potem portfel wielu strategii naraz, bardziej rygorystycznie”.

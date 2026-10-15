@@ -1,5 +1,5 @@
 // IA 4 — zakładka AI: agenci na Macu — praca agentów, portfel Inwestora, Krytyk, Badacz, feed (instrukcja, sekcja 8–9).
-// Wersja projektu: 1.43 (2026-10-15)
+// Wersja projektu: 1.44 (2026-10-15)
 //
 // Źródła: ai-live/status.json (sygnał życia: nadzorca, feed, agenci, praca agentów `work`, portfel, pozycje, ostatnia runda,
 // punkty odniesienia, krzywa, notatki, `critic`, `research`) oraz branch ai: trades.jsonl, playbook.json, lessons.json.
