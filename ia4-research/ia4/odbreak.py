@@ -1,6 +1,6 @@
 """
 IA 4 — One-Day: siła ruchu po konsolidacji i strategie long + short naraz (instrukcja, sekcja 7).
-Wersja projektu: 1.44 (2026-10-15) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.45 (2026-10-16) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Hipoteza człowieka (15.10.2026): kierunku nie da się przewidzieć, ale może da się przewidzieć SIŁĘ ruchu —
 wybicie po konsolidacji; każda spółka ma inną dynamikę.

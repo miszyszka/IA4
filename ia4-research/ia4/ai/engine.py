@@ -1,7 +1,7 @@
 """
 IA 4 — silnik portfela AI Investor: wielkość pozycji, limity, koszty, rozliczanie świeca po świecy
 (instrukcja, sekcje 11c.6–11c.7; kolejność zdarzeń jak 8.6).
-Wersja projektu: 1.44 (2026-10-15) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.45 (2026-10-16) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Każda liczba portfela powstaje tutaj — model językowy tylko wybiera (zasada 16).
 

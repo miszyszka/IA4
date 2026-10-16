@@ -1,6 +1,6 @@
 # IA 4 — Python na Macu: kopia bazy i poszukiwanie strategii
 
-**Wersja projektu: 1.44 (2026-10-15)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.45 (2026-10-16)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Dwie rzeczy:
 1. `python -m ia4.sync` — ściąga świece z Firestore na dysk (`data/*.parquet`), przy
@@ -84,10 +84,30 @@ python -m ia4.odsearch              # kierunkowe (28 080) i neutralne (600), spr
 python -m ia4.daily                 # kopia lokalna bazy świec dobowych (sekcja 4d) → data/daily/
 python -m ia4.odsearch --source daily   # to samo od 2000 r. → ONE-DAY-SEARCH-DAILY.xlsx
 python -m ia4.odport --selftest     # portfel strategii walk-forward — „WYNIK: OK”
-python -m ia4.odport --cost 0.6     # ok. 450 tys. reguł, wybór co rok, portfel, doubleProof, placebo → ONE-DAY-PORTFEL.xlsx
+python -m ia4.odport                # ok. 450 tys. reguł, wybór co rok, portfel, doubleProof, placebo → ONE-DAY-PORTFEL.xlsx
 python -m ia4.odbreak --selftest    # siła ruchu po konsolidacji — „WYNIK: OK”
-python -m ia4.odbreak --cost 0.6    # analiza wybić + strategie long + short naraz → ONE-DAY-WYBICIA.xlsx
+python -m ia4.odbreak               # analiza wybić + strategie long + short naraz → ONE-DAY-WYBICIA.xlsx
 node tests/daily.js                 # test Daily.gs (Apps Script) w Node — „WYNIK: OK”
+```
+
+Spread: **0,3% wartości pozycji raz na transakcję** (wejście + wyjście razem) — domyślnie wszędzie, bez `--cost`
+(decyzja człowieka z 16.10.2026).
+
+## Badania wielodniowe (instrukcja, sekcja 7a)
+
+Pozycja może trwać dłużej niż jedną sesję. Wspólny silnik: `ia4/swing.py` (baza dobowa od 2000 r., SL / TP
+pesymistycznie, spread 0,3% raz, portfel 10 000 $ z dźwignią, depozyt 10% stanu na pozycję).
+
+```bash
+python -m ia4.swtrend --selftest    # „WYNIK: OK”
+python -m ia4.swtrend               # 49 920 strategii jednokierunkowych z SL i TP (wybicia, trend, konwergencja),
+                                    # 20 okresów, doubleProof, placebo — ok. 6 min → ~/Desktop/IA4/SWING-TREND.xlsx
+python -m ia4.swrsi --selftest      # „WYNIK: OK”
+python -m ia4.swrsi                 # RSI(3) < 22, EMA100 rośnie, close ≥ 1% pod VWAP10, wyjście RSI(3) > 55:
+                                    # portfel QQQ (1:1 i 1:5) i wszystkie spółki → ~/Desktop/IA4/SWING-RSI3.xlsx
+python -m ia4.swserie --selftest    # „WYNIK: OK”
+python -m ia4.swserie               # mapa: wejście po N świecach spadkowych / wzrostowych, 1/2/3 sesje,
+                                    # long i short, 1:5 → ~/Desktop/IA4/SWING-SERIE.xlsx
 ```
 
 ## Test zgodności z paper tradingiem
