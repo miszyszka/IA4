@@ -3,7 +3,7 @@
  *  IA 4 — MODUŁ FX 1h  (Yahoo, świece godzinowe 10 par walutowych + BTC →
  *                       Firestore fx1h/{SYMBOL}/days → arkusz FX)
  *
- *  Wersja projektu: 1.47 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.48 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Osobny moduł (instrukcja, sekcja 4b): zbiera dane. Nie bierze udziału
  *  w poszukiwaniu strategii, weryfikacji ani paper tradingu.

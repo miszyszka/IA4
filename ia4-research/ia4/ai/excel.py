@@ -1,6 +1,6 @@
 """
 IA 4 — AI-INVESTOR.xlsx: dziennik agentów w Excelu (instrukcja, sekcja 8).
-Wersja projektu: 1.47 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.48 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Przepisywany w całości po każdej rundzie (zapis atomowy: plik tymczasowy → zamiana; plik otwarty
 w Excelu/Numbers pokazuje stan z chwili otwarcia). Ścieżka: ai/config.json → xlsx_path (domyślnie

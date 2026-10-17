@@ -1,6 +1,6 @@
 """
 IA 4 — wspólny silnik badań wielodniowych (instrukcja, sekcja 7a).
-Wersja projektu: 1.47 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.48 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Badania, w których pozycja może trwać dłużej niż jedną sesję (decyzja człowieka z 16.10.2026):
 `ia4.swtrend` (strategie jednokierunkowe z SL i TP), `ia4.swrsi` (strategia RSI(3) / EMA100 / VWAP10),
@@ -228,10 +228,14 @@ def sltp(o, h, l, c, d: int, slp, tpp, H: int):
 #  Portfel z dźwignią
 # ---------------------------------------------------------------------------
 def portfolio(trades: list[dict], data: Data, capital: float = CAPITAL, stake_pct: float = STAKE_PCT,
-              lev: float = 1.0, cost: float = COST_PCT, keep_rows: bool = True, max_pos: int | None = None) -> dict:
+              lev: float = 1.0, cost: float = COST_PCT, keep_rows: bool = True, max_pos: int | None = None,
+              max_by_label: dict | None = None) -> dict:
     """trades: {si, qe, qx, d, pin, pout, why, label?, prio?} — qe/qx: sesja wejścia (open) i wyjścia w ciągu spółki si.
     Kolejność w dniu: najpierw wejścia po open (depozyt z wyceny po poprzednim close), potem wyjścia.
     max_pos — najwięcej pozycji naraz; gdy sygnałów jest więcej niż wolnych miejsc, wchodzą te o najmniejszym `prio`.
+    max_by_label — limit pozycji naraz osobno dla każdej etykiety transakcji (`label`), np. {"spółki": 5}.
+    `size` w transakcji — wartość pozycji jako ułamek stanu portfela (depozyt = size / dźwignia); bez niej depozyt
+    = stake_pct% stanu portfela.
     Wynik `skipped_list`: (si, te, powód) każdego sygnału, który nie wszedł do portfela."""
     st = data.stocks
     T = len(data.cal)
@@ -271,13 +275,26 @@ def portfolio(trades: list[dict], data: Data, capital: float = CAPITAL, stake_pc
                 skipped_list.append((tr["si"], t, f"limit {max_pos} pozycji naraz"))
             skipped_limit += max(0, len(new) - room)
             new = new[:room]
+        if max_by_label and new:
+            keep = []
+            for tr in sorted(new, key=lambda tr: tr.get("prio", 0.0)):
+                lab = tr.get("label", "")
+                lim = max_by_label.get(lab)
+                if lim is not None and sum(1 for x, _ in openp.values() if x.get("label", "") == lab) \
+                        + sum(1 for x in keep if x.get("label", "") == lab) >= lim:
+                    skipped_list.append((tr["si"], t, f"limit {lim} pozycji naraz ({lab})"))
+                    skipped_limit += 1
+                else:
+                    keep.append(tr)
+            new = keep
         if new:
             base = mtm_prev
-            m0 = base * stake_pct / 100.0
+            ms = [base * (tr["size"] / lev if "size" in tr else stake_pct / 100.0) for tr in new]
             free = base - sum(m for _, m in openp.values())
-            sc = 1.0 if m0 * len(new) <= free * (1 + 1e-9) else max(0.0, free) / (m0 * len(new))
+            need = sum(ms)
+            sc = 1.0 if need <= free * (1 + 1e-9) else (max(0.0, free) / need if need > 0 else 0.0)
             scaled += sc < 1.0
-            for tr in new:
+            for tr, m0 in zip(new, ms):
                 if m0 * sc > 0:
                     tr["scale"] = sc
                     openp[tr["si"]] = (tr, m0 * sc)
@@ -460,3 +477,7 @@ def selftest_core(check) -> None:
     pf = portfolio([dict(x) for x in two], finish([st, st2]), lev=1.0, max_pos=1)
     check("limit 1 pozycji: wchodzi sygnał o mniejszym prio (B, −10%)", (pf["trades"], pf["skipped_limit"], round(pf["ret"], 6)),
           (1, 1, round(10.0 * (-10.0 - COST_PCT) / 100.0, 6)))
+    two2 = [dict(x, label="spółki" if x["si"] == 1 else "QQQ", size=2.0 if x["si"] == 0 else 0.5) for x in two]
+    pf = portfolio([dict(x) for x in two2], finish([st, st2]), lev=5.0, max_by_label={"spółki": 1})
+    check("wielkość pozycji (size) i limit dla etykiety", (pf["trades"], round(pf["ret"], 6)),
+          (2, round(2.0 * (10.0 - COST_PCT) + 0.5 * (-10.0 - COST_PCT), 6)))

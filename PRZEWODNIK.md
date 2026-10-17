@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie i jak to czytać
 
-**Wersja projektu: 1.47 (2026-10-17)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
+**Wersja projektu: 1.48 (2026-10-17)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
 
 ## 1. Co działa samo, a co wymaga Maca
 
@@ -46,6 +46,7 @@
 | `~/Desktop/IA4/SWING-SERIE.xlsx` | mapa serii świec (od 1.45): **MAPA** — wiersz N = wejście po N świecach spadkowych (niżej: wzrostowych), kolumny — 1/2/3 sesje, long i short; w komórce liczba transakcji i końcowy % portfela 10 000 $ na dźwigni 1:5 (zielony — zysk, czerwony — strata, ✗ — upadłość); **MAPA dP** — to samo na 20 spółkach doubleProof (sprawdzian); **SZCZEGÓŁY**, **SPÓŁKI** — więcej liczb |
 | `~/Desktop/IA4/SWING-PORTFEL-7.xlsx` | portfel „po 7 świecach spadkowych long na 3 sesje, 1:5” (od 1.46): **PODSUMOWANIE** — wynik, obsunięcia, wyniki wg położenia ceny wobec SMA200 / SMA50 i wg głębokości spadku; **KAPITAŁ** — wykres stanu portfela i obsunięcia; **OBSUNIĘCIA** — od kiedy, jak głęboko, kiedy odrobione; **ZDARZENIA** — każda seria 7 spadków ze średnimi, spadkiem w R i wynikiem transakcji (filtr w nagłówku) |
 | `~/Desktop/IA4/SWING-PORTFEL-PROPOZYCJA.xlsx` | propozycja z analizy (od 1.47): ≥ 5 spadków, spadek ≥ 10%, słaby rynek, 5 sesji, max 5 pozycji. Te same arkusze co wyżej oraz **ANALIZA** — jak cechy serii (wielkość spadku, rynek, zmienność, RSI, średnie) zmieniają wynik w trzech okresach (zielony — zysk); w **PODSUMOWANIE** tabela „wrażliwość” — ten sam zestaw transakcji przy dźwigni 1:1–1:5 i limicie 3 / 5 / 10 / bez; w **ZDARZENIA** także serie odrzucone (kolumna „Warunki”, powód w „Uwagi”) |
+| `~/Desktop/IA4/SWING-ROWNA.xlsx` | strategia RÓWNA (od 1.48): kupowanie spadków tylko przy rosnącym trendzie — QQQ (reguła RSI(3), pozycja wg zmienności) + kapitulacja spółek. **PODSUMOWANIE** — wynik, obsunięcia, wynik w czasie każdej bessy (cel: blisko zera), części osobno; **KAPITAŁ** — wykres całości i części; **ROK PO ROKU** — ile zarobiła każda część; **SYGNAŁY SPÓŁEK** — także odrzucone (brak trendu, limit); **ODPORNOŚĆ** — czy wynik trzyma się przy sąsiednich ustawieniach |
 
 ## 4. Jak oceniać wyniki
 

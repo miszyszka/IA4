@@ -1,6 +1,6 @@
 """
 IA 4 — branch `ai`: trwała historia AI Investor i odtworzenie huba (instrukcja, sekcja 8).
-Wersja projektu: 1.47 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.48 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Klon w ia4-research/ai-repo/ (poza gitem głównego repo). Pisze wyłącznie Python z Maca; człowiek
 (z Claude) zmienia tylko ai/config.json. Commit i push po każdej rundzie Inwestora.
