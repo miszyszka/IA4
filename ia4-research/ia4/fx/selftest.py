@@ -1,6 +1,6 @@
 """
 IA 4 — test modułu prognozy FX 1h na danych syntetycznych (bez Firestore i GitHub).
-Wersja projektu: 1.45 (2026-10-16) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.46 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.selftest
 

@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie i jak to czytać
 
-**Wersja projektu: 1.45 (2026-10-16)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
+**Wersja projektu: 1.46 (2026-10-17)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
 
 ## 1. Co działa samo, a co wymaga Maca
 
@@ -44,6 +44,7 @@
 | `~/Desktop/IA4/SWING-TREND.xlsx` | strategie wielodniowe jednokierunkowe z SL i TP (od 1.45): **OPIS** — ile z 49 920 strategii spełnia warunek, a ile placebo (przypadek); **STRATEGIE** — reguły, które spełniają warunek: wynik netto, przewaga nad wejściem na ślepo, 20 okresów kolorami, doubleProof (✓ = potwierdzona); **SETUPY** — najlepsza strategia każdego setupu w każdą stronę (także te, które nie przeszły); **PORTFEL …** — 10 000 $ na dźwigni 1:5 transakcja po transakcji |
 | `~/Desktop/IA4/SWING-RSI3.xlsx` | strategia RSI(3) / EMA100 / VWAP10 (od 1.45): **QQQ 1-1 / 1-5** — portfel 10 000 $ rok po roku i transakcja po transakcji; **SPÓŁKI** — ta sama reguła na każdej spółce osobno (obok kup i trzymaj); **WSZYSTKIE 1-1 / 1-5** — wspólny portfel wszystkich spółek |
 | `~/Desktop/IA4/SWING-SERIE.xlsx` | mapa serii świec (od 1.45): **MAPA** — wiersz N = wejście po N świecach spadkowych (niżej: wzrostowych), kolumny — 1/2/3 sesje, long i short; w komórce liczba transakcji i końcowy % portfela 10 000 $ na dźwigni 1:5 (zielony — zysk, czerwony — strata, ✗ — upadłość); **MAPA dP** — to samo na 20 spółkach doubleProof (sprawdzian); **SZCZEGÓŁY**, **SPÓŁKI** — więcej liczb |
+| `~/Desktop/IA4/SWING-PORTFEL-7.xlsx` | portfel „po 7 świecach spadkowych long na 3 sesje, 1:5” (od 1.46): **PODSUMOWANIE** — wynik, obsunięcia, wyniki wg położenia ceny wobec SMA200 / SMA50 i wg głębokości spadku; **KAPITAŁ** — wykres stanu portfela i obsunięcia; **OBSUNIĘCIA** — od kiedy, jak głęboko, kiedy odrobione; **ZDARZENIA** — każda seria 7 spadków ze średnimi, spadkiem w R i wynikiem transakcji (filtr w nagłówku) |
 
 ## 4. Jak oceniać wyniki
 

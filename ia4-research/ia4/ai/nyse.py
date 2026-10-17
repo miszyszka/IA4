@@ -1,6 +1,6 @@
 """
 IA 4 — kalendarz świec akcji NYSE dla feedu AI Investor (instrukcja, sekcje 4 i 11c.4).
-Wersja projektu: 1.45 (2026-10-16) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.46 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Sesja 9:30–16:00 czasu Nowego Jorku: świece 1–6 zamykają się o pełnej godzinie + 30 min (10:30 … 15:30),
 świeca 7 o 16:00. Sesja skrócona (13:00): 4 świece, ostatnia o 13:00. Święta i sesje skrócone — listy

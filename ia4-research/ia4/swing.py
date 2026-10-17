@@ -1,6 +1,6 @@
 """
 IA 4 — wspólny silnik badań wielodniowych (instrukcja, sekcja 7a).
-Wersja projektu: 1.45 (2026-10-16) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.46 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Badania, w których pozycja może trwać dłużej niż jedną sesję (decyzja człowieka z 16.10.2026):
 `ia4.swtrend` (strategie jednokierunkowe z SL i TP), `ia4.swrsi` (strategia RSI(3) / EMA100 / VWAP10),
@@ -263,6 +263,7 @@ def portfolio(trades: list[dict], data: Data, capital: float = CAPITAL, stake_pc
             scaled += sc < 1.0
             for tr in new:
                 if m0 * sc > 0:
+                    tr["scale"] = sc
                     openp[tr["si"]] = (tr, m0 * sc)
         max_open = max(max_open, len(openp))
         for si in [k for k, (tr, _) in openp.items() if tr["tx"] == t]:
@@ -277,7 +278,8 @@ def portfolio(trades: list[dict], data: Data, capital: float = CAPITAL, stake_pc
                 rows.append({"in": data.cal[tr["te"]], "out": data.cal[t], "sym": s.sym, "group": s.group,
                              "d": tr["d"], "pin": tr["pin"], "pout": tr["pout"], "why": REASON.get(tr["why"], tr["why"]),
                              "sessions": int(tr["qx"] - tr["qe"] + 1), "move": pct + cost, "net": pct,
-                             "margin": m, "pnl": pnl, "eq": eq, "label": tr.get("label", "")})
+                             "margin": m, "pnl": pnl, "eq": eq, "label": tr.get("label", ""),
+                             "scale": tr.get("scale", 1.0)})
         mtm = eq
         for si, (tr, m) in openp.items():
             s = st[si]

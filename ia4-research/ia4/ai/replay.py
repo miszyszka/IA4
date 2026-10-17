@@ -1,6 +1,6 @@
 """
 IA 4 — test silnika portfela AI Investor na danych historycznych (instrukcja, sekcja 11c.6–11c.7, krok AI-2).
-Wersja projektu: 1.45 (2026-10-16) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.46 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.ai.replay                 # ostatnie 20 sesji kopii lokalnej, 60 strategii z brancha research
   python -m ia4.ai.replay --sessions 60   # dłużej
