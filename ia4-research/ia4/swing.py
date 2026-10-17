@@ -1,6 +1,6 @@
 """
 IA 4 — wspólny silnik badań wielodniowych (instrukcja, sekcja 7a).
-Wersja projektu: 1.46 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.47 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Badania, w których pozycja może trwać dłużej niż jedną sesję (decyzja człowieka z 16.10.2026):
 `ia4.swtrend` (strategie jednokierunkowe z SL i TP), `ia4.swrsi` (strategia RSI(3) / EMA100 / VWAP10),
@@ -228,9 +228,11 @@ def sltp(o, h, l, c, d: int, slp, tpp, H: int):
 #  Portfel z dźwignią
 # ---------------------------------------------------------------------------
 def portfolio(trades: list[dict], data: Data, capital: float = CAPITAL, stake_pct: float = STAKE_PCT,
-              lev: float = 1.0, cost: float = COST_PCT, keep_rows: bool = True) -> dict:
-    """trades: {si, qe, qx, d, pin, pout, why, label?} — qe/qx: sesja wejścia (open) i wyjścia w ciągu spółki si.
-    Kolejność w dniu: najpierw wejścia po open (depozyt z wyceny po poprzednim close), potem wyjścia."""
+              lev: float = 1.0, cost: float = COST_PCT, keep_rows: bool = True, max_pos: int | None = None) -> dict:
+    """trades: {si, qe, qx, d, pin, pout, why, label?, prio?} — qe/qx: sesja wejścia (open) i wyjścia w ciągu spółki si.
+    Kolejność w dniu: najpierw wejścia po open (depozyt z wyceny po poprzednim close), potem wyjścia.
+    max_pos — najwięcej pozycji naraz; gdy sygnałów jest więcej niż wolnych miejsc, wchodzą te o najmniejszym `prio`.
+    Wynik `skipped_list`: (si, te, powód) każdego sygnału, który nie wszedł do portfela."""
     st = data.stocks
     T = len(data.cal)
     ents: dict[int, list] = {}
@@ -240,21 +242,35 @@ def portfolio(trades: list[dict], data: Data, capital: float = CAPITAL, stake_pc
         ents.setdefault(tr["te"], []).append(tr)
     if not ents:
         return {"rows": [], "end": capital, "ret": 0.0, "mdd": 0.0, "trades": 0, "wins": 0, "ruined": False,
-                "max_open": 0, "scaled": 0, "skipped": 0, "curve": [], "years": [], "first": None, "last": None,
-                "capital": capital, "lev": lev, "stake": stake_pct}
+                "max_open": 0, "scaled": 0, "skipped": 0, "skipped_limit": 0, "skipped_list": [], "curve": [],
+                "years": [], "first": None, "last": None, "capital": capital, "lev": lev, "stake": stake_pct,
+                "max_pos": max_pos}
     closes = {}
     eq = capital
     peak = capital
     mdd, mtm_prev = 0.0, capital
     openp: dict[int, tuple] = {}               # si → (tr, margin)
     rows, curve, years = [], [], {}
-    n, wins, scaled, skipped, max_open = 0, 0, 0, 0, 0
+    n, wins, scaled, skipped, max_open, skipped_limit = 0, 0, 0, 0, 0, 0
+    skipped_list = []
     ruined = False
     t0 = min(ents)
     last_t = max(tr["tx"] for tr in trades)
     for t in range(t0, last_t + 1):
-        new = [tr for tr in ents.get(t, []) if tr["si"] not in openp]
-        skipped += len(ents.get(t, [])) - len(new)
+        new = []
+        for tr in ents.get(t, []):
+            if tr["si"] in openp:
+                skipped += 1
+                skipped_list.append((tr["si"], t, "spółka już w pozycji"))
+            else:
+                new.append(tr)
+        if max_pos and new:
+            new.sort(key=lambda tr: tr.get("prio", 0.0))
+            room = max(0, max_pos - len(openp))
+            for tr in new[room:]:
+                skipped_list.append((tr["si"], t, f"limit {max_pos} pozycji naraz"))
+            skipped_limit += max(0, len(new) - room)
+            new = new[:room]
         if new:
             base = mtm_prev
             m0 = base * stake_pct / 100.0
@@ -265,6 +281,8 @@ def portfolio(trades: list[dict], data: Data, capital: float = CAPITAL, stake_pc
                 if m0 * sc > 0:
                     tr["scale"] = sc
                     openp[tr["si"]] = (tr, m0 * sc)
+                else:
+                    skipped_list.append((tr["si"], t, "brak wolnego depozytu"))
         max_open = max(max_open, len(openp))
         for si in [k for k, (tr, _) in openp.items() if tr["tx"] == t]:
             tr, m = openp.pop(si)
@@ -306,7 +324,8 @@ def portfolio(trades: list[dict], data: Data, capital: float = CAPITAL, stake_pc
             "ruined": ruined, "max_open": max_open, "scaled": scaled, "skipped": skipped, "curve": curve,
             "years": [(y, (b / a - 1.0) * 100.0 if a else 0.0) for y, (a, b) in sorted(years.items())],
             "first": rows[0]["in"] if rows else None, "last": rows[-1]["out"] if rows else None,
-            "capital": capital, "lev": lev, "stake": stake_pct}
+            "capital": capital, "lev": lev, "stake": stake_pct, "max_pos": max_pos, "skipped_limit": skipped_limit,
+            "skipped_list": skipped_list}
 
 
 def cagr(pf: dict, data: Data) -> float | None:
@@ -379,7 +398,10 @@ def portfolio_sheet(wb, title: str, pf: dict, intro: str, S=None):
             ("Największe obsunięcie % (wycena dzienna)", round(pf["mdd"], 2)),
             ("Transakcji", pf["trades"]), ("Zyskownych %", round(pf["wins"] / pf["trades"] * 100, 1) if pf["trades"] else None),
             ("Najwięcej pozycji naraz", pf["max_open"]), ("Dni z pomniejszoną stawką (brak wolnego depozytu)", pf["scaled"]),
-            ("Sygnały pominięte (spółka już w pozycji)", pf["skipped"]), ("Upadłość (≤ 10% kapitału)", "TAK" if pf["ruined"] else "nie"),
+            ("Sygnały pominięte (spółka już w pozycji)", pf["skipped"]),
+            ("Limit pozycji naraz", pf.get("max_pos") or "bez limitu"),
+            ("Sygnały pominięte (limit pozycji)", pf.get("skipped_limit", 0)),
+            ("Upadłość (≤ 10% kapitału)", "TAK" if pf["ruined"] else "nie"),
             ("Okres", f"{pf['first'] or '—'} – {pf['last'] or '—'}")]
     for k, (a, b) in enumerate(summ, start=3):
         ws.cell(k, 1, a)
@@ -432,3 +454,9 @@ def selftest_core(check) -> None:
     dd = finish([st])
     pf = portfolio([{"si": 0, "qe": 0, "qx": 0, "d": 1, "pin": 100.0, "pout": 110.0, "why": 3}], dd, lev=5.0)
     check("portfel 1:5, depozyt 10%: +10% ruchu → wynik", round(pf["ret"], 6), round(10.0 * 5 * (10.0 - COST_PCT) / 100.0, 6))
+    two = [{"si": 0, "qe": 0, "qx": 0, "d": 1, "pin": 100.0, "pout": 110.0, "why": 3, "prio": 2.0},
+           {"si": 1, "qe": 0, "qx": 0, "d": 1, "pin": 100.0, "pout": 90.0, "why": 3, "prio": 1.0}]
+    st2 = Stock("B", "main", st.dates, st.o, st.h, st.l, st.c, st.v)
+    pf = portfolio([dict(x) for x in two], finish([st, st2]), lev=1.0, max_pos=1)
+    check("limit 1 pozycji: wchodzi sygnał o mniejszym prio (B, −10%)", (pf["trades"], pf["skipped_limit"], round(pf["ret"], 6)),
+          (1, 1, round(10.0 * (-10.0 - COST_PCT) / 100.0, 6)))

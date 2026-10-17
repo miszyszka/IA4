@@ -1,5 +1,5 @@
 // IA 4 — „czy system żyje”: jeden model stanu dla magistrali (góra strony) i zakładki System.
-// Wersja projektu: 1.46 (2026-10-17)
+// Wersja projektu: 1.47 (2026-10-17)
 //
 // Każde ogniwo ma: ts (chwila ostatniego znaku życia, ms), status ok / warn / bad / off,
 // opis i oczekiwany rytm. Ogniwa: Yahoo → Apps Script → Firestore → GitHub → Mac (FX-real-time) → Mac (AI Investor) → strona. Wiek liczony jest na żywo (co sekundę) z ts.

@@ -1,7 +1,7 @@
 """
 IA 4 — katalog okoliczności FX 1h `fx-cond/2` i jednorazowa kalibracja
 (instrukcja, sekcje 4c.2 i 4c.3).
-Wersja projektu: 1.46 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.47 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 `fx-cond/2` (od 1.27): świece 1h, 11 instrumentów (10 par walutowych + BTC), wszystkie cechy
 bezwymiarowe (jednostki ATR100, %, liczby świec), progi skalibrowane raz na puli wszystkich
