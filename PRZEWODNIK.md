@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie i jak to czytać
 
-**Wersja projektu: 1.48 (2026-10-17)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
+**Wersja projektu: 1.49 (2026-10-19)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
 
 ## 1. Co działa samo, a co wymaga Maca
 
@@ -47,6 +47,7 @@
 | `~/Desktop/IA4/SWING-PORTFEL-7.xlsx` | portfel „po 7 świecach spadkowych long na 3 sesje, 1:5” (od 1.46): **PODSUMOWANIE** — wynik, obsunięcia, wyniki wg położenia ceny wobec SMA200 / SMA50 i wg głębokości spadku; **KAPITAŁ** — wykres stanu portfela i obsunięcia; **OBSUNIĘCIA** — od kiedy, jak głęboko, kiedy odrobione; **ZDARZENIA** — każda seria 7 spadków ze średnimi, spadkiem w R i wynikiem transakcji (filtr w nagłówku) |
 | `~/Desktop/IA4/SWING-PORTFEL-PROPOZYCJA.xlsx` | propozycja z analizy (od 1.47): ≥ 5 spadków, spadek ≥ 10%, słaby rynek, 5 sesji, max 5 pozycji. Te same arkusze co wyżej oraz **ANALIZA** — jak cechy serii (wielkość spadku, rynek, zmienność, RSI, średnie) zmieniają wynik w trzech okresach (zielony — zysk); w **PODSUMOWANIE** tabela „wrażliwość” — ten sam zestaw transakcji przy dźwigni 1:1–1:5 i limicie 3 / 5 / 10 / bez; w **ZDARZENIA** także serie odrzucone (kolumna „Warunki”, powód w „Uwagi”) |
 | `~/Desktop/IA4/SWING-ROWNA.xlsx` | strategia RÓWNA (od 1.48): kupowanie spadków tylko przy rosnącym trendzie — QQQ (reguła RSI(3), pozycja wg zmienności) + kapitulacja spółek. **PODSUMOWANIE** — wynik, obsunięcia, wynik w czasie każdej bessy (cel: blisko zera), części osobno; **KAPITAŁ** — wykres całości i części; **ROK PO ROKU** — ile zarobiła każda część; **SYGNAŁY SPÓŁEK** — także odrzucone (brak trendu, limit); **ODPORNOŚĆ** — czy wynik trzyma się przy sąsiednich ustawieniach |
+| `~/Desktop/IA4/FX-SHORT-NY.xlsx` | FX — short po gwałtownym wzroście (od 1.49, informacyjne): **PODSUMOWANIE** — reguła i wynik; **TRANSAKCJE** — każda transakcja, a u góry **żółte komórki** (kapitał, dźwignia, depozyt na pozycję, koszt nocny) — po zmianie przeliczają się saldo, wykresy i okresy; **KAPITAŁ** — saldo dzień po dniu i obsunięcie; **OKRESY** — 20 części (stratne na czerwono w wykresie); **WARIANTY** — 1000 $ przy różnym depozycie (5–100%); **ODPORNOŚĆ** — sąsiednie ustawienia i godzina sygnału (zielony — zysk); **UCZCIWY TEST** — placebo, połowy danych, reguła wybrana na 1. roku sprawdzona na 2. (to jest realistyczne oczekiwanie); **HIPOTEZA** — short po każdej dużej świecy bez filtrów; **RANKING** — najlepsze z przeszukania (zawyżone); **EURUSD** — sama para |
 
 ## 4. Jak oceniać wyniki
 

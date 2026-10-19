@@ -1,6 +1,6 @@
 # docs/ — strona IA4 (konsola systemu)
 
-**Wersja projektu: 1.48 (2026-10-17)** · zasady: `IA4_INSTRUKCJA.md`, sekcja 9
+**Wersja projektu: 1.49 (2026-10-19)** · zasady: `IA4_INSTRUKCJA.md`, sekcja 9
 
 Adres: https://miszyszka.github.io/IA4/ (GitHub Pages z brancha `main`, folder `/docs`).
 Każdy `git push` na `main` publikuje stronę w ok. minutę. Bez buildu i bez bibliotek: zwykłe

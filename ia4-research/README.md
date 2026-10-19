@@ -1,6 +1,6 @@
 # IA 4 — Python na Macu: kopia bazy i poszukiwanie strategii
 
-**Wersja projektu: 1.48 (2026-10-17)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.49 (2026-10-19)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Dwie rzeczy:
 1. `python -m ia4.sync` — ściąga świece z Firestore na dysk (`data/*.parquet`), przy
@@ -116,6 +116,9 @@ python -m ia4.swportfel --propozycja   # ≥ 5 spadków, spadek ≥ 10%, słaby 
 python -m ia4.swrowna --selftest    # „WYNIK: OK”
 python -m ia4.swrowna               # strategia RÓWNA (QQQ RSI(3) wg zmienności + kapitulacja spółek w trendzie) → SWING-ROWNA.xlsx
 python -m ia4.swrowna --skala 1.5   # wszystkie pozycje 1,5 × większe → SWING-ROWNA-x1.5.xlsx
+python -m ia4.fxshort --selftest    # „WYNIK: OK”
+python -m ia4.fxshort               # FX: short po gwałtownym wzroście (10 par, 1h, spread XTB) — przeszukanie, placebo,
+                                    # strategia FX-SHORT-NY, 1000 $ na 1:30 → ~/Desktop/IA4/FX-SHORT-NY.xlsx (--depozyt 0.33)
 ```
 
 ## Test zgodności z paper tradingiem

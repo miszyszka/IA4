@@ -1,6 +1,6 @@
 """
 IA 4 — dyspozytor agentów AI Investor (instrukcja, sekcja 8). Od 1.41.
-Wersja projektu: 1.48 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.49 (2026-10-19) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Nadzorca (wątek główny) pilnuje feedu świec i sygnału życia; agenci pracują w osobnym wątku — ZAWSZE JEDEN
 NARAZ (jeden model językowy, jeden laptop). Kolejność wyboru następnego zadania:

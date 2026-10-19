@@ -1,6 +1,6 @@
 """
 IA 4 — One-Day: poszukiwanie strategii stabilnych (instrukcja, sekcja 6d).
-Wersja projektu: 1.48 (2026-10-17) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.49 (2026-10-19) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Szuka reguł wejścia na świecach dobowych, które rosną konsekwentnie, a nie tylko „na koniec”.
 Żelazna zasada z 6c zostaje: wejście na open dnia, wyjście na close tego samego dnia, stała stawka
