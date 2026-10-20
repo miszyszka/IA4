@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.52 · **Data:** 20 października 2026
+**Wersja:** 1.53 · **Data:** 20 października 2026
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jest celowo krótki: zasady, liczby ważne dla człowieka, stan. Jeśli kod, arkusz albo telemetria rozjeżdżają się z tym plikiem — obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -15,7 +15,7 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jes
 |---|---|
 | 1. Baza akcji 1h (75 spółek) | ✅ działa bez końca |
 | 2. Poszukiwanie strategii | ⏸ wstrzymane od 3.10.2026 — 60 aktywnych strategii |
-| 3. Paper trading (mechaniczny inwestor) | 🟨 działa od 6.10.2026 |
+| 3. Paper trading (mechaniczny inwestor) | 🟨 działa od 6.10.2026; 1.53: Powrót.v2 Investor (FX, paper, 100 $, maile z sygnałami) — od wdrożenia `PowrotV2.gs` |
 | 4. FX 1h: zbieranie 10 par + BTC i prognoza rozkładu | 🟨 zbieranie działa; prognoza H-002 — kierunek bez przewagi; 1.49–1.52: badania FX-SHORT-NY, FX-POWRÓT, FX-ODKRYWCA i FX-POWRÓT v2 (sekcja 7b, informacyjne); 1.52: 10 par fx1h_double_proof — historia do pobrania |
 | 5. Strona IA4 | 🟨 działa, rozwijana na prośbę |
 | 6. AI Investor — agenci na Macu | 🟨 1.41: zespół agentów (Inwestor, Krytyk, Badacz), tryb nauki |
@@ -26,9 +26,10 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jes
 2. **AI, pierwsza doba 1.41:** panel „praca agentów” — zajętość ≥ 70%, Inwestor wchodzi w transakcje (pierwsza transakcja z notatką, SL i TP zamyka krok AI-2), Krytyk pisze przeglądy, Badacz zapisuje hipotezy.
 3. **Badania wielodniowe (1.45):** One-Day (1.35–1.44) — bez przewagi po spreadzie: pojedyncze reguły, portfel walk-forward, siła ruchu (po dużym dniu ruch ok. 2,5 × większy, po konsolidacji — mniejszy; long + short naraz nie zarabia). Teraz pozycje kilkudniowe (sekcja 7a). Mac: `python -m ia4.swtrend`, `python -m ia4.swrsi`, `python -m ia4.swserie`, `python -m ia4.swportfel`, `python -m ia4.swrowna` → `SWING-*.xlsx`; przegląd z Claude: liczba strategii spełniających warunek na tle placebo, ✓ na doubleProof, mapa dP obok mapy 53 spółek.
 4. **Badania FX (1.49–1.52):** Mac — `python -m ia4.fxshort --selftest`, `python -m ia4.fxpowrot --selftest` i `python -m ia4.fxodkrywca --selftest` („WYNIK: OK”), potem `python -m ia4.fxshort` → `FX-SHORT-NY.xlsx` i `python -m ia4.fxpowrot` → `FX-POWROT.xlsx` (powtórzenie liczb Claude na świeższej kopii fx1h), a `python -m ia4.fxodkrywca` (ok. 3 h) → `FX-ODKRYWCA.xlsx` tylko jako potwierdzenie wniosku 1.51 (otwarcie skarbca na Macu zapisuje się w jego dzienniku); decyzja człowieka: czy test na żywo (papier albo demo XTB) przez ≥ 30 transakcji bez zmiany parametrów — kandydat: FX-POWRÓT v2 (sekcja 7b), najpierw doubleProof.
-4a. **doubleProof FX (1.52):** Apps Script — podmienić `Fx.gs` (najlepiej wszystkie 7 plików `.gs`; 20.10.2026 telemetria: `1.38`); automat sam pobierze historię 10 par fx1h_double_proof (jedna para na wolne uruchomienie, ok. 5 200 zapisów Firestore jednorazowo; postęp: STATS „historia N/21”, arkusz FX — nowe kolumny). Potem Mac — `python -m ia4.fxpowrot2 --selftest`, `python -m ia4.fxpowrot2` → `FX-POWROT-V2.xlsx` z arkuszem DOUBLEPROOF (test jednorazowy, otwarcie zapisane); przegląd z Claude.
+4a. **doubleProof FX (1.52):** Apps Script — podmienić `Fx.gs` (najlepiej wszystkie pliki `.gs`; 20.10.2026 telemetria: `1.38`); automat sam pobierze historię 10 par fx1h_double_proof (jedna para na wolne uruchomienie, ok. 5 200 zapisów Firestore jednorazowo; postęp: STATS „historia N/21”, arkusz FX — nowe kolumny). Potem Mac — `python -m ia4.fxpowrot2 --selftest`, `python -m ia4.fxpowrot2` → `FX-POWROT-V2.xlsx` z arkuszem DOUBLEPROOF (test jednorazowy, otwarcie zapisane); przegląd z Claude.
+4b. **Powrót.v2 Investor (1.53):** Apps Script — podmienić wszystkie pliki `.gs`, dodać nowy `PowrotV2.gs` („+ → Skrypt”) i podmienić manifest `appsscript.json` (Ustawienia projektu → „Pokaż plik manifestu”; nowy zakres: wysyłanie poczty); zapisać, w arkuszu menu **IA 4 → 📧 Powrót.v2 — mail testowy** (Google prosi o zgodę na pocztę), potem **📉 Powrót.v2 — przelicz teraz** (powstaje zakładka **Powrót.v2.Investor**; inwestor liczy od tej chwili, 100 $). Sprawdzić: mail testowy doszedł, na stronie FX → Powrót.v2 są wykresy 10 par. Pierwszy sygnał — średnio za 2–3 dni.
 5. **Do potwierdzenia przez człowieka:** usunięcie starej bazy EURUSD 5 min (menu „🗑 FX — usuń stare świece EURUSD 5 min”); zamknięcie FX-7 (arkusz OKOLICZNOSCI_FX ma kolumny H-001 i H-002).
-6. **Później, tylko za zgodą:** strategie i wirtualny inwestor FX (gdy prognoza dowiedzie przewagi kierunku); bramka sejfu AI dla hipotez; cechy pisane przez model w piaskownicy.
+6. **Później, tylko za zgodą:** strategie i wirtualny inwestor FX z prognozy (gdy dowiedzie przewagi kierunku; Powrót.v2 Investor — sekcja 7b — to osobny paper trading jednej strategii, decyzja człowieka z 20.10.2026); bramka sejfu AI dla hipotez; cechy pisane przez model w piaskownicy.
 
 ---
 
@@ -69,7 +70,7 @@ IA 4 **zbiera świece** z Yahoo do Firestore (Apps Script, bez Maca), **liczy na
 ```
 Yahoo ──(Apps Script, trigger co minutę)──▶ Firestore ──▶ Mac: kopia lokalna ──▶ ia4.lab · ia4.fx · ia4.ai
              │                                                                        │
-             ├──▶ arkusz Google (STATS, FX, STRATEGIE, SIGNALS-REALTIME, VIRTUAL-INVESTOR …)
+             ├──▶ arkusz Google (STATS, FX, STRATEGIE, SIGNALS-REALTIME, VIRTUAL-INVESTOR, Powrót.v2.Investor …) · mail z sygnałami Powrót.v2
              └──▶ GitHub main: telemetry/ ──┐              GitHub research · fx · fx-live · ai · ai-live ◀──┘
                                             └──────▶ strona IA4 (przeglądarka, tylko odczyt) ◀──────┘
 ```
@@ -77,13 +78,13 @@ Yahoo ──(Apps Script, trigger co minutę)──▶ Firestore ──▶ Mac: 
 | Miejsce | Zawartość | Kto pisze |
 |---|---|---|
 | Firestore | `stocks`, `proof`, `context`, `doubleProof` (świece 1h akcji), `daily` (świece dobowe), `fx1h` (FX), `system/*` | Apps Script |
-| branch `main` | kod (`*.gs`, `ia4-research/`), instrukcja, `PRZEWODNIK.md`, `telemetry/state.json`, `telemetry/vi.json`, strona `docs/` | Claude (pakiety), Apps Script (`telemetry/`) |
+| branch `main` | kod (`*.gs`, `ia4-research/`), instrukcja, `PRZEWODNIK.md`, `telemetry/state.json`, `telemetry/vi.json`, `telemetry/pv2.json`, strona `docs/` | Claude (pakiety), Apps Script (`telemetry/`) |
 | branch `research` | strategie, dziennik poszukiwania, doubleProof, backtest portfela | Mac (`ia4.lab`) |
 | branch `fx`, `fx-live` | katalog okoliczności i ratingi; prognoza na żywo `forecast.json` | Mac (`ia4.fx`) |
 | branch `ai`, `ai-live` | historia AI (transakcje, decyzje, hipotezy, przeglądy, praca agentów); stan na żywo `status.json` | Mac (`ia4.ai`) |
 | Mac `~/Desktop/IA4/` | repo, kopie lokalne w `ia4-research/data/`, pliki Excel (`AI-INVESTOR.xlsx`, `ONE-DAY-*.xlsx`, `SWING-*.xlsx`) | Mac |
 
-**Pliki Apps Script:** `Code.gs` (zbieranie, STATS, menu, triggery) · `Daily.gs` (świece dobowe) · `Fx.gs` (FX 1h) · `Research.gs` (arkusz STRATEGIE) · `Paper.gs` + `PaperEngine.gs` (sygnały i mechaniczny inwestor) · `Telemetry.gs` (telemetria na GitHub). Triggery: `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min.
+**Pliki Apps Script:** `Code.gs` (zbieranie, STATS, menu, triggery) · `Daily.gs` (świece dobowe) · `Fx.gs` (FX 1h) · `Research.gs` (arkusz STRATEGIE) · `Paper.gs` + `PaperEngine.gs` (sygnały i mechaniczny inwestor) · `PowrotV2.gs` (Powrót.v2 Investor: FX paper trading, maile, `telemetry/pv2.json`; od 1.53) · `Telemetry.gs` (telemetria na GitHub). Manifest `appsscript.json` (zakresy, w tym wysyłanie poczty od 1.53). Triggery: `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min.
 **Python** (`ia4-research/ia4/`): `sync.py`, `daily.py` (kopie), `lab/` (reguły), `fx/` (prognoza), `ai/` (agenci), `oneday.py`, `odsearch.py`, `odport.py`, `odbreak.py` (badania One-Day), `swing.py`, `swtrend.py`, `swrsi.py`, `swserie.py`, `swportfel.py`, `swrowna.py` (badania wielodniowe), `fxshort.py`, `fxpowrot.py`, `fxodkrywca.py`, `fxpowrot2.py` (badania FX, sekcja 7b).
 
 ---
@@ -190,6 +191,13 @@ Zadanie człowieka z 19.10.2026: krótkotrwałe wzrosty kończą się gwałtown�
 - **v2 (zamrożona 20.10.2026, przed pobraniem par doubleProof):** jak FX-POWRÓT, ale bez transakcji, gdy do TP < 1 × spread, i najwyżej 60 świec. W próbie: 345 transakcji, średnio +0,066% (t = 7,6), trafne 94%, najgorsza −1,20%, 1 stratny okres z 20; 1000 $, 1:30, 20% → 3591 $ (obsunięcie 18%; v1: 3636 $, 21%). To niemal ten sam wynik co v1 — zmiana porządkowa, nie nowa przewaga.
 - **doubleProof FX:** v1 i v2 raz na 10 parach fx1h_double_proof (spread — szacunek dla XTB, 1,9–3,6 pipsa, do potwierdzenia zrzutem). **Warunek zaliczenia v2 ustalony przed testem: ≥ 30 transakcji, średnia netto > 0, t ≥ 2.** Każde otwarcie — `data/fxpowrot2/doubleproof.jsonl` i arkusz DOUBLEPROOF. Nowe pary to krzyżówki walut z badania (np. EUR/CHF ≈ EUR/USD × USD/CHF) — test niezależny w danych, ale nie w walutach. Arkusze → `FX-POWROT-V2.xlsx` (PRZEWODNIK.md). Wyniki niczego nie zmieniają bez zgody człowieka.
 
+
+**Powrót.v2 Investor (od 1.53, decyzja człowieka z 20.10.2026):** paper trading strategii v2 w Apps Script (`PowrotV2.gs`), od chwili wdrożenia, 100 $. Reguły — dokładnie v2 (powyżej), te same funkcje liczy test zgodności z Pythonem: `python tests/pv2_parity_dump.py /tmp/pv2.json && node tests/pv2_parity.js /tmp/pv2.json` → „rozbieżności: 0” (20.10.2026: 345 = 345 transakcji) i test pracy na żywo `node tests/pv2_live.js /tmp/pv2.json` → „WYNIK: OK” (krok po każdej świecy = symulacja; 5 miesięcy: 71 = 71 transakcji, 100 $ → 124,80 $).
+- **Kiedy:** po każdej nowej świecy 1h dziesięciu par (Fx.gs → `pv2IfDue_`), ok. 1 min po zamknięciu świecy. Świece — ostatnie 820 każdej pary w ukrytym arkuszu `_PV2_DANE` (Firestore `fx1h`, 3 dni na parę przy każdym kroku); sygnały sprzed przerwy w pracy nie są nadrabiane.
+- **Rachunek:** żółte komórki u góry zakładki **Powrót.v2.Investor**: kapitał startowy (100 $), depozyt na pozycję (20% salda), dźwignia (1:30), adres i włączniki maili, inwestor aktywny. Wartość pozycji = depozyt × dźwignia, bez zaokrąglania do 0,01 lota (przy 100 $ pozycja ok. 0,006–0,008 lota — mail ostrzega, ile depozytu wymagałoby 0,01 lota XTB); jedna pozycja na parę; stop out < 50% depozytu. Log transakcji jak VIRTUAL-INVESTOR (otwarte i oczekujące na górze). Menu: przelicz teraz, mail testowy, zacznij od nowa.
+- **Maile** (`MailApp`, na adres z arkusza; domyślnie konto właściciela): **sygnał** po zamknięciu świecy (para, SHORT, TP, depozyt, wartość i lot, termin limitu), **anuluj** (gdy na otwarciu następnej świecy wejście przestało spełniać warunki), **zamknij** (limit 60 świec albo stop out); przy TP — tylko po włączeniu. Kurs w mailu to zamknięcie świecy sygnału; inwestor liczy wejście po open następnej świecy (jak Python).
+- **Strona:** `telemetry/pv2.json` (ostatnie 300 świec każdej pary, pozycje, symulacja tych samych reguł na tych świecach) → FX → Powrót.v2. To paper trading do obserwacji, nie zalecenie; ocena — nie przed 30 transakcjami (zasada 6).
+
 ---
 
 ## 8. AI Investor — zespół agentów (Etap 6)
@@ -256,7 +264,7 @@ Brief (kod): rundy, wejścia i pominięcia, **wynik pominiętych kandydatów** (
 
 ## 9. Strona IA4
 
-`https://miszyszka.github.io/IA4/` — GitHub Pages z `main/docs`, bez buildu i bibliotek, hasło w przeglądarce (bramka nie chroni danych — wszystkie są w publicznym repo, więc nigdy żadnych sekretów w danych strony). Zakładki: **System** (czy działa zbieranie), **Inwestor** (mechaniczny inwestor), **FX** (prognoza), **AI** (agenci: praca agentów, portfel, Krytyk, Badacz). Pasek „magistrala” pokazuje każde ogniwo drogi danych z wiekiem ostatniego znaku życia. Każdy panel ma opis „?”, nagłówek — przycisk „przewodnik”. Teksty nie są ucinane — zawijają się. Jak dodać zakładkę albo źródło: `docs/README.md`.
+`https://miszyszka.github.io/IA4/` — GitHub Pages z `main/docs`, bez buildu i bibliotek, hasło w przeglądarce (bramka nie chroni danych — wszystkie są w publicznym repo, więc nigdy żadnych sekretów w danych strony). Zakładki: **System** (czy działa zbieranie), **Inwestor** (mechaniczny inwestor), **FX** (prognoza; przycisk **Powrót.v2** — wykres każdej z 10 par z transakcjami inwestora i symulacji, `#fx/powrot`), **AI** (agenci: praca agentów, portfel, Krytyk, Badacz). Pasek „magistrala” pokazuje każde ogniwo drogi danych z wiekiem ostatniego znaku życia. Każdy panel ma opis „?”, nagłówek — przycisk „przewodnik”. Teksty nie są ucinane — zawijają się. Jak dodać zakładkę albo źródło: `docs/README.md`.
 
 ---
 
@@ -280,7 +288,7 @@ cd ~/Desktop/IA4 && git pull
 
 Pracę wykraczającą poza tę instrukcję albo zmianę instrukcji Claude najpierw proponuje i czeka na zgodę. Claude nie ma dostępu do arkusza ani edytora Apps Script.
 
-**Aktualizacja Apps Script:** podmienić pliki `.gs` z pakietu (najprościej wszystkie 7; nowy plik: „+ → Skrypt”), zapisać. „⚙️ Konfiguruj i włącz automat” — tylko gdy Claude o to poprosi (zmiana listy instrumentów, STATS albo triggerów).
+**Aktualizacja Apps Script:** podmienić pliki `.gs` z pakietu (najprościej wszystkie 8; nowy plik: „+ → Skrypt”) i — gdy się zmienił — manifest `appsscript.json`, zapisać. „⚙️ Konfiguruj i włącz automat” — tylko gdy Claude o to poprosi (zmiana listy instrumentów, STATS albo triggerów).
 
 **Mac — polecenia** (`cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate`):
 
@@ -317,6 +325,7 @@ Starsze wpisy: `archiwum/IA4_INSTRUKCJA-1.40.md`, sekcja 13, i historia gita.
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.53 | 2026-10-20 | **Powrót.v2 Investor** (sekcja 7b; decyzja człowieka z 20.10.2026): nowy plik `PowrotV2.gs` — paper trading FX-POWRÓT v2 od wdrożenia (100 $, parametry w żółtych komórkach zakładki **Powrót.v2.Investor**, log transakcji), maile z sygnałem / anulowaniem / zamknięciem (zakres `script.send_mail` w `appsscript.json`), `telemetry/pv2.json`; menu (3 pozycje); `Fx.gs` woła `pv2IfDue_`. Testy `tests/pv2_parity_dump.py` + `pv2_parity.js`, `tests/pv2_live.js`. Strona: FX → przycisk **Powrót.v2** (`docs/js/views/pv2.js`, źródło `pv2`). `PRZEWODNIK.md`. Pozostałe pliki — tylko numer wersji. |
 | 1.52 | 2026-10-20 | **FX-POWRÓT v2** (`ia4/fxpowrot2.py`, sekcja 7b; pytanie człowieka z 20.10.2026): analiza stratnych transakcji (czas trzymania, ok. 40 wariantów wyjścia, cechy wejścia), v2 zamrożona, warunek doubleProof → `FX-POWROT-V2.xlsx`. **fx1h_double_proof** (sekcja 4): 10 nowych par w `Fx.gs` i `ia4/fx/instruments.py` (arkusz FX dopisuje kolumny zamiast czyścić); `ia4.fx.sync.sync()` domyślnie bez nich (prognoza, badania, agenci AI), `python -m ia4.fx.sync` kopiuje wszystkie. `PRZEWODNIK.md`, README. Pozostałe pliki — tylko numer wersji. |
 | 1.51 | 2026-10-20 | **FX-ODKRYWCA** (`ia4/fxodkrywca.py`, sekcja 7b; zadanie człowieka z 20.10.2026): automatyczne przeszukanie (92 cechy, 700 warunków, 1–4 naraz, long i short, 267 wyjść) wyłącznie na roku 1, seria 100 wg 4 kryteriów i seria z SL, grupy porównawcze, zamrożenie przed skarbcem z dziennikiem otwarć, portfel wielu strategii 1000 $ na 1:30 → `FX-ODKRYWCA.xlsx`; wynik: wybór nie przenosi się na rok 2. `.gitignore` — pliki `FX-*.xlsx`. `PRZEWODNIK.md`, README. Pozostałe pliki — tylko numer wersji. |
 | 1.50 | 2026-10-20 | **FX-POWRÓT** (`ia4/fxpowrot.py`, sekcja 7b; pomysł człowieka z 20.10.2026): impuls → sygnał zawrócenia → short z TP w stronę ceny sprzed wzrostu; 8,9 mln reguł, placebo z tym samym nawiasem w losowym czasie, wybór chronologiczny, statystyka powrotów do bazy, strategia FX-POWRÓT, rachunek 1000 $ na 1:30 → `FX-POWROT.xlsx`. `fxshort.simulate`: limit straty z kolumny transakcji (`cap`). `PRZEWODNIK.md`, README. Pozostałe pliki — tylko numer wersji. |

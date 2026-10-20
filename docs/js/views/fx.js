@@ -1,11 +1,17 @@
 // IA 4 — zakładka FX: 10 par walutowych + BTC, świece 1h, prognoza rozkładu, spływ świec,
-// przeliczenia FX-research i (w przyszłości) wirtualny inwestor FX. Wersja projektu: 1.52 (2026-10-20)
+// przeliczenia FX-research i (w przyszłości) wirtualny inwestor FX. Wersja projektu: 1.53 (2026-10-20)
 
 import { store, num, pct, esc, age, t, fxOpen, pref } from "../core.js";
 import { help } from "../help.js";
 import { fxChart, spark, inst, SC_COL } from "../chart.js";
 import { fxLast, stamp } from "../health.js";
 import { renderInvestor, mountInvestor } from "./investor.js";
+import { renderPv2, mountPv2 } from "./pv2.js";
+
+/** Przełącznik pod-zakładek FX: prognoza | Powrót.v2 (#fx, #fx/powrot). */
+function subnav(pv2) {
+  return `<div class="subnav"><a class="chip" href="#fx" aria-pressed="${!pv2}">prognoza</a><a class="chip" href="#fx/powrot" aria-pressed="${pv2}">Powrót.v2</a></div>`;
+}
 
 const H = 3600e3;
 const METHOD = { analogi: "analogi (podobne chwile, cała grupa)", pora: "pora dnia (ten sam instrument)" };
@@ -110,9 +116,15 @@ function fxInvestor() {
 export default {
   id: "fx", title: "fx",
   render(el, changed, force) {
+    if ((location.hash.split("/")[1] || "") === "powrot") {
+      if (!force && changed && changed.length && !changed.includes("pv2")) return;
+      el.innerHTML = subnav(true) + renderPv2(el);
+      mountPv2(el);
+      return;
+    }
     const fc = store.get("forecast");
     if (!fc || !(fc.instruments || []).length) {
-      el.innerHTML = `<div class="grid"><div class="pane c12"><h2>FX</h2><p class="empty">${store.meta.forecast && store.meta.forecast.err ? esc(store.meta.forecast.err) + " — " : ""}czekam na forecast.json (uruchom <b>python -m ia4.fx.live</b> na Macu)</p></div>${fxInvestor()}</div>`;
+      el.innerHTML = subnav(false) + `<div class="grid"><div class="pane c12"><h2>FX</h2><p class="empty">${store.meta.forecast && store.meta.forecast.err ? esc(store.meta.forecast.err) + " — " : ""}czekam na forecast.json (uruchom <b>python -m ia4.fx.live</b> na Macu)</p></div>${fxInvestor()}</div>`;
       return;
     }
     const list = fc.instruments, last = fxLast();
@@ -120,7 +132,7 @@ export default {
     const I = list.find(i => i.id === sel);
     const on = !fc.stoppedAt && Date.now() - stamp(fc.aliveAt) < 5 * 60e3;
     const m = fc.model || {};
-    el.innerHTML = `<div class="grid">
+    el.innerHTML = subnav(false) + `<div class="grid">
       <div class="pane c12 hero"><h2>prognoza FX<span class="dim">48 świec 1h · rozkład, nie jedna linia</span></h2>${help("fx.hero")}${hero(fc)}</div>
       <div class="pane c3"><h2>instrumenty<span class="dim">${list.length}</span></h2>${help("fx.list")}${rail(list, last)}</div>
       <div class="pane c9 ${on ? "" : "stale"}"><h2>${esc(I.name)}<span class="dim">${METHOD[m.method] || esc(m.method || "")} · ${I.K || "?"} ścieżek</span></h2>

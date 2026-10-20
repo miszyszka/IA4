@@ -1,6 +1,6 @@
 """
 IA 4 — portfel strategii serii świec spadkowych: wejście long po serii, trzymanie kilka sesji (instrukcja, sekcja 7a).
-Wersja projektu: 1.52 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.53 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Zadania człowieka (17.10.2026), liczone jednorazowo:
   • 1.46 — po DOKŁADNIE 7 świecach spadkowych (close < open) long po open 8. sesji, wyjście po close 3. sesji

@@ -1,5 +1,5 @@
 // IA 4 — opisy paneli („?”) i przewodnik po stronie (instrukcja, sekcja 9; PRZEWODNIK.md).
-// Wersja projektu: 1.52 (2026-10-20)
+// Wersja projektu: 1.53 (2026-10-20)
 //
 // help("klucz") → przycisk „?” w rogu panelu; po kliknięciu opis: co to jest, jak czytać, na co uważać.
 // Otwarte opisy pamiętane w przeglądarce — przeżywają odświeżanie danych. Treść = PRZEWODNIK.md (te same zdania).
@@ -40,6 +40,11 @@ const H = {
   "fx.scen": ["Trzy prawdziwe przebiegi z historii najbardziej podobne do teraz (spadkowy, boczny, wzrostowy).",
     "Pokazują typowe wahania — nie są przepowiednią."],
   "fx.runs": ["Historia przeliczeń FX-research.", "Stożek 80% trafny, gdy obejmuje 75–85% wyników. Brier 0,25 = moneta; poniżej 0,245 — przewaga kierunku."],
+  "fx.pv2": ["Powrót.v2 — paper trading strategii FX-POWRÓT v2 w Apps Script (arkusz Powrót.v2.Investor): short po gwałtownym wzroście, TP w połowie drogi do ceny sprzed wzrostu, bez SL, najwyżej 60 świec.",
+    "Każda para ma wykres: ▼ świeca sygnału, ● wejście, ■ wyjście (zielone — zysk, czerwone — strata), przerywana — TP, kropkowana — baza. Bursztyn = transakcje inwestora, cyjan = symulacja tych samych reguł na pokazanych świecach.",
+    "Ocena jak zawsze: nie przed 30 transakcjami. Sygnał przychodzi mailem ok. 1 min po zamknięciu świecy."],
+  "fx.pv2.trades": ["Transakcje inwestora — to samo co log w arkuszu Powrót.v2.Investor.",
+    "„zamknąć najpóźniej” — po tej godzinie (60 świec) pozycja bez TP jest zamykana; przychodzi wtedy mail."],
   "fx.vi": ["Miejsce na wirtualnego inwestora FX.", "Powstanie dopiero, gdy prognoza dowiedzie przewagi kierunku — i za zgodą człowieka."],
   // ---------------------------------------------------------------- AI
   "ai.hero": ["Czy agenci na Macu działają. „połączony” = znak życia w ciągu 11 min.",

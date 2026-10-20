@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — zbieranie świec 1h  (Yahoo Finance → Firestore)
  *
- *  Wersja projektu: 1.52 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.53 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Jedyne zadanie tego pliku: żeby baza świec w Firestore była kompletna
  *  i rosła każdego dnia. Zasady i format bazy: IA4_INSTRUKCJA.md.
@@ -33,7 +33,7 @@
 //  KONFIGURACJA
 // ============================================================================
 const CONFIG = {
-  VERSION: '1.52',
+  VERSION: '1.53',
 
   // Trzy grupy instrumentów — nazwy kolekcji w Firestore są historyczne
   // i zostają bez zmian (instrukcja, sekcja 4).
@@ -163,6 +163,9 @@ function onOpen() {
     .addItem('💱 FX 1h — przelicz arkusz FX', 'fxRebuildNow')
     .addItem('💱 FX — odśwież OKOLICZNOSCI_FX teraz', 'fxOkolNow')
     .addItem('🗑 FX — usuń stare świece EURUSD 5 min', 'fxLegacyDelete')
+    .addItem('📉 Powrót.v2 — przelicz teraz', 'pv2Now')
+    .addItem('📧 Powrót.v2 — mail testowy (zgoda na wysyłanie)', 'pv2TestMail')
+    .addItem('🔄 Powrót.v2 — zacznij od nowa', 'pv2ResetNow')
     .addItem('📅 Świece dobowe — porcja historii teraz', 'dailyHistoryNow')
     .addItem('📅 Świece dobowe — aktualizuj teraz', 'dailyUpdateNow')
     .addItem('🔥 Test połączenia z Firestore', 'testFirestore')
