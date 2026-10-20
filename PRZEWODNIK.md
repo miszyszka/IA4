@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie i jak to czytać
 
-**Wersja projektu: 1.50 (2026-10-20)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
+**Wersja projektu: 1.51 (2026-10-20)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
 
 ## 1. Co działa samo, a co wymaga Maca
 
@@ -49,6 +49,7 @@
 | `~/Desktop/IA4/SWING-ROWNA.xlsx` | strategia RÓWNA (od 1.48): kupowanie spadków tylko przy rosnącym trendzie — QQQ (reguła RSI(3), pozycja wg zmienności) + kapitulacja spółek. **PODSUMOWANIE** — wynik, obsunięcia, wynik w czasie każdej bessy (cel: blisko zera), części osobno; **KAPITAŁ** — wykres całości i części; **ROK PO ROKU** — ile zarobiła każda część; **SYGNAŁY SPÓŁEK** — także odrzucone (brak trendu, limit); **ODPORNOŚĆ** — czy wynik trzyma się przy sąsiednich ustawieniach |
 | `~/Desktop/IA4/FX-SHORT-NY.xlsx` | FX — short po gwałtownym wzroście (od 1.49, informacyjne): **PODSUMOWANIE** — reguła i wynik; **TRANSAKCJE** — każda transakcja, a u góry **żółte komórki** (kapitał, dźwignia, depozyt na pozycję, koszt nocny) — po zmianie przeliczają się saldo, wykresy i okresy; **KAPITAŁ** — saldo dzień po dniu i obsunięcie; **OKRESY** — 20 części (stratne na czerwono w wykresie); **WARIANTY** — 1000 $ przy różnym depozycie (5–100%); **ODPORNOŚĆ** — sąsiednie ustawienia i godzina sygnału (zielony — zysk); **UCZCIWY TEST** — placebo, połowy danych, reguła wybrana na 1. roku sprawdzona na 2. (to jest realistyczne oczekiwanie); **HIPOTEZA** — short po każdej dużej świecy bez filtrów; **RANKING** — najlepsze z przeszukania (zawyżone); **EURUSD** — sama para |
 | `~/Desktop/IA4/FX-POWROT.xlsx` | FX — powrót do ceny sprzed wzrostu (od 1.50, informacyjne): te same arkusze co FX-SHORT-NY (żółte komórki w **TRANSAKCJE** przeliczają kapitał) oraz **POWRÓT DO BAZY** — jak często po gwałtownym wzroście kurs wraca do ceny sprzed niego (i czy zanim przebije szczyt); **ODPORNOŚĆ** — wielkość świecy, sygnał zawrócenia, TP (także dokładnie na cenie sprzed wzrostu), SL, limit świec, godziny; **UCZCIWY TEST** — placebo i wybór na 1. roku (najważniejsze: najlepsze t i wynik 2. roku na tle placebo); **RANKING** — w tym osobna tabela „TP = cena sprzed wzrostu” |
+| `~/Desktop/IA4/FX-ODKRYWCA.xlsx` | FX — automatyczne poszukiwanie strategii (od 1.51, informacyjne): **PODSUMOWANIE** — ile reguł policzono, wynik serii w skarbcu, porównanie z grupami losowymi i portfel; **TRANSAKCJE SKARBCA** — każda transakcja serii w 2. roku (kolumna „Świeże” — świece, których nikt wcześniej nie oglądał); **STRATEGIE** / **STRATEGIE Z SL** — 100 strategii: warunki, wyjście, rok 1 (niebieskie) obok skarbca (brązowe, formuły); **OKRESY** — mapa 100 × 20 okresów (granica = początek skarbca); **PORTFEL** — 10 / 25 / 50 / 100 strategii naraz, 1000 $, 1:30, wykresy skarbca i roku 1; **PORÓWNANIE** i **GRUPY** — czy seria wypada lepiej niż losowe reguły z tej samej puli (najważniejsza tabela: jeśli nie — ranking z roku 1 nie przenosi się na rok 2); **CECHY** — katalog zmiennych; **PRZESZUKANIE** — etapy i parametry; **SKARBIEC** — dziennik otwarć |
 
 ## 4. Jak oceniać wyniki
 

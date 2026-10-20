@@ -1,6 +1,6 @@
 """
 IA 4 — feed AI Investor: kopia lokalna nadążająca za Firestore (instrukcja, sekcja 11c.4).
-Wersja projektu: 1.50 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.51 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 AKCJE (StockFeed): od zamknięcia świecy sesji + 60 s co 30 s 1 odczyt system/status; gdy `lastWrite`
 jest nowszy niż ostatnio widziany — szybka synchronizacja (tylko dokumenty zmienione od poprzedniego

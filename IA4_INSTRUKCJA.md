@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.50 · **Data:** 20 października 2026
+**Wersja:** 1.51 · **Data:** 20 października 2026
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jest celowo krótki: zasady, liczby ważne dla człowieka, stan. Jeśli kod, arkusz albo telemetria rozjeżdżają się z tym plikiem — obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -16,7 +16,7 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jes
 | 1. Baza akcji 1h (75 spółek) | ✅ działa bez końca |
 | 2. Poszukiwanie strategii | ⏸ wstrzymane od 3.10.2026 — 60 aktywnych strategii |
 | 3. Paper trading (mechaniczny inwestor) | 🟨 działa od 6.10.2026 |
-| 4. FX 1h: zbieranie 10 par + BTC i prognoza rozkładu | 🟨 zbieranie działa; prognoza H-002 — kierunek bez przewagi; 1.49–1.50: badania FX-SHORT-NY i FX-POWRÓT (sekcja 7b, informacyjne) |
+| 4. FX 1h: zbieranie 10 par + BTC i prognoza rozkładu | 🟨 zbieranie działa; prognoza H-002 — kierunek bez przewagi; 1.49–1.51: badania FX-SHORT-NY, FX-POWRÓT i FX-ODKRYWCA (sekcja 7b, informacyjne) |
 | 5. Strona IA4 | 🟨 działa, rozwijana na prośbę |
 | 6. AI Investor — agenci na Macu | 🟨 1.41: zespół agentów (Inwestor, Krytyk, Badacz), tryb nauki |
 | Baza świec dobowych (pełna historia) | ✅ 75/75 od 15.10.2026 (najstarsza świeca 1970-01-02), aktualizacja codziennie po sesji |
@@ -25,7 +25,7 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jes
 1. **Wdrożenie 1.41–1.42:** wypchnąć pakiety; Apps Script — podmienić 7 plików `.gs` (zmienia się tylko numer wersji; 15.10.2026 telemetria: `1.38`); Mac — `git pull`, `python -m ia4.ai.selftest` („WYNIK: OK”), ponownie `ia4 start`.
 2. **AI, pierwsza doba 1.41:** panel „praca agentów” — zajętość ≥ 70%, Inwestor wchodzi w transakcje (pierwsza transakcja z notatką, SL i TP zamyka krok AI-2), Krytyk pisze przeglądy, Badacz zapisuje hipotezy.
 3. **Badania wielodniowe (1.45):** One-Day (1.35–1.44) — bez przewagi po spreadzie: pojedyncze reguły, portfel walk-forward, siła ruchu (po dużym dniu ruch ok. 2,5 × większy, po konsolidacji — mniejszy; long + short naraz nie zarabia). Teraz pozycje kilkudniowe (sekcja 7a). Mac: `python -m ia4.swtrend`, `python -m ia4.swrsi`, `python -m ia4.swserie`, `python -m ia4.swportfel`, `python -m ia4.swrowna` → `SWING-*.xlsx`; przegląd z Claude: liczba strategii spełniających warunek na tle placebo, ✓ na doubleProof, mapa dP obok mapy 53 spółek.
-4. **Badania FX (1.49–1.50):** Mac — `python -m ia4.fxshort --selftest` i `python -m ia4.fxpowrot --selftest` („WYNIK: OK”), potem `python -m ia4.fxshort` → `FX-SHORT-NY.xlsx` i `python -m ia4.fxpowrot` → `FX-POWROT.xlsx` (powtórzenie liczb Claude na świeższej kopii fx1h); decyzja człowieka: czy test na żywo (papier albo demo XTB) przez ≥ 30 transakcji bez zmiany parametrów — kandydat: FX-POWRÓT (sekcja 7b).
+4. **Badania FX (1.49–1.51):** Mac — `python -m ia4.fxshort --selftest`, `python -m ia4.fxpowrot --selftest` i `python -m ia4.fxodkrywca --selftest` („WYNIK: OK”), potem `python -m ia4.fxshort` → `FX-SHORT-NY.xlsx` i `python -m ia4.fxpowrot` → `FX-POWROT.xlsx` (powtórzenie liczb Claude na świeższej kopii fx1h), a `python -m ia4.fxodkrywca` (ok. 3 h) → `FX-ODKRYWCA.xlsx` tylko jako potwierdzenie wniosku 1.51 (otwarcie skarbca na Macu zapisuje się w jego dzienniku); decyzja człowieka: czy test na żywo (papier albo demo XTB) przez ≥ 30 transakcji bez zmiany parametrów — kandydat: FX-POWRÓT (sekcja 7b).
 5. **Do potwierdzenia przez człowieka:** usunięcie starej bazy EURUSD 5 min (menu „🗑 FX — usuń stare świece EURUSD 5 min”); zamknięcie FX-7 (arkusz OKOLICZNOSCI_FX ma kolumny H-001 i H-002).
 6. **Później, tylko za zgodą:** strategie i wirtualny inwestor FX (gdy prognoza dowiedzie przewagi kierunku); bramka sejfu AI dla hipotez; cechy pisane przez model w piaskownicy.
 
@@ -83,7 +83,7 @@ Yahoo ──(Apps Script, trigger co minutę)──▶ Firestore ──▶ Mac: 
 | Mac `~/Desktop/IA4/` | repo, kopie lokalne w `ia4-research/data/`, pliki Excel (`AI-INVESTOR.xlsx`, `ONE-DAY-*.xlsx`, `SWING-*.xlsx`) | Mac |
 
 **Pliki Apps Script:** `Code.gs` (zbieranie, STATS, menu, triggery) · `Daily.gs` (świece dobowe) · `Fx.gs` (FX 1h) · `Research.gs` (arkusz STRATEGIE) · `Paper.gs` + `PaperEngine.gs` (sygnały i mechaniczny inwestor) · `Telemetry.gs` (telemetria na GitHub). Triggery: `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min.
-**Python** (`ia4-research/ia4/`): `sync.py`, `daily.py` (kopie), `lab/` (reguły), `fx/` (prognoza), `ai/` (agenci), `oneday.py`, `odsearch.py`, `odport.py`, `odbreak.py` (badania One-Day), `swing.py`, `swtrend.py`, `swrsi.py`, `swserie.py`, `swportfel.py`, `swrowna.py` (badania wielodniowe), `fxshort.py`, `fxpowrot.py` (badania FX, sekcja 7b).
+**Python** (`ia4-research/ia4/`): `sync.py`, `daily.py` (kopie), `lab/` (reguły), `fx/` (prognoza), `ai/` (agenci), `oneday.py`, `odsearch.py`, `odport.py`, `odbreak.py` (badania One-Day), `swing.py`, `swtrend.py`, `swrsi.py`, `swserie.py`, `swportfel.py`, `swrowna.py` (badania wielodniowe), `fxshort.py`, `fxpowrot.py`, `fxodkrywca.py` (badania FX, sekcja 7b).
 
 ---
 
@@ -173,6 +173,14 @@ Zadanie człowieka z 19.10.2026: krótkotrwałe wzrosty kończą się gwałtown�
 - **Strategia FX-POWRÓT (stałe):** świeca zamyka się ≥ 2 ATR(100) wyżej niż poprzednia; pierwsza czerwona świeca w ciągu 3 świec, świeca sygnału 7–16 UTC → short po open (open ≥ 0,5 ATR nad bazą); TP w połowie drogi od szczytu do ceny sprzed wzrostu; bez SL; najwyżej 96 świec. Arkusze jak FX-SHORT-NY oraz POWRÓT DO BAZY → `FX-POWROT.xlsx`.
 
 **Wyniki FX-POWRÓT z 20.10.2026** (Claude, ta sama kopia fx1h): *jak często cena wraca* — po świecy ≥ 2 ATR do bazy w ciągu 96 świec w 71% przypadków, ale w 80% najpierw przebija szczyt o 0,5 ATR (w ciągu doby), a przed nowym szczytem — tylko 24%; dlatego short z SL nad szczytem traci, a TP dokładnie na cenie sprzed wzrostu daje +0,033% na transakcję przy 9 stratnych okresach z 20 (1. połowa na minusie). *Działa połowa drogi:* FX-POWRÓT — 363 transakcje, średnio +0,064% (t = 7,0), mediana +0,065%, trafne 90%, PF 3,6, 2 stratne okresy z 20, obie połowy i wszystkie 10 par na plusie, najgorsza transakcja −1,37%, mediana 2 świece w pozycji; płaskowyż: świeca ≥ 1,75–3 ATR i okno 1–3 świec — t 5,6–8,6; wejście od razu po świecy — t 2,4; impuls z 3–12 świec — słabo; każdy SL obniża wynik (SL nad szczytem — strata, 6–8 ATR od wejścia — ok. połowa zysku). 1000 $ przy 1:30: depozyt 20% → 3634 $ (obsunięcie 21%; z kosztem nocnym 3% — 3204 $), 10% → 1825 $ (10%), 33% → 7651 $ (35%); stop out — nigdy. Sam EUR/USD: 53 transakcje, +0,062%, 94% trafnych. *Uczciwy test:* liczba reguł spełniających warunek okresów nie odróżnia od przypadku (765 wobec 7–769 na 11 placebo — zależy od trendu walut), ale najlepsze t 8,1 wobec 2,8–5,6 na placebo, reguł z t ≥ 5: 45 wobec 0–6; reguła wybrana wyłącznie na 1. roku (wzrost 3 świec, cofnięcie 38%, TP 50%, bez SL) zarobiła w 2. roku +12,7% przy 1:30 i 20% (FX-POWRÓT w tym roku w próbie +77%; FX-SHORT-NY w tym teście +4,6%). Przewaga mocniejsza niż FX-SHORT-NY, na żywo spodziewana dużo mniejsza niż na krzywej; ryzyka: brak SL i do 4 dni w pozycji (koszt nocny, luka weekendowa). Wyniki niczego nie zmieniają bez zgody człowieka.
+
+
+**FX-ODKRYWCA (od 1.51, zadanie człowieka z 20.10.2026):** zamiast pojedynczych pomysłów — algorytm przelicza miliony sygnałów i wyjść, wybiera serię 100 najlepszych strategii **wyłącznie na roku 1** (do 15.10.2025) wg 4 kryteriów człowieka (wzrost, liczba wystąpień, obsunięcie, konsekwencja) i raz przelicza je w **skarbcu** (rok 2). `ia4/fxodkrywca.py`, te same dane, spread i rozliczenie co FX-SHORT-NY.
+
+- **Przeszukanie:** 92 cechy świecy 1h (ruch, kształt, położenie w zakresie, średnie, oscylatory, zmienność, sesje, siła walut, BTC, kalendarz) → 700 warunków „cecha ≤ / ≥ próg” (progi z kwantyli roku 1) → wejście = 1–4 warunki naraz, long albo short → 267 wyjść (SL / TP w ATR, limit świec, stop kroczący, cel EMA20, koniec sesji NY). Etapy 1–2 — wszystkie kombinacje 1–2 warunków; 3–4 — najlepsze + jeden warunek, szerokość wg budżetu `--godziny` (domyślnie 3 h, wszystkie rdzenie). Pula: ≥ 30 transakcji, zysk, PF ≥ 1,15, t ≥ 2, ≥ 6 z 10 okresów na plusie. Ocena = średnia percentyli 4 kryteriów; seria — bez powtórzeń wejścia, ≤ 50% wspólnych transakcji. Druga seria tylko z wyjściami z SL. Rzadkie strategie (od 30 transakcji) grają razem: portfel 10 / 25 / 50 / 100 strategii naraz, 1000 $, 1:30.
+- **Uczciwy test (zasada 4):** obie serie i grupy porównawcze (100 losowych z puli, 100 najlepszych wg t, losowe wg liczby warunków) są zamrażane przed otwarciem skarbca; każde otwarcie — `data/fxodkrywca/skarbiec.jsonl` i arkusz SKARBIEC. Arkusze → `FX-ODKRYWCA.xlsx` (PRZEWODNIK.md).
+
+**Wyniki FX-ODKRYWCA z 20.10.2026** (Claude, chmura, 2 rdzenie, 40 min; ta sama kopia fx1h): policzono 1,0 mld reguł (3,8 mln reguł wejścia × 267 wyjść), w puli 7,8 mln. *Seria 100:* w roku 1 wszystkie 100 na plusie, średnio +13,7% na strategię (t do 42 — prawie same shorty bez SL z TP 1 ATR); w skarbcu 10 ze 100 na plusie, średnio −3,5%, −0,026% na transakcję. *Porównanie w skarbcu:* 100 losowych z puli −1,8%, 100 najlepszych wg t −0,3%, seria z SL −7,0% (20 na plusie) — **wybór na roku 1 nie przenosi się na rok 2** (korelacja rang ocena ↔ skarbiec 0,03), a strata na transakcję ≈ spread, czyli przewaga przed kosztami ≈ 0. Portfel 1000 $, 1:30, 5% depozytu: rok 1 — 7 133 $ (10 strategii) do 722 000 $ (100); skarbiec — 727 $ (−27%) do 246 $ (−75%). *Zastrzeżenia:* skarbiec w chmurze otwarto 3 razy (2 testy, 1 pełny); cechy projektował Claude po obejrzeniu obu lat (1.49–1.50); czysty sprawdzian to dopiero świece po 16.10.2026. Wniosek: ślepe przeszukiwanie na roku 1h FX nie daje przewagi — wąskie hipotezy człowieka (FX-POWRÓT) wypadły lepiej. Żadnej strategii nie wolno wybierać z wyników skarbca. Wyniki niczego nie zmieniają bez zgody człowieka.
 
 ---
 
@@ -287,6 +295,7 @@ python -m ia4.swportfel --propozycja   # ≥ 5 spadków, spadek ≥ 10%, słaby 
 python -m ia4.swrowna               # strategia RÓWNA: QQQ RSI(3) wg zmienności + kapitulacja spółek tylko w trendzie (--skala 1.5)
 python -m ia4.fxshort               # FX: short po gwałtownym wzroście — przeszukanie, placebo, FX-SHORT-NY, 1000 $ na 1:30 (--depozyt 0.33)
 python -m ia4.fxpowrot              # FX: impuls → zawrócenie → TP w stronę ceny sprzed wzrostu — 8,9 mln reguł, placebo, FX-POWRÓT
+python -m ia4.fxodkrywca            # FX: poszukiwanie na 1. roku → seria 100 → skarbiec (2. rok) → FX-ODKRYWCA.xlsx; ok. 3 h (--godziny)
 ```
 
 `ia4` to funkcja w `~/.zshrc`: `function ia4 { cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && if [ "$1" = start ]; then shift; python -m ia4.ai "$@"; else python -m ia4.lab --workers 4 "$@"; fi; }`
@@ -299,6 +308,7 @@ Starsze wpisy: `archiwum/IA4_INSTRUKCJA-1.40.md`, sekcja 13, i historia gita.
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.51 | 2026-10-20 | **FX-ODKRYWCA** (`ia4/fxodkrywca.py`, sekcja 7b; zadanie człowieka z 20.10.2026): automatyczne przeszukanie (92 cechy, 700 warunków, 1–4 naraz, long i short, 267 wyjść) wyłącznie na roku 1, seria 100 wg 4 kryteriów i seria z SL, grupy porównawcze, zamrożenie przed skarbcem z dziennikiem otwarć, portfel wielu strategii 1000 $ na 1:30 → `FX-ODKRYWCA.xlsx`; wynik: wybór nie przenosi się na rok 2. `.gitignore` — pliki `FX-*.xlsx`. `PRZEWODNIK.md`, README. Pozostałe pliki — tylko numer wersji. |
 | 1.50 | 2026-10-20 | **FX-POWRÓT** (`ia4/fxpowrot.py`, sekcja 7b; pomysł człowieka z 20.10.2026): impuls → sygnał zawrócenia → short z TP w stronę ceny sprzed wzrostu; 8,9 mln reguł, placebo z tym samym nawiasem w losowym czasie, wybór chronologiczny, statystyka powrotów do bazy, strategia FX-POWRÓT, rachunek 1000 $ na 1:30 → `FX-POWROT.xlsx`. `fxshort.simulate`: limit straty z kolumny transakcji (`cap`). `PRZEWODNIK.md`, README. Pozostałe pliki — tylko numer wersji. |
 | 1.49 | 2026-10-19 | **FX — short po gwałtownym wzroście** (`ia4/fxshort.py`, sekcja 7b; zadanie człowieka z 19.10.2026): przeszukanie 7,6 mln reguł shortów na 10 parach (20 okresów, placebo, wybór chronologiczny), zawężona siatka, strategia FX-SHORT-NY, rachunek 1000 $ na 1:30 z formułami w arkuszu → `FX-SHORT-NY.xlsx`. Zasada 5 — spread FX w pipsach (EUR/USD 1,1 ze zrzutu XTB). `PRZEWODNIK.md` — opis pliku. Pozostałe pliki — tylko numer wersji. |
 | 1.48 | 2026-10-17 | **Strategia RÓWNA** (`ia4/swrowna.py`, sekcja 7a; cel człowieka z 17.10.2026 — równa krzywa kapitału, bez strat w bessie): QQQ RSI(3) z wielkością pozycji wg zmienności + kapitulacja spółek tylko przy rosnącej EMA100 SPY; arkusze z wynikiem w bessach, częściami osobno i odpornością → `SWING-ROWNA.xlsx`. `swing.portfolio`: `size` w transakcji, `max_by_label`. Pozostałe pliki — tylko numer wersji. |

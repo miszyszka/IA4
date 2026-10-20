@@ -1,6 +1,6 @@
 """
 IA 4 — wspólny silnik badań wielodniowych (instrukcja, sekcja 7a).
-Wersja projektu: 1.50 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.51 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Badania, w których pozycja może trwać dłużej niż jedną sesję (decyzja człowieka z 16.10.2026):
 `ia4.swtrend` (strategie jednokierunkowe z SL i TP), `ia4.swrsi` (strategia RSI(3) / EMA100 / VWAP10),

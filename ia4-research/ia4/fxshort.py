@@ -1,6 +1,6 @@
 """
 IA 4 — FX-SHORT-NY: short po gwałtownym wzroście w sesji Londyn + Nowy Jork (instrukcja, sekcja 7b).
-Wersja projektu: 1.50 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.51 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Hipoteza człowieka (19.10.2026): krótkotrwałe wzrosty kończą się gwałtowną zieloną świecą, po której przychodzi
 korekta — szukamy tylko shortów, na 10 parach walutowych (bez BTC), szczególnie na EUR/USD. Świece 1h z kopii
