@@ -1,10 +1,10 @@
 // IA 4 — rdzeń strony: źródła danych, odświeżanie, formaty, bramka hasła (instrukcja, sekcja 11b).
-// Wersja projektu: 1.49 (2026-10-19)
+// Wersja projektu: 1.50 (2026-10-20)
 //
 // Każde źródło = jeden plik w publicznym repo. Nowe źródło: dopisz do SOURCES, a widok
 // przeczyta je przez store.get("id"). Dane są tylko czytane — strona niczego nie zapisuje.
 
-export const VERSION = "1.49";
+export const VERSION = "1.50";
 export const REPO = "miszyszka/IA4";
 const RAW = (branch, path) => `https://raw.githubusercontent.com/${REPO}/${branch}/${path}`;
 const API = (branch, path) => `https://api.github.com/repos/${REPO}/contents/${path}?ref=${branch}`;

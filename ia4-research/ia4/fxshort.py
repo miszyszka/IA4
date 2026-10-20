@@ -1,6 +1,6 @@
 """
 IA 4 — FX-SHORT-NY: short po gwałtownym wzroście w sesji Londyn + Nowy Jork (instrukcja, sekcja 7b).
-Wersja projektu: 1.49 (2026-10-19) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.50 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Hipoteza człowieka (19.10.2026): krótkotrwałe wzrosty kończą się gwałtowną zieloną świecą, po której przychodzi
 korekta — szukamy tylko shortów, na 10 parach walutowych (bez BTC), szczególnie na EUR/USD. Świece 1h z kopii
@@ -493,7 +493,8 @@ def simulate(tr: pd.DataFrame, D: Data, lev=30.0, f=0.20, start=1000.0, swap_pa=
                 log.append(dict(k=k, para=p, status='pominięta')); continue
             notional = units * bu; sp = D.spread[p] * PIP[p]
             open_[p] = dict(k=k, j0=j, j1=j + int(r.swiece) - 1, notional=notional, margin=notional / lev, entry=e0,
-                            pnl=float(r.wynik), unreal=0.0, cap=(sl_k * float(r.atr) + sp) / e0 if sl_k > 0 else 9e9)
+                            pnl=float(r.wynik), unreal=0.0,
+                            cap=float(r.cap) if 'cap' in r.index else ((sl_k * float(r.atr) + sp) / e0 if sl_k > 0 else 9e9))
         if open_:
             worst = 0.0; used = 0.0
             for p, q in open_.items():

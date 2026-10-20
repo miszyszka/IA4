@@ -1,6 +1,6 @@
 """
 IA 4 — testy zespołu agentów 1.41 na danych syntetycznych — część `python -m ia4.ai.selftest`.
-Wersja projektu: 1.49 (2026-10-19) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.50 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Badacz: cechy bez zaglądania w przyszłość, symulacja hipotezy (SL przed TP, luka, limit, koszty), sejf AI,
 zasiana przewaga odnaleziona i przechodzi sito, szum nie przechodzi, cykl z atrapą modelu (błąd → ponowienie,

@@ -1,6 +1,6 @@
 """
 IA 4 — wywołania lokalnego modelu językowego (Ollama) dla agentów (instrukcja, sekcja 8).
-Wersja projektu: 1.49 (2026-10-19) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.50 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   • odpowiedź wyłącznie JSON zgodny ze schematem (Ollama `format`), sprawdzana jeszcze raz w kodzie,
   • odpowiedź niezgodna → najwyżej `llm_retries` ponowień z listą błędów, potem „brak decyzji”,

@@ -1,6 +1,6 @@
 """
 IA 4 — FX-real-time: prognoza rozkładu na żywo dla 11 instrumentów 1h (instrukcja, sekcje 4c.6, 4c.9, 4c.10).
-Wersja projektu: 1.49 (2026-10-19) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.50 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
   python -m ia4.fx.live              # działa do Ctrl+C
   python -m ia4.fx.live --no-push    # bez GitHub (test: forecast.json tylko w fx-live-repo/)

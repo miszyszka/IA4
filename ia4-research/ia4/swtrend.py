@@ -1,6 +1,6 @@
 """
 IA 4 — strategie jednokierunkowe z SL i TP, które towarzyszą wybiciom (instrukcja, sekcja 7a).
-Wersja projektu: 1.49 (2026-10-19) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.50 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Zadanie człowieka (16.10.2026): skoro siłę ruchu da się przewidzieć, a kierunku nie — szukać okoliczności
 (średnie kroczące mówiące o trendzie, konwergencja wyznaczająca poziomy, wybicie w górę → long, w dół → short

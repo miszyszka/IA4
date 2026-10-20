@@ -1,6 +1,6 @@
 # IA 4 — przewodnik: co jest gdzie i jak to czytać
 
-**Wersja projektu: 1.49 (2026-10-19)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
+**Wersja projektu: 1.50 (2026-10-20)** · zasady: `IA4_INSTRUKCJA.md` · na stronie te same opisy są pod „?” w rogu każdego panelu
 
 ## 1. Co działa samo, a co wymaga Maca
 
@@ -48,6 +48,7 @@
 | `~/Desktop/IA4/SWING-PORTFEL-PROPOZYCJA.xlsx` | propozycja z analizy (od 1.47): ≥ 5 spadków, spadek ≥ 10%, słaby rynek, 5 sesji, max 5 pozycji. Te same arkusze co wyżej oraz **ANALIZA** — jak cechy serii (wielkość spadku, rynek, zmienność, RSI, średnie) zmieniają wynik w trzech okresach (zielony — zysk); w **PODSUMOWANIE** tabela „wrażliwość” — ten sam zestaw transakcji przy dźwigni 1:1–1:5 i limicie 3 / 5 / 10 / bez; w **ZDARZENIA** także serie odrzucone (kolumna „Warunki”, powód w „Uwagi”) |
 | `~/Desktop/IA4/SWING-ROWNA.xlsx` | strategia RÓWNA (od 1.48): kupowanie spadków tylko przy rosnącym trendzie — QQQ (reguła RSI(3), pozycja wg zmienności) + kapitulacja spółek. **PODSUMOWANIE** — wynik, obsunięcia, wynik w czasie każdej bessy (cel: blisko zera), części osobno; **KAPITAŁ** — wykres całości i części; **ROK PO ROKU** — ile zarobiła każda część; **SYGNAŁY SPÓŁEK** — także odrzucone (brak trendu, limit); **ODPORNOŚĆ** — czy wynik trzyma się przy sąsiednich ustawieniach |
 | `~/Desktop/IA4/FX-SHORT-NY.xlsx` | FX — short po gwałtownym wzroście (od 1.49, informacyjne): **PODSUMOWANIE** — reguła i wynik; **TRANSAKCJE** — każda transakcja, a u góry **żółte komórki** (kapitał, dźwignia, depozyt na pozycję, koszt nocny) — po zmianie przeliczają się saldo, wykresy i okresy; **KAPITAŁ** — saldo dzień po dniu i obsunięcie; **OKRESY** — 20 części (stratne na czerwono w wykresie); **WARIANTY** — 1000 $ przy różnym depozycie (5–100%); **ODPORNOŚĆ** — sąsiednie ustawienia i godzina sygnału (zielony — zysk); **UCZCIWY TEST** — placebo, połowy danych, reguła wybrana na 1. roku sprawdzona na 2. (to jest realistyczne oczekiwanie); **HIPOTEZA** — short po każdej dużej świecy bez filtrów; **RANKING** — najlepsze z przeszukania (zawyżone); **EURUSD** — sama para |
+| `~/Desktop/IA4/FX-POWROT.xlsx` | FX — powrót do ceny sprzed wzrostu (od 1.50, informacyjne): te same arkusze co FX-SHORT-NY (żółte komórki w **TRANSAKCJE** przeliczają kapitał) oraz **POWRÓT DO BAZY** — jak często po gwałtownym wzroście kurs wraca do ceny sprzed niego (i czy zanim przebije szczyt); **ODPORNOŚĆ** — wielkość świecy, sygnał zawrócenia, TP (także dokładnie na cenie sprzed wzrostu), SL, limit świec, godziny; **UCZCIWY TEST** — placebo i wybór na 1. roku (najważniejsze: najlepsze t i wynik 2. roku na tle placebo); **RANKING** — w tym osobna tabela „TP = cena sprzed wzrostu” |
 
 ## 4. Jak oceniać wyniki
 

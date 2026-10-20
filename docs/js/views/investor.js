@@ -1,5 +1,5 @@
 // IA 4 — zakładka Inwestor: wirtualny inwestor, strategie i spółki (dane: telemetry/vi.json,
-// research/strategies.jsonl, telemetry/state.json). Wersja projektu: 1.49 (2026-10-19)
+// research/strategies.jsonl, telemetry/state.json). Wersja projektu: 1.50 (2026-10-20)
 //
 // renderInvestor() jest wspólne z przyszłym inwestorem FX (zakładka FX, telemetry/fx-vi.json) —
 // ten sam format pliku daje ten sam widok.
