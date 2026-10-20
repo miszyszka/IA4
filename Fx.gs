@@ -1,9 +1,9 @@
 /**
  * ============================================================================
- *  IA 4 — MODUŁ FX 1h  (Yahoo, świece godzinowe 10 par walutowych + BTC →
+ *  IA 4 — MODUŁ FX 1h  (Yahoo, świece godzinowe 10 par + BTC + 10 par fx1h_double_proof →
  *                       Firestore fx1h/{SYMBOL}/days → arkusz FX)
  *
- *  Wersja projektu: 1.51 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.52 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Osobny moduł (instrukcja, sekcja 4b): zbiera dane. Nie bierze udziału
  *  w poszukiwaniu strategii, weryfikacji ani paper tradingu.
@@ -57,6 +57,18 @@ const FX = {
     { id: 'GBPJPY', yahoo: 'GBPJPY=X', group: 'fx', dp: 4, pip: 0.01 },
     { id: 'EURGBP', yahoo: 'EURGBP=X', group: 'fx', dp: 6, pip: 0.0001 },
     { id: 'BTCUSD', yahoo: 'BTC-USD', group: 'crypto', dp: 2, pip: 1 },
+    // fx1h_double_proof (od 1.52): 10 par sprawdzianu — tylko zbierane; badania i agenci AI ich nie używają,
+    // wyłącznie test zamrożonej strategii (instrukcja 4b, 7b). Na końcu listy: nowe kolumny dopisują się do arkusza FX.
+    { id: 'EURCHF', yahoo: 'EURCHF=X', group: 'fx1h_double_proof', dp: 6, pip: 0.0001 },
+    { id: 'EURAUD', yahoo: 'EURAUD=X', group: 'fx1h_double_proof', dp: 6, pip: 0.0001 },
+    { id: 'EURCAD', yahoo: 'EURCAD=X', group: 'fx1h_double_proof', dp: 6, pip: 0.0001 },
+    { id: 'GBPCHF', yahoo: 'GBPCHF=X', group: 'fx1h_double_proof', dp: 6, pip: 0.0001 },
+    { id: 'GBPAUD', yahoo: 'GBPAUD=X', group: 'fx1h_double_proof', dp: 6, pip: 0.0001 },
+    { id: 'AUDNZD', yahoo: 'AUDNZD=X', group: 'fx1h_double_proof', dp: 6, pip: 0.0001 },
+    { id: 'AUDJPY', yahoo: 'AUDJPY=X', group: 'fx1h_double_proof', dp: 4, pip: 0.01 },
+    { id: 'CADJPY', yahoo: 'CADJPY=X', group: 'fx1h_double_proof', dp: 4, pip: 0.01 },
+    { id: 'CHFJPY', yahoo: 'CHFJPY=X', group: 'fx1h_double_proof', dp: 4, pip: 0.01 },
+    { id: 'NZDJPY', yahoo: 'NZDJPY=X', group: 'fx1h_double_proof', dp: 4, pip: 0.01 },
   ],
 };
 
@@ -669,6 +681,15 @@ function fxSheet_() {
   let sh = ss.getSheetByName(FX.SHEET);
   if (sh && sh.getLastColumn() === cols.length &&
       sh.getRange(1, 1, 1, cols.length).getValues()[0].join('|') === cols.join('|')) return sh;
+  if (sh && sh.getLastColumn() > 2 && sh.getLastColumn() < cols.length &&           // dopisane instrumenty (np. 1.52):
+      sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].join('|') === cols.slice(0, sh.getLastColumn()).join('|')) {
+    const k = sh.getLastColumn();                                                   // nowe kolumny, stare zostają
+    if (sh.getMaxColumns() < cols.length) sh.insertColumnsAfter(sh.getMaxColumns(), cols.length - sh.getMaxColumns());
+    sh.getRange(1, k + 1, 1, cols.length - k).setValues([cols.slice(k)]).setFontWeight('bold').setBackground('#f1f3f4')
+      .setHorizontalAlignment('center');
+    sh.setColumnWidths(k + 1, cols.length - k, 90);
+    return sh;
+  }
   if (!sh) sh = ss.insertSheet(FX.SHEET);
   sh.clear();                                                 // inny układ (np. dawny EURUSD 5 min) — od nowa
   sh.clearConditionalFormatRules();

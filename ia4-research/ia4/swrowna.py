@@ -1,6 +1,6 @@
 """
 IA 4 — strategia RÓWNA: kupowanie spadków tylko przy rosnącym trendzie rynku (instrukcja, sekcja 7a).
-Wersja projektu: 1.51 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.52 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Cel człowieka (17.10.2026): krzywa kapitału konsekwentnie w górę, w bessie bez strat (najwyżej bez zysku), dużo
 mniejsze obsunięcia, bez przeuczenia. Wniosek z badań 1.47: zysk kupowania paniki to głównie odbicie całego rynku,

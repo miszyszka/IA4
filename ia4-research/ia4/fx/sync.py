@@ -1,6 +1,6 @@
 """
 IA 4 — kopia lokalna świec FX 1h (instrukcja, sekcja 4c.1).
-Wersja projektu: 1.51 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.52 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Firestore fx1h/{SYMBOL}/days/{RRRR-MM-DD} (format: sekcja 4b) → data/fx1h/{SYMBOL}.parquet
   kolumny: time (początek świecy, sekundy UTC), o, h, l, c, filled (świeca z fillT)
@@ -98,15 +98,18 @@ def merge_days(old: pd.DataFrame | None, days: dict[str, pd.DataFrame]) -> pd.Da
     return df
 
 
-def symbols() -> list[str]:
-    """Instrumenty z system/fx1h (Fx.gs); bez dokumentu — lista z instruments.py."""
+def symbols(proof: bool = False) -> list[str]:
+    """Instrumenty z system/fx1h (Fx.gs); bez dokumentu — lista z instruments.py.
+    proof=False — bez grupy fx1h_double_proof (prognoza, badania i agenci AI jej nie widzą; instrukcja 4b)."""
+    out = None
     try:
         d = config.client().document(STATUS_DOC).get()
         if d.exists and d.to_dict().get("symbols"):
-            return list(d.to_dict()["symbols"])
+            out = list(d.to_dict()["symbols"])
     except Exception as e:                                   # bez Firestore — lista zapasowa
         print(f"  ! {STATUS_DOC}: {type(e).__name__}: {e} — lista z instruments.py")
-    return list(fi.IDS)
+    out = out or list(fi.ALL_IDS)
+    return out if proof else [s for s in out if s not in fi.DOUBLE_PROOF]
 
 
 def remove_legacy(log=print) -> None:
@@ -146,13 +149,13 @@ def sync_symbol(sym: str, m: dict, full: bool = False, log=print) -> pd.DataFram
     return df
 
 
-def sync(full: bool = False, quiet: bool = False, syms=None) -> dict[str, pd.DataFrame]:
-    """Synchronizacja przyrostowa wszystkich instrumentów. Zwraca całą kopię lokalną."""
+def sync(full: bool = False, quiet: bool = False, syms=None, proof: bool = False) -> dict[str, pd.DataFrame]:
+    """Synchronizacja przyrostowa instrumentów (domyślnie bez fx1h_double_proof). Zwraca kopię lokalną tych instrumentów."""
     log = (lambda *a: None) if quiet else print
     remove_legacy(log)
     m = _manifest()
     out = {}
-    for s in syms or symbols():
+    for s in syms or symbols(proof):
         try:
             out[s] = sync_symbol(s, m, full, log)
         except Exception as e:                               # jeden instrument nie zatrzymuje reszty
@@ -167,8 +170,8 @@ def sync(full: bool = False, quiet: bool = False, syms=None) -> dict[str, pd.Dat
 def main() -> None:
     ap = argparse.ArgumentParser(description="Firestore fx1h → data/fx1h/*.parquet")
     ap.add_argument("--full", action="store_true", help="pobierz wszystkie dni od nowa")
-    print("IA 4 — kopia lokalna FX 1h\n")
-    sync(full=ap.parse_args().full)
+    print("IA 4 — kopia lokalna FX 1h (z parami fx1h_double_proof — tylko kopia; badania ich nie wczytują)\n")
+    sync(full=ap.parse_args().full, proof=True)
 
 
 if __name__ == "__main__":

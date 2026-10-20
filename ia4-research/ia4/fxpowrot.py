@@ -1,6 +1,6 @@
 """
 IA 4 — FX-POWRÓT: short po gwałtownym wzroście, wejście po sygnale zawrócenia, TP na cenie sprzed wzrostu
-(instrukcja, sekcja 7b). Wersja projektu: 1.51 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+(instrukcja, sekcja 7b). Wersja projektu: 1.52 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Pomysł człowieka (20.10.2026): po wybiciu cena bardzo często wraca do ceny sprzed gwałtownych świec — TP ustawić na
 tej cenie, a wejściem ma być nie sama gwałtowna świeca, tylko sygnał, że kurs zawraca. Liczymy wszystkie konfiguracje.

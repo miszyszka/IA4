@@ -1,6 +1,6 @@
 """
 IA 4 — FX-ODKRYWCA: automatyczne poszukiwanie strategii FX na pierwszym roku i sprawdzian 100 najlepszych w skarbcu
-(drugi rok, niewidziany przez poszukiwanie) (instrukcja, sekcja 7b). Wersja projektu: 1.51 (2026-10-20) — musi zgadzać
+(drugi rok, niewidziany przez poszukiwanie) (instrukcja, sekcja 7b). Wersja projektu: 1.52 (2026-10-20) — musi zgadzać
 się z IA4_INSTRUKCJA.md
 
 Zadanie człowieka (20.10.2026): zamiast zgadywać pojedyncze pomysły — algorytm, który przelicza miliony sygnałów

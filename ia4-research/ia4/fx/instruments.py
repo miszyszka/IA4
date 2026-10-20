@@ -1,6 +1,6 @@
 """
 IA 4 — instrumenty modułu FX 1h (instrukcja, sekcja 4b) i godziny rynku.
-Wersja projektu: 1.51 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.52 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kopia listy z Fx.gs (FX.INSTRUMENTS) — używana, gdy Firestore (system/fx1h) jest
 niedostępny, i do opisu instrumentów (pip, miejsca po przecinku, grupa).
@@ -27,12 +27,27 @@ INSTRUMENTS = (
     ("GBPJPY", "GBPJPY=X", "fx", 0.01, 4),
     ("EURGBP", "EURGBP=X", "fx", 0.0001, 6),
     ("BTCUSD", "BTC-USD", "crypto", 1.0, 2),
+    # fx1h_double_proof (od 1.52): pary sprawdzianu — prognoza, badania i agenci AI ich nie używają (instrukcja 4b)
+    ("EURCHF", "EURCHF=X", "fx1h_double_proof", 0.0001, 6),
+    ("EURAUD", "EURAUD=X", "fx1h_double_proof", 0.0001, 6),
+    ("EURCAD", "EURCAD=X", "fx1h_double_proof", 0.0001, 6),
+    ("GBPCHF", "GBPCHF=X", "fx1h_double_proof", 0.0001, 6),
+    ("GBPAUD", "GBPAUD=X", "fx1h_double_proof", 0.0001, 6),
+    ("AUDNZD", "AUDNZD=X", "fx1h_double_proof", 0.0001, 6),
+    ("AUDJPY", "AUDJPY=X", "fx1h_double_proof", 0.01, 4),
+    ("CADJPY", "CADJPY=X", "fx1h_double_proof", 0.01, 4),
+    ("CHFJPY", "CHFJPY=X", "fx1h_double_proof", 0.01, 4),
+    ("NZDJPY", "NZDJPY=X", "fx1h_double_proof", 0.01, 4),
 )
-IDS = tuple(i[0] for i in INSTRUMENTS)
+DP_GROUP = "fx1h_double_proof"
+DOUBLE_PROOF = tuple(i[0] for i in INSTRUMENTS if i[2] == DP_GROUP)
+IDS = tuple(i[0] for i in INSTRUMENTS if i[2] != DP_GROUP)      # prognoza, badania, agenci AI — bez doubleProof
+ALL_IDS = tuple(i[0] for i in INSTRUMENTS)
 INFO = {i[0]: {"id": i[0], "yahoo": i[1], "group": i[2], "pip": i[3], "digits": i[4]} for i in INSTRUMENTS}
 NAMES = {"EURUSD": "EUR/USD", "USDJPY": "USD/JPY", "GBPUSD": "GBP/USD", "AUDUSD": "AUD/USD", "USDCAD": "USD/CAD",
          "USDCHF": "USD/CHF", "NZDUSD": "NZD/USD", "EURJPY": "EUR/JPY", "GBPJPY": "GBP/JPY", "EURGBP": "EUR/GBP",
-         "BTCUSD": "Bitcoin (BTC/USD)"}
+         "BTCUSD": "Bitcoin (BTC/USD)", "EURCHF": "EUR/CHF", "EURAUD": "EUR/AUD", "EURCAD": "EUR/CAD", "GBPCHF": "GBP/CHF",
+         "GBPAUD": "GBP/AUD", "AUDNZD": "AUD/NZD", "AUDJPY": "AUD/JPY", "CADJPY": "CAD/JPY", "CHFJPY": "CHF/JPY", "NZDJPY": "NZD/JPY"}
 
 
 def group_of(sym: str) -> str:

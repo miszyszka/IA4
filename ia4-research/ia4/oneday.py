@@ -1,6 +1,6 @@
 """
 IA 4 — test One-Day: kaskady na świecach dobowych (instrukcja, sekcja 6c).
-Wersja projektu: 1.51 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.52 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Jednorazowy test informacyjny (decyzja człowieka z 12.10.2026). Nie jest strategią `ia4-rule/1`
 (zasada 9), nie zmienia poszukiwania, paper tradingu ani AI Investor.
