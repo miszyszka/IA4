@@ -1,7 +1,7 @@
 """
 IA 4 — FX-POWRÓT v2: skąd biorą się stratne transakcje FX-POWRÓT, czy da się je uciąć (czas trzymania, cel, SL,
 weekend) i sprawdzian zamrożonej strategii na 10 nowych parach fx1h_double_proof (instrukcja, sekcja 7b).
-Wersja projektu: 1.53 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.54 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Pytanie człowieka (20.10.2026): większość zyskownych transakcji zamyka się szybko — czy krótszy czas trzymania (albo
 inne wyjście) obetnie stratne? Wolumenu nie ma: Yahoo podaje dla par walutowych 0, baza fx1h go nie zapisuje.

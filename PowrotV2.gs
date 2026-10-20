@@ -3,7 +3,7 @@
  *  IA 4 — POWRÓT.V2 INVESTOR  (paper trading strategii FX-POWRÓT v2 na 10 parach FX 1h,
  *                              arkusz Powrót.v2.Investor, maile z sygnałami, telemetry/pv2.json)
  *
- *  Wersja projektu: 1.53 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.54 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Strategia (instrukcja, sekcja 7b; Python: ia4/fxpowrot2.py, V2 — reguły zamrożone):
  *   • impuls: świeca zamyka się ≥ 2 ATR(100) wyżej niż poprzednia; baza B = zamknięcie przed nią,
@@ -36,7 +36,7 @@ const PV2 = {
   STOP_OUT: 0.5,
   CHUNK: 45000,
   PUB_PATH: 'telemetry/pv2.json',
-  DEFAULTS: { capital: 100, pct: 0.20, lev: 30, mail: 'mi.szyszka@gmail.com', mails: 'TAK', mailTp: 'NIE', active: 'TAK' },
+  DEFAULTS: { capital: 100, pct: 0.20, lev: 30, mail: 'mi.szyszka@gmail.com', mails: 'TAK', mailTp: 'NIE', active: 'TAK', warn: 'TAK', warnMin: 15 },
   LOG_ROW: 24,                // wiersz nagłówka logu transakcji
 };
 const PV2_COLS = ['Nr', 'Para', 'Kierunek', 'Sygnał — świeca (PL)', 'Wejście (PL)', 'Cena wejścia', 'TP', 'Baza (cena sprzed wzrostu)',
@@ -110,6 +110,33 @@ function pv2_events_(X, start, nextOpen) {
   return out;
 }
 
+/**
+ * Uprzedzenie: czy świeca, która właśnie się zaczyna (po ostatniej zamkniętej n − 1), może dać sygnał.
+ * Ten sam automat co pv2_events_: aktywny impuls, następna świeca mieści się w oknie 3 świec od ostatniej świecy impulsu.
+ * Zwraca { B, P, A, open, lo, TP } — sygnał będzie, jeśli świeca zamknie się w przedziale [lo, open) (czerwona, nad bazą,
+ * wejście ≥ 0,5 ATR nad bazą i ≥ 1 × spread nad TP; TP liczony z obecnego szczytu — wyższy szczyt podniesie lo) — albo null.
+ */
+function pv2_armed_(p, X, start) {
+  let active = false, last = 0, B = 0, P = 0;
+  for (let s = Math.max(start, 2); s < X.n; s++) {
+    if (isNaN(X.atr[s]) || isNaN(X.run1[s])) continue;
+    const trig = X.run1[s] >= PV2.K;
+    if (!active) { if (trig) { active = true; last = s; B = X.c[s - 1]; P = X.h[s]; } continue; }
+    if (X.h[s] > P) P = X.h[s];
+    if (trig) { last = s; continue; }
+    if (X.c[s] <= B || s - last > PV2.WAIT) { active = false; continue; }
+    if (X.c[s] < X.o[s]) active = false;               // czerwona: sygnał (albo odrzucony) — impuls zużyty
+  }
+  const s = X.n;                                     // kandydatka (jeszcze trwa)
+  if (!active || s - last > PV2.WAIT) return null;
+  const A = X.atr[X.n - 1], open = X.c[X.n - 1];     // open kandydatki ≈ ostatnie zamknięcie
+  if (isNaN(A) || isNaN(X.atr5[X.n - 1])) return null;
+  const TP = P - PV2.F * (P - B), sp = pv2_spreadPx_(p);
+  const lo = Math.max(B + PV2.DIST * A, TP + Math.max(PV2.MINTP * sp, 0.1 * A));
+  if (!(lo < open)) return null;
+  return { B, P, A, open, lo, TP };
+}
+
 /** Godzina UTC świecy (s). */
 function pv2_hourUtc_(t) { return Math.floor((t % 86400) / 3600); }
 
@@ -163,11 +190,13 @@ function pv2_batch_(p, X, start, openEnd) {
 function pv2IfDue_(fxState) {
   const st = fxState || fxStateLoad_();
   const props = PropertiesService.getScriptProperties();
+  let warnMsg = '';
+  try { warnMsg = pv2_alertsDue_(props); } catch (e) { recordError_('PV2', 'uprzedzenie: ' + (e.message || e)); }
   const done = JSON.parse(props.getProperty('PV2_LAST') || '{}');
   const fresh = PV2.PAIRS.some(p => st.sym[p] && st.sym[p].last && st.sym[p].last > (done[p] || 0));
-  if (!fresh) return '';
+  if (!fresh) return warnMsg;
   const seen = PV2.PAIRS.map(p => (st.sym[p] && st.sym[p].last) || 0).join(',');
-  if (seen === props.getProperty('PV2_SEEN')) return '';             // ten stan FX już przeliczony (np. para bez świecy w Firestore)
+  if (seen === props.getProperty('PV2_SEEN')) return warnMsg;             // ten stan FX już przeliczony (np. para bez świecy w Firestore)
   props.setProperty('PV2_SEEN', seen);
   return pv2Step_();
 }
@@ -322,6 +351,26 @@ function pv2Step_(force) {
     }
     done[p] = Math.max(done[p] || 0, t);
   });
+  // uprzedzenia: świeca, która się właśnie zaczęła, może dać sygnał — mail warnMin minut po zamknięciu poprzedniej
+  if (active && prm.mails && prm.warn) {
+    const al = JSON.parse(props.getProperty('PV2_ALERTS') || '[]').filter(a => a.candT + 3600 > nowSec);
+    Object.keys(X).forEach(p => {
+      const x = X[p], t = x.t[x.n - 1], candT = t + 3600;
+      if (candT + 3600 <= nowSec || al.some(a => a.pair === p && a.candT === candT)) return;           // świeca już się skończyła / jest
+      if (S.positions.some(q => q.pair === p && (q.status === 'otwarta' || q.status === 'oczekuje'))) return;
+      const hr = pv2_hourUtc_(candT), inst = fxInst_(p);
+      if (hr < PV2.H_FROM || hr > PV2.H_TO || !fxSlotOpen_(inst, candT) || !fxSlotOpen_(inst, candT + 3600)) return;
+      const a = pv2_armed_(p, x, Math.max(2, x.n - 200));
+      if (!a) return;
+      const used = S.positions.filter(q => q.status === 'otwarta').reduce((s_, q) => s_ + q.margin, 0);
+      const margin = Math.max(0, Math.min(prm.pct * S.cash, S.cash - used)), bu = pv2_usd_(p, X, x.n - 1);
+      al.push({ pair: p, candT, sendAt: t + 3600 + prm.warnMin * 60, B: a.B, P: a.P, open: a.open, lo: a.lo, TP: a.TP,
+                margin, notional: margin * prm.lev, lots: margin * prm.lev / bu / 100000, lev: prm.lev, mail: prm.mail,
+                again: S.lastWarnB === p + ':' + a.B });
+      S.lastWarnB = p + ':' + a.B;
+    });
+    props.setProperty('PV2_ALERTS', JSON.stringify(al));
+  }
   // wysyłka maili (po przeliczeniu — jeden mail na zdarzenie)
   let sent = 0;
   if (prm.mails) mails.forEach(m => {
@@ -442,6 +491,50 @@ function pv2_storeSave_(store) {
 // ============================================================================
 //  MAILE
 // ============================================================================
+/** Co minutę (pv2IfDue_): uprzedzenia, którym minął czas wysyłki, a świeca jeszcze trwa → mail z ceną z Yahoo. */
+function pv2_alertsDue_(props) {
+  const all = JSON.parse(props.getProperty('PV2_ALERTS') || '[]');
+  if (!all.length) return '';
+  const now = Date.now() / 1000;
+  const due = all.filter(a => !a.sent && a.sendAt <= now && now < a.candT + 3600 - 120);
+  const keep = all.filter(a => a.candT + 3600 > now && !due.includes(a));
+  if (!due.length) { if (keep.length !== all.length) props.setProperty('PV2_ALERTS', JSON.stringify(keep)); return ''; }
+  let quotes = {};
+  try {
+    const res = fxFetchMany_(due.map(a => ({ inst: fxInst_(a.pair), p1: a.candT - 3600, p2: now })));
+    due.forEach(a => {
+      const r = res[a.pair];
+      if (!r || r.error || !r.result) return;
+      const ts = r.result.timestamp || [], q = (r.result.indicators && r.result.indicators.quote && r.result.indicators.quote[0]) || {};
+      let open = null, last = r.result.meta && r.result.meta.regularMarketPrice;
+      for (let i = 0; i < ts.length; i++) if (ts[i] >= a.candT && typeof q.open[i] === 'number') { if (open === null) open = q.open[i]; if (typeof q.close[i] === 'number') last = q.close[i]; }
+      quotes[a.pair] = { open, last };
+    });
+  } catch (e) { quotes = {}; }
+  due.forEach(a => {
+    const m = pv2_mailWarn_(a, quotes[a.pair] || {});
+    MailApp.sendEmail({ to: a.mail, subject: m.subject, body: m.body });
+  });
+  props.setProperty('PV2_ALERTS', JSON.stringify(keep));
+  const msg = `Powrót.v2: uprzedzenie ${due.map(a => a.pair).join(', ')}`;
+  log_('INFO', 'PV2', msg);
+  return msg;
+}
+
+function pv2_mailWarn_(a, q) {
+  const p = a.pair, op = q.open || a.open, now = q.last;
+  const state = now === undefined || now === null ? '' : `\nTeraz: ${pv2_px_(p, now)} — świeca na razie ${now < op ? 'CZERWONA (sygnał byłby, gdyby tak się zamknęła' + (now >= a.lo ? ')' : ', ale za nisko — poniżej dolnej granicy)') : 'zielona albo płaska (sygnału na razie nie ma)'}.`;
+  return {
+    subject: `IA4 Powrót.v2: UWAGA ${p} — możliwy sygnał o ${pv2_pl_(a.candT + 3600).slice(11)}${a.again ? ' (ten sam wzrost)' : ''}`,
+    body: `Za ok. ${Math.max(1, Math.round((a.candT + 3600 - Date.now() / 1000) / 60))} min, po zamknięciu świecy ${pv2_pl_(a.candT).slice(11)}–${pv2_pl_(a.candT + 3600).slice(11)} (PL), może przyjść sygnał SHORT ${p}.\n\n` +
+      `Był gwałtowny wzrost (baza — cena sprzed wzrostu: ${pv2_px_(p, a.B)}, szczyt: ${pv2_px_(p, a.P)}).\n` +
+      `Sygnał będzie, jeśli ta świeca zamknie się poniżej swojego otwarcia (${pv2_px_(p, op)}) i nie niżej niż ok. ${pv2_px_(p, a.lo)}.${state}\n\n` +
+      `Gdyby sygnał przyszedł: TP ok. ${pv2_px_(p, a.TP)} (wyższy szczyt w tej świecy podniesie TP), bez SL, limit 60 świec; ` +
+      `kwota ok. ${a.margin.toFixed(2)} $ depozytu = ${a.notional.toFixed(2)} $ przy 1:${a.lev} (${a.lots.toFixed(4)} lota).\n\n` +
+      `To tylko uprzedzenie — w historii ok. 1 na 3 takie sytuacje kończy się sygnałem. Nie wchodź przed mailem „SHORT” ok. 1 min po zamknięciu świecy.`,
+  };
+}
+
 function pv2_pl_(t) { return Utilities.formatDate(new Date(t * 1000), CONFIG.LOCAL_TZ, 'yyyy-MM-dd HH:mm'); }
 function pv2_px_(p, v) { return v === undefined || v === null || !isFinite(v) ? '—' : v.toFixed(/JPY$/.test(p) ? 3 : 5); }
 function pv2_lots_(q) { return q.units / 100000; }
@@ -490,7 +583,9 @@ function pv2_mailTp_(q) {
 const PV2_PARAMS = [
   ['Kapitał startowy ($)', 'capital'], ['Depozyt na pozycję (% salda)', 'pct'], ['Dźwignia (1:x)', 'lev'],
   ['Mail do', 'mail'], ['Maile z sygnałami (TAK/NIE)', 'mails'], ['Mail także przy TP (TAK/NIE)', 'mailTp'], ['Inwestor aktywny (TAK/NIE)', 'active'],
+  ['Uprzedzenie „możliwy sygnał” (TAK/NIE)', 'warn'], ['Uprzedzenie: minut po zamknięciu świecy', 'warnMin'],
 ];
+const PV2_NOTE_ROW = 4 + 9 + 1;      // wiersz opisu pod parametrami
 const PV2_STATS = ['Liczy od (PL)', 'Saldo — kapitał + zamknięte ($)', 'Wynik zamkniętych ($)', 'Wynik otwartych ($)',
   'Saldo, gdyby teraz zamknąć wszystko ($)', 'Wynik całkowity (% kapitału)', 'Pozycji otwartych / oczekujących', 'Transakcji zamkniętych',
   'Zamknięte: TP / limit czasu / stop out', 'Średni wynik zamkniętej (%)', 'Mediana świec w pozycji', 'Ostatnia przeliczona świeca (PL)'];
@@ -498,7 +593,7 @@ const PV2_STATS = ['Liczy od (PL)', 'Saldo — kapitał + zamknięte ($)', 'Wyni
 function pv2_sheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sh = ss.getSheetByName(PV2.SHEET);
-  if (sh) return sh;
+  if (sh) { pv2_migrate_(sh); return sh; }
   sh = ss.insertSheet(PV2.SHEET);
   sh.setTabColor('#e37400');
   if (sh.getMaxColumns() < PV2_COLS.length) sh.insertColumnsAfter(sh.getMaxColumns(), PV2_COLS.length - sh.getMaxColumns());
@@ -510,7 +605,7 @@ function pv2_sheet_() {
   sh.getRange(4, 2, PV2_PARAMS.length, 1).setBackground('#ffff00').setFontColor('#0000ff');
   sh.getRange(5, 2).setNumberFormat('0%');
   sh.getRange(4, 1, PV2_PARAMS.length, 1).setFontWeight('bold');
-  sh.getRange(12, 1, 1, 2).merge().setValue('Zmiana kapitału startowego działa po „IA 4 → Powrót.v2 — zacznij od nowa”. Depozyt i dźwignia — od następnej transakcji.')
+  sh.getRange(PV2_NOTE_ROW, 1, 1, 2).merge().setValue('Zmiana kapitału startowego działa po „IA 4 → Powrót.v2 — zacznij od nowa”. Depozyt i dźwignia — od następnej transakcji.')
     .setFontStyle('italic').setFontColor('#555555').setWrap(true);
   sh.getRange(3, 4, 1, 2).setValues([['STATYSTYKI', '']]).setFontWeight('bold').setBackground('#f1f3f4');
   sh.getRange(4, 4, PV2_STATS.length, 1).setValues(PV2_STATS.map(x => [x])).setFontWeight('bold');
@@ -529,6 +624,21 @@ function pv2_sheet_() {
   return sh;
 }
 
+/** Arkusz z 1.53 (7 parametrów, opis w wierszu 12) → nowe parametry dopisane, stare wartości zostają. */
+function pv2_migrate_(sh) {
+  const n = PV2_PARAMS.length, lab = sh.getRange(4, 1, n, 1).getValues().map(r => r[0]);
+  if (lab.join('|') === PV2_PARAMS.map(x => x[0]).join('|')) return;
+  const old = {};
+  sh.getRange(4, 1, 7, 2).getValues().forEach(r => { const k = PV2_PARAMS.find(x => x[0] === r[0]); if (k) old[k[1]] = r[1]; });
+  sh.getRange(4, 1, n + 8, 2).breakApart().clearContent().setBackground(null).setFontColor(null).setFontStyle(null);
+  sh.getRange(4, 1, n, 2).setValues(PV2_PARAMS.map(([l, k]) => [l, old[k] !== undefined && old[k] !== '' ? old[k] : PV2.DEFAULTS[k]]));
+  sh.getRange(4, 2, n, 1).setBackground('#ffff00').setFontColor('#0000ff');
+  sh.getRange(5, 2).setNumberFormat('0%');
+  sh.getRange(4, 1, n, 1).setFontWeight('bold');
+  sh.getRange(PV2_NOTE_ROW, 1, 1, 2).merge().setValue('Zmiana kapitału startowego działa po „IA 4 → Powrót.v2 — zacznij od nowa”. Depozyt i dźwignia — od następnej transakcji.')
+    .setFontStyle('italic').setFontColor('#555555').setWrap(true);
+}
+
 function pv2_params_(sh) {
   const v = sh.getRange(4, 2, PV2_PARAMS.length, 1).getValues().map(r => r[0]);
   const D = PV2.DEFAULTS, out = {};
@@ -539,7 +649,8 @@ function pv2_params_(sh) {
   out.pct = pct > 0 && pct <= 1 ? pct : D.pct;
   out.lev = Number(out.lev) > 0 ? Number(out.lev) : D.lev;
   const yes = x => String(x).trim().toUpperCase().startsWith('T');
-  out.mails = yes(out.mails); out.mailTp = yes(out.mailTp); out.active = yes(out.active);
+  out.mails = yes(out.mails); out.mailTp = yes(out.mailTp); out.active = yes(out.active); out.warn = yes(out.warn);
+  out.warnMin = Math.min(55, Math.max(1, Number(out.warnMin) || D.warnMin));
   out.mail = String(out.mail || D.mail).trim();
   return out;
 }

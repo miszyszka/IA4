@@ -1,5 +1,5 @@
 // IA 4 — test pracy na żywo PowrotV2.gs: krok po każdej świecy (makiety Apps Script) = transakcje z pv2_batch_.
-// Wersja projektu: 1.53 (2026-10-20). Użycie: node tests/pv2_live.js /tmp/pv2.json (plik z tests/pv2_parity_dump.py)
+// Wersja projektu: 1.54 (2026-10-20). Użycie: node tests/pv2_live.js /tmp/pv2.json (plik z tests/pv2_parity_dump.py)
 const fs = require('fs');
 const src = fs.readFileSync(require('path').join(__dirname, '..', '..', 'PowrotV2.gs'), 'utf8');
 const C = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
@@ -12,16 +12,17 @@ global.Utilities = {
   formatDate: (d, tz, f) => new Intl.DateTimeFormat('sv-SE', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d).replace(',', ''),
   computeDigest: (a, s) => Array.from(require('crypto').createHash('md5').update(s).digest()), DigestAlgorithm: {}, Charset: {} };
 global.log_ = () => {}; global.recordError_ = (s, m) => { throw new Error(s + ': ' + m); };
-global.fxInst_ = () => ({});
+global.fxInst_ = id => ({ id });
 global.fxSlotOpen_ = (inst, t) => {                    // rynek: nd 17:00 – pt 17:00 Nowy Jork
   const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(t * 1000));
   const wd = p.find(x => x.type === 'weekday').value, h = +p.find(x => x.type === 'hour').value;
   if (wd === 'Sat') return false; if (wd === 'Sun') return h >= 17; if (wd === 'Fri') return h < 17; return true;
 };
+global.fxFetchMany_ = reqs => { const o = {}; reqs.forEach(r => { o[r.inst.id] = { error: 'test' }; }); return o; };
 global.telemetryGithubPut_ = (path, content) => { pub = JSON.parse(content); };
 Date.now = () => NOW * 1000;
-eval(src.replace(/^const (PV2|PV2_COLS|PV2_PARAMS|PV2_STATS) =/gm, 'var $1 ='));
-const PRM = { capital: 100, pct: 0.2, lev: 30, mail: 'test@example.com', mails: true, mailTp: false, active: true };
+eval(src.replace(/^const (PV2|PV2_COLS|PV2_PARAMS|PV2_STATS|PV2_NOTE_ROW) =/gm, 'var $1 ='));
+const PRM = { capital: 100, pct: 0.2, lev: 30, mail: 'test@example.com', mails: true, mailTp: false, active: true, warn: true, warnMin: 15 };
 let store = {};
 pv2_sheet_ = () => null; pv2_params_ = () => Object.assign({}, PRM); pv2_writeSheet_ = () => {};
 pv2_storeLoad_ = () => JSON.parse(JSON.stringify(store)); pv2_storeSave_ = s => { store = JSON.parse(JSON.stringify(s)); };
@@ -36,6 +37,8 @@ for (const t of T) {
   if (t < start) continue;
   upto = t; NOW = t + 3600 + 40;                       // świeca t zamknięta, 40 s później krok
   pv2Step_();
+  NOW = t + 3600 + 15 * 60 + 5;                        // 15 min później: uprzedzenia
+  pv2_alertsDue_(PropertiesService.getScriptProperties());
 }
 // ---- porównanie z pv2_batch_ (pełna historia) dla sygnałów po starcie + 3 dni
 const S = store.state, from = start + 3 * 86400;
@@ -56,6 +59,12 @@ if (mails.length) console.log('\n--- przykładowy mail ---\n' + mails[0].subject
 const closeMail = mails.find(m => /ZAMKNIJ/.test(m.subject)); if (closeMail) console.log('--- ' + closeMail.subject + '\n' + closeMail.body + '\n');
 console.log('numeracja bez dziur:', !gaps, '· pozycji w logu', S.positions.length);
 if (process.argv[3] && pub) fs.writeFileSync(process.argv[3], JSON.stringify(pub));
-const ok = !onlyL.length && !onlyB.length && live.length > 10 && !gaps;
+// każdy sygnał (mail SHORT na zamknięciu) poprzedzony uprzedzeniem tej samej pary
+const warns = mails.filter(m => /UWAGA/.test(m.subject)), sigs = mails.filter(m => /: SHORT/.test(m.subject) && !/wejście teraz/.test(m.subject));
+const wkey = new Set(warns.map(m => m.subject.split(' ')[3] + '@' + m.subject.split('o ')[1].slice(0, 5)));
+const noWarn = sigs.filter(m => { const pair = m.subject.split(' ')[3]; const sl = (m.body.match(/Świeca sygnału: [0-9-]+ [0-9:]+–([0-9:]+)/) || [])[1]; return !wkey.has(pair + '@' + sl); });
+console.log(`uprzedzenia: ${warns.length}, sygnałów ${sigs.length}, bez uprzedzenia ${noWarn.length}`);
+if (warns.length) console.log('--- ' + warns[0].subject + '\n' + warns[0].body + '\n');
+const ok = !onlyL.length && !onlyB.length && live.length > 10 && !gaps && !noWarn.length;
 console.log(ok ? 'WYNIK: OK' : 'WYNIK: BŁĄD');
 process.exit(ok ? 0 : 1);
