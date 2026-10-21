@@ -1,6 +1,6 @@
 """
 IA 4 — FX-POWRÓT v3: analiza stratnych transakcji Powrót.v2 i pomysłów na ulepszenie (instrukcja, sekcja 7b).
-Wersja projektu: 1.57 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.58 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Pytanie człowieka (21.10.2026): czy da się wyłapać stratne transakcje na poziomie strategii, czy jest coś, o czym nie
 pomyśleliśmy, i czy da się wzmocnić zyskowne?
@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import time
 from datetime import datetime, timezone
@@ -193,12 +194,67 @@ def features(R, D):
     return X
 
 
+# ---------------------------------------------------------------- testy statystyczne bez scipy (1.58)
+# Zgodne ze scipy.stats dla prób tej analizy: Mann-Whitney — przybliżenie normalne z poprawką na remisy i ciągłość
+# (scipy wybiera je samo, gdy obie próby > 8 lub są remisy); Welch — rozkład t przez niepełną funkcję beta.
+
+def _betainc(a, b, x):
+    """Regularyzowana niepełna funkcja beta I_x(a, b) — ułamek łańcuchowy (Lentz)."""
+    if x <= 0.0:
+        return 0.0
+    if x >= 1.0:
+        return 1.0
+    if x > (a + 1.0) / (a + b + 2.0):
+        return 1.0 - _betainc(b, a, 1.0 - x)
+    tiny = 1e-300
+    front = math.exp(math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b) + a * math.log(x) + b * math.log1p(-x)) / a
+    c, d = 1.0, 1.0 - (a + b) * x / (a + 1.0)
+    d = 1.0 / (d if abs(d) > tiny else tiny); f = d
+    for m in range(1, 1000):
+        for num in (m * (b - m) * x / ((a + 2 * m - 1) * (a + 2 * m)), -(a + m) * (a + b + m) * x / ((a + 2 * m) * (a + 2 * m + 1))):
+            d = 1.0 + num * d; d = 1.0 / (d if abs(d) > tiny else tiny)
+            c = 1.0 + num / c; c = c if abs(c) > tiny else tiny
+            f *= c * d
+        if abs(c * d - 1.0) < 1e-15:
+            break
+    return front * f
+
+
+def welch_p(a, b):
+    """Dwustronne p testu t Welcha (jak scipy.stats.ttest_ind(a, b, equal_var=False))."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    if len(a) < 2 or len(b) < 2 or np.isnan(a).any() or np.isnan(b).any():
+        return np.nan
+    va, vb = a.var(ddof=1) / len(a), b.var(ddof=1) / len(b)
+    if va + vb == 0:
+        return np.nan
+    t = (a.mean() - b.mean()) / math.sqrt(va + vb)
+    df = (va + vb) ** 2 / (va ** 2 / (len(a) - 1) + vb ** 2 / (len(b) - 1))
+    return _betainc(df / 2.0, 0.5, df / (df + t * t))
+
+
+def mw_p(a, b):
+    """Dwustronne p testu Manna-Whitneya (jak scipy.stats.mannwhitneyu(a, b), metoda asymptotyczna)."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    n1, n2 = len(a), len(b)
+    if not n1 or not n2 or np.isnan(a).any() or np.isnan(b).any():
+        return np.nan
+    z = np.concatenate([a, b]); n = n1 + n2
+    rk = pd.Series(z).rank(method='average').values
+    u1 = rk[:n1].sum() - n1 * (n1 + 1) / 2.0
+    _, cnt = np.unique(z, return_counts=True)
+    s = math.sqrt(n1 * n2 / 12.0 * ((n + 1) - (cnt ** 3 - cnt).sum() / (n * (n - 1))))
+    if s == 0:
+        return 1.0
+    zz = (max(u1, n1 * n2 - u1) - n1 * n2 / 2.0 - 0.5) / s
+    return min(1.0, math.erfc(zz / math.sqrt(2.0)))
+
+
 def feature_table(X):
-    from scipy.stats import mannwhitneyu
     rows = []
     for f, opis in FEATS:
         a, b = X.loc[X.strata, f], X.loc[~X.strata, f]
-        p = mannwhitneyu(a, b).pvalue if len(a) and len(b) else np.nan
+        p = mw_p(a, b)
         q = pd.qcut(X[f].rank(method='first'), 4, labels=False)
         g = X.groupby(q).agg(sr=('wynik', 'mean'), st=('strata', 'sum'))
         rows.append(dict(cecha=opis, strat_med=a.median(), zysk_med=b.median(), p=p, **{f'q{k + 1}': g.sr.iloc[k] for k in range(4)},
@@ -232,7 +288,6 @@ def event_ids(X):
 
 
 def together_tables(X, seed=1):
-    from scipy.stats import mannwhitneyu, ttest_ind
     T = []
     for nm, m in [('razem (inna para z tą walutą — sygnał w tej świecy)', X.razem), ('samotne', ~X.razem)]:
         for y in (0, 1, 2):
@@ -251,8 +306,7 @@ def together_tables(X, seed=1):
     G = X.groupby('zdarzenie').agg(n=('wynik', 'size'), sr=('wynik', 'mean'), suma=('wynik', 'sum'), razem=('razem', 'max'), rok=('rok', 'first'))
     a, b = G[G.n >= 2].sr, G[G.n == 1].sr
     ev = dict(roznica=d0, p_perm=cnt / 10000, zdarzen=len(G), wieloparowe=int((G.n >= 2).sum()), sr_wielo=a.mean(), sr_pojed=b.mean(),
-              p_zdarzenia=ttest_ind(a, b, equal_var=False).pvalue if len(a) > 1 and len(b) > 1 else np.nan,
-              p_mw=mannwhitneyu(a, b).pvalue if len(a) and len(b) else np.nan,
+              p_zdarzenia=welch_p(a, b), p_mw=mw_p(a, b),
               t_zdarzenia_v2=G.suma.mean() / G.suma.std() * np.sqrt(len(G)),
               t_zdarzenia_razem=G[G.razem].suma.mean() / G[G.razem].suma.std() * np.sqrt(G.razem.sum()) if G.razem.sum() > 1 else np.nan)
     P = X.groupby([X.para, X.razem]).wynik.agg(['size', 'mean']).unstack(1)
@@ -610,6 +664,9 @@ def selftest() -> bool:
     check('limit open + 1 ATR (1,012) — szczyt świecy wejścia 1,011 → brak transakcji', np.isnan(r[0]))
     r, x, w, u = sim1(o, h, l2, c, run, np.array([0]), np.array([0.98]), np.array([1.03]), np.array([0.002]), 0.0001, 0.5, 20, 1.0, 0.0, False, 0.0, 0, 0.25)
     check('limit open + 0,25 ATR (1,0105) dotknięty → wejście 1,0105, TP 1,005', abs(r[0] - ((1.0105 - 1.005) / 1.0105 * 100 - 0.0001 / 1.0105 * 100)) < 1e-9)
+    a = [0.31, -0.12, 0.05, 0.44, 0.02, -0.3, 0.18, 0.09, 0.27, -0.05]; b = [0.01, 0.03, -0.2, 0.0, 0.07, -0.11, 0.02, 0.05, -0.01, 0.04, 0.0, 0.06]
+    check('test Welcha bez scipy = scipy.stats.ttest_ind (0,231972821255)', abs(welch_p(a, b) - 0.23197282125520505) < 1e-9)
+    check('Mann-Whitney bez scipy = scipy.stats.mannwhitneyu (0,222128284287)', abs(mw_p(a, b) - 0.22212828428661602) < 1e-9)
     print('\nWYNIK: OK' if ok else '\nWYNIK: BŁĄD')
     return ok
 

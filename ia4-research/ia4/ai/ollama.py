@@ -1,6 +1,6 @@
 """
 IA 4 — lokalny model językowy przez Ollamę (instrukcja, sekcja 11c.2).
-Wersja projektu: 1.57 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.58 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Krok AI-1: tylko sprawdzenie przy starcie i stan do status.json (wersja Ollamy, model, digest,
 model w pamięci). Wywołania modelu — od AI-2 (num_ctx 8192 jawnie, kolejka z pierwszeństwem).

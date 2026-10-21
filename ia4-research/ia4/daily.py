@@ -1,6 +1,6 @@
 """
 IA 4 — kopia lokalna bazy świec dobowych (instrukcja, sekcja 4d).
-Wersja projektu: 1.57 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.58 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Firestore daily/{SYMBOL}/years/{RRRR} (tablice d, o, h, l, c, v; pisze Daily.gs) → data/daily/{SYMBOL}.parquet
   kolumny: date (RRRR-MM-DD), o, h, l, c, v — posortowane po dacie.

@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.57 · **Data:** 21 października 2026
+**Wersja:** 1.58 · **Data:** 21 października 2026
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jest celowo krótki: zasady, liczby ważne dla człowieka, stan. Jeśli kod, arkusz albo telemetria rozjeżdżają się z tym plikiem — obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -202,7 +202,7 @@ Zadanie człowieka z 19.10.2026: krótkotrwałe wzrosty kończą się gwałtown�
 - **Strona:** od 1.55 trzy tryby — **przegląd** (na żywo, jak w 1.53), **historia** (wykres wybranej pary po całych 2 latach: przeciąganie, kółko, przybliżenie, pasek całości ze znacznikami transakcji, „‹ transakcja ›”, filtr: wszystkie / stratne / zyskowne / limit czasu / inwestor, tabela — kliknięcie przewija wykres) i **galeria** (każda transakcja z filtra na własnym wykresie, sortowanie, „pokaż w historii”). Pełną historię zapisuje Mac: `python -m ia4.fxpowrot2 --strona` (świece 10 par i wszystkie transakcje v2 → branch `fx`, `fx/pv2/`; robi to też zwykłe `python -m ia4.fxpowrot2`); nowsze świece i transakcje dokłada `telemetry/pv2.json`. Dawniej: `telemetry/pv2.json` (ostatnie 300 świec każdej pary, pozycje, symulacja tych samych reguł na tych świecach) → FX → Powrót.v2. To paper trading do obserwacji, nie zalecenie; ocena — nie przed 30 transakcjami (zasada 6).
 
 
-**FX-POWRÓT v3 — analiza strat i ulepszeń (od 1.57, pytanie człowieka z 21.10.2026):** `ia4/fxpowrot3.py`, te same dane i rozliczenie co v2; reguły v2 bez zmian.
+**FX-POWRÓT v3 — analiza strat i ulepszeń (od 1.57, pytanie człowieka z 21.10.2026):** `ia4/fxpowrot3.py`, te same dane i rozliczenie co v2; reguły v2 bez zmian. Testy statystyczne liczone na miejscu, bez `scipy` (od 1.58).
 
 - **Stratne (Claude, 21.10.2026, 10 par, 345 transakcji):** 21 (6%), wszystkie po limicie 60 świec. Ok. 25 cech wejścia (wybicie z zakresu, trend, zmienność, kształt impulsu, ruch tej samej waluty na innych parach, godzina, dzień) ich nie odróżnia; częściej tracą sygnały późne (2.–3. świeca) i z dalekim celem — ale dalekie cele zarabiają najwięcej (górna ćwiartka +0,15% na transakcję).
 - **Sygnał „razem”** (w tej samej świecy sygnał daje też inna para z tą samą walutą — cała waluta zawraca): +0,10% na transakcję, 5 strat na 181 (najgorsza −0,65%); samotny: +0,03%, 16 strat na 164. Oba lata (razem +0,13% / +0,07%, samotne +0,03% / +0,03%), permutacja p < 0,0001, na zdarzeniach (transakcje powiązane walutą jako jedna) p = 0,0003. **Na rachunku v2 zostaje najlepsza:** samotne są dodatnie i wypadają w innym czasie; „tylko razem” daje mniej zysku przy tym samym obsunięciu (18,6% przy depozycie 20% — 2–3.04.2025, cła w USA, kilka shortów przeciw dolarowi naraz, potem wszystkie TP). Limit pozycji na walutę zmniejsza obsunięcie i zysk po równo.
@@ -337,6 +337,7 @@ Starsze wpisy: `archiwum/IA4_INSTRUKCJA-1.40.md`, sekcja 13, i historia gita.
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.58 | 2026-10-21 | FX-POWRÓT v3 bez `scipy`: test Manna-Whitneya i test t Welcha liczone w `ia4/fxpowrot3.py` (numpy + math, p zgodne ze `scipy.stats` co do 1e-9, sprawdzane w `--selftest`); na Macu `--double-proof` padał na braku `scipy` przed sprawdzianem, otwarcie nie zostało zapisane. Wyniki i warunki doubleProof bez zmian. |
 | 1.57 | 2026-10-21 | **FX-POWRÓT v3 — analiza strat** (`ia4/fxpowrot3.py`, sekcja 7b; pytanie człowieka z 21.10.2026): cechy stratnych transakcji, sygnał „razem” (inna para z tą samą walutą w tej samej świecy) na transakcjach i zdarzeniach, warianty (unieważnienie, dokładanie, limit, luźniejsze wejście), rachunek przy tym samym ryzyku, największe obsunięcie, doubleProof v3 → `FX-POWROT-V3.xlsx`. Reguły v2 i Powrót.v2 Investor bez zmian. Usunięty `ia4/fxkanal.py` (1.56). README, `PRZEWODNIK.md`. Pozostałe pliki — tylko numer wersji. |
 | 1.56 | 2026-10-21 | FX-KANAŁ (`ia4/fxkanal.py`): short przy górnej / long przy dolnej linii kanału — 5,64 mln reguł; kanał rysowany na gotowym wykresie zna przyszłość, liczony na żywo nie daje przewagi przenoszącej się na rok 2 (stabilnych reguł 130 wobec 37–40 na placebo, wybór na roku 1 w roku 2 na minusie). Wycofane w 1.57 na prośbę człowieka (21.10.2026). |
 | 1.55 | 2026-10-21 | **Powrót.v2 na stronie — historia i galeria** (sekcja 7b; prośba człowieka z 21.10.2026): przewijanie wykresów po całych 2 latach, filtr transakcji (m.in. wszystkie stratne), galeria — każda transakcja na własnym wykresie (`docs/js/views/pv2hist.js`). Python: `fxpowrot2.publish_history` / `--strona` — świece 10 par i wszystkie transakcje v2 na branch `fx` (`fx/pv2/`). README. Pozostałe pliki — tylko numer wersji. |

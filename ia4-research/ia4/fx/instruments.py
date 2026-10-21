@@ -1,6 +1,6 @@
 """
 IA 4 — instrumenty modułu FX 1h (instrukcja, sekcja 4b) i godziny rynku.
-Wersja projektu: 1.57 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.58 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kopia listy z Fx.gs (FX.INSTRUMENTS) — używana, gdy Firestore (system/fx1h) jest
 niedostępny, i do opisu instrumentów (pip, miejsca po przecinku, grupa).

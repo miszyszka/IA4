@@ -1,6 +1,6 @@
 """
 IA 4 — wyniki modułu prognozy FX 1h (10 par + BTC/USD) na branchu `fx` (instrukcja, sekcja 4c.12).
-Wersja projektu: 1.57 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.58 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Klon brancha w ia4-research/fx-repo/ (poza gitem głównego repo), te same
 uprawnienia do push co zwykły `git push` na tym Macu. Mechanika git — wspólna
