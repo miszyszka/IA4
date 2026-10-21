@@ -1,6 +1,6 @@
 """
 IA 4 — jednorazowy backtest strategii aktywnych na doubleProof (instrukcja, sekcja 6a).
-Wersja projektu: 1.54 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.55 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Liczy wszystkie strategie aktywne (research/strategies/) na 20 spółkach doubleProof —
 tym samym silnikiem i tak samo jak weryfikacja (verify.evaluate) — i zapisuje wynik RAZ

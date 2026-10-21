@@ -1,6 +1,6 @@
 """
 IA 4 — strategia RSI(3) / EMA100 / VWAP10: portfel QQQ i to samo dla wszystkich spółek (instrukcja, sekcja 7a).
-Wersja projektu: 1.54 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.55 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Reguła podana przez człowieka (16.10.2026), liczona jednorazowo — bez poszukiwania, bez zmiany parametrów:
   1. RSI(3) zamyka się poniżej 22 (RSI Wildera z zamknięć),

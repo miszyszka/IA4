@@ -1,9 +1,24 @@
 // IA 4 — zakładka FX → Powrót.v2: paper trading strategii FX-POWRÓT v2 (Apps Script, PowrotV2.gs → telemetry/pv2.json).
 // Wykres każdej pary: świece 1h, gdzie były transakcje (sygnał ▼, wejście ●, wyjście ■, TP - - -, baza ···).
-// Wersja projektu: 1.54 (2026-10-20)
+// Wersja projektu: 1.55 (2026-10-21)
 
-import { store, num, pct, usd, sgn, esc, age, t, cls } from "../core.js";
+import { store, num, pct, usd, sgn, esc, age, t, cls, pref } from "../core.js";
 import { help } from "../help.js";
+import { renderHistory, mountHistory, renderGallery, mountGallery, setOnLoaded, index } from "./pv2hist.js";
+
+const MODES = [["przeglad", "przegląd (na żywo)"], ["historia", "historia — przewijanie"], ["galeria", "galeria transakcji"]];
+let mode = pref.get("pv2.mode", "przeglad");
+
+/** Cały widok Powrót.v2 (fx.js): prefix — przełącznik pod-zakładek FX. */
+export function pv2View(el, prefix) {
+  const again = () => pv2View(el, prefix);
+  setOnLoaded(() => { if (el.isConnected && !el.hidden && (location.hash.split("/")[1] || "") === "powrot") again(); });
+  const bar = `<div class="pv2-modes">${MODES.map(([k, lab]) => `<button type="button" class="chip" data-mode="${k}" aria-pressed="${k === mode}">${lab}</button>`).join(" ")}</div>`;
+  if (mode === "historia") { index(); el.innerHTML = prefix + bar + renderHistory(); mountHistory(el, again); }
+  else if (mode === "galeria") { el.innerHTML = prefix + bar + renderGallery(); mountGallery(el, again, () => { mode = "historia"; pref.set("pv2.mode", mode); again(); window.scrollTo(0, 0); }); }
+  else { el.innerHTML = prefix + bar + renderPv2(el); mountPv2(el); }
+  el.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => { mode = b.dataset.mode; pref.set("pv2.mode", mode); again(); }));
+}
 
 const H = 3600e3;
 const px = (p, v) => v === null || v === undefined || !isFinite(v) ? "—" :

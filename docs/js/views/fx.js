@@ -1,12 +1,12 @@
 // IA 4 — zakładka FX: 10 par walutowych + BTC, świece 1h, prognoza rozkładu, spływ świec,
-// przeliczenia FX-research i (w przyszłości) wirtualny inwestor FX. Wersja projektu: 1.54 (2026-10-20)
+// przeliczenia FX-research i (w przyszłości) wirtualny inwestor FX. Wersja projektu: 1.55 (2026-10-21)
 
 import { store, num, pct, esc, age, t, fxOpen, pref } from "../core.js";
 import { help } from "../help.js";
 import { fxChart, spark, inst, SC_COL } from "../chart.js";
 import { fxLast, stamp } from "../health.js";
 import { renderInvestor, mountInvestor } from "./investor.js";
-import { renderPv2, mountPv2 } from "./pv2.js";
+import { pv2View } from "./pv2.js";
 
 /** Przełącznik pod-zakładek FX: prognoza | Powrót.v2 (#fx, #fx/powrot). */
 function subnav(pv2) {
@@ -118,8 +118,7 @@ export default {
   render(el, changed, force) {
     if ((location.hash.split("/")[1] || "") === "powrot") {
       if (!force && changed && changed.length && !changed.includes("pv2")) return;
-      el.innerHTML = subnav(true) + renderPv2(el);
-      mountPv2(el);
+      pv2View(el, subnav(true));
       return;
     }
     const fc = store.get("forecast");

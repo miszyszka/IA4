@@ -1,6 +1,6 @@
 """
 IA 4 — playbook Agent-Investora i sygnały strategii na Macu (instrukcja, sekcje 11c.6, 11c.8).
-Wersja projektu: 1.54 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.55 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Playbook na start (AI-2) = 60 aktywnych strategii Etapu 2, status `bazowa`: „wybrane” w backteście
 portfela (6b) — mnożnik ryzyka 1,0 (`bazowa_wybrana`), pozostałe 0,5. Źródło: branch `research`

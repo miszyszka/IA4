@@ -1,6 +1,6 @@
 """
 IA 4 — Krytyk: weryfikuje Inwestora i Badacza, ustawia poziom nauki (instrukcja, sekcja 8 — „Krytyk”).
-Wersja projektu: 1.54 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.55 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Kiedy (dyspozytor): po `critic_every_rounds` rundach Inwestora z modelem, po `critic_every_min` minutach
 (jeśli coś się wydarzyło) albo od razu, gdy czekają ≥ 3 hipotezy „do oceny”.

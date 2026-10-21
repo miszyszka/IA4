@@ -1,7 +1,7 @@
 """
 IA 4 — FX-POWRÓT v2: skąd biorą się stratne transakcje FX-POWRÓT, czy da się je uciąć (czas trzymania, cel, SL,
 weekend) i sprawdzian zamrożonej strategii na 10 nowych parach fx1h_double_proof (instrukcja, sekcja 7b).
-Wersja projektu: 1.54 (2026-10-20) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.55 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Pytanie człowieka (20.10.2026): większość zyskownych transakcji zamyka się szybko — czy krótszy czas trzymania (albo
 inne wyjście) obetnie stratne? Wolumenu nie ma: Yahoo podaje dla par walutowych 0, baza fx1h go nie zapisuje.
@@ -24,6 +24,7 @@ Rozliczenie pesymistyczne (zasada 5), spread raz na transakcję, jedna pozycja n
 
     python -m ia4.fxpowrot2              # → ~/Desktop/IA4/FX-POWROT-V2.xlsx (doubleProof, gdy pary są już w Firestore)
     python -m ia4.fxpowrot2 --bez-sync   # bez odświeżenia kopii fx1h
+    python -m ia4.fxpowrot2 --strona     # tylko pełna historia dla strony (branch fx, fx/pv2/; run() robi to też na końcu)
     python -m ia4.fxpowrot2 --selftest   # „WYNIK: OK”
 """
 
@@ -378,6 +379,51 @@ def compute(R: Rynek, Rdp: Rynek | None, f=0.20, lev=30.0, start=1000.0, log=pri
     return O
 
 
+# ---------------------------------------------------------------- strona: pełna historia (branch fx, fx/pv2/)
+
+def history_docs(R: Rynek) -> tuple[dict, dict]:
+    """Świece każdej pary (liczby całkowite w jednostkach ostatniego miejsca, czas jako odstępy w godzinach) i wszystkie
+    transakcje v2 na całej historii — dla strony (FX → Powrót.v2 → historia / galeria)."""
+    D = simulate(R, events(R), **V2)
+    trades = []
+    for r in D.itertuples():
+        F = R.F[r.para]; j = int(r.j); e0 = j + 1; x = int(r.swiece); ex_i = j + x
+        en = float(F['o'][e0]); TP = float(r.P - V2['f'] * (r.P - r.B))
+        ex = TP if int(r.powod) == 0 else float(F['c'][ex_i])
+        dp = 3 if r.para.endswith('JPY') else 5
+        trades.append(dict(pair=r.para, sigT=int(R.t[j]), entryT=int(R.t[e0]), exitT=int(R.t[ex_i]), entry=round(en, dp), tp=round(TP, dp),
+                           exit=round(ex, dp), base=round(float(r.B), dp), peak=round(float(r.P), dp), kind='TP' if int(r.powod) == 0 else 'czas (60 świec)',
+                           ret=round(float(r.wynik), 4), bars=x))
+    pairs = {}
+    for p in R.pairs:
+        F = R.F[p]; dp = 3 if p.endswith('JPY') else 5; k = 10 ** dp
+        t = F['t'].astype(np.int64)
+        pairs[p] = dict(pair=p, dp=dp, t0=int(t[0]), dt=[0] + (np.diff(t) // 3600).astype(int).tolist(),
+                        **{q: np.rint(F[q] * k).astype(np.int64).tolist() for q in 'ohlc'})
+    s = stats(D)
+    index = dict(version=__version__, generatedAt=datetime.now(timezone.utc).isoformat(timespec='seconds'), od=int(R.t[0]), do=int(R.t[-1]),
+                 rules=dict(V2), pairs=list(R.pairs), spread={p: R.spread[p] for p in R.pairs}, trades=trades,
+                 summary=dict(n=s['n'], srednia=round(float(s['srednia']), 4), t=round(float(s['t']), 2), trafne=round(float(s['trafne']), 4)))
+    return index, pairs
+
+
+def publish_history(R: Rynek, push=True, log=print) -> bool:
+    """Zapis na branch `fx` (fx/pv2/index.json + fx/pv2/{PARA}.json) — strona czyta stamtąd pełną historię."""
+    from .fx.store import fx_repo
+    index, pairs = history_docs(R)
+    repo = fx_repo(push=push)
+    repo.ensure()
+    d = repo.dir / 'pv2'
+    d.mkdir(parents=True, exist_ok=True)
+    for p, doc in pairs.items():
+        (d / f'{p}.json').write_text(json.dumps(doc, separators=(',', ':')), encoding='utf-8')
+    (d / 'index.json').write_text(json.dumps(index, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    ok = repo.commit_push(f"pv2: historia {len(index['trades'])} transakcji, świece do {pd.Timestamp(index['do'], unit='s'):%Y-%m-%d %H:%M}")
+    log(f"Strona: historia Powrót.v2 — {len(index['trades'])} transakcji, {R.n} świec × {len(pairs)} par → branch fx, fx/pv2/"
+        + ('' if ok else f'  ! push nieudany: {repo.last_error}'))
+    return ok
+
+
 # ---------------------------------------------------------------- Excel
 
 def write_xlsx(O: dict, path: Path, wnioski=None, dp_status='') -> Path:
@@ -661,7 +707,8 @@ def write_xlsx(O: dict, path: Path, wnioski=None, dp_status='') -> Path:
 
 # ---------------------------------------------------------------- uruchomienie
 
-def run(no_sync=False, out=None, f=0.20, lev=30.0, start=1000.0, frames=None, dp_frames=None, log=print, keep=None, wnioski=None) -> Path:
+def run(no_sync=False, out=None, f=0.20, lev=30.0, start=1000.0, frames=None, dp_frames=None, log=print, keep=None, wnioski=None,
+        publish=False) -> Path:
     t0 = time.time(); status = ''
     if frames is None:
         from .fx import sync as fxs
@@ -689,6 +736,11 @@ def run(no_sync=False, out=None, f=0.20, lev=30.0, start=1000.0, frames=None, dp
         Rdp = Rynek(allf, DP_PAIRS, DP_SPREAD)
         log(f'doubleProof: {Rdp.n} świec, {pd.Timestamp(int(Rdp.t[0]), unit="s"):%Y-%m-%d} – {pd.Timestamp(int(Rdp.t[-1]), unit="s"):%Y-%m-%d}')
     O = compute(R, Rdp, f=f, lev=lev, start=start, log=log)
+    if publish:
+        try:
+            publish_history(R, log=log)
+        except Exception as e:                                   # strona nie zatrzymuje badania
+            log(f'  ! historia dla strony: {type(e).__name__}: {e}')
     if keep is not None:
         keep.update(O)
     path = write_xlsx(O, out or (config.RESEARCH_DIR.parent / 'FX-POWROT-V2.xlsx'), wnioski=wnioski, dp_status=status)
@@ -754,12 +806,21 @@ def main():
     ap = argparse.ArgumentParser(description='FX-POWRÓT v2 — analiza strat i doubleProof')
     ap.add_argument('--bez-sync', action='store_true', help='bez odświeżenia kopii fx1h')
     ap.add_argument('--depozyt', type=float, default=0.20, help='depozyt na pozycję jako część salda (domyślnie 0.20)')
+    ap.add_argument('--strona', action='store_true', help='tylko historia dla strony (branch fx, fx/pv2/) — bez Excela i bez doubleProof')
     ap.add_argument('--selftest', action='store_true')
     a = ap.parse_args()
     print(f'IA 4 {__version__} — FX-POWRÓT v2\n')
     if a.selftest:
         sys.exit(0 if selftest() else 1)
-    run(no_sync=a.bez_sync, f=a.depozyt)
+    if a.strona:
+        from .fx import sync as fxs
+        if not a.bez_sync:
+            log_ = print
+            log_('Kopia fx1h — odświeżenie 10 par (python -m ia4.fx.sync)')
+            fxs.sync(quiet=True, syms=list(PAIRS))
+        R = Rynek({p: fxs.load(p) for p in PAIRS}, PAIRS, fs.spreads())
+        sys.exit(0 if publish_history(R) else 1)
+    run(no_sync=a.bez_sync, f=a.depozyt, publish=True)
 
 
 if __name__ == '__main__':
