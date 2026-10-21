@@ -1,7 +1,7 @@
 // IA 4 — FX → Powrót.v2: HISTORIA (wykres pary z przewijaniem po całych 2 latach) i GALERIA (każda transakcja na
 // własnym wykresie, z filtrem: stratne, zyskowne, limit czasu, inwestor). Dane: branch fx, fx/pv2/ (Mac:
 // python -m ia4.fxpowrot2 --strona) + najnowsze świece i pozycje z telemetry/pv2.json (Apps Script).
-// Wersja projektu: 1.56 (2026-10-21)
+// Wersja projektu: 1.57 (2026-10-21)
 
 import { store, num, sgn, esc, t, cls, pref, REPO } from "../core.js";
 

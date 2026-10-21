@@ -1,6 +1,6 @@
 """
 IA 4 — punkty odniesienia Agent-Investora (instrukcja, sekcja 11c.10).
-Wersja projektu: 1.56 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.57 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Na tych samych świecach, wynik netto % na transakcję:
   • Inwestor — transakcje z playbooka (osobno: własne pomysły),

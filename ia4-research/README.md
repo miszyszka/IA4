@@ -1,6 +1,6 @@
 # IA 4 — Python na Macu: kopia bazy i poszukiwanie strategii
 
-**Wersja projektu: 1.56 (2026-10-21)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.57 (2026-10-21)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Dwie rzeczy:
 1. `python -m ia4.sync` — ściąga świece z Firestore na dysk (`data/*.parquet`), przy
@@ -128,9 +128,9 @@ python -m ia4.fxodkrywca            # FX: automatyczne poszukiwanie na 1. roku (
                                     # ok. 3 h na wszystkich rdzeniach (--godziny 6 — szerzej; --kierunek short; --procesy N)
 python -m ia4.fxpowrot2 --selftest  # „WYNIK: OK”
 python -m ia4.fxpowrot2 --strona    # tylko historia dla strony: świece 10 par + wszystkie transakcje v2 → branch fx (fx/pv2/)
-python -m ia4.fxkanal --selftest    # „WYNIK: OK”
-python -m ia4.fxkanal               # FX-KANAŁ: short przy górnej / long przy dolnej linii kanału (5,6 mln reguł, placebo, złudzenie
-                                    # kanału „z przyszłością”) → ~/Desktop/IA4/FX-KANAL.xlsx; --double-proof — raz, na 10 nowych parach
+python -m ia4.fxpowrot3 --selftest  # „WYNIK: OK”
+python -m ia4.fxpowrot3             # FX-POWRÓT v3: stratne transakcje, sygnał „razem”, warianty, rachunek → ~/Desktop/IA4/FX-POWROT-V3.xlsx
+                                    # (--double-proof — raz: czy efekt „razem” powtarza się na 10 parach fx1h_double_proof)
 python -m ia4.fxpowrot2             # FX-POWRÓT v2: skąd straty, ok. 40 wariantów wyjścia, v2 zamrożona; doubleProof na 10 parach
                                     # fx1h_double_proof (gdy Apps Script pobrał ich historię) → ~/Desktop/IA4/FX-POWROT-V2.xlsx
 ```

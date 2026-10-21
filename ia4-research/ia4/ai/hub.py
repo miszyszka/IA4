@@ -1,6 +1,6 @@
 """
 IA 4 — hub: wspólna pamięć agentów AI Investor (instrukcja, sekcja 11c.5).
-Wersja projektu: 1.56 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.57 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Jeden plik SQLite (tryb WAL) w data/ai/hub.sqlite, poza gitem. Tabele powstają w kroku, który ich
 używa (AI-1: meta, runs, events, notes, feed_log; AI-2: positions, rounds, decisions, llm_calls,

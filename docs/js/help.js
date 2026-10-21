@@ -1,5 +1,5 @@
 // IA 4 — opisy paneli („?”) i przewodnik po stronie (instrukcja, sekcja 9; PRZEWODNIK.md).
-// Wersja projektu: 1.56 (2026-10-21)
+// Wersja projektu: 1.57 (2026-10-21)
 //
 // help("klucz") → przycisk „?” w rogu panelu; po kliknięciu opis: co to jest, jak czytać, na co uważać.
 // Otwarte opisy pamiętane w przeglądarce — przeżywają odświeżanie danych. Treść = PRZEWODNIK.md (te same zdania).

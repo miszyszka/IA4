@@ -3,7 +3,7 @@
  *  IA 4 — POWRÓT.V2 INVESTOR  (paper trading strategii FX-POWRÓT v2 na 10 parach FX 1h,
  *                              arkusz Powrót.v2.Investor, maile z sygnałami, telemetry/pv2.json)
  *
- *  Wersja projektu: 1.56 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.57 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Strategia (instrukcja, sekcja 7b; Python: ia4/fxpowrot2.py, V2 — reguły zamrożone):
  *   • impuls: świeca zamyka się ≥ 2 ATR(100) wyżej niż poprzednia; baza B = zamknięcie przed nią,

@@ -1,6 +1,6 @@
 """
 IA 4 — testy kroku AI-2 (Agent-Investor) na danych syntetycznych — część `python -m ia4.ai.selftest`.
-Wersja projektu: 1.56 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.57 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Silnik portfela: zgodność z symulacją backtestu (ia4/lab/sim) transakcja po transakcji, koszty, USD,
 luka, SL przed TP, zamknięcie decyzją, zacieśnianie SL, limity 11c.7, test na historii (replay).
