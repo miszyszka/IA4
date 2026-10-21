@@ -1,6 +1,6 @@
 // IA 4 — zakładka FX → Powrót.v2: paper trading strategii FX-POWRÓT v2 (Apps Script, PowrotV2.gs → telemetry/pv2.json).
 // Wykres każdej pary: świece 1h, gdzie były transakcje (sygnał ▼, wejście ●, wyjście ■, TP - - -, baza ···).
-// Wersja projektu: 1.58 (2026-10-21)
+// Wersja projektu: 1.59 (2026-10-21)
 
 import { store, num, pct, usd, sgn, esc, age, t, cls, pref } from "../core.js";
 import { help } from "../help.js";

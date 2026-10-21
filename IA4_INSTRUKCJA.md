@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.58 · **Data:** 21 października 2026
+**Wersja:** 1.59 · **Data:** 21 października 2026
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jest celowo krótki: zasady, liczby ważne dla człowieka, stan. Jeśli kod, arkusz albo telemetria rozjeżdżają się z tym plikiem — obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -16,7 +16,7 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jes
 | 1. Baza akcji 1h (75 spółek) | ✅ działa bez końca |
 | 2. Poszukiwanie strategii | ⏸ wstrzymane od 3.10.2026 — 60 aktywnych strategii |
 | 3. Paper trading (mechaniczny inwestor) | 🟨 działa od 6.10.2026; 1.53: Powrót.v2 Investor (FX, paper, 100 $, maile z sygnałami) — od wdrożenia `PowrotV2.gs` |
-| 4. FX 1h: zbieranie 10 par + BTC i prognoza rozkładu | 🟨 zbieranie działa; prognoza H-002 — kierunek bez przewagi; 1.49–1.57: badania FX-SHORT-NY, FX-POWRÓT, FX-ODKRYWCA, FX-POWRÓT v2 i v3 (sekcja 7b, informacyjne); 1.52: 10 par fx1h_double_proof — historia do pobrania |
+| 4. FX 1h: zbieranie 10 par + BTC i prognoza rozkładu | 🟨 zbieranie działa; prognoza H-002 — kierunek bez przewagi; 1.49–1.59: badania FX-SHORT-NY, FX-POWRÓT, FX-ODKRYWCA, FX-POWRÓT v2, v3 i FX-SPRINT (sekcja 7b, informacyjne); 1.52: 10 par fx1h_double_proof — historia do pobrania |
 | 5. Strona IA4 | 🟨 działa, rozwijana na prośbę |
 | 6. AI Investor — agenci na Macu | 🟨 1.41: zespół agentów (Inwestor, Krytyk, Badacz), tryb nauki |
 | Baza świec dobowych (pełna historia) | ✅ 75/75 od 15.10.2026 (najstarsza świeca 1970-01-02), aktualizacja codziennie po sesji |
@@ -28,6 +28,7 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jes
 4. **Badania FX (1.49–1.52):** Mac — `python -m ia4.fxshort --selftest`, `python -m ia4.fxpowrot --selftest` i `python -m ia4.fxodkrywca --selftest` („WYNIK: OK”), potem `python -m ia4.fxshort` → `FX-SHORT-NY.xlsx` i `python -m ia4.fxpowrot` → `FX-POWROT.xlsx` (powtórzenie liczb Claude na świeższej kopii fx1h), a `python -m ia4.fxodkrywca` (ok. 3 h) → `FX-ODKRYWCA.xlsx` tylko jako potwierdzenie wniosku 1.51 (otwarcie skarbca na Macu zapisuje się w jego dzienniku); decyzja człowieka: czy test na żywo (papier albo demo XTB) przez ≥ 30 transakcji bez zmiany parametrów — kandydat: FX-POWRÓT v2 (sekcja 7b), najpierw doubleProof.
 4a. **doubleProof FX (1.52):** ✅ Apps Script 1.53 wdrożony, historia 21/21 (20.10.2026) — teraz Mac; automat pobrał historię 10 par fx1h_double_proof (jedna para na wolne uruchomienie, ok. 5 200 zapisów Firestore jednorazowo; postęp: STATS „historia N/21”, arkusz FX — nowe kolumny). Potem Mac — `python -m ia4.fxpowrot2 --selftest`, `python -m ia4.fxpowrot2` → `FX-POWROT-V2.xlsx` z arkuszem DOUBLEPROOF (test jednorazowy, otwarcie zapisane); przegląd z Claude.
 4d. **Powrót.v2 — analiza strat i „razem” (1.57):** Mac — `python -m ia4.fxpowrot3 --selftest`, potem raz `python -m ia4.fxpowrot3 --double-proof` → `FX-POWROT-V3.xlsx` (arkusz DOUBLEPROOF: czy efekt „razem” powtarza się na 10 nowych parach); decyzja człowieka: oznaczenie „wieloparowy / samotny” w mailach i arkuszu Powrót.v2.Investor, ewentualnie wielkość pozycji (sekcja 7b).
+4e. **FX-SPRINT (1.59):** Mac — `python -m ia4.fxsprint --selftest` („WYNIK: OK”), potem raz `python -m ia4.fxsprint --double-proof` → `FX-SPRINT.xlsx` (sprint 10 $ → cel na sygnałach Powrót.v2; arkusz DOUBLEPROOF — czy wybrana wersja trzyma się na 10 nowych parach).
 4c. **Historia Powrót.v2 na stronie (1.55):** Mac — `python -m ia4.fxpowrot2 --strona` (raz, potem przy każdym `python -m ia4.fxpowrot2`) → strona FX → Powrót.v2 → historia / galeria.
 4b. **Powrót.v2 Investor (1.53):** Apps Script — podmienić wszystkie pliki `.gs`, dodać nowy `PowrotV2.gs` („+ → Skrypt”) i podmienić manifest `appsscript.json` (Ustawienia projektu → „Pokaż plik manifestu”; nowy zakres: wysyłanie poczty); zapisać, w arkuszu menu **IA 4 → 📧 Powrót.v2 — mail testowy** (Google prosi o zgodę na pocztę), potem **📉 Powrót.v2 — przelicz teraz** (powstaje zakładka **Powrót.v2.Investor**; inwestor liczy od tej chwili, 100 $). Sprawdzić: mail testowy doszedł, na stronie FX → Powrót.v2 są wykresy 10 par. Pierwszy sygnał — średnio za 2–3 dni.
 5. **Do potwierdzenia przez człowieka:** usunięcie starej bazy EURUSD 5 min (menu „🗑 FX — usuń stare świece EURUSD 5 min”); zamknięcie FX-7 (arkusz OKOLICZNOSCI_FX ma kolumny H-001 i H-002).
@@ -87,7 +88,7 @@ Yahoo ──(Apps Script, trigger co minutę)──▶ Firestore ──▶ Mac: 
 | Mac `~/Desktop/IA4/` | repo, kopie lokalne w `ia4-research/data/`, pliki Excel (`AI-INVESTOR.xlsx`, `ONE-DAY-*.xlsx`, `SWING-*.xlsx`) | Mac |
 
 **Pliki Apps Script:** `Code.gs` (zbieranie, STATS, menu, triggery) · `Daily.gs` (świece dobowe) · `Fx.gs` (FX 1h) · `Research.gs` (arkusz STRATEGIE) · `Paper.gs` + `PaperEngine.gs` (sygnały i mechaniczny inwestor) · `PowrotV2.gs` (Powrót.v2 Investor: FX paper trading, maile, `telemetry/pv2.json`; od 1.53) · `Telemetry.gs` (telemetria na GitHub). Manifest `appsscript.json` (zakresy, w tym wysyłanie poczty od 1.53). Triggery: `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min.
-**Python** (`ia4-research/ia4/`): `sync.py`, `daily.py` (kopie), `lab/` (reguły), `fx/` (prognoza), `ai/` (agenci), `oneday.py`, `odsearch.py`, `odport.py`, `odbreak.py` (badania One-Day), `swing.py`, `swtrend.py`, `swrsi.py`, `swserie.py`, `swportfel.py`, `swrowna.py` (badania wielodniowe), `fxshort.py`, `fxpowrot.py`, `fxodkrywca.py`, `fxpowrot2.py`, `fxpowrot3.py` (badania FX, sekcja 7b).
+**Python** (`ia4-research/ia4/`): `sync.py`, `daily.py` (kopie), `lab/` (reguły), `fx/` (prognoza), `ai/` (agenci), `oneday.py`, `odsearch.py`, `odport.py`, `odbreak.py` (badania One-Day), `swing.py`, `swtrend.py`, `swrsi.py`, `swserie.py`, `swportfel.py`, `swrowna.py` (badania wielodniowe), `fxshort.py`, `fxpowrot.py`, `fxodkrywca.py`, `fxpowrot2.py`, `fxpowrot3.py`, `fxsprint.py` (badania FX, sekcja 7b).
 
 ---
 
@@ -209,6 +210,16 @@ Zadanie człowieka z 19.10.2026: krótkotrwałe wzrosty kończą się gwałtown�
 - **Warianty:** wyjście przy zamknięciu nad szczytem / nowym impulsie, luźniejsze wejście — gorzej; limit 0,2–0,3 ATR nad otwarciem — t 8,1–8,3 przy o 12–17% mniejszej liczbie transakcji; sygnał tylko na 1. świecy — 0 stratnych okresów, o 1/3 mniej transakcji. Dokładanie jednostki przy + 2 ATR — najlepszy rachunek w próbie (zysk / obsunięcie 26,6 wobec 15,2), ale to uśrednianie bez SL: ryzyko podwójnej straty, gdy kurs nie wróci — tylko po doubleProof i za zgodą człowieka.
 - **doubleProof v3** (`--double-proof`, otwarcia w `data/fxpowrot3/doubleproof.jsonl`; warunki ustalone 21.10.2026): efekt — średnio „razem” > samotne (każda grupa ≥ 15 transakcji); v3 „tylko razem” — ≥ 30 transakcji, średnia > 0, t ≥ 2. Arkusze → `FX-POWROT-V3.xlsx` (PRZEWODNIK.md). Wyniki niczego nie zmieniają bez zgody człowieka.
 
+
+**FX-SPRINT — sprint 10 $ → cel (od 1.59, zadanie człowieka z 21.10.2026):** `ia4/fxsprint.py`; sygnały Powrót.v2 bez zmian, te same dane, spread i dźwignia 1:30.
+
+- **Zadanie:** z 10 $ zrobić 100 $ w ≤ 2 tygodnie; sukces → wypłata 90 $ i znów 10 $; saldo 0 → dopłata 10 $; jeden sprint naraz; ≥ 85% udanych przy ≥ 40 sprintach w roku; rok 1 → 100 najlepszych → rok 2 → wersja o najbardziej zbliżonych wynikach; strategia prosta, z dotychczasowych wniosków.
+- **Arytmetyka (Claude, 21.10.2026):** cel ×10 przy 85% udanych to średnio +75 $ na sprint z 10 $ — przy 1:30 ok. 7% ruchu ceny na korzyść co 2 tygodnie bez dźwigni; Powrót.v2 daje ok. 0,46% (ok. 15 × za mało). Zasady sprintu (cel, wypłaty, dopłaty) nie zmieniają średniego wyniku. Decyzja człowieka (21.10.2026): szukać **największego celu przy 85%**.
+- **Sprint:** zaczyna się przy pierwszym sygnale po poprzednim, start 10 $; depozyt pozycji = f × saldo (10–100%), najwyżej wolny depozyt, jedna pozycja na parę, wyjścia v2 (TP / 60 świec); sukces — saldo (wycena na zamknięciu świecy) ≥ cel → wszystko zamknięte; porażka — stop out (poziom depozytu < 50% po najgorszej cenie świecy, saldo ≥ 0) albo koniec limitu dni (1–14, kalendarzowe). Każdy sprint od 10 $: nadwyżka — wypłata, brak — dopłata. Jednostki bez zaokrąglania do 0,01 lota (10 $ to za mało na minimalną pozycję XTB, ok. 35–45 $ depozytu; wyniki skalują się liniowo ze startem). Siatka: 3 filtry sygnałów (wszystkie / „razem” / 1. świeca) × 7 depozytów × 7 limitów dni × 22 cele (×1,01 – ×10) = 3234 wersje.
+- **Wybór:** rok 1 (do 15.10.2025) — ≥ 85% udanych i ≥ 40 sprintów na rok → najwyżej 100 najlepszych (cel, skuteczność, zysk netto) → rok 2; wybrana: największy cel spełniający warunki w obu latach, przy remisie najmniejsza różnica skuteczności między latami.
+- **Wyniki (Claude, 21.10.2026, kopia do 16.10.2026):** cel ×10 — 0% udanych w obu latach, najlepszy sprint ze wszystkich wersji doszedł do ×1,41. Warunki roku 1 spełniają 62 wersje (największy cel ×1,04), obu lat — 26 (największy cel ×1,03). Wybrana: wszystkie sygnały, depozyt 100% salda, ≤ 10 dni, cel ×1,03 (10 → 10,30 $) — rok 1: 86,0% udanych, 63 sprinty na rok, netto +18,18 $; rok 2: 86,5%, 52 na rok, +16,15 $; stop outów 0, porażki — tylko koniec limitu dni. Ryzyko: przy depozycie 100% ruch ceny o 1,67% przeciw pozycji = stop out; najgłębszy w 2 latach — 1,47%. Te same sygnały bez sprintów (zyski zostają): 10 $ → 426 $ w 2 lata — sprint zamienia procent składany na małe wypłaty.
+- **doubleProof sprintu** (`--double-proof`, otwarcia w `data/fxsprint/doubleproof.jsonl`; warunek ustalony 21.10.2026 przed testem): wybrana wersja na 10 parach fx1h_double_proof — w całym okresie ≥ 85% udanych, ≥ 40 sprintów na rok i netto > 0 $. Arkusze → `FX-SPRINT.xlsx` (PRZEWODNIK).
+
 ---
 
 ## 8. AI Investor — zespół agentów (Etap 6)
@@ -325,6 +336,7 @@ python -m ia4.fxpowrot              # FX: impuls → zawrócenie → TP w stron�
 python -m ia4.fxodkrywca            # FX: poszukiwanie na 1. roku → seria 100 → skarbiec (2. rok) → FX-ODKRYWCA.xlsx; ok. 3 h (--godziny)
 python -m ia4.fxpowrot2             # FX-POWRÓT v2: analiza strat + doubleProof na 10 nowych parach → FX-POWROT-V2.xlsx
 python -m ia4.fxpowrot3             # FX-POWRÓT v3: stratne transakcje, sygnał „razem”, warianty, rachunek → FX-POWROT-V3.xlsx (--double-proof)
+python -m ia4.fxsprint              # FX-SPRINT: sprint 10 $ → cel na sygnałach Powrót.v2, rok 1 → rok 2 → FX-SPRINT.xlsx (--double-proof)
 ```
 
 `ia4` to funkcja w `~/.zshrc`: `function ia4 { cd ~/Desktop/IA4/ia4-research && source .venv/bin/activate && if [ "$1" = start ]; then shift; python -m ia4.ai "$@"; else python -m ia4.lab --workers 4 "$@"; fi; }`
@@ -337,6 +349,7 @@ Starsze wpisy: `archiwum/IA4_INSTRUKCJA-1.40.md`, sekcja 13, i historia gita.
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.59 | 2026-10-21 | **FX-SPRINT** (`ia4/fxsprint.py`, sekcja 7b; zadanie człowieka z 21.10.2026): sprint 10 $ → cel w ≤ N dni na sygnałach Powrót.v2, jeden naraz, wypłata nadwyżki / dopłata do 10 $; cel ×10 przy 85% arytmetycznie nieosiągalny (decyzja człowieka: największy cel przy 85%); siatka 3234 wersji, rok 1 → 100 najlepszych → rok 2, doubleProof na 10 nowych parach (warunek ustalony przed testem) → `FX-SPRINT.xlsx`. Wynik Claude: cel ×1,03 (≤ 10 dni, depozyt 100%), 86% udanych w obu latach. |
 | 1.58 | 2026-10-21 | FX-POWRÓT v3 bez `scipy`: test Manna-Whitneya i test t Welcha liczone w `ia4/fxpowrot3.py` (numpy + math, p zgodne ze `scipy.stats` co do 1e-9, sprawdzane w `--selftest`); na Macu `--double-proof` padał na braku `scipy` przed sprawdzianem, otwarcie nie zostało zapisane. Wyniki i warunki doubleProof bez zmian. |
 | 1.57 | 2026-10-21 | **FX-POWRÓT v3 — analiza strat** (`ia4/fxpowrot3.py`, sekcja 7b; pytanie człowieka z 21.10.2026): cechy stratnych transakcji, sygnał „razem” (inna para z tą samą walutą w tej samej świecy) na transakcjach i zdarzeniach, warianty (unieważnienie, dokładanie, limit, luźniejsze wejście), rachunek przy tym samym ryzyku, największe obsunięcie, doubleProof v3 → `FX-POWROT-V3.xlsx`. Reguły v2 i Powrót.v2 Investor bez zmian. Usunięty `ia4/fxkanal.py` (1.56). README, `PRZEWODNIK.md`. Pozostałe pliki — tylko numer wersji. |
 | 1.56 | 2026-10-21 | FX-KANAŁ (`ia4/fxkanal.py`): short przy górnej / long przy dolnej linii kanału — 5,64 mln reguł; kanał rysowany na gotowym wykresie zna przyszłość, liczony na żywo nie daje przewagi przenoszącej się na rok 2 (stabilnych reguł 130 wobec 37–40 na placebo, wybór na roku 1 w roku 2 na minusie). Wycofane w 1.57 na prośbę człowieka (21.10.2026). |

@@ -1,6 +1,6 @@
 """
 IA 4 — blokada `ia4 start` (instrukcja, sekcja 11c.2–11c.3).
-Wersja projektu: 1.58 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.59 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Dopóki działa `ia4 start`, plik data/ai/ia4-start.lock trzyma jego PID. Programy, które nie mogą
 działać równolegle — `ia4.fx.research` i `ia4.lab` (pamięć 16 GB zajmuje model językowy) oraz

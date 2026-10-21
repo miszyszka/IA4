@@ -1,6 +1,6 @@
 """
 IA 4 — FX-POWRÓT v3: analiza stratnych transakcji Powrót.v2 i pomysłów na ulepszenie (instrukcja, sekcja 7b).
-Wersja projektu: 1.58 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.59 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Pytanie człowieka (21.10.2026): czy da się wyłapać stratne transakcje na poziomie strategii, czy jest coś, o czym nie
 pomyśleliśmy, i czy da się wzmocnić zyskowne?

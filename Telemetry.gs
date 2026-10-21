@@ -2,7 +2,7 @@
  * ============================================================================
  *  IA 4 — TELEMETRIA  (stan zbierania → telemetry/state.json w GitHub)
  *
- *  Wersja projektu: 1.58 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.59 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Claude widzi tylko repozytorium, nie arkusz. Ten plik raz na godzinę (i zaraz po świecy sesji)
  *  publikuje krótki stan bazy: etap, wersję, stan automatu i dla każdego

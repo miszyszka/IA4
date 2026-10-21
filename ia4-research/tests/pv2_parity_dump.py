@@ -1,5 +1,5 @@
 """
-IA 4 — test zgodności PowrotV2.gs (Apps Script) z Pythonem (ia4.fxpowrot2, V2). Wersja projektu: 1.58 (2026-10-21)
+IA 4 — test zgodności PowrotV2.gs (Apps Script) z Pythonem (ia4.fxpowrot2, V2). Wersja projektu: 1.59 (2026-10-21)
 
     python tests/pv2_parity_dump.py /tmp/pv2.json && node tests/pv2_parity.js /tmp/pv2.json
 → „rozbieżności: 0”. Świece 10 par z kopii fx1h (wspólna siatka czasu jak w Pythonie) i transakcje v2 z Pythona.

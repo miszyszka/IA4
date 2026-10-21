@@ -1,6 +1,6 @@
 # IA 4 — Python na Macu: kopia bazy i poszukiwanie strategii
 
-**Wersja projektu: 1.58 (2026-10-21)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
+**Wersja projektu: 1.59 (2026-10-21)** — musi zgadzać się z `IA4_INSTRUKCJA.md`
 
 Dwie rzeczy:
 1. `python -m ia4.sync` — ściąga świece z Firestore na dysk (`data/*.parquet`), przy
@@ -131,6 +131,9 @@ python -m ia4.fxpowrot2 --strona    # tylko historia dla strony: świece 10 par 
 python -m ia4.fxpowrot3 --selftest  # „WYNIK: OK”
 python -m ia4.fxpowrot3             # FX-POWRÓT v3: stratne transakcje, sygnał „razem”, warianty, rachunek → ~/Desktop/IA4/FX-POWROT-V3.xlsx
                                     # (--double-proof — raz: czy efekt „razem” powtarza się na 10 parach fx1h_double_proof)
+python -m ia4.fxsprint --selftest   # „WYNIK: OK”
+python -m ia4.fxsprint              # FX-SPRINT: sprint 10 $ → cel na sygnałach Powrót.v2, rok 1 → 100 najlepszych → rok 2 → ~/Desktop/IA4/FX-SPRINT.xlsx
+                                    # (--double-proof — raz: wybrana wersja na 10 parach fx1h_double_proof)
 python -m ia4.fxpowrot2             # FX-POWRÓT v2: skąd straty, ok. 40 wariantów wyjścia, v2 zamrożona; doubleProof na 10 parach
                                     # fx1h_double_proof (gdy Apps Script pobrał ich historię) → ~/Desktop/IA4/FX-POWROT-V2.xlsx
 ```
