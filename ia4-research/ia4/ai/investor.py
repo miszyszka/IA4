@@ -1,6 +1,6 @@
 """
 IA 4 — Agent-Investor (instrukcja, sekcja 8). Tryb nauki od 1.41.
-Wersja projektu: 1.55 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.56 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Runda po każdej świecy akcji i każdej godzinie FX:
   1. rozliczenie (kod): obie księgi, wszystkie nowe świece — wejścia po open, luka / FC / zamknięcie
