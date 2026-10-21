@@ -3,7 +3,7 @@
  *  IA 4 — POWRÓT.V2 INVESTOR  (paper trading strategii FX-POWRÓT v2 na 10 parach FX 1h,
  *                              arkusz Powrót.v2.Investor, maile z sygnałami, telemetry/pv2.json)
  *
- *  Wersja projektu: 1.59 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.60 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Strategia (instrukcja, sekcja 7b; Python: ia4/fxpowrot2.py, V2 — reguły zamrożone):
  *   • impuls: świeca zamyka się ≥ 2 ATR(100) wyżej niż poprzednia; baza B = zamknięcie przed nią,
@@ -457,26 +457,27 @@ function pv2_docBars_(f, date) {
   return out;
 }
 
-function pv2_storeSheet_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sh = ss.getSheetByName(PV2.STORE_SHEET);
-  if (!sh) { sh = ss.insertSheet(PV2.STORE_SHEET); sh.hideSheet(); }
+/** Ukryty arkusz z pamięcią (name — także _SMA_DANE z SmaKrzyz.gs). */
+function pv2_storeSheet_(name) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet(), nm = name || PV2.STORE_SHEET;
+  let sh = ss.getSheetByName(nm);
+  if (!sh) { sh = ss.insertSheet(nm); sh.hideSheet(); }
   return sh;
 }
 
-function pv2_storeLoad_() {
-  const sh = pv2_storeSheet_(), out = {};
-  ['cache', 'state'].forEach((name, r) => {
+function pv2_storeLoad_(name) {
+  const sh = pv2_storeSheet_(name), out = {};
+  ['cache', 'state'].forEach((key, r) => {
     const n = Number(sh.getRange(r + 1, 2).getValue() || 0);
     if (!n) return;
-    try { out[name] = JSON.parse(sh.getRange(r + 1, 3, 1, n).getValues()[0].join('')); }
-    catch (e) { console.warn('_PV2_DANE ' + name + ': ' + e.message); }
+    try { out[key] = JSON.parse(sh.getRange(r + 1, 3, 1, n).getValues()[0].join('')); }
+    catch (e) { console.warn((name || PV2.STORE_SHEET) + ' ' + key + ': ' + e.message); }
   });
   return out;
 }
 
-function pv2_storeSave_(store) {
-  const sh = pv2_storeSheet_();
+function pv2_storeSave_(store, name) {
+  const sh = pv2_storeSheet_(name);
   ['cache', 'state'].forEach((name, r) => {
     const txt = JSON.stringify(store[name] || null);
     const parts = [];

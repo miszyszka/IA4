@@ -1,5 +1,5 @@
 // IA 4 — test pracy na żywo PowrotV2.gs: krok po każdej świecy (makiety Apps Script) = transakcje z pv2_batch_.
-// Wersja projektu: 1.59 (2026-10-21). Użycie: node tests/pv2_live.js /tmp/pv2.json (plik z tests/pv2_parity_dump.py)
+// Wersja projektu: 1.60 (2026-10-21). Użycie: node tests/pv2_live.js /tmp/pv2.json (plik z tests/pv2_parity_dump.py)
 const fs = require('fs');
 const src = fs.readFileSync(require('path').join(__dirname, '..', '..', 'PowrotV2.gs'), 'utf8');
 const C = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));

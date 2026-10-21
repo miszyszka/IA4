@@ -1,6 +1,6 @@
 """
 IA 4 — mapa: wejście po serii świec spadkowych / wzrostowych, trzymanie 1, 2 albo 3 sesje (instrukcja, sekcja 7a).
-Wersja projektu: 1.59 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.60 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Zadanie człowieka (16.10.2026): portfele „wejście po N świecach spadkowych” dla N = 4, 5, 6 … (do najdłuższej serii
 w danych), pozycja na 1 świecę (open → close następnej sesji), na 2 i na 3 sesje; long i short; zawsze liczba

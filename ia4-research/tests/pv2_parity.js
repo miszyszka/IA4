@@ -1,4 +1,4 @@
-// IA 4 — test zgodności PowrotV2.gs z Pythonem (ia4.fxpowrot2, V2). Wersja projektu: 1.59 (2026-10-21). Opis: tests/pv2_parity_dump.py
+// IA 4 — test zgodności PowrotV2.gs z Pythonem (ia4.fxpowrot2, V2). Wersja projektu: 1.60 (2026-10-21). Opis: tests/pv2_parity_dump.py
 const fs = require('fs');
 const src = fs.readFileSync(require('path').join(__dirname, '..', '..', 'PowrotV2.gs'), 'utf8');
 eval(src.replace(/^const (PV2|PV2_COLS|PV2_PARAMS|PV2_STATS) =/gm, 'var $1 ='));

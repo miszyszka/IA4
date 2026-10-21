@@ -1,6 +1,6 @@
 # IA 4 — instrukcja projektu
 
-**Wersja:** 1.59 · **Data:** 21 października 2026
+**Wersja:** 1.60 · **Data:** 21 października 2026
 
 Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jest celowo krótki: zasady, liczby ważne dla człowieka, stan. Jeśli kod, arkusz albo telemetria rozjeżdżają się z tym plikiem — obowiązuje ten plik, a rozbieżność trzeba naprawić.
 
@@ -15,7 +15,7 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jes
 |---|---|
 | 1. Baza akcji 1h (75 spółek) | ✅ działa bez końca |
 | 2. Poszukiwanie strategii | ⏸ wstrzymane od 3.10.2026 — 60 aktywnych strategii |
-| 3. Paper trading (mechaniczny inwestor) | 🟨 działa od 6.10.2026; 1.53: Powrót.v2 Investor (FX, paper, 100 $, maile z sygnałami) — od wdrożenia `PowrotV2.gs` |
+| 3. Paper trading (mechaniczny inwestor) | 🟨 działa od 6.10.2026; 1.53: Powrót.v2 Investor (FX, paper, 100 $, maile z sygnałami) — od wdrożenia `PowrotV2.gs`; 1.60: SMA 42/23 Investor (FX, paper, 1000 $, zawsze w pozycji) — od wdrożenia `SmaKrzyz.gs` |
 | 4. FX 1h: zbieranie 10 par + BTC i prognoza rozkładu | 🟨 zbieranie działa; prognoza H-002 — kierunek bez przewagi; 1.49–1.59: badania FX-SHORT-NY, FX-POWRÓT, FX-ODKRYWCA, FX-POWRÓT v2, v3 i FX-SPRINT (sekcja 7b, informacyjne); 1.52: 10 par fx1h_double_proof — historia do pobrania |
 | 5. Strona IA4 | 🟨 działa, rozwijana na prośbę |
 | 6. AI Investor — agenci na Macu | 🟨 1.41: zespół agentów (Inwestor, Krytyk, Badacz), tryb nauki |
@@ -29,6 +29,7 @@ Ten plik jest jedynym źródłem prawdy i zbiorem żelaznych zasad projektu. Jes
 4a. **doubleProof FX (1.52):** ✅ Apps Script 1.53 wdrożony, historia 21/21 (20.10.2026) — teraz Mac; automat pobrał historię 10 par fx1h_double_proof (jedna para na wolne uruchomienie, ok. 5 200 zapisów Firestore jednorazowo; postęp: STATS „historia N/21”, arkusz FX — nowe kolumny). Potem Mac — `python -m ia4.fxpowrot2 --selftest`, `python -m ia4.fxpowrot2` → `FX-POWROT-V2.xlsx` z arkuszem DOUBLEPROOF (test jednorazowy, otwarcie zapisane); przegląd z Claude.
 4d. **Powrót.v2 — analiza strat i „razem” (1.57):** Mac — `python -m ia4.fxpowrot3 --selftest`, potem raz `python -m ia4.fxpowrot3 --double-proof` → `FX-POWROT-V3.xlsx` (arkusz DOUBLEPROOF: czy efekt „razem” powtarza się na 10 nowych parach); decyzja człowieka: oznaczenie „wieloparowy / samotny” w mailach i arkuszu Powrót.v2.Investor, ewentualnie wielkość pozycji (sekcja 7b).
 4e. **FX-SPRINT (1.59):** Mac — `python -m ia4.fxsprint --selftest` („WYNIK: OK”), potem raz `python -m ia4.fxsprint --double-proof` → `FX-SPRINT.xlsx` (sprint 10 $ → cel na sygnałach Powrót.v2; arkusz DOUBLEPROOF — czy wybrana wersja trzyma się na 10 nowych parach).
+4f. **SMA 42/23 Investor (1.60):** Apps Script — podmienić wszystkie pliki `.gs` i dodać nowy `SmaKrzyz.gs` („+ → Skrypt”); zapisać — od następnej świecy FX powstaje zakładka **SMA.42-23.Investor** (1000 $) i `telemetry/sma.json`, strona FX → SMA 42/23. Test na Macu (opcjonalnie): `python tests/sma_check_dump.py /tmp/sma.json && node tests/sma_check.js /tmp/sma.json` („rozbieżności: 0”) i `node tests/sma_live.js /tmp/sma.json` („WYNIK: OK”).
 4c. **Historia Powrót.v2 na stronie (1.55):** Mac — `python -m ia4.fxpowrot2 --strona` (raz, potem przy każdym `python -m ia4.fxpowrot2`) → strona FX → Powrót.v2 → historia / galeria.
 4b. **Powrót.v2 Investor (1.53):** Apps Script — podmienić wszystkie pliki `.gs`, dodać nowy `PowrotV2.gs` („+ → Skrypt”) i podmienić manifest `appsscript.json` (Ustawienia projektu → „Pokaż plik manifestu”; nowy zakres: wysyłanie poczty); zapisać, w arkuszu menu **IA 4 → 📧 Powrót.v2 — mail testowy** (Google prosi o zgodę na pocztę), potem **📉 Powrót.v2 — przelicz teraz** (powstaje zakładka **Powrót.v2.Investor**; inwestor liczy od tej chwili, 100 $). Sprawdzić: mail testowy doszedł, na stronie FX → Powrót.v2 są wykresy 10 par. Pierwszy sygnał — średnio za 2–3 dni.
 5. **Do potwierdzenia przez człowieka:** usunięcie starej bazy EURUSD 5 min (menu „🗑 FX — usuń stare świece EURUSD 5 min”); zamknięcie FX-7 (arkusz OKOLICZNOSCI_FX ma kolumny H-001 i H-002).
@@ -73,7 +74,7 @@ IA 4 **zbiera świece** z Yahoo do Firestore (Apps Script, bez Maca), **liczy na
 ```
 Yahoo ──(Apps Script, trigger co minutę)──▶ Firestore ──▶ Mac: kopia lokalna ──▶ ia4.lab · ia4.fx · ia4.ai
              │                                                                        │
-             ├──▶ arkusz Google (STATS, FX, STRATEGIE, SIGNALS-REALTIME, VIRTUAL-INVESTOR, Powrót.v2.Investor …) · mail z sygnałami Powrót.v2
+             ├──▶ arkusz Google (STATS, FX, STRATEGIE, SIGNALS-REALTIME, VIRTUAL-INVESTOR, Powrót.v2.Investor, SMA.42-23.Investor …) · mail z sygnałami Powrót.v2
              └──▶ GitHub main: telemetry/ ──┐              GitHub research · fx · fx-live · ai · ai-live ◀──┘
                                             └──────▶ strona IA4 (przeglądarka, tylko odczyt) ◀──────┘
 ```
@@ -81,13 +82,13 @@ Yahoo ──(Apps Script, trigger co minutę)──▶ Firestore ──▶ Mac: 
 | Miejsce | Zawartość | Kto pisze |
 |---|---|---|
 | Firestore | `stocks`, `proof`, `context`, `doubleProof` (świece 1h akcji), `daily` (świece dobowe), `fx1h` (FX), `system/*` | Apps Script |
-| branch `main` | kod (`*.gs`, `ia4-research/`), instrukcja, `PRZEWODNIK.md`, `telemetry/state.json`, `telemetry/vi.json`, `telemetry/pv2.json`, strona `docs/` | Claude (pakiety), Apps Script (`telemetry/`) |
+| branch `main` | kod (`*.gs`, `ia4-research/`), instrukcja, `PRZEWODNIK.md`, `telemetry/state.json`, `telemetry/vi.json`, `telemetry/pv2.json`, `telemetry/sma.json`, strona `docs/` | Claude (pakiety), Apps Script (`telemetry/`) |
 | branch `research` | strategie, dziennik poszukiwania, doubleProof, backtest portfela | Mac (`ia4.lab`) |
 | branch `fx`, `fx-live` | katalog okoliczności i ratingi; historia Powrót.v2 dla strony `fx/pv2/` (od 1.55); prognoza na żywo `forecast.json` | Mac (`ia4.fx`, `ia4.fxpowrot2`) |
 | branch `ai`, `ai-live` | historia AI (transakcje, decyzje, hipotezy, przeglądy, praca agentów); stan na żywo `status.json` | Mac (`ia4.ai`) |
 | Mac `~/Desktop/IA4/` | repo, kopie lokalne w `ia4-research/data/`, pliki Excel (`AI-INVESTOR.xlsx`, `ONE-DAY-*.xlsx`, `SWING-*.xlsx`) | Mac |
 
-**Pliki Apps Script:** `Code.gs` (zbieranie, STATS, menu, triggery) · `Daily.gs` (świece dobowe) · `Fx.gs` (FX 1h) · `Research.gs` (arkusz STRATEGIE) · `Paper.gs` + `PaperEngine.gs` (sygnały i mechaniczny inwestor) · `PowrotV2.gs` (Powrót.v2 Investor: FX paper trading, maile, `telemetry/pv2.json`; od 1.53) · `Telemetry.gs` (telemetria na GitHub). Manifest `appsscript.json` (zakresy, w tym wysyłanie poczty od 1.53). Triggery: `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min.
+**Pliki Apps Script:** `Code.gs` (zbieranie, STATS, menu, triggery) · `Daily.gs` (świece dobowe) · `Fx.gs` (FX 1h) · `Research.gs` (arkusz STRATEGIE) · `Paper.gs` + `PaperEngine.gs` (sygnały i mechaniczny inwestor) · `PowrotV2.gs` (Powrót.v2 Investor: FX paper trading, maile, `telemetry/pv2.json`; od 1.53) · `SmaKrzyz.gs` (SMA 42/23 Investor: FX paper trading „zawsze w pozycji”, `telemetry/sma.json`; od 1.60) · `Telemetry.gs` (telemetria na GitHub). Manifest `appsscript.json` (zakresy, w tym wysyłanie poczty od 1.53). Triggery: `runCollector` co minutę, `telemetryHourly` co godzinę, `researchSync` co 30 min.
 **Python** (`ia4-research/ia4/`): `sync.py`, `daily.py` (kopie), `lab/` (reguły), `fx/` (prognoza), `ai/` (agenci), `oneday.py`, `odsearch.py`, `odport.py`, `odbreak.py` (badania One-Day), `swing.py`, `swtrend.py`, `swrsi.py`, `swserie.py`, `swportfel.py`, `swrowna.py` (badania wielodniowe), `fxshort.py`, `fxpowrot.py`, `fxodkrywca.py`, `fxpowrot2.py`, `fxpowrot3.py`, `fxsprint.py` (badania FX, sekcja 7b).
 
 ---
@@ -220,6 +221,12 @@ Zadanie człowieka z 19.10.2026: krótkotrwałe wzrosty kończą się gwałtown�
 - **Wyniki (Claude, 21.10.2026, kopia do 16.10.2026):** cel ×10 — 0% udanych w obu latach, najlepszy sprint ze wszystkich wersji doszedł do ×1,41. Warunki roku 1 spełniają 62 wersje (największy cel ×1,04), obu lat — 26 (największy cel ×1,03). Wybrana: wszystkie sygnały, depozyt 100% salda, ≤ 10 dni, cel ×1,03 (10 → 10,30 $) — rok 1: 86,0% udanych, 63 sprinty na rok, netto +18,18 $; rok 2: 86,5%, 52 na rok, +16,15 $; stop outów 0, porażki — tylko koniec limitu dni. Ryzyko: przy depozycie 100% ruch ceny o 1,67% przeciw pozycji = stop out; najgłębszy w 2 latach — 1,47%. Te same sygnały bez sprintów (zyski zostają): 10 $ → 426 $ w 2 lata — sprint zamienia procent składany na małe wypłaty.
 - **doubleProof sprintu** (`--double-proof`, otwarcia w `data/fxsprint/doubleproof.jsonl`; warunek ustalony 21.10.2026 przed testem): wybrana wersja na 10 parach fx1h_double_proof — w całym okresie ≥ 85% udanych, ≥ 40 sprintów na rok i netto > 0 $. Arkusze → `FX-SPRINT.xlsx` (PRZEWODNIK).
 
+
+**SMA-KRZYŻ i SMA 42/23 Investor (od 1.60, zadanie człowieka z 21.10.2026):** zawsze w pozycji na każdej z 10 par — przecięcie dwóch SMA z zamknięć 1h: średnia A przecina B od dołu → long, od góry → short.
+
+- **Tabela 50 × 50 (Claude, 21.10.2026, jednorazowo, `~/Desktop/IA4/SMA-KRZYZ.xlsx`):** okresy 1–50 świec, zmiana pozycji po open następnej świecy, spread raz na transakcję, 10 par po równo, bez dźwigni, wynik = suma % (bez procentu składanego). Klasyczne podążanie za trendem (A krótsza) traci po spreadzie w każdej z 1225 komórek (średnio −18% w 2 lata, najlepsza −7,7%), bez spreadu też traci (−6,3%); wariant przeciw ruchowi (A dłuższa) — średnio −5,6%, najlepsza komórka 42/23: +7,8% w 2 lata, ale wybrana na roku 1 (+7,5%) daje w roku 2 −3,6%. Na FX 1h cena częściej zawraca, niż jedzie dalej (jak Powrót.v2).
+- **SMA 42/23 Investor (decyzja człowieka z 21.10.2026, wbrew słabemu rokowi 2 — paper trading):** `SmaKrzyz.gs`, od chwili wdrożenia, **1000 $**; SMA42 > SMA23 → long, SMA42 < SMA23 → short (równe — bez zmiany); zawsze 10 otwartych pozycji (po jednej na parę); zmiana kierunku → zamknięcie i otwarcie przeciwnej po open następnej świecy. Wynik % = kierunek × (wyjście − wejście) / wejście − spread / wejście. Żółte komórki zakładki **SMA.42-23.Investor**: kapitał startowy, wartość pozycji na parę (domyślnie 10% salda — całe saldo w rynku bez dźwigni, jak tabela), dźwignia (tylko depozyt i stop out < 50% po najgorszej cenie świecy), inwestor aktywny. Każda zamknięta transakcja w logu arkusza i w `telemetry/sma.json` (ostatnie 400 zamkniętych + otwarte); świece z pamięci Powrót.v2 (`_PV2_DANE`), stan w `_SMA_DANE`; bez maili. Strona: FX → **SMA 42/23** — saldo, wykres każdej pary (świece, SMA42, SMA23, wejścia ▲/▼, wyjścia), transakcje. Zgodność z Pythonem: `tests/sma_check.js` (0 rozbieżności, 3399 transakcji) i `tests/sma_live.js` (krok po każdej świecy = symulacja).
+
 ---
 
 ## 8. AI Investor — zespół agentów (Etap 6)
@@ -349,6 +356,7 @@ Starsze wpisy: `archiwum/IA4_INSTRUKCJA-1.40.md`, sekcja 13, i historia gita.
 
 | Wersja | Data | Zmiana |
 |---|---|---|
+| 1.60 | 2026-10-21 | **SMA 42/23 Investor** (sekcja 7b; decyzja człowieka z 21.10.2026): nowy plik `SmaKrzyz.gs` — paper trading „zawsze w pozycji” na 10 parach FX 1h (long, gdy SMA42 > SMA23, short, gdy niżej), 1000 $, zakładka SMA.42-23.Investor, `telemetry/sma.json`, strona FX → SMA 42/23; tabela SMA-KRZYŻ 50 × 50 (jednorazowo) w sekcji 7b; `pv2_storeLoad_/Save_` z nazwą arkusza; testy `tests/sma_check*.{py,js}`, `tests/sma_live.js`. |
 | 1.59 | 2026-10-21 | **FX-SPRINT** (`ia4/fxsprint.py`, sekcja 7b; zadanie człowieka z 21.10.2026): sprint 10 $ → cel w ≤ N dni na sygnałach Powrót.v2, jeden naraz, wypłata nadwyżki / dopłata do 10 $; cel ×10 przy 85% arytmetycznie nieosiągalny (decyzja człowieka: największy cel przy 85%); siatka 3234 wersji, rok 1 → 100 najlepszych → rok 2, doubleProof na 10 nowych parach (warunek ustalony przed testem) → `FX-SPRINT.xlsx`. Wynik Claude: cel ×1,03 (≤ 10 dni, depozyt 100%), 86% udanych w obu latach. |
 | 1.58 | 2026-10-21 | FX-POWRÓT v3 bez `scipy`: test Manna-Whitneya i test t Welcha liczone w `ia4/fxpowrot3.py` (numpy + math, p zgodne ze `scipy.stats` co do 1e-9, sprawdzane w `--selftest`); na Macu `--double-proof` padał na braku `scipy` przed sprawdzianem, otwarcie nie zostało zapisane. Wyniki i warunki doubleProof bez zmian. |
 | 1.57 | 2026-10-21 | **FX-POWRÓT v3 — analiza strat** (`ia4/fxpowrot3.py`, sekcja 7b; pytanie człowieka z 21.10.2026): cechy stratnych transakcji, sygnał „razem” (inna para z tą samą walutą w tej samej świecy) na transakcjach i zdarzeniach, warianty (unieważnienie, dokładanie, limit, luźniejsze wejście), rachunek przy tym samym ryzyku, największe obsunięcie, doubleProof v3 → `FX-POWROT-V3.xlsx`. Reguły v2 i Powrót.v2 Investor bez zmian. Usunięty `ia4/fxkanal.py` (1.56). README, `PRZEWODNIK.md`. Pozostałe pliki — tylko numer wersji. |

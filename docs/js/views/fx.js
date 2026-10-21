@@ -1,5 +1,5 @@
 // IA 4 — zakładka FX: 10 par walutowych + BTC, świece 1h, prognoza rozkładu, spływ świec,
-// przeliczenia FX-research i (w przyszłości) wirtualny inwestor FX. Wersja projektu: 1.59 (2026-10-21)
+// przeliczenia FX-research i (w przyszłości) wirtualny inwestor FX. Wersja projektu: 1.60 (2026-10-21)
 
 import { store, num, pct, esc, age, t, fxOpen, pref } from "../core.js";
 import { help } from "../help.js";
@@ -7,10 +7,13 @@ import { fxChart, spark, inst, SC_COL } from "../chart.js";
 import { fxLast, stamp } from "../health.js";
 import { renderInvestor, mountInvestor } from "./investor.js";
 import { pv2View } from "./pv2.js";
+import { renderSma, mountSma } from "./sma.js";
 
-/** Przełącznik pod-zakładek FX: prognoza | Powrót.v2 (#fx, #fx/powrot). */
-function subnav(pv2) {
-  return `<div class="subnav"><a class="chip" href="#fx" aria-pressed="${!pv2}">prognoza</a><a class="chip" href="#fx/powrot" aria-pressed="${pv2}">Powrót.v2</a></div>`;
+/** Przełącznik pod-zakładek FX: prognoza | Powrót.v2 | SMA 42/23 (#fx, #fx/powrot, #fx/sma). */
+function subnav(cur) {
+  const k = cur === true ? "powrot" : cur || "";
+  return `<div class="subnav"><a class="chip" href="#fx" aria-pressed="${!k}">prognoza</a><a class="chip" href="#fx/powrot" aria-pressed="${k === "powrot"}">Powrót.v2</a>` +
+    `<a class="chip" href="#fx/sma" aria-pressed="${k === "sma"}">SMA 42/23</a></div>`;
 }
 
 const H = 3600e3;
@@ -116,6 +119,12 @@ function fxInvestor() {
 export default {
   id: "fx", title: "fx",
   render(el, changed, force) {
+    if ((location.hash.split("/")[1] || "") === "sma") {
+      if (!force && changed && changed.length && !changed.includes("sma")) return;
+      el.innerHTML = subnav("sma") + renderSma();
+      mountSma(el);
+      return;
+    }
     if ((location.hash.split("/")[1] || "") === "powrot") {
       if (!force && changed && changed.length && !changed.includes("pv2")) return;
       pv2View(el, subnav(true));

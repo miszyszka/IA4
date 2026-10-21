@@ -1,6 +1,6 @@
 """
 IA 4 — wnioski startowe AI Investor (instrukcja, sekcja 8): destylowana wiedza z historii projektu.
-Wersja projektu: 1.59 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.60 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Zasiewane raz, gdy hub nie ma żadnych wniosków (autor „Claude”); LEARNING — raz, także do istniejącego huba
 (1.41). Listę prowadzi Krytyk (najwyżej `lessons_max` aktywnych).

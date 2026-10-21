@@ -1,6 +1,6 @@
 """
 IA 4 — ustawienia AI Investor: limity ryzyka, koszty, model, tryb nauki, Krytyk, Badacz (instrukcja, sekcja 8).
-Wersja projektu: 1.59 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.60 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 DEFAULTS to wartości z instrukcji. Nadpisuje je `ai/config.json` na branchu `ai` (zmienia człowiek
 z Claude, jak research/config.json) — nieznane klucze są ignorowane z ostrzeżeniem. Zmiana wartości

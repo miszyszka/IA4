@@ -3,7 +3,7 @@
  *  IA 4 — MODUŁ FX 1h  (Yahoo, świece godzinowe 10 par + BTC + 10 par fx1h_double_proof →
  *                       Firestore fx1h/{SYMBOL}/days → arkusz FX)
  *
- *  Wersja projektu: 1.59 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+ *  Wersja projektu: 1.60 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
  * ============================================================================
  *  Osobny moduł (instrukcja, sekcja 4b): zbiera dane. Nie bierze udziału
  *  w poszukiwaniu strategii, weryfikacji ani paper tradingu.
@@ -158,6 +158,7 @@ function fxIfDue_(force) {
   msgs.push(fxLive_(st, force));
   msgs.push(fxCheckIfDue_(st));
   try { msgs.push(pv2IfDue_(st)); } catch (e) { recordError_('PV2', e.message || String(e)); }   // PowrotV2.gs: sygnały i inwestor
+  try { msgs.push(smaIfDue_(st)); } catch (e) { recordError_('SMA', e.message || String(e)); }   // SmaKrzyz.gs: SMA 42/23 investor
   return msgs.filter(x => x).join(' · ');
 }
 

@@ -1,6 +1,6 @@
 """
 IA 4 — FX-SPRINT: sprint 10 $ → cel w ≤ N dni na sygnałach Powrót.v2 (instrukcja, sekcja 7b; informacyjne, od 1.59).
-Wersja projektu: 1.59 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.60 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Zadanie człowieka (21.10.2026): sprint — z 10 $ zrobić w krótkim czasie 100 $; po sukcesie wypłata 90 $ i start od 10 $,
 saldo 0 → dopłata 10 $; sprint najwyżej 2 tygodnie, jeden naraz; ≥ 85% udanych przy ≥ 40 sprintach w roku; rok 1 →

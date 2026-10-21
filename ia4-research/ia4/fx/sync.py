@@ -1,6 +1,6 @@
 """
 IA 4 — kopia lokalna świec FX 1h (instrukcja, sekcja 4c.1).
-Wersja projektu: 1.59 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
+Wersja projektu: 1.60 (2026-10-21) — musi zgadzać się z IA4_INSTRUKCJA.md
 
 Firestore fx1h/{SYMBOL}/days/{RRRR-MM-DD} (format: sekcja 4b) → data/fx1h/{SYMBOL}.parquet
   kolumny: time (początek świecy, sekundy UTC), o, h, l, c, filled (świeca z fillT)

@@ -1,10 +1,10 @@
 // IA 4 — rdzeń strony: źródła danych, odświeżanie, formaty, bramka hasła (instrukcja, sekcja 11b).
-// Wersja projektu: 1.59 (2026-10-21)
+// Wersja projektu: 1.60 (2026-10-21)
 //
 // Każde źródło = jeden plik w publicznym repo. Nowe źródło: dopisz do SOURCES, a widok
 // przeczyta je przez store.get("id"). Dane są tylko czytane — strona niczego nie zapisuje.
 
-export const VERSION = "1.59";
+export const VERSION = "1.60";
 export const REPO = "miszyszka/IA4";
 const RAW = (branch, path) => `https://raw.githubusercontent.com/${REPO}/${branch}/${path}`;
 const API = (branch, path) => `https://api.github.com/repos/${REPO}/contents/${path}?ref=${branch}`;
@@ -16,6 +16,7 @@ export const SOURCES = {
   vi:         { label: "telemetry/vi.json", branch: "main", path: "telemetry/vi.json", every: 60 },
   fxvi:       { label: "telemetry/fx-vi.json", branch: "main", path: "telemetry/fx-vi.json", every: 300 },   // przyszły inwestor FX
   pv2:        { label: "telemetry/pv2.json", branch: "main", path: "telemetry/pv2.json", every: 120 },     // Powrót.v2 investor (PowrotV2.gs)
+  sma:        { label: "telemetry/sma.json", branch: "main", path: "telemetry/sma.json", every: 120 },     // SMA 42/23 investor (SmaKrzyz.gs)
   forecast:   { label: "fx-live/forecast.json", branch: "fx-live", path: "forecast.json", every: 30, api: true },
   ailive:     { label: "ai-live/status.json", branch: "ai-live", path: "status.json", every: 60, api: true },   // AI Investor (11c.11)
   aitrades:   { label: "ai/trades.jsonl", branch: "ai", path: "ai/trades.jsonl", every: 300, jsonl: true },

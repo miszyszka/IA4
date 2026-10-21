@@ -1,5 +1,5 @@
 // IA 4 — opisy paneli („?”) i przewodnik po stronie (instrukcja, sekcja 9; PRZEWODNIK.md).
-// Wersja projektu: 1.59 (2026-10-21)
+// Wersja projektu: 1.60 (2026-10-21)
 //
 // help("klucz") → przycisk „?” w rogu panelu; po kliknięciu opis: co to jest, jak czytać, na co uważać.
 // Otwarte opisy pamiętane w przeglądarce — przeżywają odświeżanie danych. Treść = PRZEWODNIK.md (te same zdania).
@@ -45,6 +45,9 @@ const H = {
     "Ocena jak zawsze: nie przed 30 transakcjami. Sygnał przychodzi mailem ok. 1 min po zamknięciu świecy."],
   "fx.pv2.trades": ["Transakcje inwestora — to samo co log w arkuszu Powrót.v2.Investor.",
     "„zamknąć najpóźniej” — po tej godzinie (60 świec) pozycja bez TP jest zamykana; przychodzi wtedy mail."],
+  "fx.sma": ["SMA 42/23 — paper trading w Apps Script (arkusz SMA.42-23.Investor): zawsze w pozycji na każdej z 10 par. Long, gdy SMA42 > SMA23 (krótka średnia spadła pod długą — gra przeciw ruchowi), short, gdy niżej; zmiana po open następnej świecy.",
+    "Start 21.10.2026 z 1000 $, wartość pozycji 10% salda na parę (bez dźwigni — jak tabela SMA-KRZYŻ). Najlepsza komórka tabeli w 2 latach (+7,8%), ale w roku 2 −3,6% — ocena dopiero na żywo, nie przed 30 transakcjami."],
+  "fx.sma.trades": ["Transakcje inwestora — to samo co log w arkuszu SMA.42-23.Investor (zamknięte: ostatnie 400).", "Każda zmiana kierunku = zamknięcie jednej i otwarcie przeciwnej transakcji; spread raz na transakcję."],
   "fx.vi": ["Miejsce na wirtualnego inwestora FX.", "Powstanie dopiero, gdy prognoza dowiedzie przewagi kierunku — i za zgodą człowieka."],
   // ---------------------------------------------------------------- AI
   "ai.hero": ["Czy agenci na Macu działają. „połączony” = znak życia w ciągu 11 min.",
